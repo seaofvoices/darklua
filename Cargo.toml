@@ -1,0 +1,28 @@
+[package]
+name = "darklua"
+version = "0.1.0"
+authors = ["jeparlefrancais <jeparlefrancais21@gmail.com>"]
+edition = "2018"
+readme = "README.md"
+description = "Obfuscate Lua 5.1 scripts"
+repository = "https://gitlab.com/jeparlefrancais/darklua"
+license = "MIT"
+keywords = ["lua", "obsfucation", "minify"]
+
+[badges]
+gitlab = { repository = "jeparlefrancais/darklua" }
+
+[lib]
+name = "darklua_core"
+path = "src/lib.rs"
+
+[[bin]]
+name = "darklua"
+path = "src/bin.rs"
+
+[dependencies]
+structopt = "0.3.9"
+luaparser = { version = "0.1.0", default-features = false }
+
+[dev-dependencies]
+insta = "0.12"

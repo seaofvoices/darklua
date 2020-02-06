@@ -1,0 +1,51 @@
+image: 'rust:latest'
+
+cache:
+  paths:
+    - cargo/
+
+stages:
+  - build
+  - test
+
+variables:
+  CARGO_HOME: $CI_PROJECT_DIR/cargo
+
+build:
+  stage: build
+  script:
+    - rustc --version
+    - cargo --version
+    - cargo build --verbose
+  artifacts:
+    expire_in: 1 hour
+    paths:
+      - cargo/
+  only:
+    - master
+    - merge_requests
+
+test:
+  stage: test
+  script:
+    - cargo build --verbose
+    - cargo test --verbose
+  only:
+    - master
+    - merge_requests
+
+minify-roact-test:
+  stage: test
+  before_script:
+    - apt-get -qq update
+    - apt-get -qq install -y python python-pip
+    - python --version
+    - chmod u+x ./bin/install-lua.sh
+    - ./bin/install-lua.sh
+    - export PATH=$PATH:$PWD/lua_install/bin
+  script:
+    - chmod u+x ./bin/test-minify-with-roact.sh
+    - ./bin/test-minify-with-roact.sh
+  only:
+    - master
+    - merge_requests

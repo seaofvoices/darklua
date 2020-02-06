@@ -1,0 +1,5 @@
+---
+source: src/nodes/arguments.rs
+expression: arguments.to_lua_string()
+---
+(foo)

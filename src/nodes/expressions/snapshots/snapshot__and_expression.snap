@@ -1,0 +1,5 @@
+---
+source: src/nodes/expressions/binary.rs
+expression: expression.to_lua_string()
+---
+true and false

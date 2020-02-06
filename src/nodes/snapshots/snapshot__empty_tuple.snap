@@ -1,0 +1,5 @@
+---
+source: src/nodes/arguments.rs
+expression: "Arguments::Tuple(vec![]).to_lua_string()"
+---
+()
