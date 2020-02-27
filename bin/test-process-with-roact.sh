@@ -8,17 +8,17 @@ git submodule init
 git submodule update
 cd ..
 
-# minify the source
-cargo run -- minify roact/src roact-minify/src
+# process the source
+cargo run -- process roact/src roact-process/src
 
 # copy the submodules and the bin to be able to execute tests
-cp roact/bin roact-minify/bin -r
-cp roact/modules roact-minify/modules -r
+cp roact/bin roact-process/bin -r
+cp roact/modules roact-process/modules -r
 
 # run Lua tests
-cd roact-minify
+cd roact-process
 lua bin/spec.lua
 
 cd ..
 rm -r -f roact
-rm -r -f roact-minify
+rm -r -f roact-process

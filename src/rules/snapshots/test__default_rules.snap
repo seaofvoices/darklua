@@ -1,0 +1,7 @@
+---
+source: src/rules/mod.rs
+expression: rules
+---
+[
+  "remove_empty_do"
+]

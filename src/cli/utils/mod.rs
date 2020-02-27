@@ -1,9 +1,15 @@
+mod config;
+
+pub use config::*;
+
 use crate::cli::GlobalOptions;
 
 use std::ffi::OsStr;
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
+
+pub const DEFAULT_COLUMN_SPAN: usize = 80;
 
 #[derive(Debug, Clone)]
 pub struct FileProcessing {

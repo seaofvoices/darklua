@@ -26,9 +26,7 @@ pub struct Options {
     pub config_path: Option<PathBuf>,
 }
 
-type MinifyResult = Result<(), CliError>;
-
-fn process(file: &FileProcessing, options: &Options, global: &GlobalOptions) -> MinifyResult {
+fn process(file: &FileProcessing, options: &Options, global: &GlobalOptions) -> Result<(), CliError> {
     let config = Config::new(&options.config_path, global)?;
 
     let source = &file.source;
@@ -43,8 +41,10 @@ fn process(file: &FileProcessing, options: &Options, global: &GlobalOptions) -> 
 
     let parser = Parser::default();
 
-    let block = parser.parse(&input)
+    let mut block = parser.parse(&input)
         .map_err(|parser_error| CliError::Parser(source.clone(), parser_error))?;
+
+    config.process.iter().for_each(|rule| rule.process(&mut block));
 
     let mut generator = LuaGenerator::new(config.column_span);
     block.to_lua(&mut generator);
@@ -61,9 +61,9 @@ fn process(file: &FileProcessing, options: &Options, global: &GlobalOptions) -> 
 }
 
 pub fn run(options: &Options, global: &GlobalOptions) {
-    let file = FileProcessing::find(&options.input_path, &options.output_path, global);
+    let files = FileProcessing::find(&options.input_path, &options.output_path, global);
 
-    let results: Vec<MinifyResult> = file.iter()
+    let results: Vec<Result<(), CliError>> = files.iter()
         .map(|file_processing| process(file_processing, &options, global))
         .collect();
 
@@ -71,9 +71,7 @@ pub fn run(options: &Options, global: &GlobalOptions) {
 
     let errors: Vec<CliError> = results.into_iter()
         .filter_map(|result| match result {
-            Ok(()) => {
-                None
-            }
+            Ok(()) => None,
             Err(error) => Some(error),
         })
         .collect();
@@ -81,13 +79,13 @@ pub fn run(options: &Options, global: &GlobalOptions) {
     let error_count = errors.len();
 
     if error_count == 0 {
-        println!("Successfully minified {} file{}", total_files, maybe_plural(total_files));
+        println!("Successfully processed {} file{}", total_files, maybe_plural(total_files));
 
     } else {
         let success_count = total_files - error_count;
 
         if success_count > 0 {
-            eprintln!("Successfully minified {} file{}.", success_count, maybe_plural(success_count));
+            eprintln!("Successfully processed {} file{}.", success_count, maybe_plural(success_count));
         }
 
         eprintln!("But {} error{} happened:", error_count, maybe_plural(error_count));

@@ -1,6 +1,6 @@
 [package]
 name = "darklua"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["jeparlefrancais <jeparlefrancais21@gmail.com>"]
 edition = "2018"
 readme = "README.md"
@@ -23,6 +23,8 @@ path = "src/bin.rs"
 [dependencies]
 structopt = "0.3.9"
 luaparser = { version = "0.1.0", default-features = false }
+serde = "1.0"
+json5 = "0.2"
 
 [dev-dependencies]
 insta = "0.12"

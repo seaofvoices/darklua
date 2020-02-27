@@ -1,4 +1,6 @@
+pub mod error;
 pub mod minify;
+pub mod process;
 pub mod utils;
 
 use structopt::StructOpt;
@@ -14,6 +16,8 @@ pub struct GlobalOptions {
 pub enum Command {
     /// Minify lua files
     Minify(minify::Options),
+    /// Obfuscate lua files
+    Process(process::Options),
 }
 
 #[derive(Debug, StructOpt)]

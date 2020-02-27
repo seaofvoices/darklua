@@ -7,12 +7,19 @@ cache:
 stages:
   - build
   - test
+  - integration-test
 
 variables:
   CARGO_HOME: $CI_PROJECT_DIR/cargo
 
+.only-mr-and-master:
+  only:
+    - master
+    - merge_requests
+
 build:
   stage: build
+  extends: .only-mr-and-master
   script:
     - rustc --version
     - cargo --version
@@ -21,21 +28,15 @@ build:
     expire_in: 1 hour
     paths:
       - cargo/
-  only:
-    - master
-    - merge_requests
+      - target/
 
 test:
   stage: test
+  extends: .only-mr-and-master
   script:
-    - cargo build --verbose
     - cargo test --verbose
-  only:
-    - master
-    - merge_requests
 
-minify-roact-test:
-  stage: test
+.lua-setup:
   before_script:
     - apt-get -qq update
     - apt-get -qq install -y python python-pip
@@ -43,9 +44,21 @@ minify-roact-test:
     - chmod u+x ./bin/install-lua.sh
     - ./bin/install-lua.sh
     - export PATH=$PATH:$PWD/lua_install/bin
+
+minify-roact-test:
+  stage: integration-test
+  extends:
+    - .only-mr-and-master
+    - .lua-setup
   script:
     - chmod u+x ./bin/test-minify-with-roact.sh
     - ./bin/test-minify-with-roact.sh
-  only:
-    - master
-    - merge_requests
+
+process-roact-test:
+  stage: integration-test
+  extends:
+    - .only-mr-and-master
+    - .lua-setup
+  script:
+    - chmod u+x ./bin/test-process-with-roact.sh
+    - ./bin/test-process-with-roact.sh

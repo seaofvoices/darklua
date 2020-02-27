@@ -9,5 +9,6 @@ fn main() {
 
     match darklua.command {
         Command::Minify(options) => cli::minify::run(&options, &global_options),
+        Command::Process(options) => cli::process::run(&options, &global_options),
     };
 }
