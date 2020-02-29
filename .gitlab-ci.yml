@@ -45,20 +45,10 @@ test:
     - ./bin/install-lua.sh
     - export PATH=$PATH:$PWD/lua_install/bin
 
-minify-roact-test:
+test-lua-projects:
   stage: integration-test
   extends:
     - .only-mr-and-master
     - .lua-setup
   script:
-    - chmod u+x ./bin/test-minify-with-roact.sh
-    - ./bin/test-minify-with-roact.sh
-
-process-roact-test:
-  stage: integration-test
-  extends:
-    - .only-mr-and-master
-    - .lua-setup
-  script:
-    - chmod u+x ./bin/test-process-with-roact.sh
-    - ./bin/test-process-with-roact.sh
+    - lua ./bin/test-commands.lua
