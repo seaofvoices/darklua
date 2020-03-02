@@ -36,6 +36,14 @@ impl LocalAssignStatement {
         &self.variables
     }
 
+    pub fn for_each_assignment<F>(&mut self, mut callback: F)
+        where F: FnMut(&mut String, Option<&mut Expression>)
+    {
+        let mut values = self.values.iter_mut();
+        self.variables.iter_mut()
+            .for_each(|variable| callback(variable, values.next()));
+    }
+
     pub fn mutate_variables(&mut self) -> &mut Vec<String> {
         &mut self.variables
     }

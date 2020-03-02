@@ -30,11 +30,25 @@ build:
       - cargo/
       - target/
 
+build-release:
+  stage: build
+  extends: .only-mr-and-master
+  script:
+    - rustc --version
+    - cargo --version
+    - cargo build --release --verbose
+  artifacts:
+    expire_in: 1 hour
+    paths:
+      - cargo/
+      - target/
+
 test:
   stage: test
   extends: .only-mr-and-master
   script:
     - cargo test --verbose
+  needs: ['build']
 
 .lua-setup:
   before_script:
@@ -52,3 +66,4 @@ test-lua-projects:
     - .lua-setup
   script:
     - lua ./bin/test-commands.lua
+  needs: ['build-release']

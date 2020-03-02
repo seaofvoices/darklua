@@ -54,6 +54,10 @@ impl FunctionName {
     pub fn set_name(&mut self, name: String) {
         self.name = name;
     }
+
+    pub fn mutate_identifier(&mut self) -> &mut String {
+        &mut self.name
+    }
 }
 
 impl ToLua for FunctionName {
@@ -120,6 +124,10 @@ impl FunctionStatement {
 
     pub fn mutate_function_name(&mut self) -> &mut FunctionName {
         &mut self.name
+    }
+
+    pub fn mutate_parameters(&mut self) -> &mut Vec<String> {
+        &mut self.parameters
     }
 
     pub fn remove_method(&mut self) {

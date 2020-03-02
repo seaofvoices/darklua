@@ -1,0 +1,10 @@
+---
+source: src/rules/rename_variables/mod.rs
+expression: "RenameVariables::new(globals::ROBLOX.to_vec().into_iter().map(String::from))"
+---
+{
+  "rule": "rename_variables",
+  "globals": [
+    "$roblox"
+  ]
+}

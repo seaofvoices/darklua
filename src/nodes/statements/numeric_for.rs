@@ -54,6 +54,10 @@ impl NumericForStatement {
         &self.identifier
     }
 
+    pub fn mutate_identifier(&mut self) -> &mut String {
+        &mut self.identifier
+    }
+
     pub fn set_identifier<S: Into<String>>(&mut self, identifier: S) {
         self.identifier = identifier.into();
     }

@@ -30,6 +30,10 @@ impl FunctionExpression {
     pub fn mutate_block(&mut self) -> &mut Block {
         &mut self.block
     }
+
+    pub fn mutate_parameters(&mut self) -> &mut Vec<String> {
+        &mut self.parameters
+    }
 }
 
 impl Default for FunctionExpression {

@@ -1,9 +1,11 @@
 use crate::nodes::*;
 use crate::process::NodeProcessor;
 
+use std::marker::PhantomData;
+
 /// A trait that defines method that iterates on nodes and process them using a NodeProcessor.
-pub trait NodeVisitor {
-    fn visit_block<T: NodeProcessor>(block: &mut Block, processor: &mut T) {
+pub trait NodeVisitor<T: NodeProcessor> {
+    fn visit_block(block: &mut Block, processor: &mut T) {
         processor.process_block(block);
 
         block.mutate_statements()
@@ -23,7 +25,7 @@ pub trait NodeVisitor {
         };
     }
 
-    fn visit_statement<T: NodeProcessor>(statement: &mut Statement, processor: &mut T) {
+    fn visit_statement(statement: &mut Statement, processor: &mut T) {
         processor.process_statement(statement);
 
         match statement {
@@ -41,7 +43,7 @@ pub trait NodeVisitor {
         };
     }
 
-    fn visit_expression<T: NodeProcessor>(expression: &mut Expression, processor: &mut T) {
+    fn visit_expression(expression: &mut Expression, processor: &mut T) {
         processor.process_expression(expression);
 
         match expression {
@@ -52,11 +54,7 @@ pub trait NodeVisitor {
             }
             Expression::Call(expression) => Self::visit_function_call(expression, processor),
             Expression::Field(field) => Self::visit_field_expression(field, processor),
-            Expression::Function(function) => {
-                processor.process_function_expression(function);
-
-                Self::visit_block(function.mutate_block(), processor);
-            }
+            Expression::Function(function) => Self::visit_function_expression(function, processor),
             Expression::Identifier(identifier) => processor.process_identifier(identifier),
             Expression::Index(index) => Self::visit_index_expression(index, processor),
             Expression::Number(number) => processor.process_number_expression(number),
@@ -74,7 +72,13 @@ pub trait NodeVisitor {
         }
     }
 
-    fn visit_assign_statement<T: NodeProcessor>(statement: &mut AssignStatement, processor: &mut T) {
+    fn visit_function_expression(function: &mut FunctionExpression, context: &mut T) {
+        context.process_function_expression(function);
+
+        Self::visit_block(function.mutate_block(), context);
+    }
+
+    fn visit_assign_statement(statement: &mut AssignStatement, processor: &mut T) {
         processor.process_assign_statement(statement);
 
         statement.mutate_variables().iter_mut()
@@ -88,17 +92,18 @@ pub trait NodeVisitor {
             .for_each(|expression| Self::visit_expression(expression, processor));
     }
 
-    fn visit_do_statement<T: NodeProcessor>(statement: &mut DoStatement, processor: &mut T) {
+    fn visit_do_statement(statement: &mut DoStatement, processor: &mut T) {
         processor.process_do_statement(statement);
         Self::visit_block(statement.mutate_block(), processor);
     }
 
-    fn visit_function_statement<T: NodeProcessor>(statement: &mut FunctionStatement, processor: &mut T) {
+    fn visit_function_statement(statement: &mut FunctionStatement, processor: &mut T) {
         processor.process_function_statement(statement);
+        processor.process_identifier(statement.mutate_function_name().mutate_identifier());
         Self::visit_block(statement.mutate_block(), processor);
     }
 
-    fn visit_generic_for<T: NodeProcessor>(statement: &mut GenericForStatement, processor: &mut T) {
+    fn visit_generic_for(statement: &mut GenericForStatement, processor: &mut T) {
         processor.process_generic_for_statement(statement);
 
         statement.mutate_expressions().iter_mut()
@@ -106,7 +111,7 @@ pub trait NodeVisitor {
         Self::visit_block(statement.mutate_block(), processor);
     }
 
-    fn visit_if_statement<T: NodeProcessor>(statement: &mut IfStatement, processor: &mut T) {
+    fn visit_if_statement(statement: &mut IfStatement, processor: &mut T) {
         processor.process_if_statement(statement);
 
         statement.mutate_branchs()
@@ -121,19 +126,19 @@ pub trait NodeVisitor {
         }
     }
 
-    fn visit_local_assign<T: NodeProcessor>(statement: &mut LocalAssignStatement, processor: &mut T) {
+    fn visit_local_assign(statement: &mut LocalAssignStatement, processor: &mut T) {
         processor.process_local_assign_statement(statement);
 
         statement.mutate_values().iter_mut()
             .for_each(|value| Self::visit_expression(value, processor));
     }
 
-    fn visit_local_function<T: NodeProcessor>(statement: &mut LocalFunctionStatement, processor: &mut T) {
+    fn visit_local_function(statement: &mut LocalFunctionStatement, processor: &mut T) {
         processor.process_local_function_statement(statement);
         Self::visit_block(statement.mutate_block(), processor);
     }
 
-    fn visit_numeric_for<T: NodeProcessor>(statement: &mut NumericForStatement, processor: &mut T) {
+    fn visit_numeric_for(statement: &mut NumericForStatement, processor: &mut T) {
         processor.process_numeric_for_statement(statement);
 
         Self::visit_expression(statement.mutate_start(), processor);
@@ -146,49 +151,50 @@ pub trait NodeVisitor {
         Self::visit_block(statement.mutate_block(), processor);
     }
 
-    fn visit_repeat_statement<T: NodeProcessor>(statement: &mut RepeatStatement, processor: &mut T) {
+    fn visit_repeat_statement(statement: &mut RepeatStatement, processor: &mut T) {
         processor.process_repeat_statement(statement);
 
         Self::visit_expression(statement.mutate_condition(), processor);
         Self::visit_block(statement.mutate_block(), processor);
     }
 
-    fn visit_while_statement<T: NodeProcessor>(statement: &mut WhileStatement, processor: &mut T) {
+    fn visit_while_statement(statement: &mut WhileStatement, processor: &mut T) {
         processor.process_while_statement(statement);
 
         Self::visit_expression(statement.mutate_condition(), processor);
         Self::visit_block(statement.mutate_block(), processor);
     }
 
-    fn visit_field_expression<T: NodeProcessor>(field: &mut FieldExpression, processor: &mut T) {
+    fn visit_field_expression(field: &mut FieldExpression, processor: &mut T) {
         processor.process_field_expression(field);
 
         Self::visit_prefix_expression(field.mutate_prefix(), processor);
     }
 
-    fn visit_index_expression<T: NodeProcessor>(index: &mut IndexExpression, processor: &mut T) {
+    fn visit_index_expression(index: &mut IndexExpression, processor: &mut T) {
         processor.process_index_expression(index);
 
         Self::visit_prefix_expression(index.mutate_prefix(), processor);
+        Self::visit_expression(index.mutate_index(), processor);
     }
 
-    fn visit_function_call<T: NodeProcessor>(call: &mut FunctionCall, processor: &mut T) {
+    fn visit_function_call(call: &mut FunctionCall, processor: &mut T) {
         processor.process_function_call(call);
 
         Self::visit_prefix_expression(call.mutate_prefix(), processor);
         Self::visit_arguments(call.mutate_arguments(), processor);
     }
 
-    fn visit_arguments<T: NodeProcessor>(arguments: &mut Arguments, processor: &mut T) {
+    fn visit_arguments(arguments: &mut Arguments, processor: &mut T) {
         match arguments {
             Arguments::String(string) => processor.process_string_expression(string),
             Arguments::Table(table) => Self::visit_table(table, processor),
             Arguments::Tuple(expressions) => expressions.iter_mut()
-                .for_each(|expression| processor.process_expression(expression)),
+                .for_each(|expression| Self::visit_expression(expression, processor)),
         }
     }
 
-    fn visit_table<T: NodeProcessor>(table: &mut TableExpression, processor: &mut T) {
+    fn visit_table(table: &mut TableExpression, processor: &mut T) {
         processor.process_table_expression(table);
 
         table.mutate_entries().iter_mut()
@@ -202,13 +208,13 @@ pub trait NodeVisitor {
             });
     }
 
-    fn visit_prefix_expression<T: NodeProcessor>(prefix: &mut Prefix, processor: &mut T) {
+    fn visit_prefix_expression(prefix: &mut Prefix, processor: &mut T) {
         processor.process_prefix_expression(prefix);
 
         match prefix {
             Prefix::Call(call) => Self::visit_function_call(call, processor),
             Prefix::Field(field) => Self::visit_field_expression(field, processor),
-            Prefix::Identifier(_) => {},
+            Prefix::Identifier(identifier) => processor.process_identifier(identifier),
             Prefix::Index(index) => Self::visit_index_expression(index, processor),
             Prefix::Parenthese(expression) => Self::visit_expression(expression, processor),
         };
@@ -216,9 +222,11 @@ pub trait NodeVisitor {
 }
 
 /// The default node visitor.
-pub struct DefaultVisitor;
+pub struct DefaultVisitor<T> {
+    _phantom: PhantomData<T>,
+}
 
-impl NodeVisitor for DefaultVisitor {}
+impl<T: NodeProcessor> NodeVisitor<T> for DefaultVisitor<T> {}
 
 #[cfg(test)]
 mod test {

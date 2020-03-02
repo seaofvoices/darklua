@@ -50,6 +50,14 @@ impl LocalFunctionStatement {
     pub fn mutate_block(&mut self) -> &mut Block {
         &mut self.block
     }
+
+    pub fn mutate_parameters(&mut self) -> &mut Vec<String> {
+        &mut self.parameters
+    }
+
+    pub fn mutate_identifier(&mut self) -> &mut String {
+        &mut self.identifier
+    }
 }
 
 impl ToLua for LocalFunctionStatement {

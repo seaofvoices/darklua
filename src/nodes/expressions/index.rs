@@ -21,6 +21,10 @@ impl IndexExpression {
     pub fn mutate_prefix(&mut self) -> &mut Prefix {
         &mut self.prefix
     }
+
+    pub fn mutate_index(&mut self) -> &mut Expression {
+        &mut self.index
+    }
 }
 
 impl ToLua for IndexExpression {

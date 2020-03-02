@@ -1,3 +1,5 @@
+local CONFIG_FILE_NAME = '.darklua.json5'
+
 local function concatCommands(...)
     return table.concat({...}, ' && ')
 end
@@ -56,13 +58,52 @@ function Project:test(generatedFolderName)
     return run((self.Test:gsub('%$generated', generatedFolderName)))
 end
 
+local Json = {}
+
+function Json.fromArray(array)
+    local content = {}
+
+    for i=1, #array do
+        table.insert(content, Json.from(array[i]))
+    end
+
+    return ('[%s]'):format(table.concat(content, ','))
+end
+
+function Json.fromMap(data)
+    local content = {}
+
+    for key, value in pairs(data) do
+        table.insert(content, ('%s:%s'):format(key, Json.from(value)))
+    end
+
+    return ('{%s}'):format(table.concat(content, ','))
+end
+
+function Json.from(data)
+    local dataType = type(data)
+
+    if dataType == 'table' then
+        if #data ~= 0 then
+            return Json.fromArray(data)
+        else
+            return Json.fromMap(data)
+        end
+    elseif dataType == 'string' then
+        return ('"%s"'):format(data)
+    end
+
+    return tostring(data)
+end
+
 local DarkluaTest = {}
 local darkluaTestMetatable = {__index = DarkluaTest}
 
-function DarkluaTest.new(name, ...)
+function DarkluaTest.new(name, command, config)
     return setmetatable({
         Name = name,
-        Command = concatCommands(...),
+        Command = command,
+        ConfigurationFile = config and Json.fromMap(config) or '',
     }, darkluaTestMetatable)
 end
 
@@ -75,7 +116,15 @@ function DarkluaTest:execute(project)
         :gsub('$input', project.ProcessFolder)
         :gsub('$output', output)
 
-    verifyRun('cargo run -- ' .. command)
+    if self.ConfigurationFile:len() > 0 then
+        local configFile = io.open(CONFIG_FILE_NAME, 'w+')
+        configFile:write(self.ConfigurationFile)
+        configFile:close()
+    end
+
+    verifyRun('cargo run --release -- ' .. command)
+
+    verifyRun(('rm -f %s'):format(CONFIG_FILE_NAME))
 
     local success, message = project:test(generatedName)
 
@@ -142,6 +191,12 @@ local projects = {
 local testSuite = {
     DarkluaTest.new('minify', 'minify $input $output'),
     DarkluaTest.new('default-process', 'process $input $output'),
+    DarkluaTest.new('rename', 'process $input $output', {
+        process = {{
+            rule = 'rename_variables',
+            globals = {'$default', '$roblox'},
+        }}
+    }),
 }
 
 local failFast = false

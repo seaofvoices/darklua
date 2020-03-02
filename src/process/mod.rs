@@ -3,9 +3,11 @@
 #[cfg(test)]
 mod node_counter;
 mod node_processor;
+mod scope_visitor;
 mod visitors;
 
 #[cfg(test)]
 pub use node_counter::NodeCounter;
 pub use node_processor::NodeProcessor;
+pub use scope_visitor::{Scope, ScopeVisitor};
 pub use visitors::{DefaultVisitor, NodeVisitor};

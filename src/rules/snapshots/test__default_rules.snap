@@ -3,5 +3,6 @@ source: src/rules/mod.rs
 expression: rules
 ---
 [
-  "remove_empty_do"
+  "remove_empty_do",
+  "rename_variables"
 ]

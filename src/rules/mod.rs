@@ -1,8 +1,10 @@
 //! A module that contains the different rules that mutates a Lua block.
 
 mod empty_do;
+mod rename_variables;
 
 pub use empty_do::*;
+pub use rename_variables::*;
 
 use crate::nodes::Block;
 
@@ -20,6 +22,7 @@ use std::collections::HashMap;
 pub enum RulePropertyValue {
     String(String),
     Usize(usize),
+    StringList(Vec<String>),
 }
 
 /// When implementing the configure method of the Rule trait, the method returns a result
@@ -33,6 +36,9 @@ pub enum RuleConfigurationError {
     /// When a property is associated with something else than an expected unsigned number. The
     /// string is the property name.
     UsizeExpected(String),
+    /// When a property is associated with something else than an expected list of strings. The
+    /// string is the property name.
+    StringListExpected(String),
 }
 
 impl fmt::Display for RuleConfigurationError {
@@ -41,6 +47,7 @@ impl fmt::Display for RuleConfigurationError {
             Self::UnexpectedProperty(property) => write!(f, "unexpected field '{}'", property),
             Self::StringExpected(property) => write!(f, "string value expected for field '{}'", property),
             Self::UsizeExpected(property) => write!(f, "unsigned integer expected for field '{}'", property),
+            Self::StringListExpected(property) => write!(f, "list of string expected for field '{}'", property),
         }
     }
 }
@@ -68,6 +75,7 @@ pub trait Rule {
 pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
     vec![
         Box::new(RemoveEmptyDo::default()),
+        Box::new(RenameVariables::default()),
     ]
 }
 
@@ -75,8 +83,9 @@ impl FromStr for Box<dyn Rule> {
     type Err = String;
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        let rule = match string {
+        let rule: Box<dyn Rule> = match string {
             REMOVE_EMPTY_DO_RULE_NAME => Box::new(RemoveEmptyDo::default()),
+            RENAME_VARIABLES_RULE_NAME => Box::new(RenameVariables::default()),
             _ => return Err(format!("invalid rule name: {}", string)),
         };
 
