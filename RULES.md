@@ -3,6 +3,7 @@
 You can find the available rules and their properties here. The default rule stack is:
 
   - [Remove empty do statements](#remove-empty-do-statements)
+  - [Remove method definitions](#remove-method-definitions)
   - [Rename variables](#rename-variables)
 
 ---
@@ -16,6 +17,38 @@ This rule does not have any properties.
 ```json5
 {
     rule: 'remove_empty_do',
+}
+```
+
+---
+
+## Remove method definitions
+```remove_method_definition```
+
+Functions defined using the method syntax (with a `:`) will be replaced with their field like syntax. So the following Lua code:
+
+```lua
+local Car = {}
+
+function Car:move(distance)
+    self.position = self.position + distance
+end
+```
+
+Will produce the following code:
+
+```lua
+local Car = {}
+
+function Car.move(self, distance)
+    self.position = self.position + distance
+end
+```
+
+### Examples
+```json5
+{
+    rule: 'remove_method_definition',
 }
 ```
 

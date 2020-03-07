@@ -1,9 +1,11 @@
 //! A module that contains the different rules that mutates a Lua block.
 
 mod empty_do;
+mod method_def;
 mod rename_variables;
 
 pub use empty_do::*;
+pub use method_def::*;
 pub use rename_variables::*;
 
 use crate::nodes::Block;
@@ -75,6 +77,7 @@ pub trait Rule {
 pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
     vec![
         Box::new(RemoveEmptyDo::default()),
+        Box::new(RemoveMethodDefinition::default()),
         Box::new(RenameVariables::default()),
     ]
 }
@@ -85,6 +88,7 @@ impl FromStr for Box<dyn Rule> {
     fn from_str(string: &str) -> Result<Self, Self::Err> {
         let rule: Box<dyn Rule> = match string {
             REMOVE_EMPTY_DO_RULE_NAME => Box::new(RemoveEmptyDo::default()),
+            REMOVE_METHOD_DEFINITION_RULE_NAME => Box::new(RemoveMethodDefinition::default()),
             RENAME_VARIABLES_RULE_NAME => Box::new(RenameVariables::default()),
             _ => return Err(format!("invalid rule name: {}", string)),
         };

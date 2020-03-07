@@ -30,8 +30,8 @@ impl FunctionName {
         self
     }
 
-    pub fn with_method(mut self, method: String) -> Self {
-        self.method.replace(method);
+    pub fn with_method<S: Into<String>>(mut self, method: S) -> Self {
+        self.method.replace(method.into());
         self
     }
 
@@ -168,10 +168,29 @@ mod test {
     use super::*;
 
     #[test]
-    fn generate_() {
+    fn generate_empty_function() {
         let output = FunctionStatement::from_name("foo", Block::default())
             .to_lua_string();
 
         assert_eq!(output, "function foo()end");
+    }
+
+    #[test]
+    fn generate_empty_function_with_field() {
+        let function_name = FunctionName::from_name("foo")
+            .with_fields(vec!["bar".to_owned()]);
+        let output = FunctionStatement::new(function_name, Block::default(), Vec::new(), false)
+            .to_lua_string();
+
+        assert_eq!(output, "function foo.bar()end");
+    }
+
+    #[test]
+    fn generate_empty_function_with_method() {
+        let function_name = FunctionName::from_name("foo").with_method("bar");
+        let output = FunctionStatement::new(function_name, Block::default(), Vec::new(), false)
+            .to_lua_string();
+
+        assert_eq!(output, "function foo:bar()end");
     }
 }

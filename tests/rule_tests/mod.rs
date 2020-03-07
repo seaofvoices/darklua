@@ -17,4 +17,5 @@ macro_rules! test_rule {
 }
 
 mod remove_empty_do;
+mod remove_method_definition;
 mod rename_variables;

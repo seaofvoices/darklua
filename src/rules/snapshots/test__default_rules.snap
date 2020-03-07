@@ -4,5 +4,6 @@ expression: rules
 ---
 [
   "remove_empty_do",
+  "remove_method_definition",
   "rename_variables"
 ]
