@@ -32,8 +32,16 @@ impl UnaryExpression {
         }
     }
 
+    pub fn get_expression(&self) -> &Expression {
+        &self.expression
+    }
+
     pub fn mutate_expression(&mut self) -> &mut Expression {
         &mut self.expression
+    }
+
+    pub fn operator(&self) -> UnaryOperator {
+        self.operator
     }
 }
 

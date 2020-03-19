@@ -39,6 +39,10 @@ impl TableExpression {
         }
     }
 
+    pub fn get_entries(&self) -> &Vec<TableEntry> {
+        &self.entries
+    }
+
     pub fn mutate_entries(&mut self) -> &mut Vec<TableEntry> {
         &mut self.entries
     }

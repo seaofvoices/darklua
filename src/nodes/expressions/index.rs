@@ -18,6 +18,14 @@ impl IndexExpression {
         }
     }
 
+    pub fn get_prefix(&self) -> &Prefix {
+        &self.prefix
+    }
+
+    pub fn get_index(&self) -> &Expression {
+        &self.index
+    }
+
     pub fn mutate_prefix(&mut self) -> &mut Prefix {
         &mut self.prefix
     }

@@ -4,6 +4,7 @@ You can find the available rules and their properties here. The default rule sta
 
   - [Remove empty do statements](#remove-empty-do-statements)
   - [Remove method definitions](#remove-method-definitions)
+  - [Remove unused while](#remove-unused-while)
   - [Rename variables](#rename-variables)
 
 ---
@@ -49,6 +50,28 @@ end
 ```json5
 {
     rule: 'remove_method_definition',
+}
+```
+
+---
+
+## Remove unused while
+```remove_unused_while```
+
+When a condition from a while statement can be evaluated to false and has no side effects, this rule will remove the statement. For example, the following while statement would be removed.
+
+```lua
+while "foo" == "bar" do
+    -- ...
+end
+```
+
+This rule is influenced by the evaluation system of darklua. The more darklua can evaluate code, the better this rule can be applied.
+
+### Examples
+```json5
+{
+    rule: 'remove_unused_while',
 }
 ```
 

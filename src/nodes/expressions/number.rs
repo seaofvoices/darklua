@@ -3,7 +3,7 @@ use crate::lua_generator::{LuaGenerator, ToLua};
 #[derive(Clone, Debug, PartialEq)]
 pub struct DecimalNumber {
     float: f64,
-    exponent: Option<(u32, bool)>,
+    exponent: Option<(i64, bool)>,
 }
 
 impl Eq for DecimalNumber {}
@@ -16,13 +16,21 @@ impl DecimalNumber {
         }
     }
 
-    pub fn with_exponent(mut self, exponent: u32, is_uppercase: bool) -> Self {
+    pub fn with_exponent(mut self, exponent: i64, is_uppercase: bool) -> Self {
         self.exponent.replace((exponent, is_uppercase));
         self
     }
 
     pub fn set_uppercase(&mut self, is_uppercase: bool) {
         self.exponent.map(|(exponent, _)| (exponent, is_uppercase));
+    }
+
+    pub fn compute_value(&self) -> f64 {
+        if let Some((exponent, _)) = self.exponent {
+            self.float * 10_f64.powf(exponent as f64)
+        } else {
+            self.float
+        }
     }
 }
 
@@ -67,6 +75,14 @@ impl HexNumber {
         self.exponent.map(|(expression, _)| (expression, is_uppercase));
         self.is_x_uppercase = is_uppercase;
     }
+
+    pub fn compute_value(&self) -> f64 {
+        if let Some((exponent, _)) = self.exponent {
+            (self.integer * 2_u32.pow(exponent)) as f64
+        } else {
+            self.integer as f64
+        }
+    }
 }
 
 impl ToLua for HexNumber {
@@ -99,6 +115,13 @@ impl NumberExpression {
             Self::Hex(number) => number.set_uppercase(is_uppercase),
         }
     }
+
+    pub fn compute_value(&self) -> f64 {
+        match self {
+            Self::Decimal(decimal) => decimal.compute_value(),
+            Self::Hex(hex) => hex.compute_value(),
+        }
+    }
 }
 
 impl From<DecimalNumber> for NumberExpression {
@@ -119,5 +142,41 @@ impl ToLua for NumberExpression {
             Self::Decimal(value) => value.to_lua(generator),
             Self::Hex(value) => value.to_lua(generator),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    mod compute_value {
+        use super::*;
+
+        macro_rules! test_compute_value {
+            ($($name:ident($input:literal) => $value:expr),*) => {
+                $(
+                    #[test]
+                    fn $name() {
+                        let number = NumberExpression::from($input.to_owned());
+                        assert_eq!(number.compute_value(), $value as f64);
+                    }
+                )*
+            };
+        }
+
+        test_compute_value!(
+            zero("0") => 0,
+            one("1") => 1,
+            integer("123") => 123,
+            multiple_decimal("0.512") => 0.512,
+            integer_with_multiple_decimal("54.512") => 54.512,
+            digit_with_exponent("1e5") => 1e5,
+            number_with_exponent("123e4") => 123e4,
+            number_with_negative_exponent("123e-4") => 123e-4,
+            float_with_exponent("10.5e2") => 10.5e2,
+            hex_number("0x12") => 0x12,
+            hex_number_with_letter("0x12a") => 0x12a,
+            hex_with_exponent("0x12p4") => 0x120
+        );
     }
 }

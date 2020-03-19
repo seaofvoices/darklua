@@ -65,6 +65,18 @@ impl BinaryExpression {
     pub fn mutate_right(&mut self) -> &mut Expression {
         &mut self.right
     }
+
+    pub fn left(&self) -> &Expression {
+        &self.left
+    }
+
+    pub fn right(&self) -> &Expression {
+        &self.right
+    }
+
+    pub fn operator(&self) -> BinaryOperator {
+        self.operator
+    }
 }
 
 impl ToLua for BinaryExpression {

@@ -3,6 +3,7 @@ source: src/rules/mod.rs
 expression: rules
 ---
 [
+  "remove_unused_while",
   "remove_empty_do",
   "remove_method_definition",
   "rename_variables"

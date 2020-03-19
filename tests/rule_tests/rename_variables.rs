@@ -1,7 +1,5 @@
 use darklua_core::rules::{RenameVariables, Rule};
 
-use json5;
-
 test_rule!(
     RenameVariables::default(),
     local_assign("local foo") => "local a",

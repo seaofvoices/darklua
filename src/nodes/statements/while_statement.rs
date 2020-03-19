@@ -22,6 +22,10 @@ impl WhileStatement {
         &self.block
     }
 
+    pub fn get_condition(&self) -> &Expression {
+        &self.condition
+    }
+
     pub fn mutate_block(&mut self) -> &mut Block {
         &mut self.block
     }

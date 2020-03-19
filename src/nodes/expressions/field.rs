@@ -15,6 +15,10 @@ impl FieldExpression {
         }
     }
 
+    pub fn get_prefix(&self) -> &Prefix {
+        &self.prefix
+    }
+
     pub fn mutate_prefix(&mut self) -> &mut Prefix {
         &mut self.prefix
     }
