@@ -40,7 +40,7 @@ impl ToLua for Arguments {
             Self::String(string) => string.to_lua(generator),
             Self::Table(table) => table.to_lua(generator),
             Self::Tuple(expressions) => {
-                generator.push_char_force_without_space('(');
+                generator.merge_char('(');
 
                 let last_index = expressions.len().checked_sub(1).unwrap_or(0);
                 expressions.iter().enumerate()
@@ -61,6 +61,17 @@ impl ToLua for Arguments {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn generate_tuple_does_not_break_on_new_line() {
+        let mut generator = LuaGenerator::new(16);
+        generator.push_str("123");
+        generator.push_str("functionName");
+
+        Arguments::Tuple(Vec::new()).to_lua(&mut generator);
+
+        assert_eq!(generator.into_string(), "123\nfunctionName()");
+    }
 
     mod snapshot {
         use super::*;

@@ -4,6 +4,7 @@ pub struct LuaGenerator {
     column_span: usize,
     current_line_length: usize,
     output: String,
+    last_push_length: usize,
 }
 
 fn is_relevant_for_spacing(character: &char) -> bool {
@@ -18,6 +19,7 @@ impl LuaGenerator {
             column_span,
             current_line_length: 0,
             output: String::new(),
+            last_push_length: 0,
         }
     }
 
@@ -26,9 +28,7 @@ impl LuaGenerator {
     pub fn push_str(&mut self, content: &str) {
         if let Some(next_char) = content.chars().next() {
             self.push_space_if_needed(next_char, content.len());
-
-            self.output.push_str(content);
-            self.current_line_length += content.len();
+            self.raw_push_str(content);
         }
     }
 
@@ -38,13 +38,37 @@ impl LuaGenerator {
 
         self.output.push(character);
         self.current_line_length += 1;
+        self.last_push_length = 1;
     }
 
     /// This function pushes a character into the string, without appending a new line
-    /// character if the line is about to exceed the column span amount.
-    pub fn push_char_force_without_space(&mut self, character: char) {
-        self.output.push(character);
-        self.current_line_length += 1;
+    /// or a space between the last pushed content.
+    pub fn merge_char(&mut self, character: char) {
+        if self.fits_on_current_line(1) {
+            self.raw_push_char(character);
+        } else {
+            let last_push_content = self.get_last_push_str().to_owned();
+            (0..self.last_push_length)
+                .for_each(|_| {
+                    self.output.pop();
+                });
+
+            let mut last_char = self.output.pop();
+
+            while let Some(' ') = last_char {
+                last_char = self.output.pop();
+            }
+
+            if let Some(last_char) = last_char {
+                self.output.push(last_char);
+            }
+
+            self.output.push('\n');
+            self.output.push_str(&last_push_content);
+            self.output.push(character);
+            self.last_push_length += 1;
+            self.current_line_length = self.last_push_length;
+        }
     }
 
     fn push_space_if_needed(&mut self, next_character: char, pushed_length: usize) {
@@ -74,6 +98,18 @@ impl LuaGenerator {
         self.current_line_length = 0;
     }
 
+    #[inline]
+    fn push_space(&mut self) {
+        self.output.push(' ');
+        self.current_line_length += 1;
+    }
+
+    #[inline]
+    fn fits_on_current_line(&self, length: usize) -> bool {
+        self.current_line_length + length <= self.column_span
+    }
+
+    #[inline]
     fn needs_space(&self, next_character: char) -> bool {
         is_relevant_for_spacing(&next_character)
         && self.output.chars().last().filter(is_relevant_for_spacing).is_some()
@@ -99,6 +135,63 @@ impl LuaGenerator {
                 between(self);
             }
         })
+    }
+
+    #[inline]
+    fn raw_push_str(&mut self, content: &str) {
+        self.output.push_str(content);
+        self.last_push_length = content.len();
+        self.current_line_length += self.last_push_length;
+    }
+
+    #[inline]
+    fn raw_push_char(&mut self, character: char) {
+        self.output.push(character);
+        self.last_push_length = 1;
+        self.current_line_length += 1;
+    }
+
+    /// This function only insert a space or a new line if the given predicate returns true. In
+    /// the other case, the string is added to the current generator content.
+    pub fn push_str_and_break_if<F>(&mut self, content: &str, predicate: F)
+        where F: Fn(&str) -> bool
+    {
+        if predicate(self.get_last_push_str()) {
+            if self.fits_on_current_line(1 + content.len()) {
+                self.push_space();
+            } else {
+                self.push_new_line();
+            }
+        } else {
+            if !self.fits_on_current_line(content.len()) {
+                self.push_new_line();
+            }
+        }
+        self.raw_push_str(content);
+    }
+
+    /// This function only insert a space or a new line if the given predicate returns true. In
+    /// the other case, the character is added to the current generator content.
+    pub fn push_char_and_break_if<F>(&mut self, character: char, predicate: F)
+        where F: Fn(&str) -> bool
+    {
+        if predicate(self.get_last_push_str()) {
+            if self.fits_on_current_line(2) {
+                self.push_space();
+            } else {
+                self.push_new_line();
+            }
+        } else {
+            if !self.fits_on_current_line(1) {
+                self.push_new_line();
+            }
+        }
+        self.raw_push_char(character);
+    }
+
+    fn get_last_push_str(&self) -> &str {
+        self.output.get((self.output.len() - self.last_push_length)..)
+            .unwrap_or("")
     }
 }
 
@@ -184,5 +277,28 @@ mod test {
         generator.push_str("()");
 
         assert_eq!(generator.into_string(), format!("{}()", content));
+    }
+
+    #[test]
+    fn push_str_and_break_if_calls_predicate_with_empty_string_if_nothing_pushed() {
+        let mut generator = LuaGenerator::default();
+
+        generator.push_str_and_break_if("hello", |string| {
+            string == ""
+        });
+
+        assert_eq!(&generator.into_string(), " hello");
+    }
+
+    #[test]
+    fn push_str_and_break_if_calls_predicate_with_last_pushed_content() {
+        let mut generator = LuaGenerator::default();
+        generator.push_str("hello");
+
+        generator.push_str_and_break_if("bye", |string| {
+            string == "hello"
+        });
+
+        assert_eq!(&generator.into_string(), "hello bye");
     }
 }

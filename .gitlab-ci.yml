@@ -47,7 +47,7 @@ test:
   stage: test
   extends: .only-mr-and-master
   script:
-    - cargo test --verbose
+    - cargo test --locked --verbose
   needs: ['build']
 
 .lua-setup:

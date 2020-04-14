@@ -186,8 +186,8 @@ impl builders::BinaryOperator for BinaryOperator {
     fn not_equal() -> Self { Self::NotEqual }
     fn lower_than() -> Self { Self::LowerThan }
     fn lower_or_equal_than() -> Self { Self::LowerOrEqualThan }
-    fn greather_than() -> Self { Self::GreatherThan }
-    fn greather_or_equal_than() -> Self { Self::GreatherOrEqualThan }
+    fn greather_than() -> Self { Self::GreaterThan }
+    fn greather_or_equal_than() -> Self { Self::GreaterOrEqualThan }
     fn plus() -> Self { Self::Plus }
     fn minus() -> Self { Self::Minus }
     fn asterisk() -> Self { Self::Asterisk }
@@ -239,42 +239,57 @@ impl From<String> for NumberExpression {
                 .map(char::is_uppercase)
                 .unwrap_or(false);
 
-
             if let Some(index) = value.find("p") {
-                let exponent = value.get(index + 1..).unwrap().parse::<u32>().unwrap();
-                let number = u32::from_str_radix(value.get(2..index).unwrap(), 16).unwrap();
+                let exponent = value.get(index + 1..).unwrap()
+                    .parse::<u32>()
+                    .expect("could not parse hexadecimal exponent");
+                let number = u64::from_str_radix(value.get(2..index).unwrap(), 16)
+                    .expect("could not parse hexadecimal number");
 
                 HexNumber::new(number, is_x_uppercase)
                     .with_exponent(exponent, false)
 
             } else if let Some(index) = value.find("P") {
-                let exponent = value.get(index + 1..).unwrap().parse::<u32>().unwrap();
-                let number = u32::from_str_radix(value.get(2..index).unwrap(), 16).unwrap();
+                let exponent = value.get(index + 1..).unwrap()
+                    .parse::<u32>()
+                    .expect("could not parse hexadecimal exponent");
+                let number = u64::from_str_radix(value.get(2..index).unwrap(), 16)
+                    .expect("could not parse hexadecimal number");
 
                 HexNumber::new(number, is_x_uppercase)
                     .with_exponent(exponent, true)
             } else {
-                let number = u32::from_str_radix(value.get(2..).unwrap(), 16).unwrap();
+                let number = u64::from_str_radix(value.get(2..).unwrap(), 16)
+                    .expect(&format!("could not parse hexadecimal number: {}", value));
 
                 HexNumber::new(number, is_x_uppercase)
             }.into()
 
         } else {
             if let Some(index) = value.find("e") {
-                let exponent = value.get(index + 1..).unwrap().parse::<i64>().unwrap();
-                let number = value.get(0..index).unwrap().parse::<f64>().unwrap();
+                let exponent = value.get(index + 1..).unwrap()
+                    .parse::<i64>()
+                    .expect("could not parse decimal exponent");
+                let number = value.get(0..index).unwrap()
+                    .parse::<f64>()
+                    .expect("could not parse decimal number");
 
                 DecimalNumber::new(number)
                     .with_exponent(exponent, false)
 
             } else if let Some(index) = value.find("E") {
-                let exponent = value.get(index + 1..).unwrap().parse::<i64>().unwrap();
-                let number = value.get(0..index).unwrap().parse::<f64>().unwrap();
+                let exponent = value.get(index + 1..).unwrap()
+                    .parse::<i64>()
+                    .expect("could not parse decimal exponent");
+                let number = value.get(0..index).unwrap()
+                    .parse::<f64>()
+                    .expect("could not parse decimal number");
 
                 DecimalNumber::new(number)
                     .with_exponent(exponent, true)
             } else {
-                let number = value.parse::<f64>().unwrap();
+                let number = value.parse::<f64>()
+                    .expect("could not parse number");
 
                 DecimalNumber::new(number)
             }.into()

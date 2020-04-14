@@ -17,8 +17,8 @@ pub use prefix::*;
 pub use string::*;
 pub use table::*;
 pub use unary::*;
-use crate::lua_generator::{LuaGenerator, ToLua};
 
+use crate::lua_generator::{LuaGenerator, ToLua};
 use crate::nodes::FunctionCall;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -106,6 +106,16 @@ impl From<UnaryExpression> for Expression {
     }
 }
 
+fn break_variable_arguments(last_string: &str) -> bool {
+    if let Some('.') = last_string.chars().last() {
+        true
+    } else if let Some(first_char) = last_string.chars().next() {
+        first_char == '.' || first_char.is_digit(10)
+    } else {
+        false
+    }
+}
+
 impl ToLua for Expression {
     fn to_lua(&self, generator: &mut LuaGenerator) {
         match self {
@@ -127,7 +137,9 @@ impl ToLua for Expression {
             Self::Table(table) => table.to_lua(generator),
             Self::True => generator.push_str("true"),
             Self::Unary(unary_expression) => unary_expression.to_lua(generator),
-            Self::VariableArguments => generator.push_str("..."),
+            Self::VariableArguments => {
+                generator.push_str_and_break_if("...", break_variable_arguments);
+            }
         }
     }
 }

@@ -71,9 +71,17 @@ impl StringExpression {
     }
 }
 
+fn break_long_string(last_str: &str) -> bool {
+    if let Some(last_char) = last_str.chars().last() {
+        last_char == '['
+    } else {
+        false
+    }
+}
+
 impl ToLua for StringExpression {
     fn to_lua(&self, generator: &mut LuaGenerator) {
-        let string = if self.is_multiline() {
+        if self.is_multiline() {
             let mut i = 0;
             let mut equals = "=".repeat(i);
 
@@ -86,9 +94,13 @@ impl ToLua for StringExpression {
                 };
             }
 
-            format!("[{}[{}]{}]", equals, self.value, equals)
+            generator.push_str_and_break_if(
+                &format!("[{}[{}]{}]", equals, self.value, equals),
+                break_long_string
+            );
+
         } else {
-            if self.has_single_quote() {
+            let string = if self.has_single_quote() {
                 if self.has_double_quote() {
                     let mut total_escaped = 0;
                     let mut escaped_string = self.value.clone();
@@ -106,10 +118,10 @@ impl ToLua for StringExpression {
                 }
             } else {
                 format!("'{}'", self.value)
-            }
-        };
+            };
 
-        generator.push_str(&string);
+            generator.push_str(&string);
+        };
     }
 }
 
@@ -220,6 +232,15 @@ mod test {
         let output = StringExpression::from_value(r#"Say: "Don't""#).to_lua_string();
 
         assert_eq!(output, r#"'Say: "Don\'t"'"#);
+    }
+
+    #[test]
+    fn break_long_string_if_last_char_is_bracket() {
+        let mut generator = LuaGenerator::default();
+        generator.push_char('[');
+        StringExpression::from_value("\n").to_lua(&mut generator);
+
+        assert_eq!(generator.into_string(), "[ [[\n]]");
     }
 
     mod snapshot {

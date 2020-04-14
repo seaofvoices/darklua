@@ -8,11 +8,19 @@ pub enum UnaryOperator {
     Not,
 }
 
+fn break_minus(last_string: &str) -> bool {
+    if let Some(last_char) = last_string.chars().last() {
+        last_char == '-'
+    } else {
+        false
+    }
+}
+
 impl ToLua for UnaryOperator {
     fn to_lua(&self, generator: &mut LuaGenerator) {
         match self {
             Self::Length => generator.push_char('#'),
-            Self::Minus => generator.push_char('-'),
+            Self::Minus => generator.push_char_and_break_if('-', break_minus),
             Self::Not => generator.push_str("not"),
         }
     }
@@ -64,5 +72,18 @@ mod test {
         ).to_lua_string();
 
         assert_eq!(output, "not true");
+    }
+
+    #[test]
+    fn generate_two_unary_minus_breaks_between_them() {
+        let output = UnaryExpression::new(
+            UnaryOperator::Minus,
+            UnaryExpression::new(
+                UnaryOperator::Minus,
+                Expression::Identifier("a".to_owned()),
+            ).into(),
+        ).to_lua_string();
+
+        assert_eq!(output, "- -a");
     }
 }

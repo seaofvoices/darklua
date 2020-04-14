@@ -49,14 +49,14 @@ impl ToLua for DecimalNumber {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HexNumber {
-    integer: u32,
+    integer: u64,
     exponent: Option<(u32, bool)>,
     is_x_uppercase: bool,
 }
 
 impl HexNumber {
     pub fn new(
-        integer: u32,
+        integer: u64,
         is_x_uppercase: bool,
     ) -> Self {
         Self {
@@ -78,7 +78,7 @@ impl HexNumber {
 
     pub fn compute_value(&self) -> f64 {
         if let Some((exponent, _)) = self.exponent {
-            (self.integer * 2_u32.pow(exponent)) as f64
+            (self.integer * 2_u64.pow(exponent)) as f64
         } else {
             self.integer as f64
         }
@@ -88,7 +88,7 @@ impl HexNumber {
 impl ToLua for HexNumber {
     fn to_lua(&self, generator: &mut LuaGenerator) {
         let mut number = format!(
-            "0{}{}",
+            "0{}{:x}",
             if self.is_x_uppercase { 'X' } else { 'x' },
             self.integer
         );
@@ -148,6 +148,31 @@ impl ToLua for NumberExpression {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    mod to_lua {
+        use super::*;
+
+        macro_rules! test_to_lua {
+            ($($name:ident($input:literal) => $value:expr),*) => {
+                $(
+                    #[test]
+                    fn $name() {
+                        let number = NumberExpression::from($input.to_owned());
+                        assert_eq!(number.to_lua_string(), $value);
+                    }
+                )*
+            };
+        }
+
+        test_to_lua!(
+            zero("0") => "0",
+            one("1") => "1",
+            integer("123") => "123",
+            hex_number("0x12") => "0x12",
+            hex_number_with_letter("0x12a") => "0x12a",
+            hex_with_exponent("0x12p4") => "0x12p4"
+        );
+    }
 
     mod compute_value {
         use super::*;

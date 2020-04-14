@@ -1,6 +1,6 @@
 [package]
 name = "darklua"
-version = "0.2.3"
+version = "0.3.0"
 authors = ["jeparlefrancais <jeparlefrancais21@gmail.com>"]
 edition = "2018"
 readme = "README.md"
@@ -28,3 +28,5 @@ json5 = "0.2"
 
 [dev-dependencies]
 insta = "0.12"
+rand = "0.7.3"
+rand_distr = "0.2.2"
