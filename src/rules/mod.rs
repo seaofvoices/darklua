@@ -3,11 +3,13 @@
 mod empty_do;
 mod method_def;
 mod rename_variables;
+mod unused_if_branch;
 mod unused_while;
 
 pub use empty_do::*;
 pub use method_def::*;
 pub use rename_variables::*;
+pub use unused_if_branch::*;
 pub use unused_while::*;
 
 use crate::nodes::Block;
@@ -78,6 +80,7 @@ pub trait Rule {
 /// processed block will work as much as the original one.
 pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
     vec![
+        Box::new(RemoveUnusedIfBranch::default()),
         Box::new(RemoveUnusedWhile::default()),
         Box::new(RemoveEmptyDo::default()),
         Box::new(RemoveMethodDefinition::default()),
@@ -92,6 +95,7 @@ impl FromStr for Box<dyn Rule> {
         let rule: Box<dyn Rule> = match string {
             REMOVE_EMPTY_DO_RULE_NAME => Box::new(RemoveEmptyDo::default()),
             REMOVE_METHOD_DEFINITION_RULE_NAME => Box::new(RemoveMethodDefinition::default()),
+            REMOVE_UNUSED_IF_BRANCH_RULE_NAME => Box::new(RemoveUnusedIfBranch::default()),
             REMOVE_UNUSED_WHILE_RULE_NAME => Box::new(RemoveUnusedWhile::default()),
             RENAME_VARIABLES_RULE_NAME => Box::new(RenameVariables::default()),
             _ => return Err(format!("invalid rule name: {}", string)),

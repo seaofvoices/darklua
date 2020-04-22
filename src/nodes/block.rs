@@ -52,6 +52,11 @@ impl Block {
     pub fn mutate_last_statement(&mut self) -> &mut Option<LastStatement> {
         &mut self.last_statement
     }
+
+    pub fn clear(&mut self) {
+        self.statements.clear();
+        self.last_statement.take();
+    }
 }
 
 impl Default for Block {
@@ -110,5 +115,21 @@ mod test {
         let block = Block::default().with_statement(DoStatement::default());
 
         assert!(!block.is_empty());
+    }
+
+    #[test]
+    fn clear_removes_statements() {
+        let mut block = Block::default().with_statement(DoStatement::default());
+        block.clear();
+
+        assert!(block.is_empty());
+    }
+
+    #[test]
+    fn clear_removes_last_statement() {
+        let mut block = Block::default().with_last_statement(LastStatement::Break);
+        block.clear();
+
+        assert!(block.is_empty());
     }
 }

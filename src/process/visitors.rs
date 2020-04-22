@@ -114,7 +114,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
     fn visit_if_statement(statement: &mut IfStatement, processor: &mut T) {
         processor.process_if_statement(statement);
 
-        statement.mutate_branchs()
+        statement.mutate_branches()
             .iter_mut()
             .for_each(|branch| {
                 Self::visit_expression(branch.mutate_condition(), processor);

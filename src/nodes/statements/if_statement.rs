@@ -25,10 +25,12 @@ impl IfBranch {
         &self.condition
     }
 
+    #[inline]
     pub fn mutate_block(&mut self) -> &mut Block {
         &mut self.block
     }
 
+    #[inline]
     pub fn mutate_condition(&mut self) -> &mut Expression {
         &mut self.condition
     }
@@ -77,12 +79,29 @@ impl IfStatement {
         blocks
     }
 
-    pub fn mutate_branchs(&mut self) -> &mut Vec<IfBranch> {
+    #[inline]
+    pub fn branch_count(&self) -> usize {
+        self.branches.len()
+    }
+
+    #[inline]
+    pub fn mutate_branches(&mut self) -> &mut Vec<IfBranch> {
         &mut self.branches
     }
 
+    #[inline]
+    pub fn else_block(&self) -> &Option<Block> {
+        &self.else_block
+    }
+
+    #[inline]
     pub fn mutate_else_block(&mut self) -> &mut Option<Block> {
         &mut self.else_block
+    }
+
+    #[inline]
+    pub fn take_else_block(&mut self) -> Option<Block> {
+        self.else_block.take()
     }
 }
 
