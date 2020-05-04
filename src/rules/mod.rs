@@ -1,12 +1,14 @@
 //! A module that contains the different rules that mutates a Lua block.
 
 mod empty_do;
+mod group_local;
 mod method_def;
 mod rename_variables;
 mod unused_if_branch;
 mod unused_while;
 
 pub use empty_do::*;
+pub use group_local::*;
 pub use method_def::*;
 pub use rename_variables::*;
 pub use unused_if_branch::*;
@@ -84,6 +86,7 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::new(RemoveUnusedWhile::default()),
         Box::new(RemoveEmptyDo::default()),
         Box::new(RemoveMethodDefinition::default()),
+        Box::new(GroupLocalAssignment::default()),
         Box::new(RenameVariables::default()),
     ]
 }
@@ -93,6 +96,7 @@ impl FromStr for Box<dyn Rule> {
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
         let rule: Box<dyn Rule> = match string {
+            GROUP_LOCAL_ASSIGNMENT => Box::new(GroupLocalAssignment::default()),
             REMOVE_EMPTY_DO_RULE_NAME => Box::new(RemoveEmptyDo::default()),
             REMOVE_METHOD_DEFINITION_RULE_NAME => Box::new(RemoveMethodDefinition::default()),
             REMOVE_UNUSED_IF_BRANCH_RULE_NAME => Box::new(RemoveUnusedIfBranch::default()),

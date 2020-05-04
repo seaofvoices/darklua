@@ -32,8 +32,13 @@ impl LocalAssignStatement {
         self
     }
 
-    pub fn get_variables(&self) -> &Vec<String> {
-        &self.variables
+    pub fn into_assignments(self) -> (Vec<String>, Vec<Expression>) {
+        (self.variables, self.values)
+    }
+
+    pub fn append_assignment<S: Into<String>>(&mut self, variable: S, value: Expression) {
+        self.variables.push(variable.into());
+        self.values.push(value);
     }
 
     pub fn for_each_assignment<F>(&mut self, mut callback: F)
@@ -44,12 +49,34 @@ impl LocalAssignStatement {
             .for_each(|variable| callback(variable, values.next()));
     }
 
+    #[inline]
+    pub fn get_variables(&self) -> &Vec<String> {
+        &self.variables
+    }
+
+    #[inline]
     pub fn mutate_variables(&mut self) -> &mut Vec<String> {
         &mut self.variables
     }
 
+    #[inline]
+    pub fn get_values(&self) -> &Vec<Expression> {
+        &self.values
+    }
+
+    #[inline]
     pub fn mutate_values(&mut self) -> &mut Vec<Expression> {
         &mut self.values
+    }
+
+    #[inline]
+    pub fn value_count(&self) -> usize {
+        self.values.len()
+    }
+
+    #[inline]
+    pub fn variable_count(&self) -> usize {
+        self.variables.len()
     }
 }
 

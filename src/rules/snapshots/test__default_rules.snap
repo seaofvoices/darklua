@@ -7,5 +7,6 @@ expression: rules
   "remove_unused_while",
   "remove_empty_do",
   "remove_method_definition",
+  "group_local_assignment",
   "rename_variables"
 ]

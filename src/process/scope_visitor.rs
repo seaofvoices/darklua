@@ -9,7 +9,8 @@ pub trait Scope {
     /// When a block is left, this method should should free all identifiers inserted in the
     /// previous block.
     fn pop(&mut self);
-    /// Called when a entering a function block, with each parameters of the function.
+    /// Called when entering a function block (with each parameters of the function), with the
+    /// identifiers from a generic for statement or the identifier from a numeric for loop.
     fn insert(&mut self, identifier: &mut String);
     /// Called when a new local variable is initialized.
     fn insert_local(&mut self, identifier: &mut String, value: Option<&mut Expression>);
@@ -71,7 +72,7 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
 
     fn visit_function_statement(statement: &mut FunctionStatement, scope: &mut T) {
         scope.process_function_statement(statement);
-        scope.process_identifier(statement.mutate_function_name().mutate_identifier());
+        scope.process_variable_expression(statement.mutate_function_name().mutate_identifier());
 
         scope.push();
         statement.mutate_parameters().iter_mut()

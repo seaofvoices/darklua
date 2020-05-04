@@ -55,7 +55,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Expression::Call(expression) => Self::visit_function_call(expression, processor),
             Expression::Field(field) => Self::visit_field_expression(field, processor),
             Expression::Function(function) => Self::visit_function_expression(function, processor),
-            Expression::Identifier(identifier) => processor.process_identifier(identifier),
+            Expression::Identifier(identifier) => processor.process_variable_expression(identifier),
             Expression::Index(index) => Self::visit_index_expression(index, processor),
             Expression::Number(number) => processor.process_number_expression(number),
             Expression::Parenthese(expression) => Self::visit_expression(expression, processor),
@@ -72,10 +72,10 @@ pub trait NodeVisitor<T: NodeProcessor> {
         }
     }
 
-    fn visit_function_expression(function: &mut FunctionExpression, context: &mut T) {
-        context.process_function_expression(function);
+    fn visit_function_expression(function: &mut FunctionExpression, processor: &mut T) {
+        processor.process_function_expression(function);
 
-        Self::visit_block(function.mutate_block(), context);
+        Self::visit_block(function.mutate_block(), processor);
     }
 
     fn visit_assign_statement(statement: &mut AssignStatement, processor: &mut T) {
@@ -83,7 +83,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
         statement.mutate_variables().iter_mut()
             .for_each(|variable| match variable {
-                Variable::Identifier(identifier) => processor.process_identifier(identifier),
+                Variable::Identifier(identifier) => processor.process_variable_expression(identifier),
                 Variable::Field(field) => Self::visit_field_expression(field, processor),
                 Variable::Index(index) => Self::visit_index_expression(index, processor),
             });
@@ -99,7 +99,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
     fn visit_function_statement(statement: &mut FunctionStatement, processor: &mut T) {
         processor.process_function_statement(statement);
-        processor.process_identifier(statement.mutate_function_name().mutate_identifier());
+        processor.process_variable_expression(statement.mutate_function_name().mutate_identifier());
         Self::visit_block(statement.mutate_block(), processor);
     }
 
@@ -214,7 +214,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
         match prefix {
             Prefix::Call(call) => Self::visit_function_call(call, processor),
             Prefix::Field(field) => Self::visit_field_expression(field, processor),
-            Prefix::Identifier(identifier) => processor.process_identifier(identifier),
+            Prefix::Identifier(identifier) => processor.process_variable_expression(identifier),
             Prefix::Index(index) => Self::visit_index_expression(index, processor),
             Prefix::Parenthese(expression) => Self::visit_expression(expression, processor),
         };

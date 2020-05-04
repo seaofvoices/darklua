@@ -4,6 +4,7 @@ mod evaluator;
 #[cfg(test)]
 mod node_counter;
 mod node_processor;
+pub mod processors;
 mod scope_visitor;
 mod visitors;
 

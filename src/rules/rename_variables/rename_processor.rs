@@ -145,9 +145,9 @@ impl Scope for RenameProcessor {
 }
 
 impl NodeProcessor for RenameProcessor {
-    fn process_identifier(&mut self, identifier: &mut String) {
-        if let Some(obfuscated_name) = self.get_obfuscated_name(&identifier) {
-            identifier.replace_range(.., obfuscated_name);
+    fn process_variable_expression(&mut self, variable: &mut String) {
+        if let Some(obfuscated_name) = self.get_obfuscated_name(&variable) {
+            variable.replace_range(.., obfuscated_name);
         }
     }
 }

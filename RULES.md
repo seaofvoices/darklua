@@ -2,11 +2,51 @@
 
 You can find the available rules and their properties here. The default rule stack is:
 
+  - [Group local assignments](#group-local-assignments)
   - [Remove empty do statements](#remove-empty-do-statements)
   - [Remove method definitions](#remove-method-definitions)
   - [Remove unused if branch](#remove-unused-if-branch)
   - [Remove unused while](#remove-unused-while)
   - [Rename variables](#rename-variables)
+
+---
+
+## Group local assignments
+```group_local_assignment```
+
+This rule will merge local assignments that are next to each other. For example, if you have:
+
+```lua
+local foo = 1
+local bar = 2
+```
+
+Will produce the following code:
+
+```lua
+local foo, bar = 1, 2
+```
+
+The rule will not merge an assignments if it needs the previous one, since it would break the code or change the behavior. The following code would not be changed:
+
+```lua
+local foo = 1
+local bar = foo
+```
+
+Since functions can return multiple values, assignments that extract more than one value will not get merged.
+
+```lua
+local foo, bar = multiple_return_values()
+local baz = 0
+```
+
+### Examples
+```json5
+{
+    rule: 'group_local_assignment',
+}
+```
 
 ---
 
