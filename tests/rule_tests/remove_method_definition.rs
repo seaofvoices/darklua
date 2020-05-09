@@ -1,4 +1,4 @@
-use darklua_core::rules::RemoveMethodDefinition;
+use darklua_core::rules::{RemoveMethodDefinition, Rule};
 
 test_rule!(
     RemoveMethodDefinition::default(),
@@ -9,3 +9,15 @@ test_rule!(
     variadic_function("function foo:bar(...) end") => "function foo.bar(self, ...) end",
     variadic_with_arguments("function foo:bar(a, b, c, ...) end") => "function foo.bar(self, a, b, c, ...) end"
 );
+
+#[test]
+fn deserialize_from_object_notation() {
+    json5::from_str::<Box<dyn Rule>>(r#"{
+        rule: 'remove_method_definition',
+    }"#).unwrap();
+}
+
+#[test]
+fn deserialize_from_string() {
+    json5::from_str::<Box<dyn Rule>>("'remove_method_definition'").unwrap();
+}

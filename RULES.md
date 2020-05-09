@@ -2,12 +2,41 @@
 
 You can find the available rules and their properties here. The default rule stack is:
 
+  - [Convert local functions to assignments](#convert-local-functions-to-assignments)
   - [Group local assignments](#group-local-assignments)
   - [Remove empty do statements](#remove-empty-do-statements)
   - [Remove method definitions](#remove-method-definitions)
   - [Remove unused if branch](#remove-unused-if-branch)
   - [Remove unused while](#remove-unused-while)
   - [Rename variables](#rename-variables)
+
+---
+
+## Convert local functions to assignments
+```convert_local_function_to_assign```
+
+Local functions that are not recursive will be transformed to a local assignment statement. For example, if you have:
+
+```lua
+local function foo(a, b)
+    return a + b
+end
+```
+
+It will be converted to
+
+```lua
+local foo = function(a, b)
+    return a + b
+end
+```
+
+### Examples
+```json5
+{
+    rule: 'convert_local_function_to_assign',
+}
+```
 
 ---
 

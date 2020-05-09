@@ -43,20 +43,39 @@ impl LocalFunctionStatement {
         self
     }
 
-    pub fn get_block(&self) -> &Block {
-        &self.block
-    }
-
-    pub fn mutate_block(&mut self) -> &mut Block {
-        &mut self.block
-    }
-
+    #[inline]
     pub fn mutate_parameters(&mut self) -> &mut Vec<String> {
         &mut self.parameters
     }
 
+    #[inline]
+    pub fn mutate_block(&mut self) -> &mut Block {
+        &mut self.block
+    }
+
+    #[inline]
     pub fn mutate_identifier(&mut self) -> &mut String {
         &mut self.identifier
+    }
+
+    #[inline]
+    pub fn get_block(&self) -> &Block {
+        &self.block
+    }
+
+    #[inline]
+    pub fn get_name(&self) -> &str {
+        &self.identifier
+    }
+
+    #[inline]
+    pub fn has_parameter(&self, name: &str) -> bool {
+        self.parameters.iter().any(|parameter| parameter == name)
+    }
+
+    #[inline]
+    pub fn is_variadic(&self) -> bool {
+        self.is_variadic
     }
 }
 
@@ -133,5 +152,31 @@ mod test {
             .to_lua_string();
 
         assert_eq!(output, "local function foo(bar,...)end");
+    }
+
+    #[test]
+    fn has_parameter_is_true_when_single_param_matches() {
+        let func = LocalFunctionStatement::from_name("foo", Block::default())
+            .with_parameter("bar".to_owned());
+
+        assert!(func.has_parameter("bar"));
+    }
+
+    #[test]
+    fn has_parameter_is_true_when_at_least_one_param_matches() {
+        let func = LocalFunctionStatement::from_name("foo", Block::default())
+            .with_parameter("bar".to_owned())
+            .with_parameter("baz".to_owned());
+
+        assert!(func.has_parameter("baz"));
+    }
+
+    #[test]
+    fn has_parameter_is_false_when_none_matches() {
+        let func = LocalFunctionStatement::from_name("foo", Block::default())
+            .with_parameter("bar".to_owned())
+            .with_parameter("baz".to_owned());
+
+        assert!(!func.has_parameter("foo"));
     }
 }

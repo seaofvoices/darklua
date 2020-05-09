@@ -22,9 +22,13 @@ impl FunctionExpression {
         self
     }
 
-    pub fn set_variadic(mut self, is_variadic: bool) -> Self {
-        self.is_variadic = is_variadic;
+    pub fn variadic(mut self) -> Self {
+        self.is_variadic = true;
         self
+    }
+
+    pub fn set_variadic(&mut self, is_variadic: bool) {
+        self.is_variadic = is_variadic;
     }
 
     pub fn mutate_block(&mut self) -> &mut Block {
@@ -83,7 +87,7 @@ mod test {
     #[test]
     fn generate_empty_variadic_function_expression() {
         let output = FunctionExpression::default()
-            .set_variadic(true)
+            .variadic()
             .to_lua_string();
 
         assert_eq!(output, "function(...)end");
@@ -93,7 +97,7 @@ mod test {
     fn generate_empty_variadic_function_with_one_parameter() {
         let output = FunctionExpression::default()
             .append_parameter("a".to_owned())
-            .set_variadic(true)
+            .variadic()
             .to_lua_string();
 
         assert_eq!(output, "function(a,...)end");
@@ -104,7 +108,7 @@ mod test {
         let output = FunctionExpression::default()
             .append_parameter("a".to_owned())
             .append_parameter("b".to_owned())
-            .set_variadic(true)
+            .variadic()
             .to_lua_string();
 
         assert_eq!(output, "function(a,b,...)end");

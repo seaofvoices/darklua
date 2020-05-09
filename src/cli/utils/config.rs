@@ -81,4 +81,3 @@ impl Config {
         self
     }
 }
-

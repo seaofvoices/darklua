@@ -1,4 +1,4 @@
-use darklua_core::rules::RemoveEmptyDo;
+use darklua_core::rules::{RemoveEmptyDo, Rule};
 
 test_rule!(
     RemoveEmptyDo::default(),
@@ -8,3 +8,15 @@ test_rule!(
         => "local function foo() end",
     empty_do_statement_in_generic_for("for k,v in pairs({}) do do end end") => "for k,v in pairs({}) do end"
 );
+
+#[test]
+fn deserialize_from_object_notation() {
+    json5::from_str::<Box<dyn Rule>>(r#"{
+        rule: 'remove_empty_do',
+    }"#).unwrap();
+}
+
+#[test]
+fn deserialize_from_string() {
+    json5::from_str::<Box<dyn Rule>>("'remove_empty_do'").unwrap();
+}

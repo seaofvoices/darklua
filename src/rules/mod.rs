@@ -3,6 +3,7 @@
 mod empty_do;
 mod group_local;
 mod method_def;
+mod no_local_function;
 mod rename_variables;
 mod unused_if_branch;
 mod unused_while;
@@ -10,6 +11,7 @@ mod unused_while;
 pub use empty_do::*;
 pub use group_local::*;
 pub use method_def::*;
+pub use no_local_function::*;
 pub use rename_variables::*;
 pub use unused_if_branch::*;
 pub use unused_while::*;
@@ -86,6 +88,7 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::new(RemoveUnusedWhile::default()),
         Box::new(RemoveEmptyDo::default()),
         Box::new(RemoveMethodDefinition::default()),
+        Box::new(ConvertLocalFunctionToAssign::default()),
         Box::new(GroupLocalAssignment::default()),
         Box::new(RenameVariables::default()),
     ]
@@ -96,6 +99,7 @@ impl FromStr for Box<dyn Rule> {
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
         let rule: Box<dyn Rule> = match string {
+            CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => Box::new(ConvertLocalFunctionToAssign::default()),
             GROUP_LOCAL_ASSIGNMENT => Box::new(GroupLocalAssignment::default()),
             REMOVE_EMPTY_DO_RULE_NAME => Box::new(RemoveEmptyDo::default()),
             REMOVE_METHOD_DEFINITION_RULE_NAME => Box::new(RemoveMethodDefinition::default()),

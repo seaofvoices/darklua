@@ -41,6 +41,7 @@ macro_rules! test_rule_wihout_effects {
 }
 
 mod group_local_assignment;
+mod no_local_function;
 mod remove_empty_do;
 mod remove_method_definition;
 mod remove_unused_if_branch;

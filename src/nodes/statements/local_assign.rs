@@ -27,8 +27,8 @@ impl LocalAssignStatement {
         self
     }
 
-    pub fn with_value(mut self, value: Expression) -> Self {
-        self.values.push(value);
+    pub fn with_value<E: Into<Expression>>(mut self, value: E) -> Self {
+        self.values.push(value.into());
         self
     }
 

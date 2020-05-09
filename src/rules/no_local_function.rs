@@ -1,0 +1,101 @@
+use crate::nodes::{
+    Block,
+    FunctionExpression,
+    LocalAssignStatement,
+    LocalFunctionStatement,
+    Statement
+};
+use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor, processors::FindVariables};
+use crate::rules::{Rule, RuleConfigurationError, RuleProperties};
+
+use serde::ser::{Serialize, Serializer};
+use std::mem;
+
+#[derive(Default)]
+struct Processor;
+
+impl Processor {
+    fn convert(&self, local_function: &mut LocalFunctionStatement) -> Statement {
+        let mut function_expression = FunctionExpression::default();
+        function_expression.set_variadic(local_function.is_variadic());
+        mem::swap(function_expression.mutate_block(), local_function.mutate_block());
+        mem::swap(function_expression.mutate_parameters(), local_function.mutate_parameters());
+
+        LocalAssignStatement::from_variable(local_function.get_name())
+            .with_value(function_expression)
+            .into()
+    }
+}
+
+impl NodeProcessor for Processor {
+    fn process_statement(&mut self, statement: &mut Statement) {
+        if let Statement::LocalFunction(local_function) = statement {
+            let name = local_function.get_name();
+
+            if local_function.has_parameter(name) {
+                let mut assign = self.convert(local_function);
+                mem::swap(statement, &mut assign)
+            } else {
+                let identifiers = vec![name.to_owned()];
+                let mut find_usage = FindVariables::from(&identifiers);
+                DefaultVisitor::visit_block(local_function.mutate_block(), &mut find_usage);
+
+                if !find_usage.has_found_usage() {
+                    let mut assign = self.convert(local_function);
+                    mem::swap(statement, &mut assign)
+                }
+            }
+        };
+    }
+}
+
+pub const CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME: &'static str = "convert_local_function_to_assign";
+
+/// Convert local function statements into local assignements when the function is not recursive.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct ConvertLocalFunctionToAssign {}
+
+impl Rule for ConvertLocalFunctionToAssign {
+    fn process(&self, block: &mut Block) {
+        let mut processor = Processor::default();
+        DefaultVisitor::visit_block(block, &mut processor);
+    }
+
+    fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
+        for (key, _value) in properties {
+            return Err(RuleConfigurationError::UnexpectedProperty(key))
+        }
+
+        Ok(())
+    }
+
+    fn get_name(&self) -> &'static str {
+        CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME
+    }
+
+    fn serialize_to_properties(&self) -> RuleProperties {
+        RuleProperties::new()
+    }
+}
+
+impl Serialize for ConvertLocalFunctionToAssign {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use insta::assert_json_snapshot;
+
+    fn new_rule() -> ConvertLocalFunctionToAssign {
+        ConvertLocalFunctionToAssign::default()
+    }
+
+    #[test]
+    fn serialize_default_rule() {
+        assert_json_snapshot!("default_convert_local_function_to_assign", new_rule());
+    }
+}
