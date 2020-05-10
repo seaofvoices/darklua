@@ -106,7 +106,7 @@ dependencies = [
 
 [[package]]
 name = "darklua"
-version = "0.3.4"
+version = "0.3.5"
 dependencies = [
  "insta 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "json5 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -3,6 +3,7 @@
 mod empty_do;
 mod call_parens;
 mod group_local;
+mod inject_value;
 mod method_def;
 mod no_local_function;
 mod rename_variables;
@@ -12,6 +13,7 @@ mod unused_while;
 pub use empty_do::*;
 pub use call_parens::*;
 pub use group_local::*;
+pub use inject_value::*;
 pub use method_def::*;
 pub use no_local_function::*;
 pub use rename_variables::*;
@@ -32,16 +34,21 @@ use std::collections::HashMap;
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum RulePropertyValue {
+    Boolean(bool),
     String(String),
     Usize(usize),
+    Float(f64),
     StringList(Vec<String>),
+    None,
 }
 
 /// When implementing the configure method of the Rule trait, the method returns a result
 #[derive(Debug, Clone)]
 pub enum RuleConfigurationError {
-    /// When a rule gets an unknown property. The string should be the unknown field value.
+    /// When a rule gets an unknown property. The string should be the unknown field name.
     UnexpectedProperty(String),
+    /// When a rule has a required property. The string should be the field name.
+    MissingProperty(String),
     /// When a property is associated with something else than an expected string. The string is
     /// the property name.
     StringExpected(String),
@@ -51,15 +58,22 @@ pub enum RuleConfigurationError {
     /// When a property is associated with something else than an expected list of strings. The
     /// string is the property name.
     StringListExpected(String),
+    /// When the value type is invalid. The string is the property name that was given the wrong
+    /// value type.
+    UnexpectedValueType(String),
 }
 
 impl fmt::Display for RuleConfigurationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use RuleConfigurationError::*;
+
         match self {
-            Self::UnexpectedProperty(property) => write!(f, "unexpected field '{}'", property),
-            Self::StringExpected(property) => write!(f, "string value expected for field '{}'", property),
-            Self::UsizeExpected(property) => write!(f, "unsigned integer expected for field '{}'", property),
-            Self::StringListExpected(property) => write!(f, "list of string expected for field '{}'", property),
+            UnexpectedProperty(property) => write!(f, "unexpected field '{}'", property),
+            MissingProperty(property) => write!(f, "missing required field '{}'", property),
+            StringExpected(property) => write!(f, "string value expected for field '{}'", property),
+            UsizeExpected(property) => write!(f, "unsigned integer expected for field '{}'", property),
+            StringListExpected(property) => write!(f, "list of string expected for field '{}'", property),
+            UnexpectedValueType(property) => write!(f, "unexpected type for field '{}'", property),
         }
     }
 }
@@ -104,6 +118,7 @@ impl FromStr for Box<dyn Rule> {
         let rule: Box<dyn Rule> = match string {
             CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => Box::new(ConvertLocalFunctionToAssign::default()),
             GROUP_LOCAL_ASSIGNMENT => Box::new(GroupLocalAssignment::default()),
+            INJECT_GLOBAL_VALUE_RULE_NAME => Box::new(InjectGlobalValue::default()),
             REMOVE_EMPTY_DO_RULE_NAME => Box::new(RemoveEmptyDo::default()),
             REMOVE_FUNCTION_CALL_PARENS => Box::new(RemoveFunctionCallParens::default()),
             REMOVE_METHOD_DEFINITION_RULE_NAME => Box::new(RemoveMethodDefinition::default()),
@@ -131,7 +146,11 @@ impl Serialize for Box<dyn Rule> {
 
             map.serialize_entry("rule", rule_name)?;
 
-            for (key, value) in properties {
+            let mut ordered: Vec<(String, RulePropertyValue)> = properties.into_iter().collect();
+
+            ordered.sort_by(|a, b| a.0.cmp(&b.0));
+
+            for (key, value) in ordered {
                 map.serialize_entry(&key, &value)?;
             }
 
@@ -153,7 +172,13 @@ impl<'de> Deserialize<'de> for Box<dyn Rule> {
             }
 
             fn visit_str<E>(self, value: &str) -> Result<Self::Value, E> where E: de::Error {
-                FromStr::from_str(value).map_err(de::Error::custom)
+                let mut rule: Self::Value = FromStr::from_str(value)
+                    .map_err(de::Error::custom)?;
+
+                rule.configure(RuleProperties::new())
+                    .map_err(de::Error::custom)?;
+
+                Ok(rule)
             }
 
             fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error> where M: MapAccess<'de> {

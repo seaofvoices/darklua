@@ -41,6 +41,7 @@ macro_rules! test_rule_wihout_effects {
 }
 
 mod group_local_assignment;
+mod inject_value;
 mod no_local_function;
 mod remove_call_parens;
 mod remove_empty_do;

@@ -11,6 +11,10 @@ You can find the available rules and their properties here. The default rule sta
   - [Remove unused while](#remove-unused-while)
   - [Rename variables](#rename-variables)
 
+There are also other rules available for more processing:
+
+  - [Inject global value](#inject-global-value)
+
 ---
 
 ## Convert local functions to assignments
@@ -77,6 +81,49 @@ local baz = 0
     rule: 'group_local_assignment',
 }
 ```
+
+---
+
+## Inject global value
+```inject_global_value```
+
+This rule will find a global variable and replace it with a given value.
+
+### Examples
+
+To replace a global variable named `CONSTANT` with a value of `true`, you can use these settings:
+
+```json5
+{
+    rule: 'inject_global_value',
+    identifier: 'CONSTANT',
+    value: true,
+}
+```
+
+The `value` property can accept multiple types. Booleans, strings, numbers and `null` can be used.
+
+```json5
+{
+    rule: 'inject_global_value',
+    identifier: 'CONSTANT',
+    value: 'Hello',
+}
+```
+
+```json5
+{
+    rule: 'inject_global_value',
+    identifier: 'AMOUNT',
+    value: 11,
+}
+```
+
+### Property
+| name | type | description |
+| --- | --- | --- |
+| identifier | string | the identifier that will be replaced with the given value |
+| value | `null`, boolean, number or string | the inlined value, if not provided  |
 
 ---
 

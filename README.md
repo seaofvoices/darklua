@@ -4,7 +4,7 @@
 
 # darklua
 
-Obfuscate Lua 5.1 scripts.
+Transform Lua 5.1 scripts using [rules](RULES.md).
 
 
 # Installation

@@ -40,6 +40,22 @@ pub enum Expression {
     VariableArguments,
 }
 
+impl From<bool> for Expression {
+    fn from(boolean: bool) -> Expression {
+        if boolean { Expression::True } else { Expression::False }
+    }
+}
+
+impl From<f64> for Expression {
+    fn from(value: f64) -> Expression {
+        if value < 0.0 {
+            UnaryExpression::new(UnaryOperator::Minus, Expression::from(value.abs())).into()
+        } else {
+            DecimalNumber::new(value).into()
+        }
+    }
+}
+
 impl From<BinaryExpression> for Expression {
     fn from(binary: BinaryExpression) -> Expression {
         Expression::Binary(Box::new(binary))
@@ -73,6 +89,18 @@ impl From<IndexExpression> for Expression {
 impl From<NumberExpression> for Expression {
     fn from(number: NumberExpression) -> Self {
         Self::Number(number)
+    }
+}
+
+impl From<DecimalNumber> for Expression {
+    fn from(number: DecimalNumber) -> Self {
+        Self::Number(NumberExpression::Decimal(number))
+    }
+}
+
+impl From<HexNumber> for Expression {
+    fn from(number: HexNumber) -> Self {
+        Self::Number(NumberExpression::Hex(number))
     }
 }
 
