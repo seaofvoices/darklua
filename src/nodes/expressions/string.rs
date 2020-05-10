@@ -24,6 +24,10 @@ impl StringExpression {
         value.map(|value| Self { value })
     }
 
+    pub fn empty() -> Self {
+        Self { value: "".to_owned() }
+    }
+
     pub fn from_value<T: Into<String>>(value: T) -> Self {
         Self { value: value.into() }
     }

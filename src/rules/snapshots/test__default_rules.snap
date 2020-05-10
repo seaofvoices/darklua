@@ -9,5 +9,6 @@ expression: rules
   "remove_method_definition",
   "convert_local_function_to_assign",
   "group_local_assignment",
-  "rename_variables"
+  "rename_variables",
+  "remove_function_call_parens"
 ]

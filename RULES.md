@@ -5,6 +5,7 @@ You can find the available rules and their properties here. The default rule sta
   - [Convert local functions to assignments](#convert-local-functions-to-assignments)
   - [Group local assignments](#group-local-assignments)
   - [Remove empty do statements](#remove-empty-do-statements)
+  - [Remove function call parens](#remove-function-call-parens)
   - [Remove method definitions](#remove-method-definitions)
   - [Remove unused if branch](#remove-unused-if-branch)
   - [Remove unused while](#remove-unused-while)
@@ -88,6 +89,20 @@ This rule does not have any properties.
 ```json5
 {
     rule: 'remove_empty_do',
+}
+```
+
+---
+
+## Remove function call parens
+```remove_function_call_parens```
+
+This rule will remove parens in a function call when there is only one string or one table as arguments. It does not have any properties.
+
+### Examples
+```json5
+{
+    rule: 'remove_function_call_parens',
 }
 ```
 
