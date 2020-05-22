@@ -232,68 +232,18 @@ impl From<(Prefix, Expression)> for IndexExpression {
     }
 }
 
+impl From<&str> for NumberExpression {
+    fn from(value: &str) -> Self {
+        match value.parse() {
+            Ok(value) => value,
+            Err(error) => panic!("{}", error),
+        }
+    }
+}
+
 impl From<String> for NumberExpression {
     fn from(value: String) -> Self {
-        if value.starts_with("0x") || value.starts_with("0X") {
-            let is_x_uppercase = value.chars().nth(1)
-                .map(char::is_uppercase)
-                .unwrap_or(false);
-
-            if let Some(index) = value.find("p") {
-                let exponent = value.get(index + 1..).unwrap()
-                    .parse::<u32>()
-                    .expect("could not parse hexadecimal exponent");
-                let number = u64::from_str_radix(value.get(2..index).unwrap(), 16)
-                    .expect("could not parse hexadecimal number");
-
-                HexNumber::new(number, is_x_uppercase)
-                    .with_exponent(exponent, false)
-
-            } else if let Some(index) = value.find("P") {
-                let exponent = value.get(index + 1..).unwrap()
-                    .parse::<u32>()
-                    .expect("could not parse hexadecimal exponent");
-                let number = u64::from_str_radix(value.get(2..index).unwrap(), 16)
-                    .expect("could not parse hexadecimal number");
-
-                HexNumber::new(number, is_x_uppercase)
-                    .with_exponent(exponent, true)
-            } else {
-                let number = u64::from_str_radix(value.get(2..).unwrap(), 16)
-                    .expect(&format!("could not parse hexadecimal number: {}", value));
-
-                HexNumber::new(number, is_x_uppercase)
-            }.into()
-
-        } else {
-            if let Some(index) = value.find("e") {
-                let exponent = value.get(index + 1..).unwrap()
-                    .parse::<i64>()
-                    .expect("could not parse decimal exponent");
-                let number = value.get(0..index).unwrap()
-                    .parse::<f64>()
-                    .expect("could not parse decimal number");
-
-                DecimalNumber::new(number)
-                    .with_exponent(exponent, false)
-
-            } else if let Some(index) = value.find("E") {
-                let exponent = value.get(index + 1..).unwrap()
-                    .parse::<i64>()
-                    .expect("could not parse decimal exponent");
-                let number = value.get(0..index).unwrap()
-                    .parse::<f64>()
-                    .expect("could not parse decimal number");
-
-                DecimalNumber::new(number)
-                    .with_exponent(exponent, true)
-            } else {
-                let number = value.parse::<f64>()
-                    .expect("could not parse number");
-
-                DecimalNumber::new(number)
-            }.into()
-        }
+        NumberExpression::from(value.as_str())
     }
 }
 
@@ -350,51 +300,4 @@ impl builders::UnaryOperator for UnaryOperator {
     fn minus() -> Self { Self::Minus }
     fn length() -> Self { Self::Length }
     fn not() -> Self { Self::Not }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    mod number_expression {
-        use super::*;
-
-        macro_rules! test_numbers {
-            ($($name:ident($input:literal) => $expect:expr),+) => {
-                $(
-                    #[test]
-                    fn $name() {
-                        let result = NumberExpression::from($input.to_owned());
-
-                        let expect: NumberExpression = $expect.into();
-
-                        assert_eq!(result, expect);
-                    }
-                )+
-            };
-        }
-
-        test_numbers!(
-            parse_zero("0") => DecimalNumber::new(0_f64),
-            parse_integer("123") => DecimalNumber::new(123_f64),
-            parse_multiple_decimal("123.24") => DecimalNumber::new(123.24_f64),
-            parse_float_with_trailing_dot("123.") => DecimalNumber::new(123_f64),
-            parse_starting_with_dot(".123") => DecimalNumber::new(0.123_f64),
-            parse_digit_with_exponent("1e10") => DecimalNumber::new(1_f64).with_exponent(10, false),
-            parse_number_with_exponent("123e456") => DecimalNumber::new(123_f64).with_exponent(456, false),
-            parse_number_with_exponent_and_plus_symbol("123e+456") => DecimalNumber::new(123_f64).with_exponent(456, false),
-            parse_number_with_negative_exponent("123e-456") => DecimalNumber::new(123_f64).with_exponent(-456, false),
-            parse_number_with_upper_exponent("123E4") => DecimalNumber::new(123_f64).with_exponent(4, true),
-            parse_number_with_upper_negative_exponent("123E-456") => DecimalNumber::new(123_f64).with_exponent(-456, true),
-            parse_float_with_exponent("10.12e8") => DecimalNumber::new(10.12_f64).with_exponent(8, false),
-            parse_trailing_dot_with_exponent("10.e8") => DecimalNumber::new(10_f64).with_exponent(8, false),
-            parse_hex_number("0x12") => HexNumber::new(18, false),
-            parse_uppercase_hex_number("0X12") => HexNumber::new(18, true),
-            parse_hex_number_with_lowercase("0x12a") => HexNumber::new(298, false),
-            parse_hex_number_with_uppercase("0x12A") => HexNumber::new(298, false),
-            parse_hex_number_with_mixed_case("0x1bF2A") => HexNumber::new(114_474, false),
-            parse_hex_with_exponent("0x12p4") => HexNumber::new(18, false).with_exponent(4, false),
-            parse_hex_with_exponent_uppercase("0xABP3") => HexNumber::new(171, false).with_exponent(3, true)
-        );
-    }
 }

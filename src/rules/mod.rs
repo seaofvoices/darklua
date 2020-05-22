@@ -1,7 +1,8 @@
 //! A module that contains the different rules that mutates a Lua block.
 
-mod empty_do;
 mod call_parens;
+mod compute_expression;
+mod empty_do;
 mod group_local;
 mod inject_value;
 mod method_def;
@@ -10,8 +11,9 @@ mod rename_variables;
 mod unused_if_branch;
 mod unused_while;
 
-pub use empty_do::*;
 pub use call_parens::*;
+pub use compute_expression::*;
+pub use empty_do::*;
 pub use group_local::*;
 pub use inject_value::*;
 pub use method_def::*;
@@ -100,6 +102,7 @@ pub trait Rule {
 /// processed block will work as much as the original one.
 pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
     vec![
+        Box::new(ComputeExpression::default()),
         Box::new(RemoveUnusedIfBranch::default()),
         Box::new(RemoveUnusedWhile::default()),
         Box::new(RemoveEmptyDo::default()),
@@ -116,6 +119,7 @@ impl FromStr for Box<dyn Rule> {
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
         let rule: Box<dyn Rule> = match string {
+            COMPUTE_EXPRESSIONS_RULE_NAME => Box::new(ComputeExpression::default()),
             CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => Box::new(ConvertLocalFunctionToAssign::default()),
             GROUP_LOCAL_ASSIGNMENT => Box::new(GroupLocalAssignment::default()),
             INJECT_GLOBAL_VALUE_RULE_NAME => Box::new(InjectGlobalValue::default()),

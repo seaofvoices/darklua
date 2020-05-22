@@ -396,13 +396,6 @@ fn get_binary_operator(expression: &Expression) -> Option<BinaryOperator> {
         _ => None,
     }
 }
-#[inline]
-fn is_unary_expression(expression: &Expression) -> bool {
-    match expression {
-        Expression::Unary(_) => true,
-        _ => false,
-    }
-}
 
 impl Fuzz<BinaryExpression> for BinaryExpression {
     fn fuzz(context: &mut FuzzContext) -> Self {
@@ -410,23 +403,11 @@ impl Fuzz<BinaryExpression> for BinaryExpression {
         let mut left = Expression::fuzz(context);
         let mut right = Expression::fuzz(context);
 
-        if let Some(left_operator) = get_binary_operator(&left) {
-            if (left_operator == operator && operator.is_right_associative())
-                || !left_operator.precedes(operator)
-            {
-                left = Expression::Parenthese(left.into());
-            }
-        } else if is_unary_expression(&left) && operator.preceeds_unary_expression() {
+        if operator.left_needs_parentheses(&left) {
             left = Expression::Parenthese(left.into());
         }
 
-        if let Some(right_operator) = get_binary_operator(&right) {
-            if (right_operator == operator && operator.is_left_associative())
-                || !right_operator.precedes(operator)
-            {
-                right = Expression::Parenthese(right.into());
-            }
-        } else if is_unary_expression(&right) && operator.preceeds_unary_expression() {
+        if operator.right_needs_parentheses(&right) {
             right = Expression::Parenthese(right.into());
         }
 
@@ -604,7 +585,7 @@ impl Fuzz<UnaryExpression> for UnaryExpression {
         let mut expression = Expression::fuzz(context);
 
         if let Some(inner_operator) = get_binary_operator(&expression) {
-            if !inner_operator.preceeds_unary_expression() {
+            if !inner_operator.precedes_unary_expression() {
                 expression = Expression::Parenthese(expression.into());
             }
         }

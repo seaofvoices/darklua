@@ -40,6 +40,7 @@ macro_rules! test_rule_wihout_effects {
     };
 }
 
+mod compute_expression;
 mod group_local_assignment;
 mod inject_value;
 mod no_local_function;

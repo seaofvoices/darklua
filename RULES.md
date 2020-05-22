@@ -2,6 +2,7 @@
 
 You can find the available rules and their properties here. The default rule stack is:
 
+  - [Compute expressions](#compute-expressions)
   - [Convert local functions to assignments](#convert-local-functions-to-assignments)
   - [Group local assignments](#group-local-assignments)
   - [Remove empty do statements](#remove-empty-do-statements)
@@ -14,6 +15,30 @@ You can find the available rules and their properties here. The default rule sta
 There are also other rules available for more processing:
 
   - [Inject global value](#inject-global-value)
+
+---
+
+## Compute expression
+```compute_expression```
+
+This rule computes expressions and replaces them with their result. An expression will not be replaced if it has any side-effects. This rule is influenced by the evaluation system of darklua. As its capacity increases, the rule will be able to compute more complex expressions. For example, if you use this rule on the following code:
+
+```lua
+return 1 + 1
+```
+
+Will produce the following code:
+
+```lua
+return 2
+```
+
+### Examples
+```json5
+{
+    rule: 'compute_expression',
+}
+```
 
 ---
 

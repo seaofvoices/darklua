@@ -56,13 +56,22 @@ impl UnaryExpression {
 impl ToLua for UnaryExpression {
     fn to_lua(&self, generator: &mut LuaGenerator) {
         self.operator.to_lua(generator);
-        self.expression.to_lua(generator);
+
+        match &self.expression {
+            Expression::Binary(binary) if !binary.operator().precedes_unary_expression() => {
+                generator.push_char('(');
+                self.expression.to_lua(generator);
+                generator.push_char(')');
+            },
+            _ => self.expression.to_lua(generator),
+        }
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::nodes::{BinaryExpression, BinaryOperator, DecimalNumber};
 
     #[test]
     fn generate_unary_expression() {
@@ -85,5 +94,33 @@ mod test {
         ).to_lua_string();
 
         assert_eq!(output, "- -a");
+    }
+
+    #[test]
+    fn wraps_in_parens_if_an_inner_binary_has_lower_precedence() {
+        let output = UnaryExpression::new(
+            UnaryOperator::Not,
+            BinaryExpression::new(
+                BinaryOperator::Or,
+                Expression::False,
+                Expression::True,
+            ).into(),
+        ).to_lua_string();
+
+        assert_eq!(output, "not(false or true)");
+    }
+
+    #[test]
+    fn does_not_wrap_in_parens_if_an_inner_binary_has_higher_precedence() {
+        let output = UnaryExpression::new(
+            UnaryOperator::Minus,
+            BinaryExpression::new(
+                BinaryOperator::Caret,
+                DecimalNumber::new(2.0).into(),
+                DecimalNumber::new(2.0).into(),
+            ).into(),
+        ).to_lua_string();
+
+        assert_eq!(output, "-2^2");
     }
 }

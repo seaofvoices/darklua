@@ -1,3 +1,5 @@
+use crate::nodes::{Expression, NumberExpression, StringExpression};
+
 /// Represents an evaluated Expression result.
 #[derive(Debug, Clone, PartialEq)]
 pub enum LuaValue {
@@ -59,6 +61,40 @@ impl LuaValue {
             Some(false) => default(),
             _ => Self::Unknown,
         }
+    }
+
+    /// Attempt to convert the Lua value into an expression node.
+    pub fn to_expression(self) -> Option<Expression> {
+        match self {
+            Self::False => Some(Expression::False),
+            Self::True => Some(Expression::True),
+            Self::Nil => Some(Expression::Nil),
+            Self::String(value) => Some(StringExpression::from_value(value).into()),
+            Self::Number(value) => Some(Expression::from(value)),
+            _ => None
+        }
+    }
+
+    /// Attempt to convert the Lua value into a number value. This will convert strings when
+    /// possible and return the same value otherwise.
+    pub fn number_coercion(self) -> Self {
+        match &self {
+            Self::String(string) => {
+                let string = string.trim();
+
+                let number = if string.starts_with('-') {
+                    string.get(1..)
+                        .and_then(|string| string.parse::<NumberExpression>().ok())
+                        .map(|number| number.compute_value() * -1.0)
+                } else {
+                    string.parse::<NumberExpression>().ok()
+                        .map(|number| number.compute_value())
+                };
+
+                number.map(LuaValue::Number)
+            }
+            _ => None,
+        }.unwrap_or(self)
     }
 }
 
@@ -122,5 +158,60 @@ mod test {
     #[test]
     fn string_value_is_truthy() {
         assert!(LuaValue::String("".to_owned()).is_truthy().unwrap());
+    }
+
+    mod number_coercion {
+        use super::*;
+
+        macro_rules! number_coercion {
+            ($($name:ident ($string:literal) => $result:expr),*) => {
+                $(
+                    #[test]
+                    fn $name() {
+                        assert_eq!(
+                            LuaValue::String($string.into()).number_coercion(),
+                            LuaValue::Number($result)
+                        );
+                    }
+                )*
+            };
+        }
+
+        macro_rules! no_number_coercion {
+            ($($name:ident ($string:literal)),*) => {
+                $(
+                    #[test]
+                    fn $name() {
+                        assert_eq!(
+                            LuaValue::String($string.into()).number_coercion(),
+                            LuaValue::String($string.into())
+                        );
+                    }
+                )*
+            };
+        }
+
+        number_coercion!(
+            zero("0") => 0.0,
+            integer("12") => 12.0,
+            integer_with_leading_zeros("00012") => 12.0,
+            integer_with_ending_space("12   ") => 12.0,
+            integer_with_leading_space("  123") => 123.0,
+            integer_with_leading_tab("\t123") => 123.0,
+            negative_integer("-3") => -3.0,
+            hex_zero("0x0") => 0.0,
+            hex_integer("0xA") => 10.0,
+            negative_hex_integer("-0xA") => -10.0,
+            float("0.5") => 0.5,
+            negative_float("-0.5") => -0.5,
+            float_starting_with_dot(".5") => 0.5
+        );
+
+        no_number_coercion!(
+            letter_suffix("123a"),
+            hex_prefix("0x"),
+            space_between_minus("- 1"),
+            two_seperated_digits(" 1 2")
+        );
     }
 }

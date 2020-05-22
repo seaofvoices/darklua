@@ -1,0 +1,30 @@
+---
+source: src/nodes/expressions/mod.rs
+expression: "Expression::from(-1.0 / 0.0)"
+---
+Binary(
+    BinaryExpression {
+        operator: Slash,
+        left: Unary(
+            UnaryExpression {
+                operator: Minus,
+                expression: Number(
+                    Decimal(
+                        DecimalNumber {
+                            float: 1.0,
+                            exponent: None,
+                        },
+                    ),
+                ),
+            },
+        ),
+        right: Number(
+            Decimal(
+                DecimalNumber {
+                    float: 0.0,
+                    exponent: None,
+                },
+            ),
+        ),
+    },
+)

@@ -1,0 +1,5 @@
+---
+source: src/nodes/expressions/mod.rs
+expression: "Expression::from(100.25).to_lua_string()"
+---
+100.25

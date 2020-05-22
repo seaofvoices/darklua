@@ -21,6 +21,8 @@ pub use unary::*;
 use crate::lua_generator::{LuaGenerator, ToLua};
 use crate::nodes::FunctionCall;
 
+use std::num::FpCategory;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Expression {
     Binary(Box<BinaryExpression>),
@@ -48,10 +50,55 @@ impl From<bool> for Expression {
 
 impl From<f64> for Expression {
     fn from(value: f64) -> Expression {
-        if value < 0.0 {
-            UnaryExpression::new(UnaryOperator::Minus, Expression::from(value.abs())).into()
-        } else {
-            DecimalNumber::new(value).into()
+        match value.classify() {
+            FpCategory::Nan => {
+                BinaryExpression::new(
+                    BinaryOperator::Slash,
+                    DecimalNumber::new(0.0).into(),
+                    DecimalNumber::new(0.0).into(),
+                ).into()
+            }
+            FpCategory::Infinite => {
+                BinaryExpression::new(
+                    BinaryOperator::Slash,
+                    Expression::from(if value.is_sign_positive() { 1.0 } else { -1.0 }),
+                    DecimalNumber::new(0.0).into(),
+                ).into()
+            }
+            FpCategory::Zero => {
+                DecimalNumber::new(0.0).into()
+            }
+            FpCategory::Subnormal | FpCategory::Normal => {
+                if value < 0.0 {
+                    UnaryExpression::new(
+                        UnaryOperator::Minus,
+                        Expression::from(value.abs()),
+                    ).into()
+                } else {
+                    if value < 0.1 {
+                        let exponent = value.log10().floor();
+                        let new_value = value / 10_f64.powf(exponent);
+
+                        DecimalNumber::new(new_value)
+                            .with_exponent(exponent as i64, true)
+                            .into()
+                    } else if value > 999.0 && (value / 100.0).fract() == 0.0 {
+                        let mut exponent = value.log10().floor();
+                        let mut power = 10_f64.powf(exponent);
+
+                        while exponent > 2.0 && (value / power).fract() != 0.0 {
+                            exponent -= 1.0;
+                            power /= 10.0;
+                        }
+
+                        DecimalNumber::new(value / power)
+                            .with_exponent(exponent as i64, true)
+                            .into()
+                    } else {
+                        DecimalNumber::new(value).into()
+                    }
+                }
+            }
         }
     }
 }
@@ -175,6 +222,53 @@ impl ToLua for Expression {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    mod numbers {
+        use super::*;
+
+        macro_rules! snapshots {
+            ($($name:ident($input:expr)),+) => {
+                $(
+                    mod $name {
+                        use super::*;
+                        use insta::assert_snapshot;
+                        use insta::assert_debug_snapshot;
+
+                        #[test]
+                        fn expression() {
+                            assert_debug_snapshot!(
+                                "expression",
+                                Expression::from($input)
+                            );
+                        }
+
+                        #[test]
+                        fn lua() {
+                            assert_snapshot!(
+                                "lua_float",
+                                Expression::from($input).to_lua_string()
+                            );
+                        }
+                    }
+                )+
+            };
+        }
+
+        snapshots!(
+            snaphshot_1(1.0),
+            snaphshot_0_5(0.5),
+            snaphshot_123(123.0),
+            snaphshot_0_005(0.005),
+            snaphshot_nan(0.0/0.0),
+            snaphshot_positive_infinity(1.0/0.0),
+            snaphshot_negative_infinity(-1.0/0.0),
+            snaphshot_very_small(1.2345e-50),
+            snapshot_thousand(1000.0),
+            snaphshot_very_large(1.2345e50),
+            snapshot_float_below_thousand(100.25),
+            snapshot_float_above_thousand(2000.05)
+        );
+    }
 
     mod to_lua {
         use super::*;

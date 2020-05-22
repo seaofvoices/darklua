@@ -48,7 +48,7 @@ impl Evaluator {
             | Expression::String(_)
             | Expression::True
             | Expression::VariableArguments => false,
-            | Expression::Binary(binary) => {
+            Expression::Binary(binary) => {
                 if self.pure_metamethods {
                     self.has_side_effects(binary.left()) || self.has_side_effects(binary.left())
                 } else {
@@ -62,7 +62,7 @@ impl Evaluator {
                 }
 
             }
-            | Expression::Unary(unary) => {
+            Expression::Unary(unary) => {
                 if self.pure_metamethods {
                     self.has_side_effects(unary.get_expression())
                 } else {
@@ -159,6 +159,14 @@ impl Evaluator {
                     _ => LuaValue::Unknown,
                 }
             }
+            BinaryOperator::Plus => self.evaluate_math(expression, |a, b| a + b),
+            BinaryOperator::Minus => self.evaluate_math(expression, |a, b| a - b),
+            BinaryOperator::Asterisk => self.evaluate_math(expression, |a, b| a * b),
+            BinaryOperator::Slash => self.evaluate_math(expression, |a, b| a / b),
+            BinaryOperator::Caret => self.evaluate_math(expression, |a, b| a.powf(b)),
+            BinaryOperator::Percent => {
+                self.evaluate_math(expression, |a, b| a - b * (a / b).floor())
+            }
             _ => LuaValue::Unknown,
         }
     }
@@ -175,6 +183,24 @@ impl Evaluator {
         }
     }
 
+    fn evaluate_math<F>(&self, expression: &BinaryExpression, operation: F) -> LuaValue
+      where F: Fn(f64, f64) -> f64
+    {
+        let left = self.evaluate(expression.left()).number_coercion();
+
+        if let LuaValue::Number(left) = left {
+            let right = self.evaluate(expression.right()).number_coercion();
+
+            if let LuaValue::Number(right) = right {
+                LuaValue::Number(operation(left, right))
+            } else {
+                LuaValue::Unknown
+            }
+        } else {
+            LuaValue::Unknown
+        }
+    }
+
     fn evaluate_unary(&self, expression: &UnaryExpression) -> LuaValue {
         match expression.operator() {
             UnaryOperator::Not => {
@@ -182,6 +208,12 @@ impl Evaluator {
                     .is_truthy()
                     .map(|value| LuaValue::from(!value))
                     .unwrap_or(LuaValue::Unknown)
+            }
+            UnaryOperator::Minus => {
+                match self.evaluate(expression.get_expression()).number_coercion() {
+                    LuaValue::Number(value) => LuaValue::from(-value),
+                    _ => LuaValue::Unknown
+                }
             }
             _ => LuaValue::Unknown,
         }
@@ -216,12 +248,29 @@ mod test {
         use super::*;
 
         macro_rules! evaluate_binary_expressions {
-            ($($name:ident ($operator:expr, $left:expr, $right:expr) => $value:expr),*) => {
+            ($($name:ident ($operator:expr, $left:expr, $right:expr) => $expect:expr),*) => {
                 $(
                     #[test]
                     fn $name() {
                         let binary = BinaryExpression::new($operator, $left.into(), $right.into());
-                        assert_eq!($value, Evaluator::default().evaluate(&binary.into()));
+
+                        let result = Evaluator::default().evaluate(&binary.into());
+
+                        match (&$expect, &result) {
+                            (LuaValue::Number(expect_float), LuaValue::Number(result))=> {
+                                if expect_float.is_nan() {
+                                    assert!(result.is_nan(), "{} should be NaN", result);
+                                } else {
+                                    assert!(
+                                        result == expect_float || (expect_float - result).abs() < 0.1e-10,
+                                        "{} does not approximate {}", result, expect_float
+                                    );
+                                }
+                            }
+                            _ => {
+                                assert_eq!($expect, result);
+                            }
+                        }
                     }
                 )*
             };
@@ -307,7 +356,67 @@ mod test {
                 BinaryOperator::Or,
                 Expression::Nil,
                 Expression::Nil
-            ) => LuaValue::Nil
+            ) => LuaValue::Nil,
+            one_plus_two(
+                BinaryOperator::Plus,
+                Expression::from(1.0),
+                Expression::from(2.0)
+            ) => LuaValue::Number(3.0),
+            one_minus_two(
+                BinaryOperator::Minus,
+                Expression::from(1.0),
+                Expression::from(2.0)
+            ) => LuaValue::Number(-1.0),
+            three_times_four(
+                BinaryOperator::Asterisk,
+                Expression::from(3.0),
+                Expression::from(4.0)
+            ) => LuaValue::Number(12.0),
+            twelve_divided_by_four(
+                BinaryOperator::Slash,
+                Expression::from(12.0),
+                Expression::from(4.0)
+            ) => LuaValue::Number(3.0),
+            one_divided_by_zero(
+                BinaryOperator::Slash,
+                Expression::from(1.0),
+                Expression::from(0.0)
+            ) => LuaValue::Number(std::f64::INFINITY),
+            zero_divided_by_zero(
+                BinaryOperator::Slash,
+                Expression::from(0.0),
+                Expression::from(0.0)
+            ) => LuaValue::Number(std::f64::NAN),
+            five_mod_two(
+                BinaryOperator::Percent,
+                Expression::from(5.0),
+                Expression::from(2.0)
+            ) => LuaValue::Number(1.0),
+            minus_five_mod_two(
+                BinaryOperator::Percent,
+                Expression::from(-5.0),
+                Expression::from(2.0)
+            ) => LuaValue::Number(1.0),
+            minus_five_mod_minus_two(
+                BinaryOperator::Percent,
+                Expression::from(-5.0),
+                Expression::from(-2.0)
+            ) => LuaValue::Number(-1.0),
+            five_point_two_mod_two(
+                BinaryOperator::Percent,
+                Expression::from(5.5),
+                Expression::from(2.0)
+            ) => LuaValue::Number(1.5),
+            five_pow_two(
+                BinaryOperator::Caret,
+                Expression::from(5.0),
+                Expression::from(2.0)
+            ) => LuaValue::Number(25.0),
+            string_number_plus_string_number(
+                BinaryOperator::Plus,
+                StringExpression::from_value("2"),
+                StringExpression::from_value("3")
+            ) => LuaValue::Number(5.0)
         );
 
         macro_rules! evaluate_equality {
@@ -390,6 +499,7 @@ mod test {
 
     mod unary_expressions {
         use super::*;
+        use UnaryOperator::*;
 
         macro_rules! evaluate_unary_expressions {
             ($($name:ident ($operator:expr, $input:expr) => $value:expr),*) => {
@@ -404,16 +514,19 @@ mod test {
         }
 
         evaluate_unary_expressions!(
-            not_true(UnaryOperator::Not, Expression::True) => LuaValue::False,
-            not_false(UnaryOperator::Not, Expression::False) => LuaValue::True,
-            not_nil(UnaryOperator::Not, Expression::Nil) => LuaValue::True,
-            not_table(UnaryOperator::Not, TableExpression::default()) => LuaValue::False,
-            not_string(UnaryOperator::Not, StringExpression::from_value("foo")) => LuaValue::False,
+            not_true(Not, Expression::True) => LuaValue::False,
+            not_false(Not, Expression::False) => LuaValue::True,
+            not_nil(Not, Expression::Nil) => LuaValue::True,
+            not_table(Not, TableExpression::default()) => LuaValue::False,
+            not_string(Not, StringExpression::from_value("foo")) => LuaValue::False,
             not_number(
-                UnaryOperator::Not,
+                Not,
                 Expression::Number(DecimalNumber::new(10.0).into())
             ) => LuaValue::False,
-            not_identifier(UnaryOperator::Not, Expression::Identifier("foo".to_owned())) => LuaValue::Unknown
+            not_identifier(Not, Expression::Identifier("foo".to_owned())) => LuaValue::Unknown,
+            minus_one(Minus, DecimalNumber::new(1.0)) => LuaValue::from(-1.0),
+            minus_negative_number(Minus, DecimalNumber::new(-5.0)) => LuaValue::from(5.0),
+            minus_string_converted_to_number(Minus, StringExpression::from_value("1")) => LuaValue::from(-1.0)
         );
     }
 

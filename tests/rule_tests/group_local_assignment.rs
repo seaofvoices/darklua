@@ -1,4 +1,4 @@
-use darklua_core::rules::GroupLocalAssignment;
+use darklua_core::rules::{GroupLocalAssignment, Rule};
 
 test_rule!(
     GroupLocalAssignment::default(),
@@ -14,3 +14,15 @@ test_rule_wihout_effects!(
     two_local_using_the_other("local foo = 1 local bar = foo"),
     multiple_return_values("local a, b = call() local c = 0")
 );
+
+#[test]
+fn deserialize_from_object_notation() {
+    json5::from_str::<Box<dyn Rule>>(r#"{
+        rule: 'group_local_assignment',
+    }"#).unwrap();
+}
+
+#[test]
+fn deserialize_from_string() {
+    json5::from_str::<Box<dyn Rule>>("'group_local_assignment'").unwrap();
+}

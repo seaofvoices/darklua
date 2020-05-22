@@ -1,0 +1,12 @@
+---
+source: src/nodes/expressions/mod.rs
+expression: "Expression::from(0.5)"
+---
+Number(
+    Decimal(
+        DecimalNumber {
+            float: 0.5,
+            exponent: None,
+        },
+    ),
+)
