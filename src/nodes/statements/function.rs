@@ -1,4 +1,3 @@
-use crate::lua_generator::{LuaGenerator, ToLua};
 use crate::nodes::Block;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -39,41 +38,34 @@ impl FunctionName {
         self.field_names.push(field);
     }
 
+    #[inline]
     pub fn remove_method(&mut self) -> Option<String> {
         self.method.take()
     }
 
-    pub fn get_method(&mut self) -> &Option<String> {
-        &self.method
+    #[inline]
+    pub fn get_method(&self) -> Option<&String> {
+        self.method.as_ref()
     }
 
+    #[inline]
     pub fn get_name(&self) -> &String {
         &self.name
     }
 
+    #[inline]
     pub fn set_name(&mut self, name: String) {
         self.name = name;
     }
 
+    #[inline]
+    pub fn get_field_names(&self) -> &Vec<String> {
+        &self.field_names
+    }
+
+    #[inline]
     pub fn mutate_identifier(&mut self) -> &mut String {
         &mut self.name
-    }
-}
-
-impl ToLua for FunctionName {
-    fn to_lua(&self, generator: &mut LuaGenerator) {
-        generator.push_str(&self.name);
-
-        self.field_names.iter()
-            .for_each(|field| {
-                generator.push_char('.');
-                generator.push_str(field);
-            });
-
-        if let Some(method_name) = &self.method {
-            generator.push_char(':');
-            generator.push_str(method_name);
-        };
     }
 }
 
@@ -104,8 +96,8 @@ impl FunctionStatement {
         }
     }
 
-    pub fn append_parameter(mut self, parameter: String) -> Self {
-        self.parameters.push(parameter);
+    pub fn with_parameter<S: Into<String>>(mut self, parameter: S) -> Self {
+        self.parameters.push(parameter.into());
         self
     }
 
@@ -114,18 +106,37 @@ impl FunctionStatement {
         self
     }
 
+    #[inline]
     pub fn get_block(&self) -> &Block {
         &self.block
     }
 
+    #[inline]
+    pub fn get_name(&self) -> &FunctionName {
+        &self.name
+    }
+
+    #[inline]
+    pub fn get_parameters(&self) -> &Vec<String> {
+        &self.parameters
+    }
+
+    #[inline]
+    pub fn is_variadic(&self) -> bool {
+        self.is_variadic
+    }
+
+    #[inline]
     pub fn mutate_block(&mut self) -> &mut Block {
         &mut self.block
     }
 
+    #[inline]
     pub fn mutate_function_name(&mut self) -> &mut FunctionName {
         &mut self.name
     }
 
+    #[inline]
     pub fn mutate_parameters(&mut self) -> &mut Vec<String> {
         &mut self.parameters
     }
@@ -135,62 +146,5 @@ impl FunctionStatement {
             self.name.push_field(method_name);
             self.parameters.insert(0, "self".to_owned());
         }
-    }
-}
-
-impl ToLua for FunctionStatement {
-    fn to_lua(&self, generator: &mut LuaGenerator) {
-        generator.push_str("function");
-        self.name.to_lua(generator);
-        generator.push_char('(');
-
-        generator.for_each_and_between(
-            &self.parameters,
-            |generator, parameter| generator.push_str(parameter),
-            |generator| generator.push_char(','),
-        );
-
-        if self.is_variadic {
-            if self.parameters.len() > 0 {
-                generator.push_char(',');
-            };
-            generator.push_str("...");
-        };
-
-        generator.push_char(')');
-        self.block.to_lua(generator);
-        generator.push_str("end");
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn generate_empty_function() {
-        let output = FunctionStatement::from_name("foo", Block::default())
-            .to_lua_string();
-
-        assert_eq!(output, "function foo()end");
-    }
-
-    #[test]
-    fn generate_empty_function_with_field() {
-        let function_name = FunctionName::from_name("foo")
-            .with_fields(vec!["bar".to_owned()]);
-        let output = FunctionStatement::new(function_name, Block::default(), Vec::new(), false)
-            .to_lua_string();
-
-        assert_eq!(output, "function foo.bar()end");
-    }
-
-    #[test]
-    fn generate_empty_function_with_method() {
-        let function_name = FunctionName::from_name("foo").with_method("bar");
-        let output = FunctionStatement::new(function_name, Block::default(), Vec::new(), false)
-            .to_lua_string();
-
-        assert_eq!(output, "function foo:bar()end");
     }
 }

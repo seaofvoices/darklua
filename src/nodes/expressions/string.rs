@@ -1,5 +1,3 @@
-use crate::lua_generator::{LuaGenerator, ToLua};
-
 use std::str::CharIndices;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -72,60 +70,6 @@ impl StringExpression {
                 }
             }
         })
-    }
-}
-
-fn break_long_string(last_str: &str) -> bool {
-    if let Some(last_char) = last_str.chars().last() {
-        last_char == '['
-    } else {
-        false
-    }
-}
-
-impl ToLua for StringExpression {
-    fn to_lua(&self, generator: &mut LuaGenerator) {
-        if self.is_multiline() {
-            let mut i = 0;
-            let mut equals = "=".repeat(i);
-
-            loop {
-                if self.value.find(&format!("]{}]", equals)).is_none() {
-                    break
-                } else {
-                    i += 1;
-                    equals = "=".repeat(i);
-                };
-            }
-
-            generator.push_str_and_break_if(
-                &format!("[{}[{}]{}]", equals, self.value, equals),
-                break_long_string
-            );
-
-        } else {
-            let string = if self.has_single_quote() {
-                if self.has_double_quote() {
-                    let mut total_escaped = 0;
-                    let mut escaped_string = self.value.clone();
-
-                    let mut chars = self.value.char_indices();
-
-                    while let Some(unescaped_index) = self.find_not_escaped_from('\'', &mut chars) {
-                        escaped_string.insert(unescaped_index + total_escaped, '\\');
-                        total_escaped += 1;
-                    }
-
-                    format!("'{}'", escaped_string)
-                } else {
-                    format!("\"{}\"", self.value)
-                }
-            } else {
-                format!("'{}'", self.value)
-            };
-
-            generator.push_str(&string);
-        };
     }
 }
 
@@ -215,61 +159,5 @@ mod test {
         let string = StringExpression::from_value(r#"hel\"o"#);
 
         assert_eq!(string.has_double_quote(), false);
-    }
-
-    #[test]
-    fn generate_string_without_quotes_uses_single_quotes() {
-        let output = StringExpression::from_value("hello").to_lua_string();
-
-        assert_eq!(output, "'hello'");
-    }
-
-    #[test]
-    fn generate_string_with_single_quotes_uses_double_quotes() {
-        let output = StringExpression::from_value("don\'t").to_lua_string();
-
-        assert_eq!(output, r#""don't""#);
-    }
-
-    #[test]
-    fn generate_string_with_single_and_double_quotes_escapes_single_quotes() {
-        let output = StringExpression::from_value(r#"Say: "Don't""#).to_lua_string();
-
-        assert_eq!(output, r#"'Say: "Don\'t"'"#);
-    }
-
-    #[test]
-    fn break_long_string_if_last_char_is_bracket() {
-        let mut generator = LuaGenerator::default();
-        generator.push_char('[');
-        StringExpression::from_value("\n").to_lua(&mut generator);
-
-        assert_eq!(generator.into_string(), "[ [[\n]]");
-    }
-
-    mod snapshot {
-        use super::*;
-
-        use insta::assert_snapshot;
-
-        macro_rules! do_snapshots {
-            ($($name:ident => $string:literal),+) => {
-                $(
-                    #[test]
-                    fn $name() {
-                        assert_snapshot!(
-                            stringify!($name),
-                            StringExpression::from_value(r#"Say: "Don't""#).to_lua_string()
-                        );
-                    }
-                )+
-            };
-        }
-
-        do_snapshots!(
-            single_quotes => r#"hello"#,
-            double_quotes => r#"I'm cool"#,
-            escape_single_quotes => r#"Say: "Don't""#
-        );
     }
 }

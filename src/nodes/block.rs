@@ -1,4 +1,3 @@
-use crate::lua_generator::{LuaGenerator, ToLua};
 use crate::nodes::{LastStatement, Statement};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -25,12 +24,19 @@ impl Block {
         self
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.last_statement.is_none() && self.statements.is_empty()
     }
 
+    #[inline]
     pub fn get_statements(&self) -> &Vec<Statement> {
         &self.statements
+    }
+
+    #[inline]
+    pub fn get_last_statement(&self) -> Option<&LastStatement> {
+        self.last_statement.as_ref()
     }
 
     pub fn filter_statements<F>(&mut self, mut f: F) where F: FnMut(&mut Statement) -> bool {
@@ -45,10 +51,12 @@ impl Block {
         }
     }
 
+    #[inline]
     pub fn mutate_statements(&mut self) -> &mut Vec<Statement> {
         &mut self.statements
     }
 
+    #[inline]
     pub fn mutate_last_statement(&mut self) -> &mut Option<LastStatement> {
         &mut self.last_statement
     }
@@ -62,25 +70,6 @@ impl Block {
 impl Default for Block {
     fn default() -> Self {
         Self::new(Vec::new(), None)
-    }
-}
-
-impl ToLua for Block {
-    fn to_lua(&self, generator: &mut LuaGenerator) {
-        generator.for_each_and_between(
-            &self.statements,
-            |generator, statement| statement.to_lua(generator),
-            |generator| generator.push_char(';'),
-        );
-
-        if let Some(last_statement) = &self.last_statement {
-            if self.statements.len() > 0 {
-                generator.push_char(';');
-            };
-
-            last_statement.to_lua(generator);
-            generator.push_char(';');
-        }
     }
 }
 

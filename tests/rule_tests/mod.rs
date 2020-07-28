@@ -3,19 +3,23 @@ macro_rules! test_rule {
         $(
             #[test]
             fn $name() {
-                use darklua_core::{ToLua, rules::Rule};
+                use darklua_core::{generator::{LuaGenerator, ReadableLuaGenerator}, rules::Rule};
 
                 let mut block = $crate::utils::parse_input($input);
                 let expect_block = $crate::utils::parse_input($output);
 
                 $rule.process(&mut block);
 
+                let mut generator = ReadableLuaGenerator::default();
+                generator.write_block(&block);
+                let lua_code = generator.into_string();
+
                 assert_eq!(
                     block,
                     expect_block,
                     "\nexpected code:\n{}\nbut received:\n{}",
                     $output,
-                    block.to_lua_string()
+                    lua_code
                 );
             }
         )*

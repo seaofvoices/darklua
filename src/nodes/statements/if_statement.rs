@@ -1,4 +1,3 @@
-use crate::lua_generator::{LuaGenerator, ToLua};
 use crate::nodes::{Block, Expression};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -80,6 +79,11 @@ impl IfStatement {
     }
 
     #[inline]
+    pub fn get_branches(&self) -> &Vec<IfBranch> {
+        &self.branches
+    }
+
+    #[inline]
     pub fn branch_count(&self) -> usize {
         self.branches.len()
     }
@@ -90,8 +94,8 @@ impl IfStatement {
     }
 
     #[inline]
-    pub fn else_block(&self) -> &Option<Block> {
-        &self.else_block
+    pub fn get_else_block(&self) -> Option<&Block> {
+        self.else_block.as_ref()
     }
 
     #[inline]
@@ -102,59 +106,5 @@ impl IfStatement {
     #[inline]
     pub fn take_else_block(&mut self) -> Option<Block> {
         self.else_block.take()
-    }
-}
-
-impl ToLua for IfStatement {
-    fn to_lua(&self, generator: &mut LuaGenerator) {
-        self.branches.iter().enumerate()
-            .for_each(|(index, branch)| {
-                if index == 0 {
-                    generator.push_str("if");
-                } else {
-                    generator.push_str("elseif");
-                }
-                branch.get_condition().to_lua(generator);
-                generator.push_str("then");
-                branch.get_block().to_lua(generator);
-            });
-
-        if let Some(else_block) = &self.else_block {
-            generator.push_str("else");
-            else_block.to_lua(generator);
-        };
-
-        generator.push_str("end");
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn generate_empty_if() {
-        let output = IfStatement::create(Expression::False, Block::default())
-            .to_lua_string();
-
-        assert_eq!(output, "if false then end");
-    }
-
-    #[test]
-    fn generate_empty_if_with_else_block() {
-        let output = IfStatement::create(Expression::False, Block::default())
-            .with_else_block(Block::default())
-            .to_lua_string();
-
-        assert_eq!(output, "if false then else end");
-    }
-
-    #[test]
-    fn generate_empty_if_with_multiple_branch() {
-        let output = IfStatement::create(Expression::False, Block::default())
-            .with_branch(Expression::False, Block::default())
-            .to_lua_string();
-
-        assert_eq!(output, "if false then elseif false then end");
     }
 }

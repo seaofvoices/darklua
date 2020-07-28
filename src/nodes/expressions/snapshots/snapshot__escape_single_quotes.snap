@@ -1,5 +1,0 @@
----
-source: src/nodes/expressions/string.rs
-expression: "StringExpression::new(r#\"Say: \"Don't\"\"#).to_lua_string()"
----
-'Say: "Don\'t"'

@@ -1,4 +1,3 @@
-use crate::lua_generator::{LuaGenerator, ToLua};
 use crate::nodes::Expression;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -80,6 +79,26 @@ impl BinaryOperator {
         }
     }
 
+    pub fn to_str(&self) -> &str {
+        match self {
+            Self::And => "and",
+            Self::Or => "or",
+            Self::Equal => "==",
+            Self::NotEqual => "~=",
+            Self::LowerThan => "<",
+            Self::LowerOrEqualThan => "<=",
+            Self::GreaterThan => ">",
+            Self::GreaterOrEqualThan => ">=",
+            Self::Plus => "+",
+            Self::Minus => "-",
+            Self::Asterisk => "*",
+            Self::Slash => "/",
+            Self::Percent => "%",
+            Self::Caret => "^",
+            Self::Concat => "..",
+        }
+    }
+
     fn get_precedence(&self) -> u8 {
         match self {
             Self::Or => 0,
@@ -95,38 +114,6 @@ impl BinaryOperator {
     }
 }
 
-fn break_concat(last_string: &str) -> bool {
-    if let Some('.') = last_string.chars().last() {
-        true
-    } else if let Some(first_char) = last_string.chars().next() {
-        first_char == '.' || first_char.is_digit(10)
-    } else {
-        false
-    }
-}
-
-impl ToLua for BinaryOperator {
-    fn to_lua(&self, generator: &mut LuaGenerator) {
-        match self {
-            Self::And => generator.push_str("and"),
-            Self::Or => generator.push_str("or"),
-            Self::Equal => generator.push_str("=="),
-            Self::NotEqual => generator.push_str("~="),
-            Self::LowerThan => generator.push_char('<'),
-            Self::LowerOrEqualThan => generator.push_str("<="),
-            Self::GreaterThan => generator.push_char('>'),
-            Self::GreaterOrEqualThan => generator.push_str(">="),
-            Self::Plus => generator.push_char('+'),
-            Self::Minus => generator.push_char('-'),
-            Self::Asterisk => generator.push_char('*'),
-            Self::Slash => generator.push_char('/'),
-            Self::Percent => generator.push_char('%'),
-            Self::Caret => generator.push_char('^'),
-            Self::Concat => generator.push_str_and_break_if("..", break_concat),
-        }
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BinaryExpression {
     operator: BinaryOperator,
@@ -135,11 +122,15 @@ pub struct BinaryExpression {
 }
 
 impl BinaryExpression {
-    pub fn new(operator: BinaryOperator, left: Expression, right: Expression) -> Self {
+    pub fn new<T: Into<Expression>, U: Into<Expression>>(
+        operator: BinaryOperator,
+        left: T,
+        right: U,
+    ) -> Self {
         Self {
             operator,
-            left,
-            right,
+            left: left.into(),
+            right: right.into(),
         }
     }
 
@@ -166,28 +157,6 @@ impl BinaryExpression {
     #[inline]
     pub fn operator(&self) -> BinaryOperator {
         self.operator
-    }
-}
-
-impl ToLua for BinaryExpression {
-    fn to_lua(&self, generator: &mut LuaGenerator) {
-        if self.operator.left_needs_parentheses(&self.left) {
-            generator.push_char('(');
-            self.left.to_lua(generator);
-            generator.push_char(')');
-        } else {
-            self.left.to_lua(generator);
-        }
-
-        self.operator.to_lua(generator);
-
-        if self.operator.right_needs_parentheses(&self.right) {
-            generator.push_char('(');
-            self.right.to_lua(generator);
-            generator.push_char(')');
-        } else {
-            self.right.to_lua(generator);
-        }
     }
 }
 
@@ -358,173 +327,6 @@ mod test {
             assert!(!And.precedes(Concat));
             assert!(!And.precedes(Caret));
             assert!(!And.precedes_unary_expression());
-        }
-    }
-
-    mod to_lua {
-        use super::*;
-
-        use crate::nodes::{DecimalNumber, UnaryExpression, UnaryOperator};
-
-        #[test]
-        fn left_associative_wraps_left_operand_if_has_lower_precedence() {
-            let expression = BinaryExpression::new(
-                BinaryOperator::Asterisk,
-                DecimalNumber::new(2.0).into(),
-                BinaryExpression::new(
-                    BinaryOperator::Plus,
-                    DecimalNumber::new(1.0).into(),
-                    DecimalNumber::new(3.0).into(),
-                ).into(),
-            );
-
-            assert_eq!("2*(1+3)", expression.to_lua_string());
-        }
-
-        #[test]
-        fn left_associative_wraps_right_operand_if_has_lower_precedence() {
-            let expression = BinaryExpression::new(
-                BinaryOperator::And,
-                Expression::False,
-                BinaryExpression::new(
-                    BinaryOperator::Or,
-                    Expression::False,
-                    Expression::True,
-                ).into(),
-            );
-
-            assert_eq!("false and(false or true)", expression.to_lua_string());
-        }
-
-        #[test]
-        fn left_associative_wraps_right_operand_if_has_same_precedence() {
-            let expression = BinaryExpression::new(
-                BinaryOperator::Equal,
-                Expression::True,
-                BinaryExpression::new(
-                    BinaryOperator::LowerThan,
-                    DecimalNumber::new(1.0).into(),
-                    DecimalNumber::new(2.0).into(),
-                ).into(),
-            );
-
-            assert_eq!("true==(1<2)", expression.to_lua_string());
-        }
-
-        #[test]
-        fn right_associative_wrap_unary_left_operand_if_has_lower_precedence() {
-            let expression = BinaryExpression::new(
-                BinaryOperator::Caret,
-                UnaryExpression::new(
-                    UnaryOperator::Minus,
-                    DecimalNumber::new(2.0).into(),
-                ).into(),
-                DecimalNumber::new(2.0).into(),
-            );
-
-            assert_eq!("(-2)^2", expression.to_lua_string());
-        }
-
-        #[test]
-        fn right_associative_wraps_left_operand_if_has_lower_precedence() {
-            let expression = BinaryExpression::new(
-                BinaryOperator::Caret,
-                BinaryExpression::new(
-                    BinaryOperator::Plus,
-                    DecimalNumber::new(1.0).into(),
-                    DecimalNumber::new(2.0).into(),
-                ).into(),
-                DecimalNumber::new(3.0).into(),
-            );
-
-            assert_eq!("(1+2)^3", expression.to_lua_string());
-        }
-
-        #[test]
-        fn right_associative_wraps_left_operand_if_has_same_precedence() {
-            let expression = BinaryExpression::new(
-                BinaryOperator::Caret,
-                BinaryExpression::new(
-                    BinaryOperator::Caret,
-                    DecimalNumber::new(2.0).into(),
-                    DecimalNumber::new(2.0).into(),
-                ).into(),
-                DecimalNumber::new(3.0).into(),
-            );
-
-            assert_eq!("(2^2)^3", expression.to_lua_string());
-        }
-
-        #[test]
-        fn right_associative_does_not_wrap_right_operand_if_unary() {
-            let expression = BinaryExpression::new(
-                BinaryOperator::Caret,
-                DecimalNumber::new(2.0).into(),
-                UnaryExpression::new(
-                    UnaryOperator::Minus,
-                    DecimalNumber::new(2.0).into(),
-                ).into(),
-            );
-
-            assert_eq!("2^-2", expression.to_lua_string());
-        }
-
-        #[test]
-        fn right_associative_does_not_wrap_right_operand_if_has_same_precedence() {
-            let expression = BinaryExpression::new(
-                BinaryOperator::Caret,
-                DecimalNumber::new(2.0).into(),
-                BinaryExpression::new(
-                    BinaryOperator::Caret,
-                    DecimalNumber::new(2.0).into(),
-                    DecimalNumber::new(3.0).into(),
-                ).into(),
-            );
-
-            assert_eq!("2^2^3", expression.to_lua_string());
-        }
-
-        #[test]
-        fn right_associative_does_not_wrap_right_operand_if_has_higher_precedence() {
-            let expression = BinaryExpression::new(
-                BinaryOperator::Concat,
-                DecimalNumber::new(3.0).into(),
-                BinaryExpression::new(
-                    BinaryOperator::Plus,
-                    DecimalNumber::new(9.0).into(),
-                    DecimalNumber::new(3.0).into(),
-                ).into(),
-            );
-
-            assert_eq!("3 ..9+3", expression.to_lua_string());
-        }
-    }
-
-    mod snapshot {
-        use super::*;
-
-        use insta::assert_snapshot;
-
-        #[test]
-        fn and_expression() {
-            let expression = BinaryExpression::new(
-                BinaryOperator::And,
-                Expression::True,
-                Expression::False
-            );
-
-            assert_snapshot!("and_expression", expression.to_lua_string());
-        }
-
-        #[test]
-        fn equal_expression() {
-            let expression = BinaryExpression::new(
-                BinaryOperator::Equal,
-                Expression::True,
-                Expression::False
-            );
-
-            assert_snapshot!("equal_expression", expression.to_lua_string());
         }
     }
 }

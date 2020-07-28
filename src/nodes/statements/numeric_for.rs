@@ -1,4 +1,3 @@
-use crate::lua_generator::{LuaGenerator, ToLua};
 use crate::nodes::{
     Block,
     Expression,
@@ -14,15 +13,15 @@ pub struct NumericForStatement {
 }
 
 impl NumericForStatement {
-    pub fn new(
-        identifier: String,
+    pub fn new<S: Into<String>>(
+        identifier: S,
         start: Expression,
         end: Expression,
         step: Option<Expression>,
         block: Block
     ) -> Self {
         Self {
-            identifier,
+            identifier: identifier.into(),
             start,
             end,
             step,
@@ -30,87 +29,58 @@ impl NumericForStatement {
         }
     }
 
+    #[inline]
     pub fn get_block(&self) -> &Block {
         &self.block
     }
 
+    #[inline]
     pub fn mutate_block(&mut self) -> &mut Block {
         &mut self.block
     }
 
+    #[inline]
+    pub fn get_start(&self) -> &Expression {
+        &self.start
+    }
+
+    #[inline]
     pub fn mutate_start(&mut self) -> &mut Expression {
         &mut self.start
     }
 
+    #[inline]
+    pub fn get_end(&self) -> &Expression {
+        &self.end
+    }
+
+    #[inline]
     pub fn mutate_end(&mut self) -> &mut Expression {
         &mut self.end
     }
 
+    #[inline]
+    pub fn get_step(&self) -> Option<&Expression> {
+        self.step.as_ref()
+    }
+
+    #[inline]
     pub fn mutate_step(&mut self) -> &mut Option<Expression> {
         &mut self.step
     }
 
+    #[inline]
     pub fn get_identifier(&self) -> &String {
         &self.identifier
     }
 
+    #[inline]
     pub fn mutate_identifier(&mut self) -> &mut String {
         &mut self.identifier
     }
 
+    #[inline]
     pub fn set_identifier<S: Into<String>>(&mut self, identifier: S) {
         self.identifier = identifier.into();
-    }
-}
-
-impl ToLua for NumericForStatement {
-    fn to_lua(&self, generator: &mut LuaGenerator) {
-        generator.push_str("for");
-        generator.push_str(&self.identifier);
-        generator.push_char('=');
-        self.start.to_lua(generator);
-        generator.push_char(',');
-        self.end.to_lua(generator);
-
-        if let Some(step) = &self.step {
-            generator.push_char(',');
-            step.to_lua(generator);
-        }
-
-        generator.push_str("do");
-        self.block.to_lua(generator);
-        generator.push_str("end");
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::nodes::Expression;
-
-    #[test]
-    fn generate_empty_numeric_for() {
-        let output = NumericForStatement::new(
-            "i".to_owned(),
-            Expression::Identifier("start".to_owned()),
-            Expression::Identifier("max".to_owned()),
-            None,
-            Block::default()
-        ).to_lua_string();
-
-        assert_eq!(output, "for i=start,max do end");
-    }
-
-    #[test]
-    fn generate_empty_numeric_for_with_step() {
-        let output = NumericForStatement::new(
-            "i".to_owned(),
-            Expression::Identifier("start".to_owned()),
-            Expression::Identifier("max".to_owned()),
-            Some(Expression::Identifier("step".to_owned())),
-            Block::default()
-        ).to_lua_string();
-
-        assert_eq!(output, "for i=start,max,step do end");
     }
 }

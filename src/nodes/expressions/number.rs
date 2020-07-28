@@ -1,5 +1,3 @@
-use crate::lua_generator::{LuaGenerator, ToLua};
-
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::str::FromStr;
 
@@ -24,8 +22,24 @@ impl DecimalNumber {
         self
     }
 
+    #[inline]
     pub fn set_uppercase(&mut self, is_uppercase: bool) {
-        self.exponent.map(|(exponent, _)| (exponent, is_uppercase));
+        self.exponent = self.exponent.map(|(exponent, _)| (exponent, is_uppercase));
+    }
+
+    #[inline]
+    pub fn get_raw_float(&self) -> f64 {
+        self.float
+    }
+
+    #[inline]
+    pub fn is_uppercase(&self) -> Option<bool> {
+        self.exponent.map(|(_, uppercase)| uppercase)
+    }
+
+    #[inline]
+    pub fn get_exponent(&self) -> Option<i64> {
+        self.exponent.map(|(exponent, _)| exponent)
     }
 
     pub fn compute_value(&self) -> f64 {
@@ -33,36 +47,6 @@ impl DecimalNumber {
             self.float * 10_f64.powf(exponent as f64)
         } else {
             self.float
-        }
-    }
-}
-
-impl ToLua for DecimalNumber {
-    fn to_lua(&self, generator: &mut LuaGenerator) {
-        if self.float.is_nan() {
-            generator.push_char('(');
-            generator.push_char('0');
-            generator.push_char('/');
-            generator.push_char('0');
-            generator.push_char(')');
-        } else if self.float.is_infinite() {
-            generator.push_char('(');
-            if self.float.is_sign_negative() {
-                generator.push_char('-');
-            }
-            generator.push_char('1');
-            generator.push_char('/');
-            generator.push_char('0');
-            generator.push_char(')');
-        } else {
-            let mut number = format!("{:.}", self.float);
-
-            if let Some((exponent, is_uppercase)) = &self.exponent {
-                number.push(if *is_uppercase { 'E' } else { 'e' });
-                number.push_str(&format!("{}", exponent));
-            };
-
-            generator.push_str(&number);
         }
     }
 }
@@ -92,8 +76,28 @@ impl HexNumber {
     }
 
     pub fn set_uppercase(&mut self, is_uppercase: bool) {
-        self.exponent.map(|(expression, _)| (expression, is_uppercase));
+        self.exponent = self.exponent.map(|(value, _)| (value, is_uppercase));
         self.is_x_uppercase = is_uppercase;
+    }
+
+    #[inline]
+    pub fn is_x_uppercase(&self) -> bool {
+        self.is_x_uppercase
+    }
+
+    #[inline]
+    pub fn is_exponent_uppercase(&self) -> Option<bool> {
+        self.exponent.map(|(_, uppercase)| uppercase)
+    }
+
+    #[inline]
+    pub fn get_raw_integer(&self) -> u64 {
+        self.integer
+    }
+
+    #[inline]
+    pub fn get_exponent(&self) -> Option<u32> {
+        self.exponent.map(|(value, _)| value)
     }
 
     pub fn compute_value(&self) -> f64 {
@@ -102,23 +106,6 @@ impl HexNumber {
         } else {
             self.integer as f64
         }
-    }
-}
-
-impl ToLua for HexNumber {
-    fn to_lua(&self, generator: &mut LuaGenerator) {
-        let mut number = format!(
-            "0{}{:x}",
-            if self.is_x_uppercase { 'X' } else { 'x' },
-            self.integer
-        );
-
-        if let Some((exponent, is_uppercase)) = &self.exponent {
-            number.push(if *is_uppercase { 'P' } else { 'p' });
-            number.push_str(&format!("{}", exponent));
-        };
-
-        generator.push_str(&number);
     }
 }
 
@@ -247,42 +234,48 @@ impl FromStr for NumberExpression {
     }
 }
 
-impl ToLua for NumberExpression {
-    fn to_lua(&self, generator: &mut LuaGenerator) {
-        match self {
-            Self::Decimal(value) => value.to_lua(generator),
-            Self::Hex(value) => value.to_lua(generator),
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
 
-    mod to_lua {
+    mod decimal {
         use super::*;
 
-        macro_rules! test_to_lua {
-            ($($name:ident($input:literal) => $value:expr),*) => {
-                $(
-                    #[test]
-                    fn $name() {
-                        let number = NumberExpression::from($input);
-                        assert_eq!(number.to_lua_string(), $value);
-                    }
-                )*
-            };
+        #[test]
+        fn can_set_uppercase_to_number_without_exponent() {
+            let mut number = DecimalNumber::new(1.0);
+            number.set_uppercase(true);
+            number.set_uppercase(false);
+
+            assert_eq!(number.is_uppercase(), None);
         }
 
-        test_to_lua!(
-            zero("0") => "0",
-            one("1") => "1",
-            integer("123") => "123",
-            hex_number("0x12") => "0x12",
-            hex_number_with_letter("0x12a") => "0x12a",
-            hex_with_exponent("0x12p4") => "0x12p4"
-        );
+        #[test]
+        fn set_uppercase_change() {
+            let initial_case = true;
+            let modified_case = !initial_case;
+            let mut number = DecimalNumber::new(1.0)
+                .with_exponent(2, initial_case);
+
+            number.set_uppercase(modified_case);
+
+            assert_eq!(number.is_uppercase(), Some(modified_case));
+        }
+    }
+
+    mod hex {
+        use super::*;
+
+        #[test]
+        fn set_uppercase_change() {
+            let initial_case = true;
+            let modified_case = !initial_case;
+            let mut number = HexNumber::new(1, initial_case);
+
+            number.set_uppercase(modified_case);
+
+            assert_eq!(number.is_x_uppercase(), modified_case);
+        }
     }
 
     mod parse_number {

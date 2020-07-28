@@ -22,7 +22,6 @@ pub use numeric_for::*;
 pub use repeat_statement::*;
 pub use while_statement::*;
 
-use crate::lua_generator::{LuaGenerator, ToLua};
 use crate::nodes::FunctionCall;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -38,24 +37,6 @@ pub enum Statement {
     NumericFor(NumericForStatement),
     Repeat(RepeatStatement),
     While(WhileStatement),
-}
-
-impl ToLua for Statement {
-    fn to_lua(&self, generator: &mut LuaGenerator) {
-        match self {
-            Self::Assign(statement) => statement.to_lua(generator),
-            Self::Do(statement) => statement.to_lua(generator),
-            Self::Call(statement) => statement.to_lua(generator),
-            Self::Function(statement) => statement.to_lua(generator),
-            Self::GenericFor(statement) => statement.to_lua(generator),
-            Self::If(statement) => statement.to_lua(generator),
-            Self::LocalAssign(statement) => statement.to_lua(generator),
-            Self::LocalFunction(statement) => statement.to_lua(generator),
-            Self::NumericFor(statement) => statement.to_lua(generator),
-            Self::Repeat(statement) => statement.to_lua(generator),
-            Self::While(statement) => statement.to_lua(generator),
-        }
-    }
 }
 
 impl From<AssignStatement> for Statement {

@@ -191,6 +191,7 @@ local projects = {
 local testSuite = {
     DarkluaTest.new('minify', 'minify $input $output'),
     DarkluaTest.new('default-process', 'process $input $output'),
+    DarkluaTest.new('default-process-readable', 'process $input $output --format readable'),
     DarkluaTest.new('rename', 'process $input $output', {
         process = {{
             rule = 'rename_variables',

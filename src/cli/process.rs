@@ -7,11 +7,54 @@ use crate::cli::utils::{
     FileProcessing,
 };
 
-use darklua_core::{LuaGenerator, ToLua, Parser};
+use darklua_core::{
+    nodes::Block,
+    generator::{LuaGenerator, DenseLuaGenerator, ReadableLuaGenerator},
+    Parser,
+};
 use std::path::PathBuf;
 use std::fs;
 use std::process;
+use std::str::FromStr;
 use structopt::StructOpt;
+
+#[derive(Debug, Copy, Clone)]
+pub enum LuaFormat {
+    Dense,
+    Readable,
+}
+
+impl LuaFormat {
+    pub fn generate(&self, config: &Config, block: &Block) -> String {
+        match self {
+            Self::Dense => {
+                let mut generator = DenseLuaGenerator::new(config.column_span);
+                generator.write_block(block);
+                generator.into_string()
+            }
+            Self::Readable => {
+                let mut generator = ReadableLuaGenerator::new(config.column_span);
+                generator.write_block(block);
+                generator.into_string()
+            }
+        }
+    }
+}
+
+impl FromStr for LuaFormat {
+    type Err = String;
+
+    fn from_str(format: &str) -> Result<Self, Self::Err> {
+        match format {
+            "dense" => Ok(Self::Dense),
+            "readable" => Ok(Self::Readable),
+            _ => Err(format!(
+                "format '{}' does not exist! (possible options are: 'dense' or 'readable'",
+                format
+            )),
+        }
+    }
+}
 
 #[derive(Debug, StructOpt)]
 pub struct Options {
@@ -24,6 +67,9 @@ pub struct Options {
     /// Choose a specific configuration file.
     #[structopt(long, short)]
     pub config_path: Option<PathBuf>,
+    /// Choose how Lua code is formatted ('dense' or 'readable').
+    #[structopt(long, default_value = "dense")]
+    pub format: LuaFormat,
 }
 
 fn process(file: &FileProcessing, options: &Options, global: &GlobalOptions) -> Result<(), CliError> {
@@ -46,11 +92,9 @@ fn process(file: &FileProcessing, options: &Options, global: &GlobalOptions) -> 
 
     config.process.iter().for_each(|rule| rule.process(&mut block));
 
-    let mut generator = LuaGenerator::new(config.column_span);
-    block.to_lua(&mut generator);
-    let minified = generator.into_string();
+    let lua_code = options.format.generate(&config, &block);
 
-    write_file(&output, &minified)
+    write_file(&output, &lua_code)
         .map_err(|io_error| CliError::OutputFile(output.clone(), format!("{}", io_error)))?;
 
     if global.verbose > 0 {

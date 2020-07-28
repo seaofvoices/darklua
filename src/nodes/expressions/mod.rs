@@ -18,7 +18,6 @@ pub use string::*;
 pub use table::*;
 pub use unary::*;
 
-use crate::lua_generator::{LuaGenerator, ToLua};
 use crate::nodes::FunctionCall;
 
 use std::num::FpCategory;
@@ -54,15 +53,15 @@ impl From<f64> for Expression {
             FpCategory::Nan => {
                 BinaryExpression::new(
                     BinaryOperator::Slash,
-                    DecimalNumber::new(0.0).into(),
-                    DecimalNumber::new(0.0).into(),
+                    DecimalNumber::new(0.0),
+                    DecimalNumber::new(0.0),
                 ).into()
             }
             FpCategory::Infinite => {
                 BinaryExpression::new(
                     BinaryOperator::Slash,
                     Expression::from(if value.is_sign_positive() { 1.0 } else { -1.0 }),
-                    DecimalNumber::new(0.0).into(),
+                    DecimalNumber::new(0.0),
                 ).into()
             }
             FpCategory::Zero => {
@@ -178,135 +177,5 @@ impl From<TableExpression> for Expression {
 impl From<UnaryExpression> for Expression {
     fn from(unary: UnaryExpression) -> Self {
         Self::Unary(Box::new(unary))
-    }
-}
-
-fn break_variable_arguments(last_string: &str) -> bool {
-    if let Some('.') = last_string.chars().last() {
-        true
-    } else if let Some(first_char) = last_string.chars().next() {
-        first_char == '.' || first_char.is_digit(10)
-    } else {
-        false
-    }
-}
-
-impl ToLua for Expression {
-    fn to_lua(&self, generator: &mut LuaGenerator) {
-        match self {
-            Self::Binary(binary_expression) => binary_expression.to_lua(generator),
-            Self::Call(call) => call.to_lua(generator),
-            Self::False => generator.push_str("false"),
-            Self::Field(field) => field.to_lua(generator),
-            Self::Function(function) => function.to_lua(generator),
-            Self::Identifier(identifier) => generator.push_str(identifier),
-            Self::Index(index) => index.to_lua(generator),
-            Self::Nil => generator.push_str("nil"),
-            Self::Number(number) => number.to_lua(generator),
-            Self::Parenthese(expression) => {
-                generator.push_char('(');
-                expression.to_lua(generator);
-                generator.push_char(')');
-            }
-            Self::String(string) => string.to_lua(generator),
-            Self::Table(table) => table.to_lua(generator),
-            Self::True => generator.push_str("true"),
-            Self::Unary(unary_expression) => unary_expression.to_lua(generator),
-            Self::VariableArguments => {
-                generator.push_str_and_break_if("...", break_variable_arguments);
-            }
-        }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    mod numbers {
-        use super::*;
-
-        macro_rules! snapshots {
-            ($($name:ident($input:expr)),+) => {
-                $(
-                    mod $name {
-                        use super::*;
-                        use insta::assert_snapshot;
-                        use insta::assert_debug_snapshot;
-
-                        #[test]
-                        fn expression() {
-                            assert_debug_snapshot!(
-                                "expression",
-                                Expression::from($input)
-                            );
-                        }
-
-                        #[test]
-                        fn lua() {
-                            assert_snapshot!(
-                                "lua_float",
-                                Expression::from($input).to_lua_string()
-                            );
-                        }
-                    }
-                )+
-            };
-        }
-
-        snapshots!(
-            snaphshot_1(1.0),
-            snaphshot_0_5(0.5),
-            snaphshot_123(123.0),
-            snaphshot_0_005(0.005),
-            snaphshot_nan(0.0/0.0),
-            snaphshot_positive_infinity(1.0/0.0),
-            snaphshot_negative_infinity(-1.0/0.0),
-            snaphshot_very_small(1.2345e-50),
-            snapshot_thousand(1000.0),
-            snaphshot_very_large(1.2345e50),
-            snapshot_float_below_thousand(100.25),
-            snapshot_float_above_thousand(2000.05)
-        );
-    }
-
-    mod to_lua {
-        use super::*;
-
-        #[test]
-        fn generate_false_expression() {
-            let output = Expression::False.to_lua_string();
-
-            assert_eq!(output, "false");
-        }
-
-        #[test]
-        fn generate_nil_expression() {
-            let output = Expression::Nil.to_lua_string();
-
-            assert_eq!(output, "nil");
-        }
-
-        #[test]
-        fn generate_parenthese_expression() {
-            let inner_expression = Box::new(Expression::True);
-            let output = Expression::Parenthese(inner_expression).to_lua_string();
-
-            assert_eq!(output, "(true)");
-        }
-
-        #[test]
-        fn generate_true_expression() {
-            let output = Expression::True.to_lua_string();
-
-            assert_eq!(output, "true");
-        }
-
-        #[test]
-        fn generate_variable_arguments_expression() {
-            let output = Expression::VariableArguments.to_lua_string();
-
-            assert_eq!(output, "...");
-        }
     }
 }

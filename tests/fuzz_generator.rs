@@ -8,8 +8,7 @@ use darklua_core::{
         UnaryExpression,
         UnaryOperator,
     },
-    LuaGenerator,
-    ToLua,
+    generator::LuaGenerator,
 };
 use std::time::{Duration, Instant};
 
@@ -19,10 +18,10 @@ mod utils;
 use fuzz::*;
 
 macro_rules! fuzz_test_expression {
-    ($node:expr,  $column_span:expr) => {
+    ($node:expr,  $generator:expr) => {
         let node: Expression = $node.into();
-        let mut generator = LuaGenerator::new($column_span);
-        node.to_lua(&mut generator);
+        let mut generator = $generator;
+        generator.write_expression(&node);
         let lua_code = format!("return {}", generator.into_string());
 
         let mut generated_block = match utils::try_parse_input(&lua_code) {
@@ -58,6 +57,10 @@ macro_rules! fuzz_test_expression {
             _ => panic!("return statement expected"),
         };
 
+        let mut compare_generator = darklua_core::generator::ReadableLuaGenerator::default();
+        compare_generator.write_expression(&generated_node);
+        let generated_lua_code = compare_generator.into_string();
+
         assert_eq!(
             node,
             generated_node,
@@ -76,20 +79,17 @@ macro_rules! fuzz_test_expression {
             node,
             lua_code,
             generated_node,
-            generated_node.to_lua_string(),
+            generated_lua_code,
         );
-    };
-    ($node:expr) => {
-        fuzz_test_expression!($node, 80);
     };
 }
 
 macro_rules! fuzz_test_block {
-    ($context:expr, $column_span:expr) => {
+    ($context:expr, $generator:expr) => {
         let block = Block::fuzz(&mut $context);
 
-        let mut generator = LuaGenerator::new($column_span);
-        block.to_lua(&mut generator);
+        let mut generator = $generator;
+        generator.write_block(&block);
         let lua_code = generator.into_string();
 
         let generated_block = match utils::try_parse_input(&lua_code) {
@@ -111,6 +111,10 @@ macro_rules! fuzz_test_block {
             ),
         };
 
+        let mut compare_generator = darklua_core::generator::ReadableLuaGenerator::default();
+        compare_generator.write_block(&generated_block);
+        let generated_lua_code = compare_generator.into_string();
+
         assert_eq!(
             block,
             generated_block,
@@ -129,11 +133,8 @@ macro_rules! fuzz_test_block {
             block,
             lua_code,
             generated_block,
-            generated_block.to_lua_string(),
+            generated_lua_code,
         );
-    };
-    ($context:expr) => {
-        fuzz_test_block!($context, 80);
     };
 }
 
@@ -158,8 +159,7 @@ fn get_fuzz_duration() -> Duration {
     Duration::from_millis(millis)
 }
 
-#[test]
-fn fuzz_three_terms_binary_expressions() {
+fn fuzz_three_terms_binary_expressions<T: LuaGenerator + Clone>(generator: T) {
     run_for_minimum_time(|| {
         let mut empty_context = FuzzContext::new(0, 0);
         let first = Expression::True;
@@ -201,12 +201,11 @@ fn fuzz_three_terms_binary_expressions() {
             }
         );
 
-        fuzz_test_expression!(binary);
+        fuzz_test_expression!(binary, generator.clone());
     });
 }
 
-#[test]
-fn fuzz_binary_expressions_with_one_unary_expression() {
+fn fuzz_binary_expressions_with_one_unary_expression<T: LuaGenerator + Clone>(generator: T) {
     run_for_minimum_time(|| {
         let mut empty_context = FuzzContext::new(0, 0);
         let first = Expression::True;
@@ -239,43 +238,152 @@ fn fuzz_binary_expressions_with_one_unary_expression() {
             }
         );
 
-        fuzz_test_expression!(binary);
+        fuzz_test_expression!(binary, generator.clone());
     });
 }
 
-#[test]
-fn fuzz_single_statement() {
+fn fuzz_single_statement<T: LuaGenerator + Clone>(generator: T) {
     run_for_minimum_time(|| {
-        fuzz_test_block!(FuzzContext::new(1, 5));
+        fuzz_test_block!(FuzzContext::new(1, 5), generator.clone());
     });
 }
 
-#[test]
-fn fuzz_small_block() {
+fn fuzz_tiny_block<T: LuaGenerator + Clone>(generator: T) {
     run_for_minimum_time(|| {
-        fuzz_test_block!(FuzzContext::new(20, 40));
+        fuzz_test_block!(FuzzContext::new(2, 8), generator.clone());
     });
 }
 
-#[test]
-fn fuzz_medium_block() {
+fn fuzz_small_block<T: LuaGenerator + Clone>(generator: T) {
     run_for_minimum_time(|| {
-        fuzz_test_block!(FuzzContext::new(100, 200));
+        fuzz_test_block!(FuzzContext::new(20, 40), generator.clone());
     });
 }
 
-#[test]
-fn fuzz_large_block() {
+fn fuzz_medium_block<T: LuaGenerator + Clone>(generator: T) {
     run_for_minimum_time(|| {
-        fuzz_test_block!(FuzzContext::new(200, 500));
+        fuzz_test_block!(FuzzContext::new(100, 200), generator.clone());
     });
 }
 
-#[test]
-fn fuzz_column_span() {
+fn fuzz_large_block<T: LuaGenerator + Clone>(generator: T) {
     run_for_minimum_time(|| {
-        for i in 0..80 {
-            fuzz_test_block!(FuzzContext::new(20, 40), i);
-        }
+        fuzz_test_block!(FuzzContext::new(200, 500), generator.clone());
     });
+}
+
+mod dense_generator {
+    use darklua_core::{
+        nodes::Block,
+        generator::{LuaGenerator, DenseLuaGenerator},
+    };
+    use super::fuzz::*;
+    use super::utils;
+
+    fn generator() -> DenseLuaGenerator {
+        DenseLuaGenerator::new(80)
+    }
+
+    #[test]
+    fn fuzz_three_terms_binary_expressions() {
+        super::fuzz_three_terms_binary_expressions(generator());
+    }
+
+    #[test]
+    fn fuzz_binary_expressions_with_one_unary_expression() {
+        super::fuzz_binary_expressions_with_one_unary_expression(generator());
+    }
+
+    #[test]
+    fn fuzz_single_statement() {
+        super::fuzz_single_statement(generator());
+    }
+
+    #[test]
+    fn fuzz_tiny_block() {
+        super::fuzz_tiny_block(generator());
+    }
+
+    #[test]
+    fn fuzz_small_block() {
+        super::fuzz_small_block(generator());
+    }
+
+    #[test]
+    fn fuzz_medium_block() {
+        super::fuzz_medium_block(generator());
+    }
+
+    #[test]
+    fn fuzz_large_block() {
+        super::fuzz_large_block(generator());
+    }
+
+    #[test]
+    fn fuzz_column_span() {
+        super::run_for_minimum_time(|| {
+            for i in 0..80 {
+                let generator = DenseLuaGenerator::new(i);
+                fuzz_test_block!(FuzzContext::new(20, 40), generator);
+            }
+        });
+    }
+}
+
+mod readable_generator {
+    use darklua_core::{
+        nodes::Block,
+        generator::{LuaGenerator, ReadableLuaGenerator},
+    };
+    use super::fuzz::*;
+    use super::utils;
+
+    fn generator() -> ReadableLuaGenerator {
+        ReadableLuaGenerator::new(80)
+    }
+
+    #[test]
+    fn fuzz_three_terms_binary_expressions() {
+        super::fuzz_three_terms_binary_expressions(generator());
+    }
+
+    #[test]
+    fn fuzz_binary_expressions_with_one_unary_expression() {
+        super::fuzz_binary_expressions_with_one_unary_expression(generator());
+    }
+
+    #[test]
+    fn fuzz_single_statement() {
+        super::fuzz_single_statement(generator());
+    }
+
+    #[test]
+    fn fuzz_tiny_block() {
+        super::fuzz_tiny_block(generator());
+    }
+
+    #[test]
+    fn fuzz_small_block() {
+        super::fuzz_small_block(generator());
+    }
+
+    #[test]
+    fn fuzz_medium_block() {
+        super::fuzz_medium_block(generator());
+    }
+
+    #[test]
+    fn fuzz_large_block() {
+        super::fuzz_large_block(generator());
+    }
+
+    #[test]
+    fn fuzz_column_span() {
+        super::run_for_minimum_time(|| {
+            for i in 0..80 {
+                let generator = ReadableLuaGenerator::new(i);
+                fuzz_test_block!(FuzzContext::new(20, 40), generator);
+            }
+        });
+    }
 }

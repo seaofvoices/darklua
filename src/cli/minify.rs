@@ -7,7 +7,7 @@ use crate::cli::utils::{
     FileProcessing,
 };
 
-use darklua_core::{LuaGenerator, ToLua, Parser};
+use darklua_core::{generator::{DenseLuaGenerator, LuaGenerator}, Parser};
 use std::path::PathBuf;
 use std::fs;
 use std::process;
@@ -46,8 +46,8 @@ fn process(file: &FileProcessing, options: &Options, global: &GlobalOptions) -> 
     let block = parser.parse(&input)
         .map_err(|parser_error| CliError::Parser(source.clone(), parser_error))?;
 
-    let mut generator = LuaGenerator::new(config.column_span);
-    block.to_lua(&mut generator);
+    let mut generator = DenseLuaGenerator::new(config.column_span);
+    generator.write_block(&block);
     let minified = generator.into_string();
 
     write_file(&output, &minified)

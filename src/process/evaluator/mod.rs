@@ -252,7 +252,7 @@ mod test {
                 $(
                     #[test]
                     fn $name() {
-                        let binary = BinaryExpression::new($operator, $left.into(), $right.into());
+                        let binary = BinaryExpression::new($operator, $left, $right);
 
                         let result = Evaluator::default().evaluate(&binary.into());
 
@@ -429,16 +429,16 @@ mod test {
                         fn equal() {
                             let binary = BinaryExpression::new(
                                 BinaryOperator::Equal,
-                                $left.into(),
-                                $right.into(),
+                                $left,
+                                $right,
                             );
 
                             assert_eq!($value, Evaluator::default().evaluate(&binary.into()));
 
                             let binary = BinaryExpression::new(
                                 BinaryOperator::Equal,
-                                $right.into(),
-                                $left.into(),
+                                $right,
+                                $left,
                             );
 
                             assert_eq!($value, Evaluator::default().evaluate(&binary.into()));
@@ -453,16 +453,16 @@ mod test {
                             };
                             let binary = BinaryExpression::new(
                                 BinaryOperator::NotEqual,
-                                $left.into(),
-                                $right.into()
+                                $left,
+                                $right,
                             );
 
                             assert_eq!(value, Evaluator::default().evaluate(&binary.into()));
 
                             let binary = BinaryExpression::new(
                                 BinaryOperator::NotEqual,
-                                $right.into(),
-                                $left.into(),
+                                $right,
+                                $left,
                             );
 
                             assert_eq!(value, Evaluator::default().evaluate(&binary.into()));
@@ -506,7 +506,7 @@ mod test {
                 $(
                     #[test]
                     fn $name() {
-                        let unary = UnaryExpression::new($operator, $input.into());
+                        let unary = UnaryExpression::new($operator, $input);
                         assert_eq!($value, Evaluator::default().evaluate(&unary.into()));
                     }
                 )*

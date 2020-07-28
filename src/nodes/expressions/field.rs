@@ -1,5 +1,4 @@
 use crate::nodes::Prefix;
-use crate::lua_generator::{LuaGenerator, ToLua};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FieldExpression {
@@ -15,31 +14,17 @@ impl FieldExpression {
         }
     }
 
+    #[inline]
     pub fn get_prefix(&self) -> &Prefix {
         &self.prefix
     }
 
+    #[inline]
+    pub fn get_field(&self) -> &String {
+        &self.field
+    }
+
     pub fn mutate_prefix(&mut self) -> &mut Prefix {
         &mut self.prefix
-    }
-}
-
-impl ToLua for FieldExpression {
-    fn to_lua(&self, generator: &mut LuaGenerator) {
-        self.prefix.to_lua(generator);
-        generator.push_char('.');
-        generator.push_str(&self.field);
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn generate_identifier() {
-        let output = FieldExpression::new(Prefix::from_name("foo"), "bar").to_lua_string();
-
-        assert_eq!(output, "foo.bar");
     }
 }

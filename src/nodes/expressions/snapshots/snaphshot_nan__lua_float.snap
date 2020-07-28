@@ -1,5 +1,0 @@
----
-source: src/nodes/expressions/mod.rs
-expression: "Expression::from(0.0 / 0.0).to_lua_string()"
----
-0/0

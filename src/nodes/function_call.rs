@@ -1,4 +1,3 @@
-use crate::lua_generator::{LuaGenerator, ToLua};
 use crate::nodes::{
     Arguments,
     Prefix,
@@ -38,48 +37,43 @@ impl FunctionCall {
         self
     }
 
+    #[inline]
     pub fn get_arguments(&self) -> &Arguments {
         &self.arguments
     }
 
+    #[inline]
     pub fn get_method(&self) -> Option<&String> {
         self.method.as_ref()
     }
 
+    #[inline]
     pub fn get_prefix(&self) -> &Prefix {
         &self.prefix
     }
 
+    #[inline]
     pub fn take_method(&mut self) -> Option<String> {
         self.method.take()
     }
 
+    #[inline]
     pub fn set_arguments(&mut self, arguments: Arguments) {
         self.arguments = arguments;
     }
 
+    #[inline]
     pub fn set_method(&mut self, method: String) {
         self.method.replace(method);
     }
 
+    #[inline]
     pub fn mutate_arguments(&mut self) -> &mut Arguments {
         &mut self.arguments
     }
 
+    #[inline]
     pub fn mutate_prefix(&mut self) -> &mut Prefix {
         &mut self.prefix
-    }
-}
-
-impl ToLua for FunctionCall {
-    fn to_lua(&self, generator: &mut LuaGenerator) {
-        self.prefix.to_lua(generator);
-
-        if let Some(method) = &self.method {
-            generator.push_char(':');
-            generator.push_str(&method);
-        }
-
-        self.arguments.to_lua(generator);
     }
 }

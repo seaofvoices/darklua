@@ -1,4 +1,3 @@
-use crate::lua_generator::{LuaGenerator, ToLua};
 use crate::nodes::Block;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -33,8 +32,8 @@ impl LocalFunctionStatement {
         }
     }
 
-    pub fn with_parameter(mut self, parameter: String) -> Self {
-        self.parameters.push(parameter);
+    pub fn with_parameter<S: Into<String>>(mut self, parameter: S) -> Self {
+        self.parameters.push(parameter.into());
         self
     }
 
@@ -64,6 +63,11 @@ impl LocalFunctionStatement {
     }
 
     #[inline]
+    pub fn get_parameters(&self) -> &Vec<String> {
+        &self.parameters
+    }
+
+    #[inline]
     pub fn get_name(&self) -> &str {
         &self.identifier
     }
@@ -79,85 +83,14 @@ impl LocalFunctionStatement {
     }
 }
 
-impl ToLua for LocalFunctionStatement {
-    fn to_lua(&self, generator: &mut LuaGenerator) {
-        generator.push_str("local");
-        generator.push_str("function");
-        generator.push_str(&self.identifier);
-        generator.push_char('(');
-        generator.for_each_and_between(
-            &self.parameters,
-            |generator, parameter| generator.push_str(parameter),
-            |generator| generator.push_char(','),
-        );
-
-        if self.is_variadic {
-            if self.parameters.len() > 0 {
-                generator.push_char(',');
-            };
-            generator.push_str("...");
-        };
-
-        generator.push_char(')');
-        self.block.to_lua(generator);
-        generator.push_str("end");
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
-    fn generate_empty_function() {
-        let output = LocalFunctionStatement::from_name("foo", Block::default())
-            .to_lua_string();
-
-        assert_eq!(output, "local function foo()end");
-    }
-
-    #[test]
-    fn generate_empty_variadic_function() {
-        let output = LocalFunctionStatement::from_name("foo", Block::default())
-            .variadic()
-            .to_lua_string();
-
-        assert_eq!(output, "local function foo(...)end");
-    }
-
-    #[test]
-    fn generate_empty_function_with_one_parameter() {
-        let output = LocalFunctionStatement::from_name("foo", Block::default())
-            .with_parameter("bar".to_owned())
-            .to_lua_string();
-
-        assert_eq!(output, "local function foo(bar)end");
-    }
-
-    #[test]
-    fn generate_empty_function_with_two_parameters() {
-        let output = LocalFunctionStatement::from_name("foo", Block::default())
-            .with_parameter("bar".to_owned())
-            .with_parameter("baz".to_owned())
-            .to_lua_string();
-
-        assert_eq!(output, "local function foo(bar,baz)end");
-    }
-
-    #[test]
-    fn generate_empty_variadic_function_with_one_parameter() {
-        let output = LocalFunctionStatement::from_name("foo", Block::default())
-            .with_parameter("bar".to_owned())
-            .variadic()
-            .to_lua_string();
-
-        assert_eq!(output, "local function foo(bar,...)end");
-    }
-
-    #[test]
     fn has_parameter_is_true_when_single_param_matches() {
         let func = LocalFunctionStatement::from_name("foo", Block::default())
-            .with_parameter("bar".to_owned());
+            .with_parameter("bar");
 
         assert!(func.has_parameter("bar"));
     }
@@ -165,8 +98,8 @@ mod test {
     #[test]
     fn has_parameter_is_true_when_at_least_one_param_matches() {
         let func = LocalFunctionStatement::from_name("foo", Block::default())
-            .with_parameter("bar".to_owned())
-            .with_parameter("baz".to_owned());
+            .with_parameter("bar")
+            .with_parameter("baz");
 
         assert!(func.has_parameter("baz"));
     }
@@ -174,8 +107,8 @@ mod test {
     #[test]
     fn has_parameter_is_false_when_none_matches() {
         let func = LocalFunctionStatement::from_name("foo", Block::default())
-            .with_parameter("bar".to_owned())
-            .with_parameter("baz".to_owned());
+            .with_parameter("bar")
+            .with_parameter("baz");
 
         assert!(!func.has_parameter("foo"));
     }
