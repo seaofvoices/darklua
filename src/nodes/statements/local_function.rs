@@ -68,7 +68,7 @@ impl LocalFunctionStatement {
     }
 
     #[inline]
-    pub fn get_name(&self) -> &str {
+    pub fn get_identifier(&self) -> &String {
         &self.identifier
     }
 

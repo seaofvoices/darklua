@@ -1,4 +1,4 @@
-use crate::process::NodeProcessor;
+use crate::process::NodeProcessorMut;
 
 /// A processor to find usage of a given set of identifiers.
 ///
@@ -8,12 +8,12 @@ use crate::process::NodeProcessor;
 /// ```
 /// # use darklua_core::nodes::Expression;
 /// # use darklua_core::process::processors::FindVariables;
-/// # use darklua_core::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
+/// # use darklua_core::process::{DefaultVisitorMut, NodeProcessorMut, NodeVisitorMut};
 /// let variables = vec!["foo".to_owned()];
 /// let mut find_foo = FindVariables::from(&variables);
 ///
 /// let mut foo_expression = Expression::Identifier("foo".to_owned());
-/// DefaultVisitor::visit_expression(&mut foo_expression, &mut find_foo);
+/// DefaultVisitorMut::visit_expression(&mut foo_expression, &mut find_foo);
 ///
 /// assert!(find_foo.has_found_usage());
 /// ```
@@ -22,11 +22,11 @@ use crate::process::NodeProcessor;
 /// ```
 /// # use darklua_core::nodes::Expression;
 /// # use darklua_core::process::processors::FindVariables;
-/// # use darklua_core::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
+/// # use darklua_core::process::{DefaultVisitorMut, NodeProcessorMut, NodeVisitorMut};
 /// # let variables = vec!["foo".to_owned()];
 /// # let mut find_foo = FindVariables::from(&variables);
 /// let mut bar_expression = Expression::Identifier("bar".to_owned());
-/// DefaultVisitor::visit_expression(&mut bar_expression, &mut find_foo);
+/// DefaultVisitorMut::visit_expression(&mut bar_expression, &mut find_foo);
 ///
 /// assert!(!find_foo.has_found_usage());
 /// ```
@@ -51,7 +51,7 @@ impl<'a> From<&'a Vec<String>> for FindVariables<'a> {
     }
 }
 
-impl<'a> NodeProcessor for FindVariables<'a> {
+impl<'a> NodeProcessorMut for FindVariables<'a> {
     fn process_variable_expression(&mut self, variable: &mut String) {
         if !self.usage_found {
             self.usage_found = self.variables.iter().any(|v| v == variable)

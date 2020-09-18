@@ -42,62 +42,62 @@ impl NodeCounter {
 }
 
 impl NodeProcessor for NodeCounter {
-    fn process_block(&mut self, _: &mut Block) {
+    fn process_block(&mut self, _: &Block) {
         self.block_count += 1;
     }
 
-    fn process_function_call(&mut self, _: &mut FunctionCall) {
+    fn process_function_call(&mut self, _: &FunctionCall) {
         self.function_call_count += 1;
     }
 
-    fn process_assign_statement(&mut self, _: &mut AssignStatement) {
+    fn process_assign_statement(&mut self, _: &AssignStatement) {
         self.assign_count += 1;
     }
 
-    fn process_do_statement(&mut self, _: &mut DoStatement) {
+    fn process_do_statement(&mut self, _: &DoStatement) {
         self.do_count += 1;
     }
 
-    fn process_function_statement(&mut self, _: &mut FunctionStatement) {
+    fn process_function_statement(&mut self, _: &FunctionStatement) {
         self.function_count += 1;
     }
 
-    fn process_generic_for_statement(&mut self, _: &mut GenericForStatement) {
+    fn process_generic_for_statement(&mut self, _: &GenericForStatement) {
         self.generic_for_count += 1;
     }
 
-    fn process_if_statement(&mut self, _: &mut IfStatement) {
+    fn process_if_statement(&mut self, _: &IfStatement) {
         self.if_count += 1;
     }
 
-    fn process_last_statement(&mut self, statement: &mut LastStatement) {
+    fn process_last_statement(&mut self, statement: &LastStatement) {
         match statement {
             LastStatement::Break => self.break_count += 1,
             LastStatement::Return(_) => self.return_count += 1,
         }
     }
 
-    fn process_local_assign_statement(&mut self, _: &mut LocalAssignStatement) {
+    fn process_local_assign_statement(&mut self, _: &LocalAssignStatement) {
         self.local_assign_count += 1;
     }
 
-    fn process_local_function_statement(&mut self, _: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, _: &LocalFunctionStatement) {
         self.local_function_count += 1;
     }
 
-    fn process_numeric_for_statement(&mut self, _: &mut NumericForStatement) {
+    fn process_numeric_for_statement(&mut self, _: &NumericForStatement) {
         self.numeric_for_count += 1;
     }
 
-    fn process_repeat_statement(&mut self, _: &mut RepeatStatement) {
+    fn process_repeat_statement(&mut self, _: &RepeatStatement) {
         self.repeat_count += 1;
     }
 
-    fn process_while_statement(&mut self, _: &mut WhileStatement) {
+    fn process_while_statement(&mut self, _: &WhileStatement) {
         self.while_count += 1;
     }
 
-    fn process_expression(&mut self, _: &mut Expression) {
+    fn process_expression(&mut self, _: &Expression) {
         self.expression_count += 1;
     }
 }

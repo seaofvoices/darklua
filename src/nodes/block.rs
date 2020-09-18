@@ -61,6 +61,11 @@ impl Block {
         &mut self.last_statement
     }
 
+    #[inline]
+    pub fn mutate_all_statements(&mut self) -> (&mut Vec<Statement>, &mut Option<LastStatement>) {
+        (&mut self.statements, &mut self.last_statement)
+    }
+
     pub fn clear(&mut self) {
         self.statements.clear();
         self.last_statement.take();

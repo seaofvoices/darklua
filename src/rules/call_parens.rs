@@ -1,5 +1,5 @@
 use crate::nodes::{Arguments, Block, Expression, FunctionCall, StringExpression, TableExpression};
-use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
+use crate::process::{DefaultVisitorMut, NodeProcessorMut, NodeVisitorMut};
 use crate::rules::{Rule, RuleConfigurationError, RuleProperties};
 
 use std::mem;
@@ -7,7 +7,7 @@ use std::mem;
 #[derive(Debug, Clone, Default)]
 struct Processor {}
 
-impl NodeProcessor for Processor {
+impl NodeProcessorMut for Processor {
     fn process_function_call(&mut self, call: &mut FunctionCall) {
         let new_arguments = match call.mutate_arguments() {
             Arguments::Tuple(expressions) if expressions.len() == 1 => {
@@ -45,7 +45,7 @@ pub struct RemoveFunctionCallParens {}
 impl Rule for RemoveFunctionCallParens {
     fn process(&self, block: &mut Block) {
         let mut processor = Processor::default();
-        DefaultVisitor::visit_block(block, &mut processor);
+        DefaultVisitorMut::visit_block(block, &mut processor);
     }
 
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {

@@ -7,6 +7,7 @@ end
 local function run(...)
     local command = concatCommands(...)
 
+    print(command)
     local status = os.execute(command)
 
     if status ~= 0 then
@@ -127,16 +128,17 @@ function DarkluaTest:execute(project)
     verifyRun(('rm -f %s'):format(CONFIG_FILE_NAME))
 
     local success, message = project:test(generatedName)
+    local cleanUp = function() verifyRun('rm -r -f ' .. generatedName) end
 
     if not success then
         return false, (('\nerror while executing test <%s> on <%s>:\n%s'):format(
             self.Name,
             project.RepositoryName,
             message
-        ))
+        )), cleanUp
     end
 
-    return true, 'success', function() verifyRun('rm -r -f ' .. generatedName) end
+    return true, 'success', cleanUp
 end
 
 -- define Lua projects and how to test them

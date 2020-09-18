@@ -6,7 +6,7 @@ use permutator::Permutator;
 use rename_processor::RenameProcessor;
 
 use crate::nodes::{Block};
-use crate::process::{NodeVisitor, ScopeVisitor};
+use crate::process::{NodeVisitorMut, ScopeVisitorMut};
 use crate::rules::{Rule, RuleConfigurationError, RuleProperties, RulePropertyValue};
 
 use std::collections::HashSet;
@@ -81,7 +81,7 @@ impl Default for RenameVariables {
 impl Rule for RenameVariables {
     fn process(&self, block: &mut Block) {
         let mut processor = RenameProcessor::new(self.globals.clone().into_iter());
-        ScopeVisitor::visit_block(block, &mut processor);
+        ScopeVisitorMut::visit_block(block, &mut processor);
     }
 
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {

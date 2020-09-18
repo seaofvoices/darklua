@@ -1,5 +1,5 @@
 use crate::nodes::{Block, Statement};
-use crate::process::{DefaultVisitor, Evaluator, NodeProcessor, NodeVisitor};
+use crate::process::{DefaultVisitorMut, Evaluator, NodeProcessorMut, NodeVisitorMut};
 use crate::rules::{Rule, RuleConfigurationError, RuleProperties};
 
 #[derive(Debug, Clone, Default)]
@@ -7,7 +7,7 @@ struct WhileFilter {
     evaluator: Evaluator,
 }
 
-impl NodeProcessor for WhileFilter {
+impl NodeProcessorMut for WhileFilter {
     fn process_block(&mut self, block: &mut Block) {
         block.filter_statements(|statement| match statement {
             Statement::While(while_statement) => {
@@ -30,7 +30,7 @@ pub struct RemoveUnusedWhile {}
 impl Rule for RemoveUnusedWhile {
     fn process(&self, block: &mut Block) {
         let mut processor = WhileFilter::default();
-        DefaultVisitor::visit_block(block, &mut processor);
+        DefaultVisitorMut::visit_block(block, &mut processor);
     }
 
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {

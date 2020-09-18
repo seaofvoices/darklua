@@ -11,6 +11,6 @@ mod visitors;
 pub use evaluator::*;
 #[cfg(test)]
 pub use node_counter::NodeCounter;
-pub use node_processor::NodeProcessor;
-pub use scope_visitor::{Scope, ScopeVisitor};
-pub use visitors::{DefaultVisitor, NodeVisitor};
+pub use node_processor::{NodeProcessor, NodeProcessorMut};
+pub use scope_visitor::{Scope, ScopeMut, ScopeVisitor, ScopeVisitorMut};
+pub use visitors::{DefaultVisitor, DefaultVisitorMut, NodeVisitor, NodeVisitorMut};

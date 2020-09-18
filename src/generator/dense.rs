@@ -315,7 +315,7 @@ impl LuaGenerator for DenseLuaGenerator {
         self.push_str("function");
         let name = function.get_name();
 
-        self.push_str(name.get_name());
+        self.push_str(name.get_identifier());
         name.get_field_names().iter()
             .for_each(|field| {
                 self.push_char('.');
@@ -401,7 +401,7 @@ impl LuaGenerator for DenseLuaGenerator {
 
     fn write_local_function(&mut self, function: &nodes::LocalFunctionStatement) {
         self.push_str("local function");
-        self.push_str(function.get_name());
+        self.push_str(function.get_identifier());
         self.push_char('(');
 
         let parameters = function.get_parameters();

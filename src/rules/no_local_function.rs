@@ -5,7 +5,7 @@ use crate::nodes::{
     LocalFunctionStatement,
     Statement
 };
-use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor, processors::FindVariables};
+use crate::process::{DefaultVisitorMut, NodeProcessorMut, NodeVisitorMut, processors::FindVariables};
 use crate::rules::{Rule, RuleConfigurationError, RuleProperties};
 
 use serde::ser::{Serialize, Serializer};
@@ -21,16 +21,16 @@ impl Processor {
         mem::swap(function_expression.mutate_block(), local_function.mutate_block());
         mem::swap(function_expression.mutate_parameters(), local_function.mutate_parameters());
 
-        LocalAssignStatement::from_variable(local_function.get_name())
+        LocalAssignStatement::from_variable(local_function.get_identifier())
             .with_value(function_expression)
             .into()
     }
 }
 
-impl NodeProcessor for Processor {
+impl NodeProcessorMut for Processor {
     fn process_statement(&mut self, statement: &mut Statement) {
         if let Statement::LocalFunction(local_function) = statement {
-            let name = local_function.get_name();
+            let name = local_function.get_identifier();
 
             if local_function.has_parameter(name) {
                 let mut assign = self.convert(local_function);
@@ -38,7 +38,7 @@ impl NodeProcessor for Processor {
             } else {
                 let identifiers = vec![name.to_owned()];
                 let mut find_usage = FindVariables::from(&identifiers);
-                DefaultVisitor::visit_block(local_function.mutate_block(), &mut find_usage);
+                DefaultVisitorMut::visit_block(local_function.mutate_block(), &mut find_usage);
 
                 if !find_usage.has_found_usage() {
                     let mut assign = self.convert(local_function);
@@ -58,7 +58,7 @@ pub struct ConvertLocalFunctionToAssign {}
 impl Rule for ConvertLocalFunctionToAssign {
     fn process(&self, block: &mut Block) {
         let mut processor = Processor::default();
-        DefaultVisitor::visit_block(block, &mut processor);
+        DefaultVisitorMut::visit_block(block, &mut processor);
     }
 
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {

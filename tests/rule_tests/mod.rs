@@ -52,5 +52,6 @@ mod remove_call_parens;
 mod remove_empty_do;
 mod remove_method_definition;
 mod remove_unused_if_branch;
+mod remove_unused_variable;
 mod remove_unused_while;
 mod rename_variables;

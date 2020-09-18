@@ -40,7 +40,15 @@ impl LocalAssignStatement {
         self.values.push(value);
     }
 
-    pub fn for_each_assignment<F>(&mut self, mut callback: F)
+    pub fn for_each_assignment<F>(&self, mut callback: F)
+        where F: FnMut(&String, Option<&Expression>)
+    {
+        let mut values = self.values.iter();
+        self.variables.iter()
+            .for_each(|variable| callback(variable, values.next()));
+    }
+
+    pub fn for_each_assignment_mut<F>(&mut self, mut callback: F)
         where F: FnMut(&mut String, Option<&mut Expression>)
     {
         let mut values = self.values.iter_mut();

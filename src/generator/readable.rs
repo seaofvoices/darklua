@@ -482,7 +482,7 @@ impl LuaGenerator for ReadableLuaGenerator {
 
     fn write_local_function(&mut self, function: &nodes::LocalFunctionStatement) {
         self.push_str("local function ");
-        self.raw_push_str(function.get_name());
+        self.raw_push_str(function.get_identifier());
         self.raw_push_char('(');
 
         let parameters = function.get_parameters();
@@ -600,7 +600,7 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.push_str("function ");
         let name = function.get_name();
 
-        self.raw_push_str(name.get_name());
+        self.raw_push_str(name.get_identifier());
         name.get_field_names().iter()
             .for_each(|field| {
                 self.raw_push_char('.');

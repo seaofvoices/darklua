@@ -6,7 +6,7 @@ use crate::nodes::{
     Prefix,
     StringExpression,
 };
-use crate::process::{NodeProcessor, NodeVisitor, Scope, ScopeVisitor};
+use crate::process::{NodeProcessorMut, NodeVisitorMut, ScopeMut, ScopeVisitorMut};
 use crate::rules::{Rule, RuleConfigurationError, RuleProperties, RulePropertyValue};
 
 use std::collections::HashSet;
@@ -44,7 +44,7 @@ impl ValueInjection {
     }
 }
 
-impl Scope for ValueInjection {
+impl ScopeMut for ValueInjection {
     fn push(&mut self) {
         self.identifiers.push(HashSet::new())
     }
@@ -66,7 +66,7 @@ impl Scope for ValueInjection {
     }
 }
 
-impl NodeProcessor for ValueInjection {
+impl NodeProcessorMut for ValueInjection {
     fn process_expression(&mut self, expression: &mut Expression) {
         if self.is_identifier_used(&self.identifier) {
             return
@@ -147,7 +147,7 @@ impl Default for InjectGlobalValue {
 impl Rule for InjectGlobalValue {
     fn process(&self, block: &mut Block) {
         let mut processor = ValueInjection::new(&self.identifier, self.value.clone());
-        ScopeVisitor::visit_block(block, &mut processor);
+        ScopeVisitorMut::visit_block(block, &mut processor);
     }
 
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {

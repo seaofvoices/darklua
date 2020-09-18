@@ -1,5 +1,5 @@
 use crate::nodes::{Block, LocalAssignStatement, Expression, Statement};
-use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
+use crate::process::{DefaultVisitorMut, NodeProcessorMut, NodeVisitorMut};
 use crate::process::processors::FindVariables;
 use crate::rules::{Rule, RuleConfigurationError, RuleProperties};
 
@@ -62,7 +62,7 @@ impl GroupLocalProcessor {
 
         next.mutate_values().iter_mut()
             .all(|expression| {
-                DefaultVisitor::visit_expression(expression, &mut find_variables);
+                DefaultVisitorMut::visit_expression(expression, &mut find_variables);
                 !find_variables.has_found_usage()
             })
     }
@@ -87,7 +87,7 @@ impl GroupLocalProcessor {
     }
 }
 
-impl NodeProcessor for GroupLocalProcessor {
+impl NodeProcessorMut for GroupLocalProcessor {
     fn process_block(&mut self, block: &mut Block) {
         let filter_statements = self.filter_statements(block);
 
@@ -104,7 +104,7 @@ pub struct GroupLocalAssignment {}
 impl Rule for GroupLocalAssignment {
     fn process(&self, block: &mut Block) {
         let mut processor = GroupLocalProcessor::default();
-        DefaultVisitor::visit_block(block, &mut processor);
+        DefaultVisitorMut::visit_block(block, &mut processor);
     }
 
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {

@@ -1,5 +1,5 @@
 use crate::nodes::{Block, Statement};
-use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
+use crate::process::{DefaultVisitorMut, NodeProcessorMut, NodeVisitorMut};
 use crate::rules::{Rule, RuleConfigurationError, RuleProperties};
 
 struct EmptyDoFilter {
@@ -20,7 +20,7 @@ impl Default for EmptyDoFilter {
     }
 }
 
-impl NodeProcessor for EmptyDoFilter {
+impl NodeProcessorMut for EmptyDoFilter {
     fn process_block(&mut self, block: &mut Block) {
         block.filter_statements(|statement| match statement {
             Statement::Do(do_statement) => {
@@ -42,7 +42,7 @@ impl Rule for RemoveEmptyDo {
     fn process(&self, block: &mut Block) {
         while {
             let mut processor = EmptyDoFilter::default();
-            DefaultVisitor::visit_block(block, &mut processor);
+            DefaultVisitorMut::visit_block(block, &mut processor);
             processor.has_mutated()
         } {}
     }

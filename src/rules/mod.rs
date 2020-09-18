@@ -7,6 +7,7 @@ mod group_local;
 mod inject_value;
 mod method_def;
 mod no_local_function;
+mod remove_unused_variable;
 mod rename_variables;
 mod unused_if_branch;
 mod unused_while;
@@ -18,6 +19,7 @@ pub use group_local::*;
 pub use inject_value::*;
 pub use method_def::*;
 pub use no_local_function::*;
+pub use remove_unused_variable::*;
 pub use rename_variables::*;
 pub use unused_if_branch::*;
 pub use unused_while::*;
@@ -107,6 +109,7 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::new(RemoveUnusedWhile::default()),
         Box::new(RemoveEmptyDo::default()),
         Box::new(RemoveMethodDefinition::default()),
+        Box::new(RemoveUnusedVariable::default()),
         Box::new(ConvertLocalFunctionToAssign::default()),
         Box::new(GroupLocalAssignment::default()),
         Box::new(RenameVariables::default()),
@@ -127,6 +130,7 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_FUNCTION_CALL_PARENS => Box::new(RemoveFunctionCallParens::default()),
             REMOVE_METHOD_DEFINITION_RULE_NAME => Box::new(RemoveMethodDefinition::default()),
             REMOVE_UNUSED_IF_BRANCH_RULE_NAME => Box::new(RemoveUnusedIfBranch::default()),
+            REMOVE_UNUSED_VARIABLE_RULE_NAME => Box::new(RemoveUnusedVariable::default()),
             REMOVE_UNUSED_WHILE_RULE_NAME => Box::new(RemoveUnusedWhile::default()),
             RENAME_VARIABLES_RULE_NAME => Box::new(RenameVariables::default()),
             _ => return Err(format!("invalid rule name: {}", string)),

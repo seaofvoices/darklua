@@ -1,11 +1,11 @@
 use crate::nodes::{Block, FunctionStatement};
-use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
+use crate::process::{DefaultVisitorMut, NodeProcessorMut, NodeVisitorMut};
 use crate::rules::{Rule, RuleConfigurationError, RuleProperties};
 
 #[derive(Default)]
 struct FunctionMutator;
 
-impl NodeProcessor for FunctionMutator {
+impl NodeProcessorMut for FunctionMutator {
     fn process_function_statement(&mut self, function: &mut FunctionStatement) {
         function.remove_method();
     }
@@ -20,7 +20,7 @@ pub struct RemoveMethodDefinition {}
 impl Rule for RemoveMethodDefinition {
     fn process(&self, block: &mut Block) {
         let mut processor = FunctionMutator::default();
-        DefaultVisitor::visit_block(block, &mut processor);
+        DefaultVisitorMut::visit_block(block, &mut processor);
     }
 
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {

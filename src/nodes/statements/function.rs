@@ -49,7 +49,7 @@ impl FunctionName {
     }
 
     #[inline]
-    pub fn get_name(&self) -> &String {
+    pub fn get_identifier(&self) -> &String {
         &self.name
     }
 

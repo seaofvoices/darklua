@@ -1,5 +1,5 @@
 use crate::nodes::{Expression, LocalFunctionStatement};
-use crate::process::{Scope, NodeProcessor};
+use crate::process::{ScopeMut, NodeProcessorMut};
 use crate::rules::rename_variables::{globals, Permutator};
 
 use std::cmp::Ordering;
@@ -118,7 +118,7 @@ fn sort_identifiers(a: &str, b: &str) -> Ordering {
     }
 }
 
-impl Scope for RenameProcessor {
+impl ScopeMut for RenameProcessor {
     fn push(&mut self) {
         self.real_to_obfuscated.push(HashMap::new())
     }
@@ -144,7 +144,7 @@ impl Scope for RenameProcessor {
     }
 }
 
-impl NodeProcessor for RenameProcessor {
+impl NodeProcessorMut for RenameProcessor {
     fn process_variable_expression(&mut self, variable: &mut String) {
         if let Some(obfuscated_name) = self.get_obfuscated_name(&variable) {
             variable.replace_range(.., obfuscated_name);

@@ -1,5 +1,5 @@
 use crate::nodes::{Block, DoStatement, IfStatement, Statement};
-use crate::process::{DefaultVisitor, Evaluator, NodeProcessor, NodeVisitor};
+use crate::process::{DefaultVisitorMut, Evaluator, NodeProcessorMut, NodeVisitorMut};
 use crate::rules::{Rule, RuleConfigurationError, RuleProperties};
 
 use std::mem;
@@ -95,7 +95,7 @@ impl IfFilter {
     }
 }
 
-impl NodeProcessor for IfFilter {
+impl NodeProcessorMut for IfFilter {
     fn process_block(&mut self, block: &mut Block) {
         block.filter_statements(|statement| {
             let result = match statement {
@@ -125,7 +125,7 @@ pub struct RemoveUnusedIfBranch {}
 impl Rule for RemoveUnusedIfBranch {
     fn process(&self, block: &mut Block) {
         let mut processor = IfFilter::default();
-        DefaultVisitor::visit_block(block, &mut processor);
+        DefaultVisitorMut::visit_block(block, &mut processor);
     }
 
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {

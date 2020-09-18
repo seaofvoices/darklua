@@ -1,5 +1,5 @@
 use crate::nodes::{Block, Expression};
-use crate::process::{DefaultVisitor, Evaluator, NodeProcessor, NodeVisitor};
+use crate::process::{DefaultVisitorMut, Evaluator, NodeProcessorMut, NodeVisitorMut};
 use crate::rules::{Rule, RuleConfigurationError, RuleProperties};
 
 use std::mem;
@@ -25,7 +25,7 @@ impl Computer {
     }
 }
 
-impl NodeProcessor for Computer {
+impl NodeProcessorMut for Computer {
     fn process_expression(&mut self, expression: &mut Expression) {
         if let Some(replace_with) = self.replace_with(expression) {
             mem::replace(expression, replace_with);
@@ -42,7 +42,7 @@ pub struct ComputeExpression {}
 impl Rule for ComputeExpression {
     fn process(&self, block: &mut Block) {
         let mut processor = Computer::default();
-        DefaultVisitor::visit_block(block, &mut processor);
+        DefaultVisitorMut::visit_block(block, &mut processor);
     }
 
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
