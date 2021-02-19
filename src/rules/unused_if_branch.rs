@@ -107,7 +107,7 @@ impl NodeProcessorMut for IfFilter {
                 FilterResult::Keep => true,
                 FilterResult::Remove => false,
                 FilterResult::Replace(block) => {
-                    mem::replace(statement, DoStatement::new(block).into());
+                    *statement = DoStatement::new(block).into();
                     true
                 }
             }

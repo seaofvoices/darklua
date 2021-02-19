@@ -1,9 +1,10 @@
 macro_rules! test_rule {
-    ($rule:expr, $($name:ident ($input:literal) => $output:literal),*) => {
+    ($rule:expr, $($name:ident ($input:literal) => $output:literal),* $(,)?) => {
         $(
             #[test]
             fn $name() {
-                use darklua_core::{generator::{LuaGenerator, ReadableLuaGenerator}, rules::Rule};
+                use darklua_core::rules::Rule;
+                use darklua_core::generator::{LuaGenerator, ReadableLuaGenerator};
 
                 let mut block = $crate::utils::parse_input($input);
                 let expect_block = $crate::utils::parse_input($output);
@@ -27,18 +28,34 @@ macro_rules! test_rule {
 }
 
 macro_rules! test_rule_wihout_effects {
-    ($rule:expr, $($name:ident ($input:literal)),*) => {
+    ($rule:expr, $($name:ident ($input:literal)),* $(,)?) => {
         $(
             #[test]
             fn $name() {
                 use darklua_core::rules::Rule;
+                use darklua_core::generator::{LuaGenerator, ReadableLuaGenerator};
 
                 let mut block = $crate::utils::parse_input($input);
+
+                let mut generator = ReadableLuaGenerator::default();
+                generator.write_block(&block);
+                let input_code = generator.into_string();
+
                 let expect_block = block.clone();
 
                 $rule.process(&mut block);
 
-                assert_eq!(block, expect_block);
+                let mut generator = ReadableLuaGenerator::default();
+                generator.write_block(&block);
+                let output_code = generator.into_string();
+
+                assert_eq!(
+                    block,
+                    expect_block,
+                    "\nexpected code:\n{}\nbut received:\n{}",
+                    input_code,
+                    output_code
+                );
             }
         )*
     };

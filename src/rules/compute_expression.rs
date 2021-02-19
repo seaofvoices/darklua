@@ -2,8 +2,6 @@ use crate::nodes::{Block, Expression};
 use crate::process::{DefaultVisitorMut, Evaluator, NodeProcessorMut, NodeVisitorMut};
 use crate::rules::{Rule, RuleConfigurationError, RuleProperties};
 
-use std::mem;
-
 #[derive(Debug, Clone, Default)]
 struct Computer {
     evaluator: Evaluator,
@@ -28,7 +26,7 @@ impl Computer {
 impl NodeProcessorMut for Computer {
     fn process_expression(&mut self, expression: &mut Expression) {
         if let Some(replace_with) = self.replace_with(expression) {
-            mem::replace(expression, replace_with);
+            *expression = replace_with;
         }
     }
 }

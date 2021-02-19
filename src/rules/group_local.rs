@@ -3,7 +3,6 @@ use crate::process::{DefaultVisitorMut, NodeProcessorMut, NodeVisitorMut};
 use crate::process::processors::FindVariables;
 use crate::rules::{Rule, RuleConfigurationError, RuleProperties};
 
-use std::mem;
 use std::iter;
 
 #[derive(Debug, Clone, Default)]
@@ -91,7 +90,7 @@ impl NodeProcessorMut for GroupLocalProcessor {
     fn process_block(&mut self, block: &mut Block) {
         let filter_statements = self.filter_statements(block);
 
-        mem::replace(block.mutate_statements(), filter_statements);
+        *block.mutate_statements() = filter_statements;
     }
 }
 

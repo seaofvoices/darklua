@@ -10,7 +10,6 @@ use crate::process::{NodeProcessorMut, NodeVisitorMut, ScopeMut, ScopeVisitorMut
 use crate::rules::{Rule, RuleConfigurationError, RuleProperties, RulePropertyValue};
 
 use std::collections::HashSet;
-use std::mem;
 
 #[derive(Debug, Clone)]
 struct ValueInjection {
@@ -79,7 +78,7 @@ impl NodeProcessorMut for ValueInjection {
 
         if replace {
             let new_expression = self.expression.clone();
-            mem::replace(expression, new_expression);
+            *expression = new_expression;
         }
     }
 
@@ -91,7 +90,7 @@ impl NodeProcessorMut for ValueInjection {
 
         if replace {
             let new_prefix = Prefix::Parenthese(self.expression.clone());
-            mem::replace(prefix, new_prefix);
+            *prefix = new_prefix;
         }
     }
 }

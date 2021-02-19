@@ -31,7 +31,7 @@ impl NodeProcessorMut for Processor {
         };
 
         if let Some(new_arguments) = new_arguments {
-            mem::replace(call.mutate_arguments(), new_arguments);
+            *call.mutate_arguments() = new_arguments;
         }
     }
 }
