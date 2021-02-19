@@ -1,0 +1,6 @@
+---
+source: src/rules/remove_unused_variable/mod.rs
+expression: rule
+
+---
+"remove_unused_variable"

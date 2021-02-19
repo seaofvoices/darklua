@@ -1,0 +1,8 @@
+---
+source: src/generator/mod.rs
+expression: generator.into_string()
+
+---
+do
+    do end
+end
