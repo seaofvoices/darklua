@@ -1,7 +1,7 @@
 use crate::nodes::*;
 
 /// Used by the NodeVisitor trait, a NodeProcessor object is passed to each node to
-/// process each node.
+/// process each node. For a mutable processor, use [`NodeProcessorMut`].
 pub trait NodeProcessor {
     fn process_block(&mut self, _: &Block) {}
     fn process_statement(&mut self, _: &Statement) {}
@@ -19,6 +19,11 @@ pub trait NodeProcessor {
     fn process_numeric_for_statement(&mut self, _: &NumericForStatement) {}
     fn process_repeat_statement(&mut self, _: &RepeatStatement) {}
     fn process_while_statement(&mut self, _: &WhileStatement) {}
+
+    /// Called when a variable is used on the left side of an assignment (in a function
+    /// assignment statement or a variable assignment statement). The difference between
+    /// this function and [`Self::process_variable_expression()`]
+    fn process_variable_assignment(&mut self, _: &String) {}
 
     fn process_expression(&mut self, _: &Expression) {}
 
@@ -54,6 +59,11 @@ pub trait NodeProcessorMut {
     fn process_numeric_for_statement(&mut self, _: &mut NumericForStatement) {}
     fn process_repeat_statement(&mut self, _: &mut RepeatStatement) {}
     fn process_while_statement(&mut self, _: &mut WhileStatement) {}
+
+    /// Called when a variable is used on the left side of an assignment (in a function
+    /// assignment statement or a variable assignment statement). The difference between
+    /// this function and [`Self::process_variable_expression()`]
+    fn process_variable_assignment(&mut self, _: &mut String) {}
 
     fn process_expression(&mut self, _: &mut Expression) {}
 

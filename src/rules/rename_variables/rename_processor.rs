@@ -150,6 +150,12 @@ impl NodeProcessorMut for RenameProcessor {
             variable.replace_range(.., obfuscated_name);
         }
     }
+
+    fn process_variable_assignment(&mut self, variable: &mut String) {
+        if let Some(obfuscated_name) = self.get_obfuscated_name(&variable) {
+            variable.replace_range(.., obfuscated_name);
+        }
+    }
 }
 
 #[cfg(test)]

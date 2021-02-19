@@ -2,6 +2,7 @@ use crate::nodes::{
     Expression,
     FieldExpression,
     IndexExpression,
+    Prefix,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -11,9 +12,53 @@ pub enum Variable {
     Index(Box<IndexExpression>),
 }
 
+fn get_root_identifier_from_expression(expression: &Expression) -> Option<&String> {
+    match expression {
+        Expression::Identifier(identifier) => Some(identifier),
+        Expression::Field(field) => {
+            get_root_identifier_from_prefix(field.get_prefix())
+        }
+        Expression::Index(index) => {
+            get_root_identifier_from_prefix(index.get_prefix())
+        }
+        Expression::Parenthese(expression) => {
+            get_root_identifier_from_expression(expression)
+        }
+        _ => None,
+    }
+}
+
+fn get_root_identifier_from_prefix(prefix: &Prefix) -> Option<&String> {
+    match prefix {
+        Prefix::Identifier(identifier) => Some(identifier),
+        Prefix::Field(field) => {
+            get_root_identifier_from_prefix(field.get_prefix())
+        }
+        Prefix::Index(index) => {
+            get_root_identifier_from_prefix(index.get_prefix())
+        }
+        Prefix::Parenthese(expression) => {
+            get_root_identifier_from_expression(expression)
+        }
+        Prefix::Call(_) => None,
+    }
+}
+
 impl Variable {
     pub fn new<S: Into<String>>(name: S) -> Self {
         Self::Identifier(name.into())
+    }
+
+    pub fn get_root_identifier(&self) -> Option<&String> {
+        match self {
+            Self::Identifier(identifier) => Some(identifier),
+            Self::Field(field) => {
+                get_root_identifier_from_prefix(field.get_prefix())
+            }
+            Self::Index(index) => {
+                get_root_identifier_from_prefix(index.get_prefix())
+            }
+        }
     }
 }
 

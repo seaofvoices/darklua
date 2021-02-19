@@ -87,7 +87,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
         statement.get_variables().iter()
             .for_each(|variable| match variable {
-                Variable::Identifier(identifier) => processor.process_variable_expression(identifier),
+                Variable::Identifier(identifier) => processor.process_variable_assignment(identifier),
                 Variable::Field(field) => Self::visit_field_expression(field, processor),
                 Variable::Index(index) => Self::visit_index_expression(index, processor),
             });
@@ -103,7 +103,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
     fn visit_function_statement(statement: &FunctionStatement, processor: &mut T) {
         processor.process_function_statement(statement);
-        processor.process_variable_expression(statement.get_name().get_identifier());
+        processor.process_variable_assignment(statement.get_name().get_identifier());
         Self::visit_block(statement.get_block(), processor);
     }
 
@@ -309,7 +309,7 @@ pub trait NodeVisitorMut<T: NodeProcessorMut> {
 
         statement.mutate_variables().iter_mut()
             .for_each(|variable| match variable {
-                Variable::Identifier(identifier) => processor.process_variable_expression(identifier),
+                Variable::Identifier(identifier) => processor.process_variable_assignment(identifier),
                 Variable::Field(field) => Self::visit_field_expression(field, processor),
                 Variable::Index(index) => Self::visit_index_expression(index, processor),
             });
@@ -325,7 +325,7 @@ pub trait NodeVisitorMut<T: NodeProcessorMut> {
 
     fn visit_function_statement(statement: &mut FunctionStatement, processor: &mut T) {
         processor.process_function_statement(statement);
-        processor.process_variable_expression(statement.mutate_function_name().mutate_identifier());
+        processor.process_variable_assignment(statement.mutate_function_name().mutate_identifier());
         Self::visit_block(statement.mutate_block(), processor);
     }
 

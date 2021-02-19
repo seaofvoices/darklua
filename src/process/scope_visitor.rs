@@ -89,7 +89,7 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
 
     fn visit_function_statement(statement: &FunctionStatement, scope: &mut T) {
         scope.process_function_statement(statement);
-        scope.process_variable_expression(statement.get_name().get_identifier());
+        scope.process_variable_assignment(statement.get_name().get_identifier());
 
         scope.push();
         statement.get_parameters().iter()

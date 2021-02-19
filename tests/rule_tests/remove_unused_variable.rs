@@ -2,20 +2,58 @@ use darklua_core::rules::{RemoveUnusedVariable, Rule};
 
 test_rule!(
     RemoveUnusedVariable::default(),
-    remove_unused_local("local foo = true return true") => "return true",
-    remove_two_unused_local("local foo, bar = true return true") => "return true",
-    remove_unused_local_function("local function foo() end return true") => "return true",
+    remove_unused_local("local foo = true") => "",
+    remove_two_unused_local("local foo, bar = true") => "",
+    remove_unused_local_function("local function foo() end") => "",
     remove_unused_local_function_single_statement("local function foo() end") => "",
-    remove_unused_local_function_recursive("local function foo() foo() end return true") => "return true",
-    remove_function_used_by_unused_function("local function foo() end local function bar() foo() end") => "",
+    remove_unused_local_function_recursive("local function foo() foo() end") => "",
+    remove_function_used_by_unused_function(
+        "local function foo() end local function bar() foo() end"
+    ) => "",
     remove_local_but_keep_function_call("local foo = print('hello')") => "print('hello')",
-    keep_only_used_constants("local a, b = true, false return b") => "local b = false return b",
-    remove_unused_after_last_used_in_tuple_extract("local a, b, c = ... return b") => "local a, b = ... return b",
-    remove_variable_before_tuple_extract("local a, b, c = true, ... return b") => "local b = ... return b",
-    remove_variable_before_tuple_extract_and_after_last_used("local a, b, c = true, ... return c")
-        => "local b, c = ... return c",
-    keep_variable_before_tuple_extract_and_remove_after_last_used("local a, b, c, d = true, ... return a and c")
-        => "local a, b, c = true, ... return a and c"
+    remove_two_locals_but_keep_function_call(
+        "local foo, bar = print('hello')"
+    ) => "print('hello')",
+    remove_two_locals_and_a_value_but_keep_function_call(
+        "local foo, bar = print('hello'), false"
+    ) => "print('hello')",
+    keep_only_used_constants(
+        "local a, b = true, false return b"
+    ) => "local b = false return b",
+    remove_unused_after_last_used_in_tuple_extract(
+        "local a, b, c = ... return b"
+    ) => "local a, b = ... return b",
+    remove_variable_before_tuple_extract(
+        "local a, b, c = true, ... return b"
+    ) => "local b = ... return b",
+    remove_variable_before_tuple_extract_and_after_last_used(
+        "local a, b, c = true, ... return c"
+    ) => "local b, c = ... return c",
+    keep_variable_before_tuple_extract_and_remove_after_last_used(
+        "local a, b, c, d = true, ... return a and c"
+    ) => "local a, b, c = true, ... return a and c",
+    // remove variables that are used more than once, but never read
+    remove_if_only_assigned("local a = true a = false") => "",
+    remove_if_only_field_assigned("local a = {} a.foo = false") => "",
+    remove_if_only_nested_field_assigned("local a = {b = {}} a.b.foo = false") => "",
+    remove_if_only_index_assigned("local a = {} a['foo'] = false") => "",
+    remove_if_only_nested_index_assigned("local a = {b = {}} a['b']['foo'] = false") => "",
+    remove_if_only_parenthese_field_assigned("local a = {} (a).foo = false") => "",
+    remove_if_only_assigned_with_a_function(
+        "local a = true function a() end"
+    ) => "",
+    remove_if_only_assigned_with_a_field_function(
+        "local a = {} function a.foo() end"
+    ) => "",
+    remove_if_only_assigned_with_a_method_function(
+        "local a = {} function a:foo() end"
+    ) => "",
+    remove_if_only_assigned_but_keep_used_variable(
+        "local a, b = true, false a = false return b"
+    ) => "local b = false return b",
+    // remove_but_keep_side_effect_from_index_expression(
+    //     "local a = {} a[print('foo')] = false"
+    // ) => "print('foo')",
 );
 
 test_rule_wihout_effects!(
@@ -23,7 +61,14 @@ test_rule_wihout_effects!(
     keep_returning_local_function("local function foo() end return foo"),
     keep_used_local_function("local function foo() end foo()"),
     keep_not_initialized_variable("local foo return foo"),
-    keep_previous_identifiers_for_tuple_extraction("local a, b, c = ... return c")
+    keep_previous_identifiers_for_tuple_extraction("local a, b, c = ... return c"),
+    keep_previous_identifiers_if_it_has_side_effects("local a, b = print(), false return b"),
+    keep_if_variable_is_called_in_assignment(
+        "local a = {} local function b() print() return a end b().a = true"
+    ),
+    keep_if_variable_is_used_in_index_assignment(
+        "local a, b = {}, true a[b] = false return a"
+    ),
 );
 
 #[test]

@@ -21,4 +21,9 @@ impl DoStatement {
     pub fn mutate_block(&mut self) -> &mut Block {
         &mut self.block
     }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.block.is_empty()
+    }
 }
