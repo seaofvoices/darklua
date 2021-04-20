@@ -37,7 +37,9 @@ impl<T> RefactorResult<T> {
 }
 
 fn refactor_remove_all<T>(
-    assignments: Vec<(T, bool)>,
+    // a vector of variables and a boolean that tells if that variable
+    // should be kept and if it contains side effects
+    assignments: Vec<(T, bool, bool)>,
     values: Vec<&Expression>,
     evaluator: &Evaluator,
 ) -> RefactorResult<T> {
@@ -72,7 +74,7 @@ fn refactor_remove_all<T>(
         RefactorResult::empty()
             .with_statements(calls_at_front)
     } else {
-        let (variable, _) = assignments.into_iter()
+        let (variable, _, _) = assignments.into_iter()
             .next()
             .unwrap();
         RefactorResult::empty()
@@ -83,11 +85,13 @@ fn refactor_remove_all<T>(
 }
 
 pub fn refactor_assignments<T>(
-    assignments: Vec<(T, bool)>,
+    // a vector of variables and a boolean that tells if that variable
+    // should be kept and if it contains side effects
+    assignments: Vec<(T, bool, bool)>,
     values: Vec<&Expression>,
     evaluator: &Evaluator,
 ) -> RefactorResult<T> {
-    if assignments.iter().all(|(_, keep)| !keep) {
+    if assignments.iter().all(|(_, keep, _side_effect)| !keep) {
         refactor_remove_all(assignments, values, evaluator)
     } else {
         let value_count = values.len();
@@ -125,8 +129,8 @@ pub fn refactor_assignments<T>(
 
         let mut reversed_values_for_assignment = Vec::new();
         let mut reversed_variables: Vec<T> = last_variables_for_last_value
-            .skip_while(|(_, keep)| !*keep)
-            .map(|(variable, _)| variable)
+            .skip_while(|(_, keep, _)| !*keep)
+            .map(|(variable, _, _)| variable)
             .collect();
 
         if !reversed_variables.is_empty() {
@@ -136,7 +140,7 @@ pub fn refactor_assignments<T>(
         }
 
         while let Some(value) = reversed_values.next() {
-            let (variable, keep_variable) = variables.next()
+            let (variable, keep_variable, _has_side_effect) = variables.next()
                 .expect("found lower than expected amount of variables");
 
             if keep_variable || evaluator.has_side_effects(value) {
@@ -166,7 +170,7 @@ mod test {
     fn removes_variable_without_a_value() {
         let evaluator = Evaluator::default();
         let refactor = refactor_assignments(
-            vec![("foo", false)],
+            vec![("foo", false, false)],
             Vec::new(),
             &evaluator,
         );
@@ -177,7 +181,7 @@ mod test {
     fn keeps_variable_if_marked_as_used() {
         let evaluator = Evaluator::default();
         let refactor = refactor_assignments(
-            vec![("foo", true)],
+            vec![("foo", true, false)],
             Vec::new(),
             &evaluator,
         );
@@ -192,7 +196,7 @@ mod test {
         let call = FunctionCall::from_name("print");
         let call_expression = call.clone().into();
         let refactor = refactor_assignments(
-            vec![("foo", false)],
+            vec![("foo", false, false)],
             vec![&call_expression],
             &evaluator,
         );
@@ -206,9 +210,9 @@ mod test {
         let evaluator = Evaluator::default();
         let refactor = refactor_assignments(
             vec![
-                ("a", false),
-                ("b", false),
-                ("c", true),
+                ("a", false, false),
+                ("b", false, false),
+                ("c", true, false),
             ],
             vec![&Expression::True, &Expression::VariableArguments],
             &evaluator,
@@ -225,7 +229,7 @@ mod test {
         let call = FunctionCall::from_name("print");
         let call_expression = call.clone().into();
         let refactor = refactor_assignments(
-            vec![("a", true)],
+            vec![("a", true, false)],
             vec![&Expression::True, &call_expression],
             &evaluator,
         );
@@ -239,7 +243,7 @@ mod test {
     fn keeps_uninitialized_variable() {
         let evaluator = Evaluator::default();
         let refactor = refactor_assignments(
-            vec![("a", true)],
+            vec![("a", true, false)],
             Vec::new(),
             &evaluator,
         );

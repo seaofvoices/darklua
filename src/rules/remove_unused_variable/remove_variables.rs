@@ -55,6 +55,14 @@ impl RemoveVariables {
         self.variables.contains(identifier) &&
             !self.is_identifier_used(identifier)
     }
+
+    fn variable_has_side_effect(&self, variable: &Variable) -> bool {
+        match variable {
+            Variable::Identifier(_) => false,
+            Variable::Field(_field) => true,
+            Variable::Index(_index) => true,
+        }
+    }
 }
 
 impl Scope for RemoveVariables {
@@ -85,14 +93,16 @@ impl NodeProcessorMut for RemoveVariables {
             Statement::Assign(assign) => {
                 let values = assign.get_values();
                 let variables = assign.get_variables();
-                let assignments: Vec<(Variable, bool)> = variables.iter()
+                let assignments: Vec<(Variable, bool, bool)> = variables.iter()
                     .map(|variable| {
                         println!("TEST VARIABLE = {:?}", variable);
                         let should_remove = variable.get_root_identifier()
                             .map(|identifier| self.should_remove_identifier(identifier))
                             .unwrap_or(false);
 
-                        (variable.clone(), !should_remove)
+                        let has_side_effects = self.variable_has_side_effect(variable);
+
+                        (variable.clone(), !should_remove, has_side_effects)
                     })
                     .collect();
 

@@ -92,7 +92,7 @@ impl NodeProcessorMut for UnusedFilter {
                     }
                     Statement::LocalAssign(assign) => {
                         let values = assign.get_values();
-                        let assignments: Vec<(String, bool)> = assign
+                        let assignments: Vec<(String, bool, bool)> = assign
                             .get_variables()
                             .iter()
                             .map(|identifier| {
@@ -104,11 +104,11 @@ impl NodeProcessorMut for UnusedFilter {
                                     last_statement,
                                 );
 
-                                (identifier.clone(), usage == FilterResult::Keep)
+                                (identifier.clone(), usage == FilterResult::Keep, false)
                             })
                             .collect();
                         let removed_variable_names = assignments.iter()
-                            .filter_map(|(identifier, keep)| {
+                            .filter_map(|(identifier, keep, _side_effect)| {
                                 if !keep {
                                     Some(identifier.clone())
                                 } else {

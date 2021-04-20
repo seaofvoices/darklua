@@ -1,5 +1,8 @@
 use crate::nodes::{
     Expression,
+    Arguments,
+    TableEntry,
+    TableExpression,
     AssignStatement,
     Statement,
     LastStatement,
@@ -67,15 +70,32 @@ impl FindVariable {
 
     fn is_reading_in_expression(&self, expression: &Expression, is_assignment: bool) -> bool {
         match expression {
+            Expression::Binary(binary) => {
+                self.is_reading_in_expression(binary.left(), is_assignment)
+                || self.is_reading_in_expression(binary.right(), is_assignment)
+            }
+            Expression::Call(call) => {
+                self.is_reading_in_prefix(call.get_prefix(), false)
+                || match call.get_arguments() {
+                    Arguments::Tuple(expressions) => {
+                        expressions.iter()
+                            .any(|expression| {
+                                self.is_reading_in_expression(expression, false)
+                            })
+                    }
+                    Arguments::String(_) => false,
+                    Arguments::Table(table) => self.is_reading_in_table(table),
+                }
+            }
+            Expression::Field(field) => {
+                self.is_reading_in_prefix(field.get_prefix(), is_assignment)
+            }
             Expression::Identifier(identifier) => {
                 if is_assignment {
                     false
                 } else {
                     identifier == &self.identifier
                 }
-            }
-            Expression::Field(field) => {
-                self.is_reading_in_prefix(field.get_prefix(), is_assignment)
             }
             Expression::Index(index) => {
                 self.is_reading_in_prefix(index.get_prefix(), is_assignment)
@@ -84,8 +104,30 @@ impl FindVariable {
             Expression::Parenthese(expression) => {
                 self.is_reading_in_expression(expression, is_assignment)
             }
+            Expression::Table(table) => self.is_reading_in_table(table),
+            Expression::Unary(unary) => {
+                self.is_reading_in_expression(unary.get_expression(), is_assignment)
+            }
             _ => false,
         }
+    }
+
+    fn is_reading_in_table(&self, table: &TableExpression) -> bool {
+        table.get_entries().iter()
+            .any(|entry| {
+                match entry {
+                    TableEntry::Field(_, value) => {
+                        self.is_reading_in_expression(value, false)
+                    }
+                    TableEntry::Index(key, value) => {
+                        self.is_reading_in_expression(key, false)
+                        || self.is_reading_in_expression(value, false)
+                    }
+                    TableEntry::Value(value) => {
+                        self.is_reading_in_expression(value, false)
+                    }
+                }
+            })
     }
 
     fn is_reading_in_prefix(&self, prefix: &Prefix, is_assignment: bool) -> bool {
@@ -109,6 +151,7 @@ impl FindVariable {
             }
             Prefix::Call(call) => {
                 self.is_reading_in_prefix(call.get_prefix(), false)
+                // TODO: check arguments
             }
         }
     }
