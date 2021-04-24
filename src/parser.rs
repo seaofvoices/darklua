@@ -46,6 +46,20 @@ impl NodeTypes for FastParserNodes {
     type TableExpression = TableExpression;
     type UnaryOperator = UnaryOperator;
     type UnaryExpression = UnaryExpression;
+
+    // lux nodes
+    type LUXExpression = LUXExpression;
+    type LUXElement = LUXElement;
+    type LUXOpeningElement = LUXOpeningElement;
+    type LUXClosingElement = LUXClosingElement;
+    type LUXFragment = LUXFragment;
+    type LUXChild = LUXChild;
+    type LUXSelfClosingElement = LUXSelfClosingElement;
+    type LUXAttribute = LUXAttribute;
+    type LUXAttributeValue = LUXAttributeValue;
+    type LUXAttributeName = LUXAttributeName;
+    type LUXNamespacedName = LUXNamespacedName;
+    type LUXElementName = LUXElementName;
 }
 
 #[derive(Default)]

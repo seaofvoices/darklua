@@ -700,6 +700,9 @@ impl LuaGenerator for ReadableLuaGenerator {
             VariableArguments => {
                 self.push_str_and_break_if("...", break_variable_arguments);
             }
+            LUX(_lux_expression) => {
+                unimplemented!()
+            }
         }
     }
 

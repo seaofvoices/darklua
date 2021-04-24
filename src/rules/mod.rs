@@ -2,6 +2,7 @@
 
 mod call_parens;
 mod compute_expression;
+mod convert_lux_to_roact;
 mod empty_do;
 mod group_local;
 mod inject_value;
@@ -13,6 +14,7 @@ mod unused_while;
 
 pub use call_parens::*;
 pub use compute_expression::*;
+pub use convert_lux_to_roact::*;
 pub use empty_do::*;
 pub use group_local::*;
 pub use inject_value::*;
@@ -141,6 +143,7 @@ impl FromStr for Box<dyn Rule> {
     fn from_str(string: &str) -> Result<Self, Self::Err> {
         let rule: Box<dyn Rule> = match string {
             COMPUTE_EXPRESSIONS_RULE_NAME => Box::new(ComputeExpression::default()),
+            CONVERT_LUX_TO_ROACT_CODE_RULE_NAME => Box::new(ConvertLUXToRoactCode::default()),
             CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => Box::new(ConvertLocalFunctionToAssign::default()),
             GROUP_LOCAL_ASSIGNMENT => Box::new(GroupLocalAssignment::default()),
             INJECT_GLOBAL_VALUE_RULE_NAME => Box::new(InjectGlobalValue::default()),

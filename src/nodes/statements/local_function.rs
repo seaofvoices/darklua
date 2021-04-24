@@ -53,7 +53,7 @@ impl LocalFunctionStatement {
     }
 
     #[inline]
-    pub fn mutate_identifier(&mut self) -> &mut String {
+    pub fn mutate_name(&mut self) -> &mut String {
         &mut self.identifier
     }
 

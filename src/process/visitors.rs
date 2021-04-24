@@ -65,6 +65,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
                 processor.process_unary_expression(unary);
                 Self::visit_expression(unary.mutate_expression(), processor);
             }
+            Expression::LUX(lux) => Self::visit_lux_expression(lux, processor),
             Expression::False
             | Expression::Nil
             | Expression::True
@@ -218,6 +219,107 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Prefix::Index(index) => Self::visit_index_expression(index, processor),
             Prefix::Parenthese(expression) => Self::visit_expression(expression, processor),
         };
+    }
+
+    fn visit_lux_expression(expression: &mut LUXExpression, processor: &mut T) {
+        processor.process_lux_expression(expression);
+
+        match expression {
+            LUXExpression::LUXElement(element) => Self::visit_lux_element(element, processor),
+            LUXExpression::LUXFragment(fragment) => Self::visit_lux_fragment(fragment, processor),
+        }
+    }
+
+    fn visit_lux_element(element: &mut LUXElement, processor: &mut T) {
+        processor.process_lux_element(element);
+
+        match element {
+            LUXElement::Element(element) => {
+                processor.process_lux_open_close_element(element);
+
+                element.mutate_attributes().iter_mut()
+                    .for_each(|attribute| {
+                        Self::visit_lux_attribute(attribute, processor);
+                    });
+
+                element.mutate_children().iter_mut()
+                    .for_each(|child| {
+                        processor.process_lux_child(child);
+                        Self::visit_lux_child(child, processor);
+                    });
+            }
+            LUXElement::SelfClosingElement(element) => {
+                processor.process_lux_self_closing_element(element);
+
+                element.mutate_attributes().iter_mut()
+                    .for_each(|attribute| {
+                        Self::visit_lux_attribute(attribute, processor);
+                    });
+            }
+        }
+    }
+
+    fn visit_lux_fragment(fragment: &mut LUXFragment, processor: &mut T) {
+        processor.process_lux_fragment(fragment);
+
+        fragment.mutate_children().iter_mut()
+            .for_each(|child| {
+                processor.process_lux_child(child);
+                Self::visit_lux_child(child, processor);
+            });
+    }
+
+    fn visit_lux_child(child: &mut LUXChild, processor: &mut T) {
+        processor.process_lux_child(child);
+
+        match child {
+            LUXChild::LUXElement(element) => {
+                Self::visit_lux_element(element, processor);
+            }
+            LUXChild::LUXFragment(fragment) => {
+                Self::visit_lux_fragment(fragment, processor);
+            }
+            LUXChild::ExpandedExpression(expression) => {
+                Self::visit_expression(expression, processor);
+            }
+            LUXChild::Expression(Some(expression)) => {
+                Self::visit_expression(expression, processor);
+            }
+            LUXChild::Expression(None) => {}
+        }
+    }
+
+    fn visit_lux_attribute(attribute: &mut LUXAttribute, processor: &mut T) {
+        processor.process_lux_attribute(attribute);
+
+        match attribute {
+            LUXAttribute::Named(attribute) => {
+                if let Some(value) = attribute.mutate_value() {
+                    Self::visit_lux_attribute_value(value, processor);
+                }
+            }
+            LUXAttribute::Spread(expression) => {
+                Self::visit_expression(expression, processor);
+            }
+        }
+    }
+
+    fn visit_lux_attribute_value(value: &mut LUXAttributeValue, processor: &mut T) {
+        processor.process_lux_attribute_value(value);
+
+        match value {
+            LUXAttributeValue::DoubleQuoteString(_string) => {}
+            LUXAttributeValue::SingleQuoteString(_string) => {}
+            LUXAttributeValue::LuaExpression(expression) => {
+                Self::visit_expression(expression, processor);
+            }
+            LUXAttributeValue::LUXElement(element) => {
+                Self::visit_lux_element(element, processor);
+            }
+            LUXAttributeValue::LUXFragment(fragment) => {
+                Self::visit_lux_fragment(fragment, processor);
+            }
+        }
     }
 }
 

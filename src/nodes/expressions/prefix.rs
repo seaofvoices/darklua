@@ -19,3 +19,9 @@ impl Prefix {
         Self::Identifier(name.into())
     }
 }
+
+impl From<FieldExpression> for Prefix {
+    fn from(field: FieldExpression) -> Self {
+        Prefix::Field(Box::new(field))
+    }
+}

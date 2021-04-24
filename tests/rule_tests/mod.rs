@@ -1,5 +1,5 @@
 macro_rules! test_rule {
-    ($rule:expr, $($name:ident ($input:literal) => $output:literal),*) => {
+    ($rule:expr, $($name:ident ($input:literal) => $output:literal),* $(,)?) => {
         $(
             #[test]
             fn $name() {
@@ -29,7 +29,7 @@ macro_rules! test_rule {
 }
 
 macro_rules! test_rule_wihout_effects {
-    ($rule:expr, $($name:ident ($input:literal)),*) => {
+    ($rule:expr, $($name:ident ($input:literal)),* $(,)?) => {
         $(
             #[test]
             fn $name() {
@@ -49,6 +49,7 @@ macro_rules! test_rule_wihout_effects {
 }
 
 mod compute_expression;
+mod convert_lux_to_roact;
 mod group_local_assignment;
 mod inject_value;
 mod no_local_function;

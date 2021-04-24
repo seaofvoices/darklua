@@ -33,4 +33,13 @@ pub trait NodeProcessor {
     fn process_string_expression(&mut self, _: &mut StringExpression) {}
     fn process_table_expression(&mut self, _: &mut TableExpression) {}
     fn process_unary_expression(&mut self, _: &mut UnaryExpression) {}
+
+    fn process_lux_expression(&mut self, _: &mut LUXExpression) {}
+    fn process_lux_element(&mut self, _: &mut LUXElement) {}
+    fn process_lux_fragment(&mut self, _: &mut LUXFragment) {}
+    fn process_lux_child(&mut self, _: &mut LUXChild) {}
+    fn process_lux_open_close_element(&mut self, _: &mut LUXOpenCloseElement) {}
+    fn process_lux_self_closing_element(&mut self, _: &mut LUXSelfClosingElement) {}
+    fn process_lux_attribute(&mut self, _: &mut LUXAttribute) {}
+    fn process_lux_attribute_value(&mut self, _: &mut LUXAttributeValue) {}
 }

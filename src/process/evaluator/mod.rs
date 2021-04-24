@@ -78,6 +78,7 @@ impl Evaluator {
             Expression::Table(table) => table.get_entries().iter()
                 .any(|entry| self.table_entry_has_side_effects(entry)),
             Expression::Call(call) => self.call_has_side_effects(call),
+            Expression::LUX(_) => true,
         }
     }
 

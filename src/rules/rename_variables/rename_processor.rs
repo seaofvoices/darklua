@@ -140,7 +140,7 @@ impl Scope for RenameProcessor {
     }
 
     fn insert_local_function(&mut self, function: &mut LocalFunctionStatement) {
-        self.insert_identifier(function.mutate_identifier());
+        self.insert_identifier(function.mutate_name());
     }
 }
 

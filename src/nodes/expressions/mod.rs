@@ -2,6 +2,7 @@ mod binary;
 mod field;
 mod function;
 mod index;
+mod lux;
 mod number;
 mod prefix;
 mod string;
@@ -12,6 +13,7 @@ pub use binary::*;
 pub use field::*;
 pub use function::*;
 pub use index::*;
+pub use lux::*;
 pub use number::*;
 pub use prefix::*;
 pub use string::*;
@@ -39,6 +41,7 @@ pub enum Expression {
     True,
     Unary(Box<UnaryExpression>),
     VariableArguments,
+    LUX(LUXExpression),
 }
 
 impl From<bool> for Expression {

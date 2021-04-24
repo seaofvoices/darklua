@@ -27,17 +27,17 @@ impl ValueInjection {
         }
     }
 
-    fn is_identifier_used(&self, identifier: &String) -> bool {
+    fn is_identifier_used(&self, identifier: &str) -> bool {
         self.identifiers.iter()
             .any(|set| set.contains(identifier))
     }
 
-    fn insert_identifier(&mut self, identifier: &String) {
+    fn insert_identifier(&mut self, identifier: &str) {
         if let Some(set) = self.identifiers.last_mut() {
-            set.insert(identifier.clone());
+            set.insert(identifier.to_owned());
         } else {
             let mut set = HashSet::new();
-            set.insert(identifier.clone());
+            set.insert(identifier.to_owned());
             self.identifiers.push(set);
         }
     }
@@ -61,7 +61,7 @@ impl Scope for ValueInjection {
     }
 
     fn insert_local_function(&mut self, function: &mut LocalFunctionStatement) {
-        self.insert_identifier(function.mutate_identifier());
+        self.insert_identifier(function.get_name());
     }
 }
 
