@@ -1,8 +1,0 @@
----
-source: src/rules/rename_variables/mod.rs
-expression: "RenameVariables::new(empty())"
----
-{
-  "rule": "rename_variables",
-  "globals": []
-}
