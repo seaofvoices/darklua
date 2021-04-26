@@ -1,6 +1,6 @@
 use crate::nodes::{Arguments, Block, Expression, FunctionCall, StringExpression, TableExpression};
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
-use crate::rules::{Rule, RuleConfigurationError, RuleProperties};
+use crate::rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties};
 
 use std::mem;
 
@@ -31,7 +31,7 @@ impl NodeProcessor for Processor {
         };
 
         if let Some(new_arguments) = new_arguments {
-            mem::replace(call.mutate_arguments(), new_arguments);
+            *call.mutate_arguments() = new_arguments;
         }
     }
 }
@@ -42,12 +42,14 @@ pub const REMOVE_FUNCTION_CALL_PARENS: &'static str = "remove_function_call_pare
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct RemoveFunctionCallParens {}
 
-impl Rule for RemoveFunctionCallParens {
-    fn process(&self, block: &mut Block) {
+impl FlawlessRule for RemoveFunctionCallParens {
+    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
         let mut processor = Processor::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }
+}
 
+impl RuleConfiguration for RemoveFunctionCallParens {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, _value) in properties {
             return Err(RuleConfigurationError::UnexpectedProperty(key))
@@ -68,6 +70,7 @@ impl Rule for RemoveFunctionCallParens {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::rules::Rule;
 
     use insta::assert_json_snapshot;
 

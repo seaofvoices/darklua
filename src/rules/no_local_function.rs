@@ -6,7 +6,7 @@ use crate::nodes::{
     Statement
 };
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor, processors::FindVariables};
-use crate::rules::{Rule, RuleConfigurationError, RuleProperties};
+use crate::rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties};
 
 use serde::ser::{Serialize, Serializer};
 use std::mem;
@@ -55,12 +55,14 @@ pub const CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME: &'static str = "convert_lo
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ConvertLocalFunctionToAssign {}
 
-impl Rule for ConvertLocalFunctionToAssign {
-    fn process(&self, block: &mut Block) {
+impl FlawlessRule for ConvertLocalFunctionToAssign {
+    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
         let mut processor = Processor::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }
+}
 
+impl RuleConfiguration for ConvertLocalFunctionToAssign {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, _value) in properties {
             return Err(RuleConfigurationError::UnexpectedProperty(key))

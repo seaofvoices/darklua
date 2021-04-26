@@ -44,7 +44,8 @@ pub enum RulePropertyValue {
     None,
 }
 
-/// When implementing the configure method of the Rule trait, the method returns a result
+/// When implementing the configure method of the Rule trait, the method returns a result that uses
+/// this error type.
 #[derive(Debug, Clone)]
 pub enum RuleConfigurationError {
     /// When a rule gets an unknown property. The string should be the unknown field name.
@@ -82,11 +83,20 @@ impl fmt::Display for RuleConfigurationError {
 
 pub type RuleProperties = HashMap<String, RulePropertyValue>;
 
+/// The intent of this struct is to hold data shared across all rules applied to a file.
+#[derive(Debug, Clone, Default)]
+pub struct Context {}
+
+pub type RuleProcessResult = Result<(), Vec<String>>;
+
 /// Defines an interface that will be used to mutate blocks and how to serialize and deserialize
 /// the rule configuration.
-pub trait Rule {
+pub trait Rule: RuleConfiguration {
     /// This method should mutate the given block to apply the rule.
-    fn process(&self, block: &mut Block);
+    fn process(&self, block: &mut Block, context: &mut Context) -> RuleProcessResult;
+}
+
+pub trait RuleConfiguration {
     /// The rule deserializer will construct the default rule and then send the properties through
     /// this method to modify the behavior of the rule.
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError>;
@@ -95,6 +105,17 @@ pub trait Rule {
     /// For implementing the serialize trait on the Rule trait, this method should return all
     /// properties that differs from their default value.
     fn serialize_to_properties(&self) -> RuleProperties;
+}
+
+pub trait FlawlessRule {
+    fn flawless_process(&self, block: &mut Block, context: &mut Context);
+}
+
+impl<T: FlawlessRule + RuleConfiguration> Rule for T {
+    fn process(&self, block: &mut Block, context: &mut Context) -> RuleProcessResult {
+        self.flawless_process(block, context);
+        Ok(())
+    }
 }
 
 /// A function to get the default rule stack for darklua. All the rules here must preserve all the

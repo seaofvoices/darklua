@@ -10,6 +10,7 @@ use crate::cli::utils::{
 use darklua_core::{
     nodes::Block,
     generator::{LuaGenerator, DenseLuaGenerator, ReadableLuaGenerator},
+    rules::Context,
     Parser,
 };
 use std::path::PathBuf;
@@ -90,7 +91,18 @@ fn process(file: &FileProcessing, options: &Options, global: &GlobalOptions) -> 
     let mut block = parser.parse(&input)
         .map_err(|parser_error| CliError::Parser(source.clone(), parser_error))?;
 
-    config.process.iter().for_each(|rule| rule.process(&mut block));
+    for (index, rule) in config.process.iter().enumerate() {
+        let mut context = Context::default();
+        rule.process(&mut block, &mut context)
+            .map_err(|rule_errors| {
+                CliError::RuleError {
+                    file: source.clone(),
+                    rule_name: rule.get_name().to_owned(),
+                    rule_number: index,
+                    errors: rule_errors,
+                }
+            })?;
+    }
 
     let lua_code = options.format.generate(&config, &block);
 

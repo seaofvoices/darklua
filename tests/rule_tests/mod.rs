@@ -7,8 +7,10 @@ macro_rules! test_rule {
 
                 let mut block = $crate::utils::parse_input($input);
                 let expect_block = $crate::utils::parse_input($output);
+                let mut context = darklua_core::rules::Context::default();
 
-                $rule.process(&mut block);
+                $rule.process(&mut block, &mut context)
+                    .expect("rule should suceed");
 
                 let mut generator = ReadableLuaGenerator::default();
                 generator.write_block(&block);
@@ -35,8 +37,10 @@ macro_rules! test_rule_wihout_effects {
 
                 let mut block = $crate::utils::parse_input($input);
                 let expect_block = block.clone();
+                let mut context = darklua_core::rules::Context::default();
 
-                $rule.process(&mut block);
+                $rule.process(&mut block, &mut context)
+                    .expect("rule should suceed");
 
                 assert_eq!(block, expect_block);
             }

@@ -1,6 +1,6 @@
 use crate::nodes::{Block, Statement};
 use crate::process::{DefaultVisitor, Evaluator, NodeProcessor, NodeVisitor};
-use crate::rules::{Rule, RuleConfigurationError, RuleProperties};
+use crate::rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties};
 
 #[derive(Debug, Clone, Default)]
 struct WhileFilter {
@@ -27,12 +27,14 @@ pub const REMOVE_UNUSED_WHILE_RULE_NAME: &'static str = "remove_unused_while";
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct RemoveUnusedWhile {}
 
-impl Rule for RemoveUnusedWhile {
-    fn process(&self, block: &mut Block) {
+impl FlawlessRule for RemoveUnusedWhile {
+    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
         let mut processor = WhileFilter::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }
+}
 
+impl RuleConfiguration for RemoveUnusedWhile {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, _value) in properties {
             return Err(RuleConfigurationError::UnexpectedProperty(key))
@@ -53,6 +55,7 @@ impl Rule for RemoveUnusedWhile {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::rules::Rule;
 
     use insta::assert_json_snapshot;
 

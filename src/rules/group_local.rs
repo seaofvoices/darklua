@@ -1,9 +1,8 @@
 use crate::nodes::{Block, LocalAssignStatement, Expression, Statement};
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::process::processors::FindVariables;
-use crate::rules::{Rule, RuleConfigurationError, RuleProperties};
+use crate::rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties};
 
-use std::mem;
 use std::iter;
 
 #[derive(Debug, Clone, Default)]
@@ -91,7 +90,7 @@ impl NodeProcessor for GroupLocalProcessor {
     fn process_block(&mut self, block: &mut Block) {
         let filter_statements = self.filter_statements(block);
 
-        mem::replace(block.mutate_statements(), filter_statements);
+        *block.mutate_statements() = filter_statements;
     }
 }
 
@@ -101,12 +100,14 @@ pub const GROUP_LOCAL_ASSIGNMENT: &'static str = "group_local_assignment";
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct GroupLocalAssignment {}
 
-impl Rule for GroupLocalAssignment {
-    fn process(&self, block: &mut Block) {
+impl FlawlessRule for GroupLocalAssignment {
+    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
         let mut processor = GroupLocalProcessor::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }
+}
 
+impl RuleConfiguration for GroupLocalAssignment {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, _value) in properties {
             return Err(RuleConfigurationError::UnexpectedProperty(key))
@@ -127,6 +128,7 @@ impl Rule for GroupLocalAssignment {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::rules::Rule;
 
     use insta::assert_json_snapshot;
 

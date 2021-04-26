@@ -1,0 +1,7 @@
+---
+source: src/cli/error.rs
+expression: "CliError::RuleError{file: PathBuf::from(\"src/foo.lua\"),\n                    rule_name: \"the-rule-name\".to_owned(),\n                    rule_number: 1,\n                    errors: vec![\"some rule error happened!\" . to_owned()],}"
+
+---
+error processing file `the-rule-name` [#1] (src/foo.lua):
+    * some rule error happened!

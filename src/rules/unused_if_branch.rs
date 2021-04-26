@@ -1,6 +1,6 @@
 use crate::nodes::{Block, DoStatement, IfStatement, Statement};
 use crate::process::{DefaultVisitor, Evaluator, NodeProcessor, NodeVisitor};
-use crate::rules::{Rule, RuleConfigurationError, RuleProperties};
+use crate::rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties};
 
 use std::mem;
 
@@ -107,7 +107,7 @@ impl NodeProcessor for IfFilter {
                 FilterResult::Keep => true,
                 FilterResult::Remove => false,
                 FilterResult::Replace(block) => {
-                    mem::replace(statement, DoStatement::new(block).into());
+                    *statement = DoStatement::new(block).into();
                     true
                 }
             }
@@ -122,12 +122,14 @@ pub const REMOVE_UNUSED_IF_BRANCH_RULE_NAME: &'static str = "remove_unused_if_br
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct RemoveUnusedIfBranch {}
 
-impl Rule for RemoveUnusedIfBranch {
-    fn process(&self, block: &mut Block) {
+impl FlawlessRule for RemoveUnusedIfBranch {
+    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
         let mut processor = IfFilter::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }
+}
 
+impl RuleConfiguration for RemoveUnusedIfBranch {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, _value) in properties {
             return Err(RuleConfigurationError::UnexpectedProperty(key))
@@ -148,6 +150,7 @@ impl Rule for RemoveUnusedIfBranch {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::rules::Rule;
 
     use insta::assert_json_snapshot;
 

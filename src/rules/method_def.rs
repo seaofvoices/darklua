@@ -1,6 +1,6 @@
 use crate::nodes::{Block, FunctionStatement};
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
-use crate::rules::{Rule, RuleConfigurationError, RuleProperties};
+use crate::rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties};
 
 #[derive(Default)]
 struct FunctionMutator;
@@ -17,12 +17,14 @@ pub const REMOVE_METHOD_DEFINITION_RULE_NAME: &'static str = "remove_method_defi
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct RemoveMethodDefinition {}
 
-impl Rule for RemoveMethodDefinition {
-    fn process(&self, block: &mut Block) {
+impl FlawlessRule for RemoveMethodDefinition {
+    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
         let mut processor = FunctionMutator::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }
+}
 
+impl RuleConfiguration for RemoveMethodDefinition {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, _value) in properties {
             return Err(RuleConfigurationError::UnexpectedProperty(key))
@@ -43,6 +45,7 @@ impl Rule for RemoveMethodDefinition {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::rules::Rule;
 
     use insta::assert_json_snapshot;
 

@@ -1,6 +1,6 @@
 use crate::nodes::{Block, Statement};
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
-use crate::rules::{Rule, RuleConfigurationError, RuleProperties};
+use crate::rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties};
 
 struct EmptyDoFilter {
     mutated: bool,
@@ -38,15 +38,17 @@ pub const REMOVE_EMPTY_DO_RULE_NAME: &'static str = "remove_empty_do";
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct RemoveEmptyDo {}
 
-impl Rule for RemoveEmptyDo {
-    fn process(&self, block: &mut Block) {
+impl FlawlessRule for RemoveEmptyDo {
+    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
         while {
             let mut processor = EmptyDoFilter::default();
             DefaultVisitor::visit_block(block, &mut processor);
             processor.has_mutated()
         } {}
     }
+}
 
+impl RuleConfiguration for RemoveEmptyDo {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, _value) in properties {
             return Err(RuleConfigurationError::UnexpectedProperty(key))
@@ -68,6 +70,7 @@ impl Rule for RemoveEmptyDo {
 mod test {
     use super::*;
     use crate::nodes::DoStatement;
+    use crate::rules::Rule;
 
     use insta::assert_json_snapshot;
 
@@ -81,7 +84,8 @@ mod test {
 
         let mut block = Block::default().with_statement(DoStatement::new(Block::default()));
 
-        rule.process(&mut block);
+        rule.process(&mut block, &mut Context::default())
+            .expect("rule should succeed");
 
         assert_eq!(block, Block::default());
     }
@@ -95,7 +99,8 @@ mod test {
         let mut block = Block::default()
             .with_statement(DoStatement::new(block_with_do_statement));
 
-        rule.process(&mut block);
+        rule.process(&mut block, &mut Context::default())
+            .expect("rule should succeed");
 
         assert_eq!(block, Block::default());
     }

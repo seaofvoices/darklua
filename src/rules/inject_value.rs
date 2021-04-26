@@ -7,10 +7,9 @@ use crate::nodes::{
     StringExpression,
 };
 use crate::process::{NodeProcessor, NodeVisitor, Scope, ScopeVisitor};
-use crate::rules::{Rule, RuleConfigurationError, RuleProperties, RulePropertyValue};
+use crate::rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties, RulePropertyValue};
 
 use std::collections::HashSet;
-use std::mem;
 
 #[derive(Debug, Clone)]
 struct ValueInjection {
@@ -79,7 +78,7 @@ impl NodeProcessor for ValueInjection {
 
         if replace {
             let new_expression = self.expression.clone();
-            mem::replace(expression, new_expression);
+            *expression = new_expression;
         }
     }
 
@@ -91,7 +90,7 @@ impl NodeProcessor for ValueInjection {
 
         if replace {
             let new_prefix = Prefix::Parenthese(self.expression.clone());
-            mem::replace(prefix, new_prefix);
+            *prefix = new_prefix;
         }
     }
 }
@@ -144,12 +143,14 @@ impl Default for InjectGlobalValue {
     }
 }
 
-impl Rule for InjectGlobalValue {
-    fn process(&self, block: &mut Block) {
+impl FlawlessRule for InjectGlobalValue {
+    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
         let mut processor = ValueInjection::new(&self.identifier, self.value.clone());
         ScopeVisitor::visit_block(block, &mut processor);
     }
+}
 
+impl RuleConfiguration for InjectGlobalValue {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         if !properties.contains_key("identifier") {
             return Err(RuleConfigurationError::MissingProperty("identifier".to_owned()))
@@ -213,6 +214,7 @@ impl Rule for InjectGlobalValue {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::rules::Rule;
 
     use insta::assert_json_snapshot;
 

@@ -7,7 +7,7 @@ use rename_processor::RenameProcessor;
 
 use crate::nodes::{Block};
 use crate::process::{NodeVisitor, ScopeVisitor};
-use crate::rules::{Rule, RuleConfigurationError, RuleProperties, RulePropertyValue};
+use crate::rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties, RulePropertyValue};
 
 use std::collections::HashSet;
 use std::iter::FromIterator;
@@ -78,12 +78,14 @@ impl Default for RenameVariables {
     }
 }
 
-impl Rule for RenameVariables {
-    fn process(&self, block: &mut Block) {
+impl FlawlessRule for RenameVariables {
+    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
         let mut processor = RenameProcessor::new(self.globals.clone().into_iter());
         ScopeVisitor::visit_block(block, &mut processor);
     }
+}
 
+impl RuleConfiguration for RenameVariables {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, value) in properties {
             match key.as_str() {
@@ -120,6 +122,7 @@ impl Rule for RenameVariables {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::rules::Rule;
 
     use insta::assert_json_snapshot;
     use std::iter::empty;
