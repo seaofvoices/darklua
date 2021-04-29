@@ -17,6 +17,18 @@ impl Variable {
     }
 }
 
+impl From<FieldExpression> for Variable {
+    fn from(field: FieldExpression) -> Self {
+        Variable::Field(Box::new(field))
+    }
+}
+
+impl From<IndexExpression> for Variable {
+    fn from(index: IndexExpression) -> Self {
+        Variable::Index(Box::new(index))
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AssignStatement {
     variables: Vec<Variable>,

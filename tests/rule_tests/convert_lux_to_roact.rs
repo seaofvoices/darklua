@@ -1,5 +1,20 @@
 use darklua_core::rules::{ConvertLUXToRoactCode, Rule};
 
+const MERGE: &'static str = "_DARKLUA_SHALLOW_MERGE";
+const MERGE_IMPL: &'static str = r#"
+local function _DARKLUA_SHALLOW_MERGE(...)
+    local new = {}
+
+    for index = 1, select('#', ...) do
+        for key, value in pairs(select(index, ...)) do
+            new[key] = value
+        end
+    end
+
+    return new
+end
+"#;
+
 test_rule!(
     ConvertLUXToRoactCode::default(),
     empty_fragment("return <></>") => "return Roact.createFragment({})",
@@ -27,7 +42,23 @@ test_rule!(
     frame_with_only_one_spread_attribute("return <Frame {... forwardProps}/>")
         => "return Roact.createElement('Frame', forwardProps)",
     frame_with_two_spread_attribute("return <Frame {... baseProps} {... forwardProps}/>")
-        => "return Roact.createElement('Frame', forwardProps)",
+        => &format!(
+            "{} return Roact.createElement('Frame', {}(baseProps, forwardProps))",
+            MERGE_IMPL,
+            MERGE
+        ),
+    frame_with_attribute_followed_by_spread("return <Frame foo='bar' {... forwardProps}/>")
+        => &format!(
+            "{} return Roact.createElement('Frame', {}({{ foo = 'bar' }}, forwardProps))",
+            MERGE_IMPL,
+            MERGE,
+        ),
+    frame_with_spread_followed_by_attribute("return <Frame {... baseProps} foo='bar'/>")
+        => &format!(
+            "{} return Roact.createElement('Frame', {}(baseProps, {{foo = 'bar' }}))",
+            MERGE_IMPL,
+            MERGE,
+        ),
 );
 
 test_rule_wihout_effects!(

@@ -1,5 +1,9 @@
 //! A module that contains the different rules that mutates a Lua block.
 
+mod context;
+pub use context::Context;
+
+// rules
 mod call_parens;
 mod compute_expression;
 mod convert_lux_to_roact;
@@ -84,10 +88,6 @@ impl fmt::Display for RuleConfigurationError {
 }
 
 pub type RuleProperties = HashMap<String, RulePropertyValue>;
-
-/// The intent of this struct is to hold data shared across all rules applied to a file.
-#[derive(Debug, Clone, Default)]
-pub struct Context {}
 
 pub type RuleProcessResult = Result<(), Vec<String>>;
 

@@ -1,5 +1,5 @@
 macro_rules! test_rule {
-    ($rule:expr, $($name:ident ($input:literal) => $output:literal),* $(,)?) => {
+    ($rule:expr, $($name:ident ($input:literal) => $output:expr),* $(,)?) => {
         $(
             #[test]
             fn $name() {
