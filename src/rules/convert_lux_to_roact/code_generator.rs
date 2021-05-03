@@ -1,18 +1,11 @@
 use crate::nodes::{
     Arguments,
-    AssignStatement,
     Block,
     Expression,
     FieldExpression,
     FunctionCall,
-    LastStatement,
     Prefix,
-    GenericForStatement,
-    IndexExpression,
-    LocalAssignStatement,
     LocalFunctionStatement,
-    NumericForStatement,
-    Statement,
     StringExpression,
     TableExpression,
     TableEntry,
@@ -30,6 +23,10 @@ use crate::process::{
     Scope,
 };
 use crate::rules::convert_lux_to_roact::IdentifierCollector;
+use crate::rules::convert_lux_to_roact::merge_functions::{
+    create_merge_function,
+    create_mixed_merge_function,
+};
 
 use std::collections::HashSet;
 
@@ -39,78 +36,11 @@ pub struct RoactCodeGenerator {
     identifiers: Vec<HashSet<String>>,
     identifier_generator: IdentifierCollector,
     merge_identifier: Option<String>,
+    mixed_merge_identifier: Option<String>,
 }
 
 const MERGE_FUNCTION_IDENTIFIER: &'static str = "_DARKLUA_SHALLOW_MERGE";
-
-fn create_merge_function<I: Into<String>>(identifier: I) -> Statement {
-    let new = "new";
-    let index = "index";
-    let key = "key";
-    let value = "value";
-    LocalFunctionStatement::from_name(
-        identifier,
-        Block::new(
-            vec![
-                LocalAssignStatement::from_variable(new)
-                    .with_value(TableExpression::default())
-                    .into(),
-                NumericForStatement::new(
-                    index.to_owned(),
-                    Expression::from(1_f64),
-                    FunctionCall::from_name("select")
-                        .with_arguments(Arguments::Tuple(vec![
-                            StringExpression::from_value("#").into(),
-                            Expression::VariableArguments,
-                        ]))
-                        .into(),
-                    None,
-                    Block::new(
-                        vec![
-                            GenericForStatement::new(
-                                vec![key.to_owned(), value.to_owned()],
-                                vec![
-                                    FunctionCall::from_name("pairs")
-                                        .with_arguments(Arguments::Tuple(vec![
-                                            FunctionCall::from_name("select")
-                                                .with_arguments(Arguments::Tuple(vec![
-                                                    Expression::Identifier(index.to_owned()),
-                                                    Expression::VariableArguments,
-                                                ]))
-                                                .into(),
-                                        ]))
-                                        .into(),
-                                ],
-                                Block::new(
-                                    vec![
-                                        AssignStatement::new(
-                                            vec![
-                                                IndexExpression::new(
-                                                    Prefix::from_name(new),
-                                                    Expression::Identifier(key.to_owned())
-                                                ).into()
-                                            ],
-                                            vec![
-                                                Expression::Identifier(value.to_owned())
-                                            ]
-                                        ).into(),
-                                    ],
-                                    None,
-                                )
-                            ).into(),
-                        ],
-                        None,
-                    ),
-                ).into(),
-            ],
-            Some(LastStatement::Return(
-                vec![Expression::Identifier(new.to_owned())]
-            ))
-        )
-    )
-    .variadic()
-    .into()
-}
+const MERGE_MIXED_FUNCTION_IDENTIFIER: &'static str = "_DARKLUA_MERGE_MIXED";
 
 impl RoactCodeGenerator {
     pub fn new(identifier_generator: IdentifierCollector) -> Self {
@@ -119,6 +49,7 @@ impl RoactCodeGenerator {
             identifiers: Vec::new(),
             identifier_generator,
             merge_identifier: None,
+            mixed_merge_identifier: None,
         }
     }
 
@@ -128,10 +59,16 @@ impl RoactCodeGenerator {
             let merge_definition = create_merge_function(identifier);
             statements.insert(0, merge_definition.into());
         }
+
+        if let Some(identifier) = &self.mixed_merge_identifier {
+            let statements = block.mutate_statements();
+            let merge_definition = create_mixed_merge_function(identifier);
+            statements.insert(0, merge_definition.into());
+        }
     }
 
     fn get_merge_function(&mut self, arguments: Vec<Expression>) -> Expression {
-        let merge_function_name = &self.merge_identifier.clone()
+        let function_name = &self.merge_identifier.clone()
             .unwrap_or_else(|| {
                 let identifier = self.identifier_generator
                     .try_get_identifier(MERGE_FUNCTION_IDENTIFIER);
@@ -139,7 +76,21 @@ impl RoactCodeGenerator {
                 identifier
             });
 
-        FunctionCall::from_name(merge_function_name)
+        FunctionCall::from_name(function_name)
+            .with_arguments(Arguments::Tuple(arguments))
+            .into()
+    }
+
+    fn get_children_merge_function(&mut self, arguments: Vec<Expression>) -> Expression {
+        let function_name = &self.mixed_merge_identifier.clone()
+            .unwrap_or_else(|| {
+                let identifier = self.identifier_generator
+                    .try_get_identifier(MERGE_MIXED_FUNCTION_IDENTIFIER);
+                self.mixed_merge_identifier = Some(identifier.clone());
+                identifier
+            });
+
+        FunctionCall::from_name(function_name)
             .with_arguments(Arguments::Tuple(arguments))
             .into()
     }
@@ -245,9 +196,11 @@ impl RoactCodeGenerator {
                     }
                 }
                 LUXChild::ExpandedExpression(expression) => {
-                    let entries = current_children.drain(..)
+                    let entries: Vec<_> = current_children.drain(..)
                         .collect();
-                    merge_lists.push(TableExpression::new(entries).into());
+                    if !entries.is_empty() {
+                        merge_lists.push(TableExpression::new(entries).into());
+                    }
                     merge_lists.push(expression.clone());
                 }
             }
@@ -256,7 +209,15 @@ impl RoactCodeGenerator {
         if merge_lists.is_empty() {
             TableExpression::new(current_children).into()
         } else {
-            unimplemented!()
+            if !current_children.is_empty() {
+                merge_lists.push(TableExpression::new(current_children).into());
+            }
+
+            if merge_lists.len() == 1 {
+                merge_lists.pop().unwrap()
+            } else {
+                self.get_children_merge_function(merge_lists)
+            }
         }
     }
 

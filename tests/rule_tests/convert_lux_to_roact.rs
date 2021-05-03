@@ -3,15 +3,36 @@ use darklua_core::rules::{ConvertLUXToRoactCode, Rule};
 const MERGE: &'static str = "_DARKLUA_SHALLOW_MERGE";
 const MERGE_IMPL: &'static str = r#"
 local function _DARKLUA_SHALLOW_MERGE(...)
-    local new = {}
+    local result = {}
 
     for index = 1, select('#', ...) do
         for key, value in pairs(select(index, ...)) do
-            new[key] = value
+            result[key] = value
         end
     end
 
-    return new
+    return result
+end
+"#;
+const MERGE_MIXED: &'static str = "_DARKLUA_MERGE_MIXED";
+const MERGE_MIXED_IMPL: &'static str = r#"
+local function _DARKLUA_MERGE_MIXED(...)
+    local result = {}
+
+    for index = 1, select('#', ...) do
+        local children = select(index, ...)
+        local length = #children
+
+        for key, value in pairs(children) do
+            if typeof(key) == 'number' and key > 0 and key <= length and key % 1 == 0 then
+                table.insert(result, value)
+            else
+                result[key] = value
+            end
+        end
+    end
+
+    return result
 end
 "#;
 
@@ -55,9 +76,17 @@ test_rule!(
         ),
     frame_with_spread_followed_by_attribute("return <Frame {... baseProps} foo='bar'/>")
         => &format!(
-            "{} return Roact.createElement('Frame', {}(baseProps, {{foo = 'bar' }}))",
+            "{} return Roact.createElement('Frame', {}(baseProps, {{ foo = 'bar' }}))",
             MERGE_IMPL,
             MERGE,
+        ),
+    fragment_with_single_spread_child_expression("return <>{... list}</>")
+        => "return Roact.createFragment(list)",
+    fragment_with_two_spread_child_expression("return <>{... listA} {... listB}</>")
+        => &format!(
+            "{} return Roact.createFragment({}(listA, listB))",
+            MERGE_MIXED_IMPL,
+            MERGE_MIXED,
         ),
 );
 

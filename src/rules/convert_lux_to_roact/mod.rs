@@ -1,5 +1,6 @@
 mod code_generator;
 mod identifier_collector;
+mod merge_functions;
 
 use code_generator::*;
 use identifier_collector::*;
