@@ -36,7 +36,7 @@ test_rule!(
         => "do local foo end return nil"
 );
 
-test_rule_wihout_effects!(
+test_rule_without_effects!(
     InjectGlobalValue::nil("foo"),
     does_not_override_local_variable("local foo return foo")
 );

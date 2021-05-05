@@ -28,7 +28,7 @@ macro_rules! test_rule {
     };
 }
 
-macro_rules! test_rule_wihout_effects {
+macro_rules! test_rule_without_effects {
     ($rule:expr, $($name:ident ($input:literal)),* $(,)?) => {
         $(
             #[test]

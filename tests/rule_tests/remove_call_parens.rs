@@ -8,7 +8,7 @@ test_rule!(
     call_expression_with_empty_table("return foo({})") => "return foo{}"
 );
 
-test_rule_wihout_effects!(
+test_rule_without_effects!(
     RemoveFunctionCallParens::default(),
     two_strings("foo('bar', 'baz')"),
     two_tables("foo({}, {})"),

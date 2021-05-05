@@ -10,7 +10,7 @@ test_rule!(
     name_in_parameters("local function foo(foo) return foo end") => "local foo = function(foo) return foo end"
 );
 
-test_rule_wihout_effects!(
+test_rule_without_effects!(
     ConvertLocalFunctionToAssign::default(),
     two_local_using_the_other("local function foo() foo() end")
 );

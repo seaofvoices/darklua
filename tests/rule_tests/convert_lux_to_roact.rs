@@ -88,11 +88,24 @@ test_rule!(
             MERGE_MIXED_IMPL,
             MERGE_MIXED,
         ),
-);
-
-test_rule_wihout_effects!(
-    ConvertLUXToRoactCode::default(),
-    does_not_mutate_true_expression("return true")
+    fragment_with_two_spread_child_expression_separated_by_a_frame("return <>{... listA}<Frame/>{... listB}</>")
+        => &format!(
+            "{} return Roact.createFragment({}(listA, {{ Roact.createElement('Frame') }}, listB))",
+            MERGE_MIXED_IMPL,
+            MERGE_MIXED,
+        ),
+    fragment_with_value_child("return <>{element}</>")
+        => "return Roact.createFragment({element})",
+    fragment_with_two_value_children("return <>{elementA}{elementB}</>")
+        => "return Roact.createFragment({elementA, elementB})",
+    fragment_with_two_value_children_separated_by_a_frame("return <>{elementA}<Frame/>{elementB}</>")
+        => "return Roact.createFragment({elementA, Roact.createElement('Frame'), elementB})",
+    fragment_with_two_value_children_separated_by_spread_expression("return <>{elementA}{...middleChildren}{elementB}</>")
+        => &format!(
+            "{} return Roact.createFragment({}({{ elementA }}, middleChildren, {{ elementB }}))",
+            MERGE_MIXED_IMPL,
+            MERGE_MIXED,
+        ),
 );
 
 #[test]

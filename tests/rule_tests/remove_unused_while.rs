@@ -7,7 +7,7 @@ test_rule!(
     while_with_block("while false do print('hello') end") => ""
 );
 
-test_rule_wihout_effects!(
+test_rule_without_effects!(
     RemoveUnusedWhile::default(),
     while_with_true_condition("while true do end")
 );
