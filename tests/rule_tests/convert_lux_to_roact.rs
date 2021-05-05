@@ -100,6 +100,8 @@ test_rule!(
         => "return Roact.createFragment({elementA, elementB})",
     fragment_with_two_value_children_separated_by_a_frame("return <>{elementA}<Frame/>{elementB}</>")
         => "return Roact.createFragment({elementA, Roact.createElement('Frame'), elementB})",
+    fragment_with_two_value_children_separated_by_a_frame_with_a_key("return <>{elementA}<Frame roact:key='foo'/>{elementB}</>")
+        => "return Roact.createFragment({elementA, foo = Roact.createElement('Frame'), elementB})",
     fragment_with_two_value_children_separated_by_spread_expression("return <>{elementA}{...middleChildren}{elementB}</>")
         => &format!(
             "{} return Roact.createFragment({}({{ elementA }}, middleChildren, {{ elementB }}))",
