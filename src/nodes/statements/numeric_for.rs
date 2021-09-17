@@ -1,7 +1,4 @@
-use crate::nodes::{
-    Block,
-    Expression,
-};
+use crate::nodes::{Block, Expression};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NumericForStatement {
@@ -13,19 +10,19 @@ pub struct NumericForStatement {
 }
 
 impl NumericForStatement {
-    pub fn new<S: Into<String>>(
+    pub fn new<S: Into<String>, E1: Into<Expression>, E2: Into<Expression>, B: Into<Block>>(
         identifier: S,
-        start: Expression,
-        end: Expression,
+        start: E1,
+        end: E2,
         step: Option<Expression>,
-        block: Block
+        block: B,
     ) -> Self {
         Self {
             identifier: identifier.into(),
-            start,
-            end,
+            start: start.into(),
+            end: end.into(),
             step,
-            block,
+            block: block.into(),
         }
     }
 

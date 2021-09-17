@@ -87,10 +87,10 @@ impl FunctionStatement {
         }
     }
 
-    pub fn from_name<S: Into<String>>(name: S, block: Block) -> Self {
+    pub fn from_name<S: Into<String>, B: Into<Block>>(name: S, block: B) -> Self {
         Self {
             name: FunctionName::from_name(name),
-            block,
+            block: block.into(),
             parameters: Vec::new(),
             is_variadic: false,
         }

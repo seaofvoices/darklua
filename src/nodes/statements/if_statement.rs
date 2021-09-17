@@ -8,10 +8,7 @@ pub struct IfBranch {
 
 impl IfBranch {
     pub fn new(condition: Expression, block: Block) -> Self {
-        Self {
-            condition,
-            block,
-        }
+        Self { condition, block }
     }
 
     #[inline]
@@ -67,7 +64,9 @@ impl IfStatement {
     }
 
     pub fn mutate_all_blocks(&mut self) -> Vec<&mut Block> {
-        let mut blocks: Vec<&mut Block> = self.branches.iter_mut()
+        let mut blocks: Vec<&mut Block> = self
+            .branches
+            .iter_mut()
             .map(|branch| branch.mutate_block())
             .collect();
 
@@ -94,6 +93,12 @@ impl IfStatement {
     }
 
     #[inline]
+    pub fn push_branch<E: Into<Expression>, B: Into<Block>>(&mut self, condition: E, block: B) {
+        self.branches
+            .push(IfBranch::new(condition.into(), block.into()));
+    }
+
+    #[inline]
     pub fn get_else_block(&self) -> Option<&Block> {
         self.else_block.as_ref()
     }
@@ -101,6 +106,11 @@ impl IfStatement {
     #[inline]
     pub fn mutate_else_block(&mut self) -> &mut Option<Block> {
         &mut self.else_block
+    }
+
+    #[inline]
+    pub fn set_else_block<B: Into<Block>>(&mut self, block: B) {
+        self.else_block = Some(block.into());
     }
 
     #[inline]

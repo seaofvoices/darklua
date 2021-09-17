@@ -178,6 +178,15 @@ impl DenseLuaGenerator {
             self.push_str("...");
         };
     }
+
+    fn write_variable(&mut self, variable: &nodes::Variable) {
+        use nodes::Variable::*;
+        match variable {
+            Identifier(identifier) => self.push_str(identifier),
+            Field(field) => self.write_field(field),
+            Index(index) => self.write_index(index),
+        }
+    }
 }
 
 impl Default for DenseLuaGenerator {
@@ -220,13 +229,7 @@ impl LuaGenerator for DenseLuaGenerator {
         variables.iter()
             .enumerate()
             .for_each(|(index, variable)| {
-                use nodes::Variable::*;
-
-                match variable {
-                    Identifier(identifier) => self.push_str(identifier),
-                    Field(field) => self.write_field(field),
-                    Index(index) => self.write_index(index),
-                }
+                self.write_variable(variable);
 
                 if index != last_variable_index {
                     self.push_char(',');
@@ -346,6 +349,7 @@ impl LuaGenerator for DenseLuaGenerator {
 
         match statement {
             Break => self.push_str("break"),
+            Continue => self.push_str("continue"),
             Return(expressions) => {
                 self.push_str("return");
                 let last_index = expressions.len().checked_sub(1).unwrap_or(0);
@@ -397,6 +401,14 @@ impl LuaGenerator for DenseLuaGenerator {
                     }
                 });
         };
+    }
+
+    fn write_compound_assign(&mut self, assign: &nodes::CompoundAssignStatement) {
+        self.write_variable(assign.get_variable());
+
+        self.push_str(assign.get_operator().to_str());
+
+        self.write_expression(assign.get_value());
     }
 
     fn write_local_function(&mut self, function: &nodes::LocalFunctionStatement) {
@@ -702,6 +714,13 @@ impl LuaGenerator for DenseLuaGenerator {
                 };
 
                 self.push_str(&result);
+            }
+            Binary(number) => {
+                self.push_str(&format!(
+                    "0{}{:b}",
+                    if number.is_b_uppercase() { 'B' } else { 'b' },
+                    number.get_raw_value()
+                ));
             }
         }
     }

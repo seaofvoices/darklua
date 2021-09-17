@@ -9,6 +9,7 @@ pub trait NodeProcessor {
     fn process_function_call(&mut self, _: &mut FunctionCall) {}
 
     fn process_assign_statement(&mut self, _: &mut AssignStatement) {}
+    fn process_compound_assign_statement(&mut self, _: &mut CompoundAssignStatement) {}
     fn process_do_statement(&mut self, _: &mut DoStatement) {}
     fn process_function_statement(&mut self, _: &mut FunctionStatement) {}
     fn process_generic_for_statement(&mut self, _: &mut GenericForStatement) {}
@@ -19,6 +20,8 @@ pub trait NodeProcessor {
     fn process_numeric_for_statement(&mut self, _: &mut NumericForStatement) {}
     fn process_repeat_statement(&mut self, _: &mut RepeatStatement) {}
     fn process_while_statement(&mut self, _: &mut WhileStatement) {}
+
+    fn process_variable(&mut self, _: &mut Variable) {}
 
     fn process_expression(&mut self, _: &mut Expression) {}
 

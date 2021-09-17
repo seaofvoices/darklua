@@ -1,7 +1,4 @@
-use crate::nodes::{
-    Block,
-    Expression,
-};
+use crate::nodes::{Block, Expression};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GenericForStatement {
@@ -11,11 +8,15 @@ pub struct GenericForStatement {
 }
 
 impl GenericForStatement {
-    pub fn new(identifiers: Vec<String>, expressions: Vec<Expression>, block: Block) -> Self {
+    pub fn new<B: Into<Block>>(
+        identifiers: Vec<String>,
+        expressions: Vec<Expression>,
+        block: B,
+    ) -> Self {
         Self {
             identifiers,
             expressions,
-            block,
+            block: block.into(),
         }
     }
 

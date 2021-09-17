@@ -1,9 +1,10 @@
-use darklua_core::ParsingError;
+use darklua_core::ParserError;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::path::PathBuf;
 
+#[derive(Debug, Clone)]
 pub enum CliError {
-    Parser(PathBuf, ParsingError),
+    Parser(PathBuf, ParserError),
     InputFile(String),
     InputFileNotFound(PathBuf),
     OutputFile(PathBuf, String),
@@ -24,9 +25,9 @@ impl Display for CliError {
             Self::Parser(path, error) => {
                 write!(
                     f,
-                    "could not parse input at <{}>: {:?}",
+                    "could not parse input at <{}>: {}",
                     path.display(),
-                    error
+                    error,
                 )
             }
             Self::InputFile(error) => {

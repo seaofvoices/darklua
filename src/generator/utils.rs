@@ -77,6 +77,9 @@ pub fn ends_with_prefix(statement: &nodes::Statement) -> bool {
                 false
             }
         }
+        CompoundAssign(assign) => {
+            expression_ends_with_call(assign.get_value())
+        }
         Call(_) => true,
         Repeat(repeat) => expression_ends_with_call(repeat.get_condition()),
         LocalAssign(assign) => {
@@ -102,6 +105,13 @@ pub fn starts_with_parenthese(statement: &nodes::Statement) -> bool {
                 }
             } else {
                 false
+            }
+        }
+        Statement::CompoundAssign(assign) => {
+            match assign.get_variable() {
+                Variable::Identifier(_) => false,
+                Variable::Field(field) => field_starts_with_parenthese(field),
+                Variable::Index(index) => index_starts_with_parenthese(index),
             }
         }
         Statement::Call(call) => call_starts_with_parenthese(call),

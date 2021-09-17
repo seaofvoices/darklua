@@ -1,7 +1,4 @@
-use crate::nodes::{
-    Arguments,
-    Prefix,
-};
+use crate::nodes::{Arguments, Expression, Prefix};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FunctionCall {
@@ -27,13 +24,26 @@ impl FunctionCall {
         }
     }
 
-    pub fn with_arguments(mut self, arguments: Arguments) -> Self {
-        self.arguments = arguments;
+    pub fn from_prefix<T: Into<Prefix>>(prefix: T) -> Self {
+        Self {
+            prefix: Box::new(prefix.into()),
+            arguments: Arguments::Tuple(Vec::new()),
+            method: None,
+        }
+    }
+
+    pub fn with_arguments<A: Into<Arguments>>(mut self, arguments: A) -> Self {
+        self.arguments = arguments.into();
         self
     }
 
-    pub fn with_method(mut self, method: String) -> Self {
-        self.method.replace(method);
+    pub fn append_argument<T: Into<Expression>>(mut self, argument: T) -> Self {
+        self.arguments = self.arguments.append_argument(argument);
+        self
+    }
+
+    pub fn with_method<IntoString: Into<String>>(mut self, method: IntoString) -> Self {
+        self.method.replace(method.into());
         self
     }
 

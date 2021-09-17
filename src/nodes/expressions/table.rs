@@ -14,9 +14,7 @@ pub struct TableExpression {
 
 impl TableExpression {
     pub fn new(entries: Vec<TableEntry>) -> Self {
-        Self {
-            entries,
-        }
+        Self { entries }
     }
 
     #[inline]
@@ -32,6 +30,27 @@ impl TableExpression {
     #[inline]
     pub fn mutate_entries(&mut self) -> &mut Vec<TableEntry> {
         &mut self.entries
+    }
+
+    pub fn append_field<S: Into<String>, E: Into<Expression>>(mut self, key: S, value: E) -> Self {
+        self.entries
+            .push(TableEntry::Field(key.into(), value.into()));
+        self
+    }
+
+    pub fn append_index<T: Into<Expression>, U: Into<Expression>>(
+        mut self,
+        key: T,
+        value: U,
+    ) -> Self {
+        self.entries
+            .push(TableEntry::Index(key.into(), value.into()));
+        self
+    }
+
+    pub fn append_array_value<E: Into<Expression>>(mut self, value: E) -> Self {
+        self.entries.push(TableEntry::Value(value.into()));
+        self
     }
 }
 

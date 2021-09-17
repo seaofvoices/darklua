@@ -25,6 +25,7 @@ pub trait LuaGenerator {
             Assign(statement) => self.write_assign_statement(statement),
             Do(statement) => self.write_do_statement(statement),
             Call(statement) => self.write_function_call(statement),
+            CompoundAssign(statement) => self.write_compound_assign(statement),
             Function(statement) => self.write_function_statement(statement),
             GenericFor(statement) => self.write_generic_for(statement),
             If(statement) => self.write_if_statement(statement),
@@ -38,6 +39,7 @@ pub trait LuaGenerator {
 
     fn write_assign_statement(&mut self, assign: &nodes::AssignStatement);
     fn write_do_statement(&mut self, do_statement: &nodes::DoStatement);
+    fn write_compound_assign(&mut self, assign: &nodes::CompoundAssignStatement);
     fn write_generic_for(&mut self, generic_for: &nodes::GenericForStatement);
     fn write_if_statement(&mut self, if_statement: &nodes::IfStatement);
     fn write_function_statement(&mut self, function: &nodes::FunctionStatement);
@@ -115,7 +117,8 @@ mod test {
             $(
                 #[test]
                 fn $name() {
-                    let number = $crate::nodes::NumberExpression::from($value);
+                    use std::str::FromStr;
+                    let number = $crate::nodes::NumberExpression::from_str($value).unwrap();
 
                     let mut generator = $generator;
                     generator.write_expression(&number.into());
@@ -328,6 +331,14 @@ mod $mod_name {
             ),
         ));
 
+        snapshot_node!($mod_name, $generator, compound_assign_statement, write_statement => (
+            increment_var_by_one => CompoundAssignStatement::new(
+                CompoundOperator::Plus,
+                Variable::new("var"),
+                1_f64,
+            ),
+        ));
+
         snapshot_node!($mod_name, $generator, function_statement, write_statement => (
             empty => FunctionStatement::from_name("foo", Block::default()),
             empty_with_field =>  FunctionStatement::new(
@@ -416,6 +427,7 @@ mod $mod_name {
 
         snapshot_node!($mod_name, $generator, last, write_last_statement => (
             break_statement => LastStatement::Break,
+            continue_statement => LastStatement::Continue,
             return_without_values => LastStatement::Return(Vec::new()),
             return_one_expression => LastStatement::Return(vec![Expression::True]),
             return_two_expressions => LastStatement::Return(vec![
@@ -487,6 +499,7 @@ mod $mod_name {
             number_1_2345e50 => 1.2345e50,
             number_100_25 => 100.25,
             number_2000_05 => 2000.05,
+            binary_0b10101 => BinaryNumber::new(0b10101, false),
         ));
 
         snapshot_node!($mod_name, $generator, table, write_expression => (

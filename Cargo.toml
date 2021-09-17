@@ -22,7 +22,7 @@ path = "src/bin.rs"
 
 [dependencies]
 structopt = "0.3.9"
-luaparser = { version = "0.1.1", default-features = false }
+full_moon = { version = "0.13.1", features = ["roblox"] }
 serde = { version = "1.0", features = ["derive"] }
 json5 = "0.2"
 
@@ -30,3 +30,12 @@ json5 = "0.2"
 insta = "1.7.1"
 rand = "0.7.3"
 rand_distr = "0.2.2"
+
+# This is needed because when runnin `cargo test`, the library and its
+# dependencies are build with the `dev` profile. To make sure full_moon
+# does not stack overflow when parsing complex code, it needs to be compiled
+# at optimization level 3 (which is what release mode uses)
+# Info about profiles can be found there:
+#     https://doc.rust-lang.org/cargo/reference/profiles.html
+[profile.dev.package.full_moon]
+opt-level = 3

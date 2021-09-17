@@ -6,6 +6,7 @@ enum StatementType {
     Assign,
     Do,
     Call,
+    CompoundAssign,
     Function,
     GenericFor,
     If,
@@ -16,6 +17,7 @@ enum StatementType {
     While,
     Return,
     Break,
+    Continue
 }
 
 impl From<&nodes::Statement> for StatementType {
@@ -25,6 +27,7 @@ impl From<&nodes::Statement> for StatementType {
             Assign(_) => Self::Assign,
             Do(_) => Self::Do,
             Call(_) => Self::Call,
+            CompoundAssign(_) => Self::CompoundAssign,
             Function(_) => Self::Function,
             GenericFor(_) => Self::GenericFor,
             If(_) => Self::If,
@@ -42,6 +45,7 @@ impl From<&nodes::LastStatement> for StatementType {
         use nodes::LastStatement::*;
         match statement {
             Break => Self::Break,
+            Continue => Self::Continue,
             Return(_) => Self::Return,
         }
     }
@@ -325,6 +329,15 @@ impl ReadableLuaGenerator {
             self.write_indentation();
         }
     }
+
+    fn write_variable(&mut self, variable: &nodes::Variable) {
+        use nodes::Variable::*;
+        match variable {
+            Identifier(identifier) => self.push_str(identifier),
+            Field(field) => self.write_field(field),
+            Index(index) => self.write_index(index),
+        }
+    }
 }
 
 impl Default for ReadableLuaGenerator {
@@ -378,6 +391,7 @@ impl LuaGenerator for ReadableLuaGenerator {
 
         match statement {
             Break => self.push_str("break"),
+            Continue => self.push_str("continue"),
             Return(expressions) => {
                 self.push_str("return");
                 self.push_can_add_new_line(false);
@@ -407,13 +421,7 @@ impl LuaGenerator for ReadableLuaGenerator {
         variables.iter()
             .enumerate()
             .for_each(|(index, variable)| {
-                use nodes::Variable::*;
-
-                match variable {
-                    Identifier(identifier) => self.push_str(identifier),
-                    Field(field) => self.write_field(field),
-                    Index(index) => self.write_index(index),
-                }
+                self.write_variable(variable);
 
                 if index != last_variable_index {
                     self.raw_push_char(',');
@@ -476,6 +484,20 @@ impl LuaGenerator for ReadableLuaGenerator {
                     }
                 });
         };
+
+        self.pop_can_add_new_line();
+    }
+
+    fn write_compound_assign(&mut self, assign: &nodes::CompoundAssignStatement) {
+        self.push_can_add_new_line(false);
+
+        self.write_variable(assign.get_variable());
+
+        self.raw_push_char(' ');
+        self.raw_push_str(assign.get_operator().to_str());
+        self.push_space();
+
+        self.write_expression(assign.get_value());
 
         self.pop_can_add_new_line();
     }
@@ -954,6 +976,13 @@ impl LuaGenerator for ReadableLuaGenerator {
                     self.raw_push_char(exponent_char);
                     self.raw_push_str(&format!("{}", exponent));
                 };
+            }
+            Binary(number) => {
+                self.push_str(&format!(
+                    "0{}{:b}",
+                    if number.is_b_uppercase() { 'B' } else { 'b' },
+                    number.get_raw_value()
+                ));
             }
         }
     }

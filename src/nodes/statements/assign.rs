@@ -1,8 +1,4 @@
-use crate::nodes::{
-    Expression,
-    FieldExpression,
-    IndexExpression,
-};
+use crate::nodes::{Expression, FieldExpression, IndexExpression};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Variable {
@@ -17,6 +13,18 @@ impl Variable {
     }
 }
 
+impl From<FieldExpression> for Variable {
+    fn from(field: FieldExpression) -> Self {
+        Self::Field(field.into())
+    }
+}
+
+impl From<IndexExpression> for Variable {
+    fn from(index: IndexExpression) -> Self {
+        Self::Index(index.into())
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AssignStatement {
     variables: Vec<Variable>,
@@ -25,9 +33,13 @@ pub struct AssignStatement {
 
 impl AssignStatement {
     pub fn new(variables: Vec<Variable>, values: Vec<Expression>) -> Self {
+        Self { variables, values }
+    }
+
+    pub fn from_variable<V: Into<Variable>, E: Into<Expression>>(variable: V, value: E) -> Self {
         Self {
-            variables,
-            values,
+            variables: vec![variable.into()],
+            values: vec![value.into()],
         }
     }
 
@@ -49,5 +61,15 @@ impl AssignStatement {
     #[inline]
     pub fn mutate_values(&mut self) -> &mut Vec<Expression> {
         &mut self.values
+    }
+
+    pub fn append_assignment<V: Into<Variable>, E: Into<Expression>>(
+        mut self,
+        variable: V,
+        value: E,
+    ) -> Self {
+        self.variables.push(variable.into());
+        self.values.push(value.into());
+        self
     }
 }

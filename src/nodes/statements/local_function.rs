@@ -23,10 +23,10 @@ impl LocalFunctionStatement {
         }
     }
 
-    pub fn from_name<S: Into<String>>(identifier: S, block: Block) -> Self {
+    pub fn from_name<S: Into<String>, B: Into<Block>>(identifier: S, block: B) -> Self {
         Self {
             identifier: identifier.into(),
-            block,
+            block: block.into(),
             parameters: Vec::new(),
             is_variadic: false,
         }

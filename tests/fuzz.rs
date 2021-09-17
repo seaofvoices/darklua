@@ -192,7 +192,7 @@ impl Fuzz<Block> for Block {
 
 impl Fuzz<Statement> for Statement {
     fn fuzz(context: &mut FuzzContext) -> Self {
-        match thread_rng().gen_range(0, 11) {
+        match thread_rng().gen_range(0, 12) {
             0 => AssignStatement::fuzz(context).into(),
             1 => DoStatement::fuzz(&mut context.share_budget()).into(),
             2 => FunctionCall::fuzz(context).into(),
@@ -203,21 +203,24 @@ impl Fuzz<Statement> for Statement {
             7 => LocalFunctionStatement::fuzz(&mut context.share_budget()).into(),
             8 => NumericForStatement::fuzz(&mut context.share_budget()).into(),
             9 => RepeatStatement::fuzz(&mut context.share_budget()).into(),
-            _ => WhileStatement::fuzz(&mut context.share_budget()).into(),
+            10 => WhileStatement::fuzz(&mut context.share_budget()).into(),
+            _ => CompoundAssignStatement::fuzz(&mut context.share_budget()).into(),
         }
     }
 }
 
 impl Fuzz<LastStatement> for LastStatement {
     fn fuzz(context: &mut FuzzContext) -> Self {
-        if rand::random() {
-            Self::Break
-        } else {
-            let normal = Normal::new(0.0, 2.5).unwrap();
-            let mut rng = thread_rng();
-            let length = (rng.sample(normal) as f64).abs().floor() as usize;
+        match thread_rng().gen_range(0, 3) {
+            0 => Self::Break,
+            1 => Self::Continue,
+            _ => {
+                let normal = Normal::new(0.0, 2.5).unwrap();
+                let mut rng = thread_rng();
+                let length = (rng.sample(normal) as f64).abs().floor() as usize;
 
-            Self::Return(generate_expressions(length, context))
+                Self::Return(generate_expressions(length, context))
+            }
         }
     }
 }
@@ -231,6 +234,32 @@ impl Fuzz<AssignStatement> for AssignStatement {
                 .collect(),
             generate_at_least_one_expression(assign_values_length(), context),
         )
+    }
+}
+
+impl Fuzz<CompoundAssignStatement> for CompoundAssignStatement {
+    fn fuzz(context: &mut FuzzContext) -> Self {
+        Self::new(
+            CompoundOperator::fuzz(context),
+            Variable::fuzz(context),
+            Expression::fuzz(context),
+        )
+    }
+}
+
+impl Fuzz<CompoundOperator> for CompoundOperator {
+    fn fuzz(_context: &mut FuzzContext) -> Self {
+        use CompoundOperator::*;
+
+        match thread_rng().gen_range(0, 8) {
+            1 => Plus,
+            2 => Minus,
+            3 => Asterisk,
+            4 => Slash,
+            5 => Percent,
+            6 => Caret,
+            _ => Concat,
+        }
     }
 }
 
@@ -491,13 +520,16 @@ impl Fuzz<IndexExpression> for IndexExpression {
 
 impl Fuzz<NumberExpression> for NumberExpression {
     fn fuzz(_context: &mut FuzzContext) -> Self {
-        if rand::random() {
-            DecimalNumber::new(thread_rng().gen()).into()
-        } else {
-            HexNumber::new(
+        match thread_rng().gen_range(0, 4) {
+            0 => DecimalNumber::new(thread_rng().gen()).into(),
+            1 => HexNumber::new(
                 thread_rng().gen_range(0, 100_000),
                 rand::random()
-            ).into()
+            ).into(),
+            _ => BinaryNumber::new(
+                thread_rng().gen_range(0, 1_000_000),
+                rand::random()
+            ).into(),
         }
     }
 }

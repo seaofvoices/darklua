@@ -1,5 +1,6 @@
 mod assign;
 mod do_statement;
+mod compound_assign;
 mod function;
 mod generic_for;
 mod if_statement;
@@ -11,6 +12,7 @@ mod repeat_statement;
 mod while_statement;
 
 pub use assign::*;
+pub use compound_assign::*;
 pub use do_statement::*;
 pub use function::*;
 pub use generic_for::*;
@@ -29,6 +31,7 @@ pub enum Statement {
     Assign(AssignStatement),
     Do(DoStatement),
     Call(FunctionCall),
+    CompoundAssign(CompoundAssignStatement),
     Function(FunctionStatement),
     GenericFor(GenericForStatement),
     If(IfStatement),
@@ -48,6 +51,12 @@ impl From<AssignStatement> for Statement {
 impl From<DoStatement> for Statement {
     fn from(do_statement: DoStatement) -> Statement {
         Statement::Do(do_statement)
+    }
+}
+
+impl From<CompoundAssignStatement> for Statement {
+    fn from(statement: CompoundAssignStatement) -> Statement {
+        Statement::CompoundAssign(statement)
     }
 }
 

@@ -32,6 +32,9 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Statement::Assign(statement) => Self::visit_assign_statement(statement, processor),
             Statement::Do(statement) => Self::visit_do_statement(statement, processor),
             Statement::Call(statement) => Self::visit_function_call(statement, processor),
+            Statement::CompoundAssign(statement) => {
+                Self::visit_compound_assign(statement, processor)
+            }
             Statement::Function(statement) => Self::visit_function_statement(statement, processor),
             Statement::GenericFor(statement) => Self::visit_generic_for(statement, processor),
             Statement::If(statement) => Self::visit_if_statement(statement, processor),
@@ -82,11 +85,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
         processor.process_assign_statement(statement);
 
         statement.mutate_variables().iter_mut()
-            .for_each(|variable| match variable {
-                Variable::Identifier(identifier) => processor.process_variable_expression(identifier),
-                Variable::Field(field) => Self::visit_field_expression(field, processor),
-                Variable::Index(index) => Self::visit_index_expression(index, processor),
-            });
+            .for_each(|variable| Self::visit_variable(variable, processor));
 
         statement.mutate_values().iter_mut()
             .for_each(|expression| Self::visit_expression(expression, processor));
@@ -95,6 +94,12 @@ pub trait NodeVisitor<T: NodeProcessor> {
     fn visit_do_statement(statement: &mut DoStatement, processor: &mut T) {
         processor.process_do_statement(statement);
         Self::visit_block(statement.mutate_block(), processor);
+    }
+
+    fn visit_compound_assign(statement: &mut CompoundAssignStatement, processor: &mut T) {
+        processor.process_compound_assign_statement(statement);
+        Self::visit_variable(statement.mutate_variable(), processor);
+        Self::visit_expression(statement.mutate_value(), processor);
     }
 
     fn visit_function_statement(statement: &mut FunctionStatement, processor: &mut T) {
@@ -163,6 +168,16 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
         Self::visit_expression(statement.mutate_condition(), processor);
         Self::visit_block(statement.mutate_block(), processor);
+    }
+
+    fn visit_variable(variable: &mut Variable, processor: &mut T) {
+        processor.process_variable(variable);
+
+        match variable {
+            Variable::Identifier(identifier) => processor.process_variable_expression(identifier),
+            Variable::Field(field) => Self::visit_field_expression(field, processor),
+            Variable::Index(index) => Self::visit_index_expression(index, processor),
+        }
     }
 
     fn visit_field_expression(field: &mut FieldExpression, processor: &mut T) {
@@ -358,5 +373,23 @@ mod test {
         assert_eq!(counter.block_count, 4);
         assert_eq!(counter.expression_count, 2);
         assert_eq!(counter.if_count, 1);
+    }
+
+    #[test]
+    fn visit_compound_assign_statement() {
+        let mut counter = NodeCounter::new();
+        let statement = CompoundAssignStatement::new(
+            CompoundOperator::Plus,
+            Variable::new("var"),
+            1_f64,
+        );
+
+        let mut block = statement.into();
+
+        DefaultVisitor::visit_block(&mut block, &mut counter);
+
+        assert_eq!(counter.compound_assign, 1);
+        assert_eq!(counter.expression_count, 1);
+        assert_eq!(counter.variable_count, 1);
     }
 }

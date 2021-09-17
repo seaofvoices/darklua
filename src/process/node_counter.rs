@@ -5,6 +5,7 @@ pub struct NodeCounter {
     pub block_count: usize,
     pub function_call_count: usize,
     pub assign_count: usize,
+    pub compound_assign: usize,
     pub do_count: usize,
     pub function_count: usize,
     pub generic_for_count: usize,
@@ -15,8 +16,10 @@ pub struct NodeCounter {
     pub repeat_count: usize,
     pub while_count: usize,
     pub break_count: usize,
+    pub continue_count: usize,
     pub return_count: usize,
     pub expression_count: usize,
+    pub variable_count: usize,
 }
 
 impl NodeCounter {
@@ -25,6 +28,7 @@ impl NodeCounter {
             block_count: 0,
             function_call_count: 0,
             assign_count: 0,
+            compound_assign: 0,
             do_count: 0,
             function_count: 0,
             generic_for_count: 0,
@@ -35,8 +39,10 @@ impl NodeCounter {
             repeat_count: 0,
             while_count: 0,
             break_count: 0,
+            continue_count: 0,
             return_count: 0,
             expression_count: 0,
+            variable_count: 0,
         }
     }
 }
@@ -52,6 +58,10 @@ impl NodeProcessor for NodeCounter {
 
     fn process_assign_statement(&mut self, _: &mut AssignStatement) {
         self.assign_count += 1;
+    }
+
+    fn process_compound_assign_statement(&mut self, _: &mut CompoundAssignStatement) {
+        self.compound_assign += 1;
     }
 
     fn process_do_statement(&mut self, _: &mut DoStatement) {
@@ -73,6 +83,7 @@ impl NodeProcessor for NodeCounter {
     fn process_last_statement(&mut self, statement: &mut LastStatement) {
         match statement {
             LastStatement::Break => self.break_count += 1,
+            LastStatement::Continue => self.continue_count += 1,
             LastStatement::Return(_) => self.return_count += 1,
         }
     }
@@ -99,5 +110,9 @@ impl NodeProcessor for NodeCounter {
 
     fn process_expression(&mut self, _: &mut Expression) {
         self.expression_count += 1;
+    }
+
+    fn process_variable_expression(&mut self, _: &mut String) {
+        self.variable_count += 1;
     }
 }

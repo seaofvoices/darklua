@@ -73,6 +73,18 @@ impl Default for Block {
     }
 }
 
+impl<IntoStatement: Into<Statement>> From<IntoStatement> for Block {
+    fn from(statement: IntoStatement) -> Block {
+        Block::new(vec![statement.into()], None)
+    }
+}
+
+impl From<LastStatement> for Block {
+    fn from(statement: LastStatement) -> Block {
+        Block::new(Vec::new(), Some(statement))
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

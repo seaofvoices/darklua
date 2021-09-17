@@ -3,5 +3,6 @@ use crate::nodes::Expression;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LastStatement {
     Break,
+    Continue,
     Return(Vec<Expression>),
 }

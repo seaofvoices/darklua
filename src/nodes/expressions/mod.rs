@@ -18,7 +18,7 @@ pub use string::*;
 pub use table::*;
 pub use unary::*;
 
-use crate::nodes::FunctionCall;
+use crate::nodes::{FunctionCall, Variable};
 
 use std::num::FpCategory;
 
@@ -39,6 +39,16 @@ pub enum Expression {
     True,
     Unary(Box<UnaryExpression>),
     VariableArguments,
+}
+
+impl Expression {
+    pub fn identifier<S: Into<String>>(identifier: S) -> Self {
+        Self::Identifier(identifier.into())
+    }
+
+    pub fn in_parentheses(self) -> Self {
+        Self::Parenthese(self.into())
+    }
 }
 
 impl From<bool> for Expression {
@@ -150,6 +160,12 @@ impl From<HexNumber> for Expression {
     }
 }
 
+impl From<BinaryNumber> for Expression {
+    fn from(number: BinaryNumber) -> Self {
+        Self::Number(NumberExpression::Binary(number))
+    }
+}
+
 impl From<Prefix> for Expression {
     fn from(prefix: Prefix) -> Self {
         match prefix {
@@ -177,5 +193,15 @@ impl From<TableExpression> for Expression {
 impl From<UnaryExpression> for Expression {
     fn from(unary: UnaryExpression) -> Self {
         Self::Unary(Box::new(unary))
+    }
+}
+
+impl From<Variable> for Expression {
+    fn from(variable: Variable) -> Self {
+        match variable {
+            Variable::Identifier(identifier) => Self::Identifier(identifier),
+            Variable::Field(field) => Self::Field(field),
+            Variable::Index(index) => Self::Index(index),
+        }
     }
 }

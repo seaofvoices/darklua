@@ -7,9 +7,9 @@ pub struct FieldExpression {
 }
 
 impl FieldExpression {
-    pub fn new<S: Into<String>>(prefix: Prefix, field: S) -> Self {
+    pub fn new<IntoPrefix: Into<Prefix>, S: Into<String>>(prefix: IntoPrefix, field: S) -> Self {
         Self {
-            prefix,
+            prefix: prefix.into(),
             field: field.into(),
         }
     }

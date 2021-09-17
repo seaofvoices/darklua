@@ -16,6 +16,14 @@ impl FunctionExpression {
         }
     }
 
+    pub fn from_block<B: Into<Block>>(block: B) -> Self {
+        Self {
+            block: block.into(),
+            parameters: Vec::new(),
+            is_variadic: false,
+        }
+    }
+
     pub fn with_parameter<S: Into<String>>(mut self, parameter: S) -> Self {
         self.parameters.push(parameter.into());
         self

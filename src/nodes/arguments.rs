@@ -32,3 +32,15 @@ impl Default for Arguments {
         Arguments::Tuple(Vec::new())
     }
 }
+
+impl From<TableExpression> for Arguments {
+    fn from(table: TableExpression) -> Self {
+        Self::Table(table)
+    }
+}
+
+impl From<StringExpression> for Arguments {
+    fn from(string: StringExpression) -> Self {
+        Self::String(string)
+    }
+}
