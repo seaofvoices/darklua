@@ -12,14 +12,14 @@ stages:
 variables:
   CARGO_HOME: $CI_PROJECT_DIR/cargo
 
-.only-mr-and-master:
+.only-mr-and-main:
   only:
-    - master
+    - main
     - merge_requests
 
 build:
   stage: build
-  extends: .only-mr-and-master
+  extends: .only-mr-and-main
   script:
     - rustc --version
     - cargo --version
@@ -32,7 +32,7 @@ build:
 
 build-release:
   stage: build
-  extends: .only-mr-and-master
+  extends: .only-mr-and-main
   script:
     - rustc --version
     - cargo --version
@@ -45,7 +45,7 @@ build-release:
 
 test:
   stage: test
-  extends: .only-mr-and-master
+  extends: .only-mr-and-main
   script:
     - cargo test --locked --verbose
   needs: ['build']
@@ -64,7 +64,7 @@ test:
 test-lua-projects:
   stage: integration-test
   extends:
-    - .only-mr-and-master
+    - .only-mr-and-main
     - .lua-setup
   script:
     - lua ./bin/test-commands.lua

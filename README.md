@@ -1,4 +1,4 @@
-[![pipeline status](https://gitlab.com/jeparlefrancais/darklua/badges/master/pipeline.svg)](https://gitlab.com/jeparlefrancais/darklua/commits/master)
+[![pipeline status](https://gitlab.com/jeparlefrancais/darklua/badges/main/pipeline.svg)](https://gitlab.com/jeparlefrancais/darklua/commits/main)
 [![version](https://img.shields.io/crates/v/darklua)](https://crates.io/crates/darklua)
 [![license](https://img.shields.io/crates/l/darklua)](LICENSE.txt)
 
