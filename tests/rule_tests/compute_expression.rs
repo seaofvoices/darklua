@@ -12,9 +12,12 @@ test_rule!(
 
 #[test]
 fn deserialize_from_object_notation() {
-    json5::from_str::<Box<dyn Rule>>(r#"{
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
         rule: 'compute_expression',
-    }"#).unwrap();
+    }"#,
+    )
+    .unwrap();
 }
 
 #[test]

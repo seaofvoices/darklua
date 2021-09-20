@@ -1,15 +1,13 @@
-use crate::cli::GlobalOptions;
 use crate::cli::error::CliError;
-use crate::cli::utils::{
-    maybe_plural,
-    write_file,
-    Config,
-    FileProcessing,
-};
+use crate::cli::utils::{maybe_plural, write_file, Config, FileProcessing};
+use crate::cli::GlobalOptions;
 
-use darklua_core::{generator::{DenseLuaGenerator, LuaGenerator}, Parser};
-use std::path::PathBuf;
+use darklua_core::{
+    generator::{DenseLuaGenerator, LuaGenerator},
+    Parser,
+};
 use std::fs;
+use std::path::PathBuf;
 use std::process;
 use structopt::StructOpt;
 
@@ -35,7 +33,7 @@ fn process(file: &FileProcessing, options: &Options, global: &GlobalOptions) -> 
     let output = &file.output;
 
     if !source.exists() {
-        return Err(CliError::InputFileNotFound(source.clone()))
+        return Err(CliError::InputFileNotFound(source.clone()));
     }
 
     let input = fs::read_to_string(source)
@@ -43,7 +41,8 @@ fn process(file: &FileProcessing, options: &Options, global: &GlobalOptions) -> 
 
     let parser = Parser::default();
 
-    let block = parser.parse(&input)
+    let block = parser
+        .parse(&input)
         .map_err(|parser_error| CliError::Parser(source.clone(), parser_error))?;
 
     let mut generator = DenseLuaGenerator::new(config.column_span);
@@ -63,17 +62,17 @@ fn process(file: &FileProcessing, options: &Options, global: &GlobalOptions) -> 
 pub fn run(options: &Options, global: &GlobalOptions) {
     let file = FileProcessing::find(&options.input_path, &options.output_path, global);
 
-    let results: Vec<MinifyResult> = file.iter()
+    let results: Vec<MinifyResult> = file
+        .iter()
         .map(|file_processing| process(file_processing, &options, global))
         .collect();
 
     let total_files = results.len();
 
-    let errors: Vec<CliError> = results.into_iter()
+    let errors: Vec<CliError> = results
+        .into_iter()
         .filter_map(|result| match result {
-            Ok(()) => {
-                None
-            }
+            Ok(()) => None,
             Err(error) => Some(error),
         })
         .collect();
@@ -81,16 +80,27 @@ pub fn run(options: &Options, global: &GlobalOptions) {
     let error_count = errors.len();
 
     if error_count == 0 {
-        println!("Successfully minified {} file{}", total_files, maybe_plural(total_files));
-
+        println!(
+            "Successfully minified {} file{}",
+            total_files,
+            maybe_plural(total_files)
+        );
     } else {
         let success_count = total_files - error_count;
 
         if success_count > 0 {
-            eprintln!("Successfully minified {} file{}.", success_count, maybe_plural(success_count));
+            eprintln!(
+                "Successfully minified {} file{}.",
+                success_count,
+                maybe_plural(success_count)
+            );
         }
 
-        eprintln!("But {} error{} happened:", error_count, maybe_plural(error_count));
+        eprintln!(
+            "But {} error{} happened:",
+            error_count,
+            maybe_plural(error_count)
+        );
 
         errors.iter().for_each(|error| eprintln!("-> {}", error));
         process::exit(1);

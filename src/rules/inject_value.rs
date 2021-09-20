@@ -1,13 +1,11 @@
 use crate::nodes::{
-    Block,
-    DecimalNumber,
-    Expression,
-    LocalFunctionStatement,
-    Prefix,
-    StringExpression,
+    Block, DecimalNumber, Expression, LocalFunctionStatement, Prefix, StringExpression,
 };
 use crate::process::{NodeProcessor, NodeVisitor, Scope, ScopeVisitor};
-use crate::rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties, RulePropertyValue};
+use crate::rules::{
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    RulePropertyValue,
+};
 
 use std::collections::HashSet;
 
@@ -28,8 +26,7 @@ impl ValueInjection {
     }
 
     fn is_identifier_used(&self, identifier: &String) -> bool {
-        self.identifiers.iter()
-            .any(|set| set.contains(identifier))
+        self.identifiers.iter().any(|set| set.contains(identifier))
     }
 
     fn insert_identifier(&mut self, identifier: &String) {
@@ -68,7 +65,7 @@ impl Scope for ValueInjection {
 impl NodeProcessor for ValueInjection {
     fn process_expression(&mut self, expression: &mut Expression) {
         if self.is_identifier_used(&self.identifier) {
-            return
+            return;
         }
 
         let replace = match expression {
@@ -153,37 +150,35 @@ impl FlawlessRule for InjectGlobalValue {
 impl RuleConfiguration for InjectGlobalValue {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         if !properties.contains_key("identifier") {
-            return Err(RuleConfigurationError::MissingProperty("identifier".to_owned()))
+            return Err(RuleConfigurationError::MissingProperty(
+                "identifier".to_owned(),
+            ));
         }
 
         for (key, value) in properties {
             match key.as_str() {
-                "identifier" => {
-                    match value {
-                        RulePropertyValue::String(identifier) => {
-                            self.identifier = identifier;
-                        }
-                        _ => return Err(RuleConfigurationError::StringExpected(key)),
+                "identifier" => match value {
+                    RulePropertyValue::String(identifier) => {
+                        self.identifier = identifier;
                     }
-                }
-                "value" => {
-                    match value {
-                        RulePropertyValue::None => {}
-                        RulePropertyValue::String(value) => {
-                            self.value = StringExpression::from_value(value).into();
-                        }
-                        RulePropertyValue::Boolean(value) => {
-                            self.value = Expression::from(value);
-                        }
-                        RulePropertyValue::Usize(value) => {
-                            self.value = DecimalNumber::new(value as f64).into();
-                        }
-                        RulePropertyValue::Float(value) => {
-                            self.value = Expression::from(value);
-                        }
-                        _ => return Err(RuleConfigurationError::UnexpectedValueType(key)),
+                    _ => return Err(RuleConfigurationError::StringExpected(key)),
+                },
+                "value" => match value {
+                    RulePropertyValue::None => {}
+                    RulePropertyValue::String(value) => {
+                        self.value = StringExpression::from_value(value).into();
                     }
-                }
+                    RulePropertyValue::Boolean(value) => {
+                        self.value = Expression::from(value);
+                    }
+                    RulePropertyValue::Usize(value) => {
+                        self.value = DecimalNumber::new(value as f64).into();
+                    }
+                    RulePropertyValue::Float(value) => {
+                        self.value = Expression::from(value);
+                    }
+                    _ => return Err(RuleConfigurationError::UnexpectedValueType(key)),
+                },
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }
         }
@@ -197,7 +192,10 @@ impl RuleConfiguration for InjectGlobalValue {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         let mut rules = RuleProperties::new();
-        rules.insert("identifier".to_owned(), RulePropertyValue::String(self.identifier.clone()));
+        rules.insert(
+            "identifier".to_owned(),
+            RulePropertyValue::String(self.identifier.clone()),
+        );
 
         let property_value = match self.value {
             Expression::True => RulePropertyValue::Boolean(true),
@@ -220,9 +218,11 @@ mod test {
 
     #[test]
     fn configure_without_identifier_property_should_error() {
-        let result = json5::from_str::<Box<dyn Rule>>(r#"{
+        let result = json5::from_str::<Box<dyn Rule>>(
+            r#"{
             rule: 'inject_global_value',
-        }"#);
+        }"#,
+        );
 
         match result {
             Ok(_) => panic!("should return an error"),

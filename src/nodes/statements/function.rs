@@ -78,7 +78,12 @@ pub struct FunctionStatement {
 }
 
 impl FunctionStatement {
-    pub fn new(name: FunctionName, block: Block, parameters: Vec<String>, is_variadic: bool) -> Self {
+    pub fn new(
+        name: FunctionName,
+        block: Block,
+        parameters: Vec<String>,
+        is_variadic: bool,
+    ) -> Self {
         Self {
             name,
             block,

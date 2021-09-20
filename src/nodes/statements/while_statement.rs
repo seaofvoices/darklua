@@ -1,7 +1,4 @@
-use crate::nodes::{
-    Block,
-    Expression,
-};
+use crate::nodes::{Block, Expression};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WhileStatement {
@@ -11,10 +8,7 @@ pub struct WhileStatement {
 
 impl WhileStatement {
     pub fn new(block: Block, condition: Expression) -> Self {
-        Self {
-            block,
-            condition,
-        }
+        Self { block, condition }
     }
 
     #[inline]

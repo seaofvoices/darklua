@@ -1,6 +1,8 @@
 use crate::nodes::{Block, Expression};
 use crate::process::{DefaultVisitor, Evaluator, NodeProcessor, NodeVisitor};
-use crate::rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties};
+use crate::rules::{
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+};
 
 #[derive(Debug, Clone, Default)]
 struct Computer {
@@ -12,8 +14,7 @@ impl Computer {
         match expression {
             Expression::Unary(_) | Expression::Binary(_) => {
                 if !self.evaluator.has_side_effects(&expression) {
-                    self.evaluator.evaluate(&expression)
-                        .to_expression()
+                    self.evaluator.evaluate(&expression).to_expression()
                 } else {
                     None
                 }
@@ -47,7 +48,7 @@ impl FlawlessRule for ComputeExpression {
 impl RuleConfiguration for ComputeExpression {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, _value) in properties {
-            return Err(RuleConfigurationError::UnexpectedProperty(key))
+            return Err(RuleConfigurationError::UnexpectedProperty(key));
         }
 
         Ok(())

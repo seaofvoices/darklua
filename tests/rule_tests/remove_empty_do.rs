@@ -11,9 +11,12 @@ test_rule!(
 
 #[test]
 fn deserialize_from_object_notation() {
-    json5::from_str::<Box<dyn Rule>>(r#"{
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
         rule: 'remove_empty_do',
-    }"#).unwrap();
+    }"#,
+    )
+    .unwrap();
 }
 
 #[test]

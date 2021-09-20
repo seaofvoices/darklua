@@ -43,7 +43,10 @@ impl LuaValue {
     /// If the value is unknown, this will also return unknown value. In the other case, if the
     /// value is considered truthy (see `is_truthy` function), it will call the given function to
     /// get the mapped value.
-    pub fn map_if_truthy<F>(self, map: F) -> Self where F: Fn(Self) -> Self {
+    pub fn map_if_truthy<F>(self, map: F) -> Self
+    where
+        F: Fn(Self) -> Self,
+    {
         match self.is_truthy() {
             Some(true) => map(self),
             Some(false) => self,
@@ -54,7 +57,9 @@ impl LuaValue {
     /// Like the `map_if_truthy` method, except that instead of returning the same value when the
     /// it is falsy, it calls the default callback to obtain another value.
     pub fn map_if_truthy_else<F, G>(self, map: F, default: G) -> Self
-        where F: Fn(Self) -> Self, G: Fn() -> Self
+    where
+        F: Fn(Self) -> Self,
+        G: Fn() -> Self,
     {
         match self.is_truthy() {
             Some(true) => map(self),
@@ -71,7 +76,7 @@ impl LuaValue {
             Self::Nil => Some(Expression::Nil),
             Self::String(value) => Some(StringExpression::from_value(value).into()),
             Self::Number(value) => Some(Expression::from(value)),
-            _ => None
+            _ => None,
         }
     }
 
@@ -83,28 +88,38 @@ impl LuaValue {
                 let string = string.trim();
 
                 let number = if string.starts_with('-') {
-                    string.get(1..)
+                    string
+                        .get(1..)
                         .and_then(|string| string.parse::<NumberExpression>().ok())
                         .map(|number| number.compute_value() * -1.0)
                 } else {
-                    string.parse::<NumberExpression>().ok()
+                    string
+                        .parse::<NumberExpression>()
+                        .ok()
                         .map(|number| number.compute_value())
                 };
 
                 number.map(LuaValue::Number)
             }
             _ => None,
-        }.unwrap_or(self)
+        }
+        .unwrap_or(self)
     }
 }
 
 impl Default for LuaValue {
-    fn default() -> Self { Self::Unknown }
+    fn default() -> Self {
+        Self::Unknown
+    }
 }
 
 impl From<bool> for LuaValue {
     fn from(value: bool) -> Self {
-        if value { Self::True } else { Self::False }
+        if value {
+            Self::True
+        } else {
+            Self::False
+        }
     }
 }
 

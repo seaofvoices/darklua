@@ -8,10 +8,7 @@ pub struct LocalAssignStatement {
 
 impl LocalAssignStatement {
     pub fn new(variables: Vec<String>, values: Vec<Expression>) -> Self {
-        Self {
-            variables,
-            values,
-        }
+        Self { variables, values }
     }
 
     pub fn from_variable<S: Into<String>>(variable: S) -> Self {
@@ -41,10 +38,12 @@ impl LocalAssignStatement {
     }
 
     pub fn for_each_assignment<F>(&mut self, mut callback: F)
-        where F: FnMut(&mut String, Option<&mut Expression>)
+    where
+        F: FnMut(&mut String, Option<&mut Expression>),
     {
         let mut values = self.values.iter_mut();
-        self.variables.iter_mut()
+        self.variables
+            .iter_mut()
             .for_each(|variable| callback(variable, values.next()));
     }
 

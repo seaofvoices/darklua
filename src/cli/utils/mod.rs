@@ -36,16 +36,22 @@ impl FileProcessing {
     }
 }
 
-fn walk_dir(path: &PathBuf, output: &PathBuf, files: &mut Vec<FileProcessing>, global: &GlobalOptions) {
-    let entries = fs::read_dir(path)
-        .expect("error while reading directory");
+fn walk_dir(
+    path: &PathBuf,
+    output: &PathBuf,
+    files: &mut Vec<FileProcessing>,
+    global: &GlobalOptions,
+) {
+    let entries = fs::read_dir(path).expect("error while reading directory");
 
     for entry in entries.into_iter() {
-        let entry = entry.unwrap_or_else(|io_error| panic!(
-            "error with entry (under {}): {}",
-            path.to_string_lossy(),
-            io_error
-        ));
+        let entry = entry.unwrap_or_else(|io_error| {
+            panic!(
+                "error with entry (under {}): {}",
+                path.to_string_lossy(),
+                io_error
+            )
+        });
 
         let file_path = entry.path();
 
@@ -54,7 +60,6 @@ fn walk_dir(path: &PathBuf, output: &PathBuf, files: &mut Vec<FileProcessing>, g
                 let mut next_output = output.clone();
                 next_output.push(name);
                 walk_dir(&file_path, &next_output, files, global);
-
             } else if file_path.is_file() {
                 match file_path.extension().and_then(OsStr::to_str) {
                     Some("lua") => {
@@ -70,7 +75,10 @@ fn walk_dir(path: &PathBuf, output: &PathBuf, files: &mut Vec<FileProcessing>, g
                 }
             } else {
                 if global.verbose > 1 {
-                    println!("Unexpected directory entry: {}", file_path.to_string_lossy());
+                    println!(
+                        "Unexpected directory entry: {}",
+                        file_path.to_string_lossy()
+                    );
                 }
             }
         } else {
@@ -94,5 +102,9 @@ pub fn write_file(path: &Path, content: &str) -> io::Result<()> {
 }
 
 pub fn maybe_plural(count: usize) -> &'static str {
-    if count > 1 { "s" } else { "" }
+    if count > 1 {
+        "s"
+    } else {
+        ""
+    }
 }

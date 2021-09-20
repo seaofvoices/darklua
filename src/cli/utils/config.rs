@@ -1,15 +1,17 @@
-use crate::cli::GlobalOptions;
 use crate::cli::error::CliError;
 use crate::cli::utils::DEFAULT_COLUMN_SPAN;
+use crate::cli::GlobalOptions;
 
 use darklua_core::rules::{get_default_rules, Rule};
 
 use json5::from_str;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-fn get_default_column_span() -> usize { DEFAULT_COLUMN_SPAN }
+fn get_default_column_span() -> usize {
+    DEFAULT_COLUMN_SPAN
+}
 
 const DEFAULT_CONFIG_PATHS: [&str; 2] = [".darklua.json", ".darklua.json5"];
 
@@ -44,7 +46,7 @@ impl Config {
             if config_path.exists() {
                 Self::read_file(config_path).map_err(CliError::from)?
             } else {
-                return Err(CliError::ConfigFileNotFound(config_path.to_owned()))
+                return Err(CliError::ConfigFileNotFound(config_path.to_owned()));
             }
         } else {
             Self::read_default_file().map_err(CliError::from)?
@@ -69,7 +71,8 @@ impl Config {
     }
 
     fn read_default_file() -> Result<Self, CliError> {
-        DEFAULT_CONFIG_PATHS.iter()
+        DEFAULT_CONFIG_PATHS
+            .iter()
             .map(|path| Path::new(path))
             .filter(|path| path.exists())
             .find_map(|path| Some(Self::read_file(path)))

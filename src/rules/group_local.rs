@@ -1,7 +1,9 @@
-use crate::nodes::{Block, LocalAssignStatement, Expression, Statement};
-use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
+use crate::nodes::{Block, Expression, LocalAssignStatement, Statement};
 use crate::process::processors::FindVariables;
-use crate::rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties};
+use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
+use crate::rules::{
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+};
 
 use std::iter;
 
@@ -34,7 +36,7 @@ impl GroupLocalProcessor {
                     (previous, current) => {
                         filter_statements.push(previous);
                         Some(current)
-                    },
+                    }
                 }
             } else {
                 None
@@ -54,34 +56,37 @@ impl GroupLocalProcessor {
         let first_value_count = first.value_count();
 
         if first.variable_count() > first_value_count && first_value_count != 0 {
-            return false
+            return false;
         }
 
         let mut find_variables = FindVariables::from(first.get_variables());
 
-        next.mutate_values().iter_mut()
-            .all(|expression| {
-                DefaultVisitor::visit_expression(expression, &mut find_variables);
-                !find_variables.has_found_usage()
-            })
+        next.mutate_values().iter_mut().all(|expression| {
+            DefaultVisitor::visit_expression(expression, &mut find_variables);
+            !find_variables.has_found_usage()
+        })
     }
 
     fn merge(&self, first: &mut LocalAssignStatement, mut other: LocalAssignStatement) {
         if first.value_count() == 0 && other.value_count() != 0 {
             let variable_count = first.variable_count();
-            first.mutate_values()
+            first
+                .mutate_values()
                 .extend(iter::repeat(Expression::Nil).take(variable_count));
         }
 
         if other.value_count() == 0 && first.value_count() != 0 {
             let variable_count = other.variable_count();
-            other.mutate_values()
+            other
+                .mutate_values()
                 .extend(iter::repeat(Expression::Nil).take(variable_count));
         }
 
-        first.mutate_variables()
+        first
+            .mutate_variables()
             .extend(other.mutate_variables().drain(..));
-        first.mutate_values()
+        first
+            .mutate_values()
             .extend(other.mutate_values().drain(..));
     }
 }
@@ -110,7 +115,7 @@ impl FlawlessRule for GroupLocalAssignment {
 impl RuleConfiguration for GroupLocalAssignment {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, _value) in properties {
-            return Err(RuleConfigurationError::UnexpectedProperty(key))
+            return Err(RuleConfigurationError::UnexpectedProperty(key));
         }
 
         Ok(())

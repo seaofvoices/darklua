@@ -1,6 +1,6 @@
 mod assign;
-mod do_statement;
 mod compound_assign;
+mod do_statement;
 mod function;
 mod generic_for;
 mod if_statement;

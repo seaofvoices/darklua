@@ -7,9 +7,7 @@ pub struct DoStatement {
 
 impl DoStatement {
     pub fn new(block: Block) -> Self {
-        Self {
-            block,
-        }
+        Self { block }
     }
 
     #[inline]

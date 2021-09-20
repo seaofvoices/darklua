@@ -1,14 +1,9 @@
 use darklua_core::{
+    generator::LuaGenerator,
     nodes::{
-        BinaryExpression,
-        BinaryOperator,
-        Block,
-        Expression,
-        LastStatement,
-        UnaryExpression,
+        BinaryExpression, BinaryOperator, Block, Expression, LastStatement, UnaryExpression,
         UnaryOperator,
     },
-    generator::LuaGenerator,
 };
 use std::time::{Duration, Instant};
 
@@ -37,13 +32,12 @@ macro_rules! fuzz_test_expression {
                     ">>> Node that produced the generated code:\n{:?}\n",
                     "============================================================\n",
                 ),
-                error,
-                lua_code,
-                node,
+                error, lua_code, node,
             ),
         };
 
-        let last_statement = generated_block.mutate_last_statement()
+        let last_statement = generated_block
+            .mutate_last_statement()
             .take()
             .expect("should have a last statement");
 
@@ -62,8 +56,7 @@ macro_rules! fuzz_test_expression {
         let generated_lua_code = compare_generator.into_string();
 
         assert_eq!(
-            node,
-            generated_node,
+            node, generated_node,
             concat!(
                 "\n",
                 "============================================================\n",
@@ -76,10 +69,7 @@ macro_rules! fuzz_test_expression {
                 ">>> Node code generated:\n{}\n",
                 "============================================================\n",
             ),
-            node,
-            lua_code,
-            generated_node,
-            generated_lua_code,
+            node, lua_code, generated_node, generated_lua_code,
         );
     };
 }
@@ -105,9 +95,7 @@ macro_rules! fuzz_test_block {
                     ">>> Block that produced the generated code:\n{:#?}\n",
                     "============================================================\n",
                 ),
-                error,
-                lua_code,
-                block,
+                error, lua_code, block,
             ),
         };
 
@@ -116,8 +104,7 @@ macro_rules! fuzz_test_block {
         let generated_lua_code = compare_generator.into_string();
 
         assert_eq!(
-            block,
-            generated_block,
+            block, generated_block,
             concat!(
                 "\n",
                 "============================================================\n",
@@ -130,10 +117,7 @@ macro_rules! fuzz_test_block {
                 ">>> Lua code generated:\n{}\n",
                 "============================================================\n",
             ),
-            block,
-            lua_code,
-            generated_block,
-            generated_lua_code,
+            block, lua_code, generated_block, generated_lua_code,
         );
     };
 }
@@ -146,7 +130,7 @@ fn run_for_minimum_time<F: Fn()>(func: F) {
         func();
 
         if Instant::now().duration_since(start) > duration {
-            break
+            break;
         }
     }
 }
@@ -168,21 +152,15 @@ fn fuzz_three_terms_binary_expressions<T: LuaGenerator + Clone>(generator: T) {
 
         let (left, right) = if rand::random() {
             (
-                BinaryExpression::new(
-                    BinaryOperator::fuzz(&mut empty_context),
-                    first,
-                    second,
-                ).into(),
+                BinaryExpression::new(BinaryOperator::fuzz(&mut empty_context), first, second)
+                    .into(),
                 third,
             )
         } else {
             (
                 first,
-                BinaryExpression::new(
-                    BinaryOperator::fuzz(&mut empty_context),
-                    second,
-                    third,
-                ).into(),
+                BinaryExpression::new(BinaryOperator::fuzz(&mut empty_context), second, third)
+                    .into(),
             )
         };
 
@@ -198,7 +176,7 @@ fn fuzz_three_terms_binary_expressions<T: LuaGenerator + Clone>(generator: T) {
                 Expression::Parenthese(right.into())
             } else {
                 right
-            }
+            },
         );
 
         fuzz_test_expression!(binary, generator.clone());
@@ -235,7 +213,7 @@ fn fuzz_binary_expressions_with_one_unary_expression<T: LuaGenerator + Clone>(ge
                 Expression::Parenthese(right.into())
             } else {
                 right
-            }
+            },
         );
 
         fuzz_test_expression!(binary, generator.clone());
@@ -273,12 +251,12 @@ fn fuzz_large_block<T: LuaGenerator + Clone>(generator: T) {
 }
 
 mod dense_generator {
-    use darklua_core::{
-        nodes::Block,
-        generator::{LuaGenerator, DenseLuaGenerator},
-    };
     use super::fuzz::*;
     use super::utils;
+    use darklua_core::{
+        generator::{DenseLuaGenerator, LuaGenerator},
+        nodes::Block,
+    };
 
     fn generator() -> DenseLuaGenerator {
         DenseLuaGenerator::new(80)
@@ -331,12 +309,12 @@ mod dense_generator {
 }
 
 mod readable_generator {
-    use darklua_core::{
-        nodes::Block,
-        generator::{LuaGenerator, ReadableLuaGenerator},
-    };
     use super::fuzz::*;
     use super::utils;
+    use darklua_core::{
+        generator::{LuaGenerator, ReadableLuaGenerator},
+        nodes::Block,
+    };
 
     fn generator() -> ReadableLuaGenerator {
         ReadableLuaGenerator::new(80)

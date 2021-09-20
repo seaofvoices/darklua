@@ -1,8 +1,4 @@
-use crate::nodes::{
-    Expression,
-    StringExpression,
-    TableExpression,
-};
+use crate::nodes::{Expression, StringExpression, TableExpression};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Arguments {

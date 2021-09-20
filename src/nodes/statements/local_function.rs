@@ -89,8 +89,7 @@ mod test {
 
     #[test]
     fn has_parameter_is_true_when_single_param_matches() {
-        let func = LocalFunctionStatement::from_name("foo", Block::default())
-            .with_parameter("bar");
+        let func = LocalFunctionStatement::from_name("foo", Block::default()).with_parameter("bar");
 
         assert!(func.has_parameter("bar"));
     }

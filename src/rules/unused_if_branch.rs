@@ -1,6 +1,8 @@
 use crate::nodes::{Block, DoStatement, IfStatement, Statement};
 use crate::process::{DefaultVisitor, Evaluator, NodeProcessor, NodeVisitor};
-use crate::rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties};
+use crate::rules::{
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+};
 
 use std::mem;
 
@@ -132,7 +134,7 @@ impl FlawlessRule for RemoveUnusedIfBranch {
 impl RuleConfiguration for RemoveUnusedIfBranch {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, _value) in properties {
-            return Err(RuleConfigurationError::UnexpectedProperty(key))
+            return Err(RuleConfigurationError::UnexpectedProperty(key));
         }
 
         Ok(())

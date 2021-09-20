@@ -34,7 +34,7 @@ impl Evaluator {
             Expression::True => LuaValue::True,
             Expression::Binary(binary) => self.evaluate_binary(binary),
             Expression::Unary(unary) => self.evaluate_unary(unary),
-            _ => LuaValue::Unknown
+            _ => LuaValue::Unknown,
         }
     }
 
@@ -56,11 +56,10 @@ impl Evaluator {
                     let right = binary.right();
 
                     self.maybe_table(&self.evaluate(left))
-                    || self.maybe_table(&self.evaluate(right))
-                    || self.has_side_effects(left)
-                    || self.has_side_effects(right)
+                        || self.maybe_table(&self.evaluate(right))
+                        || self.has_side_effects(left)
+                        || self.has_side_effects(right)
                 }
-
             }
             Expression::Unary(unary) => {
                 if self.pure_metamethods {
@@ -69,13 +68,15 @@ impl Evaluator {
                     let sub_expression = unary.get_expression();
 
                     self.maybe_table(&self.evaluate(sub_expression))
-                    || self.has_side_effects(sub_expression)
+                        || self.has_side_effects(sub_expression)
                 }
             }
             Expression::Field(field) => self.field_has_side_effects(field),
             Expression::Index(index) => self.index_has_side_effects(index),
             Expression::Parenthese(sub_expression) => self.has_side_effects(sub_expression),
-            Expression::Table(table) => table.get_entries().iter()
+            Expression::Table(table) => table
+                .get_entries()
+                .iter()
                 .any(|entry| self.table_entry_has_side_effects(entry)),
             Expression::Call(call) => self.call_has_side_effects(call),
         }
@@ -90,22 +91,23 @@ impl Evaluator {
     fn table_entry_has_side_effects(&self, entry: &TableEntry) -> bool {
         match entry {
             TableEntry::Field(_, expression) => self.has_side_effects(expression),
-            TableEntry::Index(key, value) => self.has_side_effects(key) || self.has_side_effects(value),
+            TableEntry::Index(key, value) => {
+                self.has_side_effects(key) || self.has_side_effects(value)
+            }
             TableEntry::Value(value) => self.has_side_effects(value),
         }
     }
 
     #[inline]
     fn field_has_side_effects(&self, field: &FieldExpression) -> bool {
-        !self.pure_metamethods
-        || self.prefix_has_side_effects(field.get_prefix())
+        !self.pure_metamethods || self.prefix_has_side_effects(field.get_prefix())
     }
 
     #[inline]
     fn index_has_side_effects(&self, index: &IndexExpression) -> bool {
         !self.pure_metamethods
-        || self.has_side_effects(index.get_index())
-        || self.prefix_has_side_effects(index.get_prefix())
+            || self.has_side_effects(index.get_index())
+            || self.prefix_has_side_effects(index.get_prefix())
     }
 
     fn prefix_has_side_effects(&self, prefix: &Prefix) -> bool {
@@ -127,30 +129,26 @@ impl Evaluator {
             | LuaValue::Number(_)
             | LuaValue::String(_)
             | LuaValue::True => false,
-            LuaValue::Table | LuaValue::Unknown => true
+            LuaValue::Table | LuaValue::Unknown => true,
         }
     }
 
     fn evaluate_binary(&self, expression: &BinaryExpression) -> LuaValue {
         match expression.operator() {
-            BinaryOperator::And => {
-                self.evaluate(expression.left())
-                    .map_if_truthy(|_| self.evaluate(expression.right()))
-            }
-            BinaryOperator::Or => {
-                self.evaluate(expression.left())
-                    .map_if_truthy_else(|left| left, || self.evaluate(expression.right()))
-            }
-            BinaryOperator::Equal => {
-                self.evaluate_equal(
-                    &self.evaluate(expression.left()),
-                    &self.evaluate(expression.right())
-                )
-            }
+            BinaryOperator::And => self
+                .evaluate(expression.left())
+                .map_if_truthy(|_| self.evaluate(expression.right())),
+            BinaryOperator::Or => self
+                .evaluate(expression.left())
+                .map_if_truthy_else(|left| left, || self.evaluate(expression.right())),
+            BinaryOperator::Equal => self.evaluate_equal(
+                &self.evaluate(expression.left()),
+                &self.evaluate(expression.right()),
+            ),
             BinaryOperator::NotEqual => {
                 let result = self.evaluate_equal(
                     &self.evaluate(expression.left()),
-                    &self.evaluate(expression.right())
+                    &self.evaluate(expression.right()),
                 );
 
                 match result {
@@ -184,7 +182,8 @@ impl Evaluator {
     }
 
     fn evaluate_math<F>(&self, expression: &BinaryExpression, operation: F) -> LuaValue
-      where F: Fn(f64, f64) -> f64
+    where
+        F: Fn(f64, f64) -> f64,
     {
         let left = self.evaluate(expression.left()).number_coercion();
 
@@ -203,16 +202,15 @@ impl Evaluator {
 
     fn evaluate_unary(&self, expression: &UnaryExpression) -> LuaValue {
         match expression.operator() {
-            UnaryOperator::Not => {
-                self.evaluate(expression.get_expression())
-                    .is_truthy()
-                    .map(|value| LuaValue::from(!value))
-                    .unwrap_or(LuaValue::Unknown)
-            }
+            UnaryOperator::Not => self
+                .evaluate(expression.get_expression())
+                .is_truthy()
+                .map(|value| LuaValue::from(!value))
+                .unwrap_or(LuaValue::Unknown),
             UnaryOperator::Minus => {
                 match self.evaluate(expression.get_expression()).number_coercion() {
                     LuaValue::Number(value) => LuaValue::from(-value),
-                    _ => LuaValue::Unknown
+                    _ => LuaValue::Unknown,
                 }
             }
             _ => LuaValue::Unknown,
@@ -552,9 +550,7 @@ mod test {
         };
     }
 
-    has_side_effects!(
-        call_to_unknown_function(FunctionCall::from_name("foo"))
-    );
+    has_side_effects!(call_to_unknown_function(FunctionCall::from_name("foo")));
 
     has_no_side_effects!(
         true_value(Expression::True),
@@ -563,8 +559,8 @@ mod test {
         number_value(Expression::Number(DecimalNumber::new(0.0).into())),
         string_value(StringExpression::from_value("")),
         identifier(Expression::Identifier("foo".to_owned())),
-        identifier_in_parentheses(Expression::Parenthese(
-            Box::new(Expression::Identifier("foo".to_owned()))
-        ))
+        identifier_in_parentheses(Expression::Parenthese(Box::new(Expression::Identifier(
+            "foo".to_owned()
+        ))))
     );
 }

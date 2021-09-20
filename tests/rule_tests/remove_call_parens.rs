@@ -17,9 +17,12 @@ test_rule_wihout_effects!(
 
 #[test]
 fn deserialize_from_object_notation() {
-    json5::from_str::<Box<dyn Rule>>(r#"{
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
         rule: 'remove_function_call_parens',
-    }"#).unwrap();
+    }"#,
+    )
+    .unwrap();
 }
 
 #[test]

@@ -1,6 +1,8 @@
 use crate::nodes::{Block, FunctionStatement};
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
-use crate::rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties};
+use crate::rules::{
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+};
 
 #[derive(Default)]
 struct FunctionMutator;
@@ -27,7 +29,7 @@ impl FlawlessRule for RemoveMethodDefinition {
 impl RuleConfiguration for RemoveMethodDefinition {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, _value) in properties {
-            return Err(RuleConfigurationError::UnexpectedProperty(key))
+            return Err(RuleConfigurationError::UnexpectedProperty(key));
         }
 
         Ok(())

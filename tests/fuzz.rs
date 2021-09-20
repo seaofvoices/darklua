@@ -14,15 +14,15 @@ fn generated_identifier() -> String {
             let character = rng.sample(Alphanumeric);
 
             if i != 0 || !character.is_digit(10) {
-                return character
+                return character;
             }
         })
         .collect();
 
     match identifier.as_ref() {
-        "and" | "break" | "do" | "else" | "elseif" | "end" | "false" | "for"
-        | "function" | "if" | "in" | "local" | "nil" | "not" | "or" | "repeat"
-        | "return" | "then" | "true" | "until" | "while" => generated_identifier(),
+        "and" | "break" | "do" | "else" | "elseif" | "end" | "false" | "for" | "function"
+        | "if" | "in" | "local" | "nil" | "not" | "or" | "repeat" | "return" | "then" | "true"
+        | "until" | "while" => generated_identifier(),
         _ => identifier,
     }
 }
@@ -301,7 +301,11 @@ impl Fuzz<FunctionName> for FunctionName {
         Self::new(
             generated_identifier(),
             generated_identifiers(function_name_field_length()),
-            if rand::random() { Some(generated_identifier()) } else { None },
+            if rand::random() {
+                Some(generated_identifier())
+            } else {
+                None
+            },
         )
     }
 }
@@ -310,10 +314,7 @@ impl Fuzz<GenericForStatement> for GenericForStatement {
     fn fuzz(context: &mut FuzzContext) -> Self {
         Self::new(
             generated_identifiers(1),
-            generate_at_least_one_expression(
-                generic_for_expression_length(),
-                context
-            ),
+            generate_at_least_one_expression(generic_for_expression_length(), context),
             Block::fuzz(context),
         )
     }
@@ -324,11 +325,13 @@ impl Fuzz<IfStatement> for IfStatement {
         Self::new(
             generate_at_least_one_expression(if_branch_count(), context)
                 .into_iter()
-                .map(|condition| {
-                    IfBranch::new(condition, Block::fuzz(&mut context.share_budget()))
-                })
+                .map(|condition| IfBranch::new(condition, Block::fuzz(&mut context.share_budget())))
                 .collect(),
-            if rand::random() { Some(Block::fuzz(&mut context.share_budget())) } else { None },
+            if rand::random() {
+                Some(Block::fuzz(&mut context.share_budget()))
+            } else {
+                None
+            },
         )
     }
 }
@@ -359,7 +362,11 @@ impl Fuzz<NumericForStatement> for NumericForStatement {
             generated_identifier(),
             Expression::fuzz(context),
             Expression::fuzz(context),
-            if rand::random() { Some(Expression::fuzz(context)) } else { None },
+            if rand::random() {
+                Some(Expression::fuzz(context))
+            } else {
+                None
+            },
             Block::fuzz(context),
         )
     }
@@ -440,11 +447,7 @@ impl Fuzz<BinaryExpression> for BinaryExpression {
             right = Expression::Parenthese(right.into());
         }
 
-        Self::new(
-            operator,
-            left,
-            right,
-        )
+        Self::new(operator, left, right)
     }
 }
 
@@ -497,7 +500,7 @@ impl Fuzz<FunctionCall> for FunctionCall {
                 Some(generated_identifier())
             } else {
                 None
-            }
+            },
         )
     }
 }
@@ -522,14 +525,8 @@ impl Fuzz<NumberExpression> for NumberExpression {
     fn fuzz(_context: &mut FuzzContext) -> Self {
         match thread_rng().gen_range(0, 4) {
             0 => DecimalNumber::new(thread_rng().gen()).into(),
-            1 => HexNumber::new(
-                thread_rng().gen_range(0, 100_000),
-                rand::random()
-            ).into(),
-            _ => BinaryNumber::new(
-                thread_rng().gen_range(0, 1_000_000),
-                rand::random()
-            ).into(),
+            1 => HexNumber::new(thread_rng().gen_range(0, 100_000), rand::random()).into(),
+            _ => BinaryNumber::new(thread_rng().gen_range(0, 1_000_000), rand::random()).into(),
         }
     }
 }
@@ -572,7 +569,7 @@ impl Fuzz<StringExpression> for StringExpression {
             iter::repeat(())
                 .take(length as usize)
                 .map(|()| GEN_CHARSET[rng.gen_range(0, GEN_CHARSET.len())] as char)
-                .collect()
+                .collect(),
         )
     }
 }
@@ -589,7 +586,7 @@ impl Fuzz<TableExpression> for TableExpression {
                         None
                     }
                 })
-                .collect()
+                .collect(),
         )
     }
 }

@@ -39,7 +39,10 @@ impl Block {
         self.last_statement.as_ref()
     }
 
-    pub fn filter_statements<F>(&mut self, mut f: F) where F: FnMut(&mut Statement) -> bool {
+    pub fn filter_statements<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&mut Statement) -> bool,
+    {
         let mut i = 0;
 
         while i != self.statements.len() {

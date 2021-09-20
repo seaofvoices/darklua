@@ -19,18 +19,19 @@ impl<I: Iterator + Clone> Permutator<I> {
     }
 }
 
-impl<I: Iterator<Item=char> + Clone> Iterator for Permutator<I> {
+impl<I: Iterator<Item = char> + Clone> Iterator for Permutator<I> {
     type Item = String;
 
     fn next(&mut self) -> Option<String> {
-        let next_char = self.current_producers.last_mut()
+        let next_char = self
+            .current_producers
+            .last_mut()
             .and_then(|producer| producer.next());
 
         if let Some(value) = next_char {
             let mut string = self.root.clone();
             string.push(value);
             Some(string)
-
         } else {
             let mut count_pop = 1;
             self.current_producers.pop();
@@ -90,7 +91,7 @@ mod test {
     fn produce_all_permutations_with_three_chars() {
         let mut permutate = Permutator::new("ab".chars());
 
-        for _ in 0..2 + 2^2 {
+        for _ in 0..2 + 2 ^ 2 {
             permutate.next();
         }
 

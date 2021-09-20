@@ -43,62 +43,83 @@ test_rule_wihout_effects!(
 
 #[test]
 fn deserialize_from_object_notation_without_value() {
-    json5::from_str::<Box<dyn Rule>>(r#"{
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
         rule: 'inject_global_value',
         identifier: 'foo',
-    }"#).unwrap();
+    }"#,
+    )
+    .unwrap();
 }
 
 #[test]
 fn deserialize_from_object_notation_with_true_value() {
-    json5::from_str::<Box<dyn Rule>>(r#"{
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
         rule: 'inject_global_value',
         identifier: 'foo',
         value: true,
-    }"#).unwrap();
+    }"#,
+    )
+    .unwrap();
 }
 
 #[test]
 fn deserialize_from_object_notation_with_false_value() {
-    json5::from_str::<Box<dyn Rule>>(r#"{
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
         rule: 'inject_global_value',
         identifier: 'foo',
         value: false,
-    }"#).unwrap();
+    }"#,
+    )
+    .unwrap();
 }
 
 #[test]
 fn deserialize_from_object_notation_with_string_value() {
-    json5::from_str::<Box<dyn Rule>>(r#"{
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
         rule: 'inject_global_value',
         identifier: 'foo',
         value: 'hello',
-    }"#).unwrap();
+    }"#,
+    )
+    .unwrap();
 }
 
 #[test]
 fn deserialize_from_object_notation_with_integer_value() {
-    json5::from_str::<Box<dyn Rule>>(r#"{
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
         rule: 'inject_global_value',
         identifier: 'foo',
         value: 1,
-    }"#).unwrap();
+    }"#,
+    )
+    .unwrap();
 }
 
 #[test]
 fn deserialize_from_object_notation_with_negative_integer_value() {
-    json5::from_str::<Box<dyn Rule>>(r#"{
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
         rule: 'inject_global_value',
         identifier: 'foo',
         value: -1,
-    }"#).unwrap();
+    }"#,
+    )
+    .unwrap();
 }
 
 #[test]
 fn deserialize_from_object_notation_with_float_value() {
-    json5::from_str::<Box<dyn Rule>>(r#"{
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
         rule: 'inject_global_value',
         identifier: 'foo',
         value: 0.5,
-    }"#).unwrap();
+    }"#,
+    )
+    .unwrap();
 }

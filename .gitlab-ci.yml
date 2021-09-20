@@ -5,6 +5,7 @@ cache:
     - cargo/
 
 stages:
+  - checks
   - build
   - test
   - integration-test
@@ -16,6 +17,14 @@ variables:
   only:
     - main
     - merge_requests
+
+style-check:
+  stage: checks
+  extends: .only-mr-and-main
+  script:
+    - rustup component add rustfmt
+    - cargo fmt -- --version
+    - cargo fmt -- --check
 
 build:
   stage: build

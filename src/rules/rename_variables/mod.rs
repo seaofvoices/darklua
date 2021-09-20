@@ -1,13 +1,16 @@
 mod globals;
-mod rename_processor;
 mod permutator;
+mod rename_processor;
 
 use permutator::Permutator;
 use rename_processor::RenameProcessor;
 
-use crate::nodes::{Block};
+use crate::nodes::Block;
 use crate::process::{NodeVisitor, ScopeVisitor};
-use crate::rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties, RulePropertyValue};
+use crate::rules::{
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    RulePropertyValue,
+};
 
 use std::collections::HashSet;
 use std::iter::FromIterator;
@@ -21,25 +24,32 @@ pub struct RenameVariables {
 }
 
 fn is_valid_identifier(identifier: &str) -> bool {
-    identifier.len() > 0 && identifier.is_ascii()
-    && identifier.char_indices()
-        .all(|(i, c)| c.is_alphabetic() || c == '_' || (c.is_ascii_digit() && i > 0))
+    identifier.len() > 0
+        && identifier.is_ascii()
+        && identifier
+            .char_indices()
+            .all(|(i, c)| c.is_alphabetic() || c == '_' || (c.is_ascii_digit() && i > 0))
 }
 
 impl RenameVariables {
-    pub fn new<I: IntoIterator<Item=String>>(iter: I) -> Self {
+    pub fn new<I: IntoIterator<Item = String>>(iter: I) -> Self {
         Self {
-            globals: Vec::from_iter(iter)
+            globals: Vec::from_iter(iter),
         }
     }
 
     fn set_globals(&mut self, list: Vec<String>) -> Result<(), RuleConfigurationError> {
         for value in list {
             match value.as_str() {
-                "$default" => self.globals.extend(globals::DEFAULT.to_vec().into_iter().map(String::from)),
-                "$roblox" => self.globals.extend(globals::ROBLOX.to_vec().into_iter().map(String::from)),
-                identifier if !is_valid_identifier(identifier)
-                    => return Err(RuleConfigurationError::StringExpected("".to_owned())),
+                "$default" => self
+                    .globals
+                    .extend(globals::DEFAULT.to_vec().into_iter().map(String::from)),
+                "$roblox" => self
+                    .globals
+                    .extend(globals::ROBLOX.to_vec().into_iter().map(String::from)),
+                identifier if !is_valid_identifier(identifier) => {
+                    return Err(RuleConfigurationError::StringExpected("".to_owned()))
+                }
                 _ => self.globals.push(value),
             }
         }
@@ -52,14 +62,20 @@ impl RenameVariables {
 
         let mut result = Vec::new();
 
-        if globals::DEFAULT.iter().all(|identifier| globals_set.contains(*identifier)) {
+        if globals::DEFAULT
+            .iter()
+            .all(|identifier| globals_set.contains(*identifier))
+        {
             globals::DEFAULT.iter().for_each(|identifier| {
                 globals_set.remove(*identifier);
             });
             result.push("$default".to_owned());
         }
 
-        if globals::ROBLOX.iter().all(|identifier| globals_set.contains(*identifier)) {
+        if globals::ROBLOX
+            .iter()
+            .all(|identifier| globals_set.contains(*identifier))
+        {
             globals::ROBLOX.iter().for_each(|identifier| {
                 globals_set.remove(*identifier);
             });
@@ -89,13 +105,11 @@ impl RuleConfiguration for RenameVariables {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, value) in properties {
             match key.as_str() {
-                "globals" => {
-                    match value {
-                        RulePropertyValue::StringList(globals) => self.set_globals(globals)?,
-                        _ => return Err(RuleConfigurationError::StringListExpected(key))
-                    }
-                }
-                _ => return Err(RuleConfigurationError::UnexpectedProperty(key))
+                "globals" => match value {
+                    RulePropertyValue::StringList(globals) => self.set_globals(globals)?,
+                    _ => return Err(RuleConfigurationError::StringListExpected(key)),
+                },
+                _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }
         }
 
@@ -112,7 +126,10 @@ impl RuleConfiguration for RenameVariables {
         } else {
             let mut properties = RuleProperties::new();
 
-            properties.insert("globals".to_owned(), RulePropertyValue::StringList(self.normalize_globals()));
+            properties.insert(
+                "globals".to_owned(),
+                RulePropertyValue::StringList(self.normalize_globals()),
+            );
 
             properties
         }
@@ -146,12 +163,11 @@ mod test {
 
     #[test]
     fn serialize_roblox_globals_rule() {
-        let rule = Box::new(RenameVariables::new(globals::ROBLOX.to_vec().into_iter().map(String::from)));
+        let rule = Box::new(RenameVariables::new(
+            globals::ROBLOX.to_vec().into_iter().map(String::from),
+        ));
 
-        assert_json_snapshot!(
-            "roblox_globals_rename_variables",
-            rule as Box<dyn Rule>
-        );
+        assert_json_snapshot!("roblox_globals_rename_variables", rule as Box<dyn Rule>);
     }
 
     #[test]

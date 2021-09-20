@@ -1,5 +1,5 @@
 use crate::nodes::{Expression, LocalFunctionStatement};
-use crate::process::{Scope, NodeProcessor};
+use crate::process::{NodeProcessor, Scope};
 use crate::rules::rename_variables::{globals, Permutator};
 
 use std::cmp::Ordering;
@@ -17,7 +17,7 @@ pub struct RenameProcessor {
 }
 
 impl RenameProcessor {
-    pub fn new<I: IntoIterator<Item=String>>(iter: I) -> Self {
+    pub fn new<I: IntoIterator<Item = String>>(iter: I) -> Self {
         let mut avoid_identifier = HashSet::from_iter(iter);
         avoid_identifier.extend(globals::KEYWORDS.iter().map(|s| (*s).to_owned()));
 
@@ -40,7 +40,9 @@ impl RenameProcessor {
     }
 
     pub fn get_obfuscated_name(&self, real: &str) -> Option<&String> {
-        self.real_to_obfuscated.iter().rev()
+        self.real_to_obfuscated
+            .iter()
+            .rev()
             .find_map(|dictionary| dictionary.get(real))
     }
 
@@ -60,7 +62,7 @@ impl RenameProcessor {
 
     fn filter_identifier(&self, identifier: &str) -> bool {
         !self.avoid_identifier.contains(identifier)
-        && !identifier.chars().next().unwrap().is_digit(10)
+            && !identifier.chars().next().unwrap().is_digit(10)
     }
 
     fn insert_identifier(&mut self, identifier: &mut String) {
@@ -89,7 +91,7 @@ fn sort_char(a: char, b: char) -> Ordering {
             (_, '_') => Ordering::Less,
             (a, _) if a.is_lowercase() => Ordering::Less,
             (_, b) if b.is_lowercase() => Ordering::Greater,
-            _ => Ordering::Equal
+            _ => Ordering::Equal,
         }
     }
 }
@@ -105,9 +107,8 @@ fn sort_identifiers(a: &str, b: &str) -> Ordering {
                 Ordering::Greater => return Ordering::Greater,
                 Ordering::Equal => {}
             }
-
         } else {
-            return Ordering::Greater
+            return Ordering::Greater;
         }
     }
 
@@ -123,11 +124,12 @@ impl Scope for RenameProcessor {
         self.real_to_obfuscated.push(HashMap::new())
     }
 
-    fn pop(&mut self){
+    fn pop(&mut self) {
         if let Some(dictionary) = self.real_to_obfuscated.pop() {
-            self.reuse_identifiers.extend(
-                dictionary.into_iter().map(|(_, obfuscated)| obfuscated));
-            self.reuse_identifiers.sort_by(|a, b| sort_identifiers(a, b).reverse());
+            self.reuse_identifiers
+                .extend(dictionary.into_iter().map(|(_, obfuscated)| obfuscated));
+            self.reuse_identifiers
+                .sort_by(|a, b| sort_identifiers(a, b).reverse());
         }
     }
 

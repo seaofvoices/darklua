@@ -35,24 +35,33 @@ test_rule!(
 
 #[test]
 fn deserialize_with_special_empty_globals() {
-    json5::from_str::<Box<dyn Rule>>(r#"{
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
         rule: 'rename_variables',
         globals: []
-    }"#).unwrap();
+    }"#,
+    )
+    .unwrap();
 }
 
 #[test]
 fn deserialize_with_special_default_globals() {
-    json5::from_str::<Box<dyn Rule>>(r#"{
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
         rule: 'rename_variables',
         globals: ['$default']
-    }"#).unwrap();
+    }"#,
+    )
+    .unwrap();
 }
 
 #[test]
 fn deserialize_with_special_roblox_globals() {
-    json5::from_str::<Box<dyn Rule>>(r#"{
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
         rule: 'rename_variables',
         globals: ['$roblox']
-    }"#).unwrap();
+    }"#,
+    )
+    .unwrap();
 }

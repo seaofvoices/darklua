@@ -9,13 +9,14 @@ impl StringExpression {
     pub fn new(string: String) -> Option<Self> {
         let mut chars = string.chars();
         let value = match chars.next() {
-            Some('"') | Some('\'') => string.get(1..string.len()-1).map(str::to_owned),
-            Some('[') => chars.enumerate()
-                    .find_map(|(indice, character)| if character == '[' { Some(indice) } else { None })
-                    .and_then(|indice| {
-                        let length = 2 + indice;
-                        string.get(length..string.len()-length).map(str::to_owned)
-                    }),
+            Some('"') | Some('\'') => string.get(1..string.len() - 1).map(str::to_owned),
+            Some('[') => chars
+                .enumerate()
+                .find_map(|(indice, character)| if character == '[' { Some(indice) } else { None })
+                .and_then(|indice| {
+                    let length = 2 + indice;
+                    string.get(length..string.len() - length).map(str::to_owned)
+                }),
             _ => None,
         };
 
@@ -23,11 +24,15 @@ impl StringExpression {
     }
 
     pub fn empty() -> Self {
-        Self { value: "".to_owned() }
+        Self {
+            value: "".to_owned(),
+        }
     }
 
     pub fn from_value<T: Into<String>>(value: T) -> Self {
-        Self { value: value.into() }
+        Self {
+            value: value.into(),
+        }
     }
 
     pub fn get_value(&self) -> &str {
@@ -62,11 +67,13 @@ impl StringExpression {
                         escaped = true;
                         None
                     }
-                    value => if value == pattern {
-                        Some(index)
-                    } else {
-                        None
-                    },
+                    value => {
+                        if value == pattern {
+                            Some(index)
+                        } else {
+                            None
+                        }
+                    }
                 }
             }
         })

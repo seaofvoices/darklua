@@ -24,12 +24,12 @@ pub use unused_while::*;
 
 use crate::nodes::Block;
 
-use serde::{Serialize, Serializer, Deserialize, Deserializer};
-use serde::ser::SerializeMap;
 use serde::de::{self, MapAccess, Visitor};
+use serde::ser::SerializeMap;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
-use std::collections::HashMap;
 
 /// In order to be able to weakly-type the properties of any rule, this enum makes it possible to
 /// easily use serde to gather the value associated with a property.
@@ -74,8 +74,12 @@ impl fmt::Display for RuleConfigurationError {
             UnexpectedProperty(property) => write!(f, "unexpected field '{}'", property),
             MissingProperty(property) => write!(f, "missing required field '{}'", property),
             StringExpected(property) => write!(f, "string value expected for field '{}'", property),
-            UsizeExpected(property) => write!(f, "unsigned integer expected for field '{}'", property),
-            StringListExpected(property) => write!(f, "list of string expected for field '{}'", property),
+            UsizeExpected(property) => {
+                write!(f, "unsigned integer expected for field '{}'", property)
+            }
+            StringListExpected(property) => {
+                write!(f, "list of string expected for field '{}'", property)
+            }
             UnexpectedValueType(property) => write!(f, "unexpected type for field '{}'", property),
         }
     }
@@ -141,7 +145,9 @@ impl FromStr for Box<dyn Rule> {
     fn from_str(string: &str) -> Result<Self, Self::Err> {
         let rule: Box<dyn Rule> = match string {
             COMPUTE_EXPRESSIONS_RULE_NAME => Box::new(ComputeExpression::default()),
-            CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => Box::new(ConvertLocalFunctionToAssign::default()),
+            CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => {
+                Box::new(ConvertLocalFunctionToAssign::default())
+            }
             GROUP_LOCAL_ASSIGNMENT => Box::new(GroupLocalAssignment::default()),
             INJECT_GLOBAL_VALUE_RULE_NAME => Box::new(InjectGlobalValue::default()),
             REMOVE_EMPTY_DO_RULE_NAME => Box::new(RemoveEmptyDo::default()),
@@ -165,7 +171,6 @@ impl Serialize for Box<dyn Rule> {
 
         if property_count == 0 {
             serializer.serialize_str(rule_name)
-
         } else {
             let mut map = serializer.serialize_map(Some(property_count + 1))?;
 
@@ -186,7 +191,6 @@ impl Serialize for Box<dyn Rule> {
 
 impl<'de> Deserialize<'de> for Box<dyn Rule> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Box<dyn Rule>, D::Error> {
-
         struct StringOrStruct;
 
         impl<'de> Visitor<'de> for StringOrStruct {
@@ -196,9 +200,11 @@ impl<'de> Deserialize<'de> for Box<dyn Rule> {
                 formatter.write_str("rule name or rule object")
             }
 
-            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E> where E: de::Error {
-                let mut rule: Self::Value = FromStr::from_str(value)
-                    .map_err(de::Error::custom)?;
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                let mut rule: Self::Value = FromStr::from_str(value).map_err(de::Error::custom)?;
 
                 rule.configure(RuleProperties::new())
                     .map_err(de::Error::custom)?;
@@ -206,30 +212,38 @@ impl<'de> Deserialize<'de> for Box<dyn Rule> {
                 Ok(rule)
             }
 
-            fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error> where M: MapAccess<'de> {
+            fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
+            where
+                M: MapAccess<'de>,
+            {
                 let mut rule_name = None;
                 let mut properties = HashMap::new();
 
                 while let Some(key) = map.next_key::<String>()? {
                     match key.as_str() {
-                        "rule" => if rule_name.is_none() {
-                            rule_name.replace(map.next_value::<String>()?);
-                        } else {
-                            return Err(de::Error::duplicate_field("rule"))
+                        "rule" => {
+                            if rule_name.is_none() {
+                                rule_name.replace(map.next_value::<String>()?);
+                            } else {
+                                return Err(de::Error::duplicate_field("rule"));
+                            }
                         }
                         property => {
                             let value = map.next_value::<RulePropertyValue>()?;
 
                             if properties.insert(property.to_owned(), value).is_some() {
-                                return Err(de::Error::custom(format!("duplicate field {} in rule object", property)))
+                                return Err(de::Error::custom(format!(
+                                    "duplicate field {} in rule object",
+                                    property
+                                )));
                             }
                         }
                     }
                 }
 
                 if let Some(rule_name) = rule_name {
-                    let mut rule: Self::Value = FromStr::from_str(&rule_name)
-                        .map_err(de::Error::custom)?;
+                    let mut rule: Self::Value =
+                        FromStr::from_str(&rule_name).map_err(de::Error::custom)?;
 
                     rule.configure(properties).map_err(de::Error::custom)?;
 

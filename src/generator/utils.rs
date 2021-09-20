@@ -57,11 +57,13 @@ pub fn find_not_escaped_from(pattern: char, chars: &mut CharIndices) -> Option<u
                     escaped = true;
                     None
                 }
-                value => if value == pattern {
-                    Some(index)
-                } else {
-                    None
-                },
+                value => {
+                    if value == pattern {
+                        Some(index)
+                    } else {
+                        None
+                    }
+                }
             }
         }
     })
@@ -77,9 +79,7 @@ pub fn ends_with_prefix(statement: &nodes::Statement) -> bool {
                 false
             }
         }
-        CompoundAssign(assign) => {
-            expression_ends_with_call(assign.get_value())
-        }
+        CompoundAssign(assign) => expression_ends_with_call(assign.get_value()),
         Call(_) => true,
         Repeat(repeat) => expression_ends_with_call(repeat.get_condition()),
         LocalAssign(assign) => {
@@ -107,13 +107,11 @@ pub fn starts_with_parenthese(statement: &nodes::Statement) -> bool {
                 false
             }
         }
-        Statement::CompoundAssign(assign) => {
-            match assign.get_variable() {
-                Variable::Identifier(_) => false,
-                Variable::Field(field) => field_starts_with_parenthese(field),
-                Variable::Index(index) => index_starts_with_parenthese(index),
-            }
-        }
+        Statement::CompoundAssign(assign) => match assign.get_variable() {
+            Variable::Identifier(_) => false,
+            Variable::Field(field) => field_starts_with_parenthese(field),
+            Variable::Index(index) => index_starts_with_parenthese(index),
+        },
         Statement::Call(call) => call_starts_with_parenthese(call),
         _ => false,
     }
@@ -124,11 +122,7 @@ fn expression_ends_with_call(expression: &nodes::Expression) -> bool {
 
     match expression {
         Binary(binary) => expression_ends_with_call(binary.right()),
-        Call(_)
-        | Parenthese(_)
-        | Identifier(_)
-        | Field(_)
-        | Index(_) => true,
+        Call(_) | Parenthese(_) | Identifier(_) | Field(_) | Index(_) => true,
         Unary(unary) => expression_ends_with_call(unary.get_expression()),
         _ => false,
     }

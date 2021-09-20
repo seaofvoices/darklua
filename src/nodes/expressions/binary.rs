@@ -58,9 +58,7 @@ impl BinaryOperator {
                     !left.operator().precedes(*self)
                 }
             }
-            Expression::Unary(_) => {
-                self.precedes_unary_expression()
-            }
+            Expression::Unary(_) => self.precedes_unary_expression(),
             _ => false,
         }
     }
@@ -103,9 +101,12 @@ impl BinaryOperator {
         match self {
             Self::Or => 0,
             Self::And => 1,
-            Self::Equal | Self::NotEqual
-            | Self::LowerThan | Self::LowerOrEqualThan
-            | Self::GreaterThan | Self::GreaterOrEqualThan => 2,
+            Self::Equal
+            | Self::NotEqual
+            | Self::LowerThan
+            | Self::LowerOrEqualThan
+            | Self::GreaterThan
+            | Self::GreaterOrEqualThan => 2,
             Self::Concat => 3,
             Self::Plus | Self::Minus => 4,
             Self::Asterisk | Self::Slash | Self::Percent => 5,

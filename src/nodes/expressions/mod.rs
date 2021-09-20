@@ -53,36 +53,33 @@ impl Expression {
 
 impl From<bool> for Expression {
     fn from(boolean: bool) -> Expression {
-        if boolean { Expression::True } else { Expression::False }
+        if boolean {
+            Expression::True
+        } else {
+            Expression::False
+        }
     }
 }
 
 impl From<f64> for Expression {
     fn from(value: f64) -> Expression {
         match value.classify() {
-            FpCategory::Nan => {
-                BinaryExpression::new(
-                    BinaryOperator::Slash,
-                    DecimalNumber::new(0.0),
-                    DecimalNumber::new(0.0),
-                ).into()
-            }
-            FpCategory::Infinite => {
-                BinaryExpression::new(
-                    BinaryOperator::Slash,
-                    Expression::from(if value.is_sign_positive() { 1.0 } else { -1.0 }),
-                    DecimalNumber::new(0.0),
-                ).into()
-            }
-            FpCategory::Zero => {
-                DecimalNumber::new(0.0).into()
-            }
+            FpCategory::Nan => BinaryExpression::new(
+                BinaryOperator::Slash,
+                DecimalNumber::new(0.0),
+                DecimalNumber::new(0.0),
+            )
+            .into(),
+            FpCategory::Infinite => BinaryExpression::new(
+                BinaryOperator::Slash,
+                Expression::from(if value.is_sign_positive() { 1.0 } else { -1.0 }),
+                DecimalNumber::new(0.0),
+            )
+            .into(),
+            FpCategory::Zero => DecimalNumber::new(0.0).into(),
             FpCategory::Subnormal | FpCategory::Normal => {
                 if value < 0.0 {
-                    UnaryExpression::new(
-                        UnaryOperator::Minus,
-                        Expression::from(value.abs()),
-                    ).into()
+                    UnaryExpression::new(UnaryOperator::Minus, Expression::from(value.abs())).into()
                 } else {
                     if value < 0.1 {
                         let exponent = value.log10().floor();

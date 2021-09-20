@@ -59,10 +59,7 @@ pub struct HexNumber {
 }
 
 impl HexNumber {
-    pub fn new(
-        integer: u64,
-        is_x_uppercase: bool,
-    ) -> Self {
+    pub fn new(integer: u64, is_x_uppercase: bool) -> Self {
         Self {
             integer,
             exponent: None,
@@ -109,7 +106,6 @@ impl HexNumber {
     }
 }
 
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BinaryNumber {
     value: u64,
@@ -117,10 +113,7 @@ pub struct BinaryNumber {
 }
 
 impl BinaryNumber {
-    pub fn new(
-        value: u64,
-        is_b_uppercase: bool,
-    ) -> Self {
+    pub fn new(value: u64, is_b_uppercase: bool) -> Self {
         Self {
             value,
             is_b_uppercase,
@@ -221,22 +214,24 @@ impl FromStr for NumberExpression {
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         let number = if value.starts_with("0x") || value.starts_with("0X") {
-            let is_x_uppercase = value.chars().nth(1)
+            let is_x_uppercase = value
+                .chars()
+                .nth(1)
                 .map(char::is_uppercase)
                 .unwrap_or(false);
 
             if let Some(index) = value.find("p") {
-                let exponent = value.get(index + 1..)
+                let exponent = value
+                    .get(index + 1..)
                     .and_then(|string| string.parse().ok())
                     .ok_or(Self::Err::InvalidHexadecimalExponent)?;
                 let number = u64::from_str_radix(value.get(2..index).unwrap(), 16)
                     .map_err(|_| Self::Err::InvalidHexadecimalNumber)?;
 
-                HexNumber::new(number, is_x_uppercase)
-                    .with_exponent(exponent, false)
-
+                HexNumber::new(number, is_x_uppercase).with_exponent(exponent, false)
             } else if let Some(index) = value.find("P") {
-                let exponent = value.get(index + 1..)
+                let exponent = value
+                    .get(index + 1..)
                     .map(filter_underscore)
                     .and_then(|string| string.parse().ok())
                     .ok_or(Self::Err::InvalidHexadecimalExponent)?;
@@ -244,72 +239,73 @@ impl FromStr for NumberExpression {
                 let number = u64::from_str_radix(&filtered, 16)
                     .map_err(|_| Self::Err::InvalidHexadecimalNumber)?;
 
-                HexNumber::new(number, is_x_uppercase)
-                    .with_exponent(exponent, true)
+                HexNumber::new(number, is_x_uppercase).with_exponent(exponent, true)
             } else {
                 let filtered = filter_underscore(value.get(2..).unwrap());
                 let number = u64::from_str_radix(&filtered, 16)
                     .map_err(|_| Self::Err::InvalidHexadecimalNumber)?;
 
                 HexNumber::new(number, is_x_uppercase)
-            }.into()
-
+            }
+            .into()
         } else if value.starts_with("0b") || value.starts_with("0B") {
-            let is_b_uppercase = value.chars().nth(1)
+            let is_b_uppercase = value
+                .chars()
+                .nth(1)
                 .map(char::is_uppercase)
                 .unwrap_or(false);
 
             let filtered = filter_underscore(value);
-            let number = u64::from_str_radix(filtered.get(2..)
-                .unwrap(), 2)
+            let number = u64::from_str_radix(filtered.get(2..).unwrap(), 2)
                 .map_err(|_| Self::Err::InvalidBinaryNumber)?;
 
             BinaryNumber::new(number, is_b_uppercase).into()
-
         } else {
             // in Luau, underscores are valid everywhere in a number except
             // after a `.`
             if value.contains("._") {
-                return Err(Self::Err::InvalidDecimalNumber)
+                return Err(Self::Err::InvalidDecimalNumber);
             }
 
             if let Some(index) = value.find("e") {
                 // in Luau, underscores are not valid before the exponent sign
                 if value.contains("_-") || value.contains("_+") {
-                    return Err(Self::Err::InvalidDecimalExponent)
+                    return Err(Self::Err::InvalidDecimalExponent);
                 }
 
-                let exponent = value.get(index + 1..)
+                let exponent = value
+                    .get(index + 1..)
                     .map(filter_underscore)
                     .and_then(|string| string.parse().ok())
                     .ok_or(Self::Err::InvalidDecimalExponent)?;
-                let number = value.get(0..index)
+                let number = value
+                    .get(0..index)
                     .map(filter_underscore)
                     .and_then(|string| string.parse().ok())
                     .ok_or(Self::Err::InvalidDecimalNumber)?;
 
-                DecimalNumber::new(number)
-                    .with_exponent(exponent, false)
-
+                DecimalNumber::new(number).with_exponent(exponent, false)
             } else if let Some(index) = value.find("E") {
-                let exponent: i64 = value.get(index + 1..)
+                let exponent: i64 = value
+                    .get(index + 1..)
                     .map(filter_underscore)
                     .and_then(|string| string.parse().ok())
                     .ok_or(Self::Err::InvalidDecimalExponent)?;
-                let number = value.get(0..index)
+                let number = value
+                    .get(0..index)
                     .map(filter_underscore)
                     .and_then(|string| string.parse().ok())
                     .ok_or(Self::Err::InvalidDecimalNumber)?;
 
-                DecimalNumber::new(number)
-                    .with_exponent(exponent, true)
+                DecimalNumber::new(number).with_exponent(exponent, true)
             } else {
                 let number = filter_underscore(value)
                     .parse::<f64>()
                     .map_err(|_| Self::Err::InvalidDecimalNumber)?;
 
                 DecimalNumber::new(number)
-            }.into()
+            }
+            .into()
         };
 
         Ok(number)
@@ -336,8 +332,7 @@ mod test {
         fn set_uppercase_change() {
             let initial_case = true;
             let modified_case = !initial_case;
-            let mut number = DecimalNumber::new(1.0)
-                .with_exponent(2, initial_case);
+            let mut number = DecimalNumber::new(1.0).with_exponent(2, initial_case);
 
             number.set_uppercase(modified_case);
 

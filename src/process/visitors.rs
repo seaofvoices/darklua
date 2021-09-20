@@ -8,7 +8,8 @@ pub trait NodeVisitor<T: NodeProcessor> {
     fn visit_block(block: &mut Block, processor: &mut T) {
         processor.process_block(block);
 
-        block.mutate_statements()
+        block
+            .mutate_statements()
             .iter_mut()
             .for_each(|statement| Self::visit_statement(statement, processor));
 
@@ -17,7 +18,8 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
             match last_statement {
                 LastStatement::Return(expressions) => {
-                    expressions.iter_mut()
+                    expressions
+                        .iter_mut()
                         .for_each(|expression| Self::visit_expression(expression, processor));
                 }
                 _ => {}
@@ -84,10 +86,14 @@ pub trait NodeVisitor<T: NodeProcessor> {
     fn visit_assign_statement(statement: &mut AssignStatement, processor: &mut T) {
         processor.process_assign_statement(statement);
 
-        statement.mutate_variables().iter_mut()
+        statement
+            .mutate_variables()
+            .iter_mut()
             .for_each(|variable| Self::visit_variable(variable, processor));
 
-        statement.mutate_values().iter_mut()
+        statement
+            .mutate_values()
+            .iter_mut()
             .for_each(|expression| Self::visit_expression(expression, processor));
     }
 
@@ -111,7 +117,9 @@ pub trait NodeVisitor<T: NodeProcessor> {
     fn visit_generic_for(statement: &mut GenericForStatement, processor: &mut T) {
         processor.process_generic_for_statement(statement);
 
-        statement.mutate_expressions().iter_mut()
+        statement
+            .mutate_expressions()
+            .iter_mut()
             .for_each(|expression| Self::visit_expression(expression, processor));
         Self::visit_block(statement.mutate_block(), processor);
     }
@@ -119,12 +127,10 @@ pub trait NodeVisitor<T: NodeProcessor> {
     fn visit_if_statement(statement: &mut IfStatement, processor: &mut T) {
         processor.process_if_statement(statement);
 
-        statement.mutate_branches()
-            .iter_mut()
-            .for_each(|branch| {
-                Self::visit_expression(branch.mutate_condition(), processor);
-                Self::visit_block(branch.mutate_block(), processor);
-            });
+        statement.mutate_branches().iter_mut().for_each(|branch| {
+            Self::visit_expression(branch.mutate_condition(), processor);
+            Self::visit_block(branch.mutate_block(), processor);
+        });
 
         if let Some(block) = statement.mutate_else_block() {
             Self::visit_block(block, processor);
@@ -134,7 +140,9 @@ pub trait NodeVisitor<T: NodeProcessor> {
     fn visit_local_assign(statement: &mut LocalAssignStatement, processor: &mut T) {
         processor.process_local_assign_statement(statement);
 
-        statement.mutate_values().iter_mut()
+        statement
+            .mutate_values()
+            .iter_mut()
             .for_each(|value| Self::visit_expression(value, processor));
     }
 
@@ -204,7 +212,8 @@ pub trait NodeVisitor<T: NodeProcessor> {
         match arguments {
             Arguments::String(string) => processor.process_string_expression(string),
             Arguments::Table(table) => Self::visit_table(table, processor),
-            Arguments::Tuple(expressions) => expressions.iter_mut()
+            Arguments::Tuple(expressions) => expressions
+                .iter_mut()
                 .for_each(|expression| Self::visit_expression(expression, processor)),
         }
     }
@@ -212,7 +221,9 @@ pub trait NodeVisitor<T: NodeProcessor> {
     fn visit_table(table: &mut TableExpression, processor: &mut T) {
         processor.process_table_expression(table);
 
-        table.mutate_entries().iter_mut()
+        table
+            .mutate_entries()
+            .iter_mut()
             .for_each(|entry| match entry {
                 TableEntry::Field(_field, value) => Self::visit_expression(value, processor),
                 TableEntry::Index(key, value) => {
@@ -251,8 +262,7 @@ mod test {
     #[test]
     fn visit_do_statement() {
         let mut counter = NodeCounter::new();
-        let mut block = Block::default()
-            .with_statement(DoStatement::default());
+        let mut block = Block::default().with_statement(DoStatement::default());
 
         DefaultVisitor::visit_block(&mut block, &mut counter);
 
@@ -263,14 +273,13 @@ mod test {
     #[test]
     fn visit_numeric_for_statement() {
         let mut counter = NodeCounter::new();
-        let mut block = Block::default()
-            .with_statement(NumericForStatement::new(
-                "i".to_owned(),
-                Expression::True,
-                Expression::True,
-                None,
-                Block::default(),
-            ));
+        let mut block = Block::default().with_statement(NumericForStatement::new(
+            "i".to_owned(),
+            Expression::True,
+            Expression::True,
+            None,
+            Block::default(),
+        ));
 
         DefaultVisitor::visit_block(&mut block, &mut counter);
 
@@ -282,12 +291,11 @@ mod test {
     #[test]
     fn visit_generic_for_statement() {
         let mut counter = NodeCounter::new();
-        let mut block = Block::default()
-            .with_statement(GenericForStatement::new(
-                vec!["k".to_owned()],
-                vec![Expression::True],
-                Block::default(),
-            ));
+        let mut block = Block::default().with_statement(GenericForStatement::new(
+            vec!["k".to_owned()],
+            vec![Expression::True],
+            Block::default(),
+        ));
 
         DefaultVisitor::visit_block(&mut block, &mut counter);
 
@@ -300,10 +308,7 @@ mod test {
     fn visit_repeat_statement() {
         let mut counter = NodeCounter::new();
         let mut block = Block::default()
-            .with_statement(RepeatStatement::new(
-                Block::default(),
-                Expression::True,
-            ));
+            .with_statement(RepeatStatement::new(Block::default(), Expression::True));
 
         DefaultVisitor::visit_block(&mut block, &mut counter);
 
@@ -316,10 +321,7 @@ mod test {
     fn visit_while_statement() {
         let mut counter = NodeCounter::new();
         let mut block = Block::default()
-            .with_statement(WhileStatement::new(
-                Block::default(),
-                Expression::True,
-            ));
+            .with_statement(WhileStatement::new(Block::default(), Expression::True));
 
         DefaultVisitor::visit_block(&mut block, &mut counter);
 
@@ -332,10 +334,7 @@ mod test {
     fn visit_if_statement() {
         let mut counter = NodeCounter::new();
         let mut block = Block::default()
-            .with_statement(IfStatement::create(
-                Expression::True,
-                Block::default(),
-            ));
+            .with_statement(IfStatement::create(Expression::True, Block::default()));
 
         DefaultVisitor::visit_block(&mut block, &mut counter);
 
@@ -378,11 +377,8 @@ mod test {
     #[test]
     fn visit_compound_assign_statement() {
         let mut counter = NodeCounter::new();
-        let statement = CompoundAssignStatement::new(
-            CompoundOperator::Plus,
-            Variable::new("var"),
-            1_f64,
-        );
+        let statement =
+            CompoundAssignStatement::new(CompoundOperator::Plus, Variable::new("var"), 1_f64);
 
         let mut block = statement.into();
 

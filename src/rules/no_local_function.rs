@@ -1,12 +1,10 @@
 use crate::nodes::{
-    Block,
-    FunctionExpression,
-    LocalAssignStatement,
-    LocalFunctionStatement,
-    Statement
+    Block, FunctionExpression, LocalAssignStatement, LocalFunctionStatement, Statement,
 };
-use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor, processors::FindVariables};
-use crate::rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties};
+use crate::process::{processors::FindVariables, DefaultVisitor, NodeProcessor, NodeVisitor};
+use crate::rules::{
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+};
 
 use serde::ser::{Serialize, Serializer};
 use std::mem;
@@ -18,8 +16,14 @@ impl Processor {
     fn convert(&self, local_function: &mut LocalFunctionStatement) -> Statement {
         let mut function_expression = FunctionExpression::default();
         function_expression.set_variadic(local_function.is_variadic());
-        mem::swap(function_expression.mutate_block(), local_function.mutate_block());
-        mem::swap(function_expression.mutate_parameters(), local_function.mutate_parameters());
+        mem::swap(
+            function_expression.mutate_block(),
+            local_function.mutate_block(),
+        );
+        mem::swap(
+            function_expression.mutate_parameters(),
+            local_function.mutate_parameters(),
+        );
 
         LocalAssignStatement::from_variable(local_function.get_name())
             .with_value(function_expression)
@@ -49,7 +53,8 @@ impl NodeProcessor for Processor {
     }
 }
 
-pub const CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME: &'static str = "convert_local_function_to_assign";
+pub const CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME: &'static str =
+    "convert_local_function_to_assign";
 
 /// Convert local function statements into local assignements when the function is not recursive.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -65,7 +70,7 @@ impl FlawlessRule for ConvertLocalFunctionToAssign {
 impl RuleConfiguration for ConvertLocalFunctionToAssign {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, _value) in properties {
-            return Err(RuleConfigurationError::UnexpectedProperty(key))
+            return Err(RuleConfigurationError::UnexpectedProperty(key));
         }
 
         Ok(())

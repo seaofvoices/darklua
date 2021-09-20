@@ -1,6 +1,8 @@
 use crate::nodes::{Arguments, Block, Expression, FunctionCall, StringExpression, TableExpression};
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
-use crate::rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties};
+use crate::rules::{
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+};
 
 use std::mem;
 
@@ -52,7 +54,7 @@ impl FlawlessRule for RemoveFunctionCallParens {
 impl RuleConfiguration for RemoveFunctionCallParens {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, _value) in properties {
-            return Err(RuleConfigurationError::UnexpectedProperty(key))
+            return Err(RuleConfigurationError::UnexpectedProperty(key));
         }
 
         Ok(())

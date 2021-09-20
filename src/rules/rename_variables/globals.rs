@@ -1,25 +1,6 @@
 pub const KEYWORDS: [&'static str; 21] = [
-    "and",
-    "break",
-    "do",
-    "else",
-    "elseif",
-    "end",
-    "false",
-    "for",
-    "function",
-    "if",
-    "in",
-    "local",
-    "nil",
-    "not",
-    "or",
-    "repeat",
-    "return",
-    "then",
-    "true",
-    "until",
-    "while",
+    "and", "break", "do", "else", "elseif", "end", "false", "for", "function", "if", "in", "local",
+    "nil", "not", "or", "repeat", "return", "then", "true", "until", "while",
 ];
 
 pub const DEFAULT: [&'static str; 40] = [

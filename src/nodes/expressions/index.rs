@@ -1,7 +1,4 @@
-use crate::nodes::{
-    Expression,
-    Prefix,
-};
+use crate::nodes::{Expression, Prefix};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct IndexExpression {

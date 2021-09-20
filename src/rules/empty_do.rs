@@ -1,6 +1,8 @@
 use crate::nodes::{Block, Statement};
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
-use crate::rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties};
+use crate::rules::{
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+};
 
 struct EmptyDoFilter {
     mutated: bool,
@@ -14,9 +16,7 @@ impl EmptyDoFilter {
 
 impl Default for EmptyDoFilter {
     fn default() -> Self {
-        Self {
-            mutated: false,
-        }
+        Self { mutated: false }
     }
 }
 
@@ -26,7 +26,7 @@ impl NodeProcessor for EmptyDoFilter {
             Statement::Do(do_statement) => {
                 self.mutated = do_statement.get_block().is_empty();
                 !self.mutated
-            },
+            }
             _ => true,
         });
     }
@@ -51,7 +51,7 @@ impl FlawlessRule for RemoveEmptyDo {
 impl RuleConfiguration for RemoveEmptyDo {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, _value) in properties {
-            return Err(RuleConfigurationError::UnexpectedProperty(key))
+            return Err(RuleConfigurationError::UnexpectedProperty(key));
         }
 
         Ok(())
@@ -94,10 +94,8 @@ mod test {
     fn remove_nested_empty_do_statement() {
         let rule = new_rule();
 
-        let block_with_do_statement = Block::default()
-            .with_statement(DoStatement::default());
-        let mut block = Block::default()
-            .with_statement(DoStatement::new(block_with_do_statement));
+        let block_with_do_statement = Block::default().with_statement(DoStatement::default());
+        let mut block = Block::default().with_statement(DoStatement::new(block_with_do_statement));
 
         rule.process(&mut block, &mut Context::default())
             .expect("rule should succeed");
