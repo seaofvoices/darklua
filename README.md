@@ -4,7 +4,7 @@
 
 # darklua
 
-Transform Lua 5.1 scripts using [rules](RULES.md).
+Transform Lua 5.1 and Roblox Lua scripts using [rules](RULES.md).
 
 
 # Installation
@@ -49,7 +49,7 @@ If you have a `src` folder that contains a bunch of Lua scripts (files ending wi
 darklua process src processed-src
 ```
 
-If a configuration file is found in the folder where the command is ran, darklua will automatically use it. If your configuration file is not named `.darklua.json` or `.darklua.json5`, or not located in the folder where you are running the command, you can specify it with the `--config-path` argument:
+If a configuration file is found in the folder where the command is run, darklua will automatically use it. If your configuration file is not named `.darklua.json` or `.darklua.json5`, or not located in the folder where you are running the command, you must specify it with the `--config-path` argument:
 
 ```
 darklua process src processed-src --config-path ./path/config.json
@@ -58,7 +58,7 @@ darklua process src processed-src -c ./path/config.json
 ```
 
 ## Minify
-This command reads Lua code and only reformat it in a more compact way. The input path can be a file or directory. Given a directory, darklua will find all Lua files under that directory and output them following the same hierarchy.
+This command reads Lua code and reformats it to reduce the size of the code, measured in total bytes. The input path can be a single file name or a directory name. Given a directory, darklua will find all Lua files under that directory and output them following the same hierarchy.
 
 ```
 darklua minify <input-path> <output-path>
@@ -69,7 +69,7 @@ optional arguments:
 ```
 
 ### Example
-If you have a `src` folder that contains a bunch of Lua scripts (files ending with `.lua`), you can generate the minified version of these scripts into a new folder called `minified-src` using the following command:
+If you have a `src` folder that contains a bunch of Lua scripts (files ending with `.lua`), you can generate the minified version of these Lua scripts into a new folder called `minified-src` using the following command:
 
 ```
 darklua minify src minified-src
@@ -85,7 +85,7 @@ darklua minify src minified-src -c ./path/config.json
 
 
 # Configuration file
-Some commands can be modified using the configuration file. darklua supports both configuration file written in json or json5. When running darklua, if the folder where the command is executed contains a file named `.darklua.json` or `.darklua.json5`, it will automatically read the file to get the configuration values.
+Some commands can be modified using the configuration file. darklua supports both configuration file written in the json or json5 standard file formats. When running darklua, if the directory in which the `darklua` command is executed contains a file named `.darklua.json` or `.darklua.json5`, it will automatically read the file to get the configuration values unless the `--config-path` option is given to override it.
 
 Any missing field will be replaced with its default value.
 
@@ -102,22 +102,22 @@ Any missing field will be replaced with its default value.
 ```
 
 ## Rule format
-Rules can be written in two different format. The shortest one consist of simply providing the rule name. Using this format, the default rule properties will be used.
+Rules can be written in two different formats: The shortest format consists of simply providing the rule name. Using this format, the default rule properties will be used.
 
 ```json
 "remove_empty_do"
 ```
 
-If a rule can be configured with properties, the table format can be used to override each properties. The rule name **must** be specified with a field named `rule`. Then, simply enumerate the property name associated with its value.
+If a rule can be configured with properties (specific values that tweak the behavior of the rule), the table format can be used to override each properties. The rule name **must** be specified with a field named `rule`. Then, simply enumerate the property name associated with its value.
 
 ```json5
 {
     rule: "the_rule_name",
-    property: 50
+    my_property_name: 50
 }
 ```
 
-For example, the two following snippets will define two configuration files that will execute the same rule, but written in the two different formats.
+For example, the two following examples define two configuration files that will execute the same rule, but written in the two different formats.
 
 ```json5
 {
@@ -131,7 +131,7 @@ For example, the two following snippets will define two configuration files that
 }
 ```
 
-More informations can be found for [each rule here](RULES.md).
+Information on the built-in rules and their configuration properties can be found [here](RULES.md).
 
 
 # License

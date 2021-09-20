@@ -21,7 +21,7 @@ There are also other rules available for more processing:
 ## Compute expression
 ```compute_expression```
 
-This rule computes expressions and replaces them with their result. An expression will not be replaced if it has any side-effects. This rule is influenced by the evaluation system of darklua. As its capacity increases, the rule will be able to compute more complex expressions. For example, if you use this rule on the following code:
+This rule computes expressions (that are determined to be static) and replaces them with their result. An expression will not be replaced if it has any side-effects. This can make code smaller, but also make code slightly faster since the computation is now done ahead of time. This rule is influenced by the evaluation system of darklua. As its capacity increases, the rule will be able to compute more complex expressions. For example, if you use this rule on the following code:
 
 ```lua
 return 1 + 1
@@ -61,6 +61,8 @@ local foo = function(a, b)
 end
 ```
 
+Note that, depending on your Lua runtime implementation, you may no longer be able to use reflection-like APIs (eg `debug.info`) to acquire the name of the function, or the function name may be missing from stack traces of `error` invocations.
+
 ### Examples
 ```json5
 {
@@ -86,7 +88,7 @@ Will produce the following code:
 local foo, bar = 1, 2
 ```
 
-The rule will not merge an assignments if it needs the previous one, since it would break the code or change the behavior. The following code would not be changed:
+The rule will not merge an assignments if one assignment temporally depends on the previous one, since it would break the code or change the behavior. The following code would not be changed:
 
 ```lua
 local foo = 1
@@ -144,6 +146,25 @@ The `value` property can accept multiple types. Booleans, strings, numbers and `
 }
 ```
 
+The above rules would change this code:
+
+```lua
+if _G.AMOUNT > 10
+  or _G.CONSTANT ~= nil then
+--[[ ... ]]
+end
+```
+
+into this code:
+```lua
+if 11 > 10
+  or "Hello" ~= nil then
+--[[ ... ]]
+end
+```
+
+This rule can be used in combination with the `remove_unused_if_branch`, `compute_expression`, and other rules, to eliminate dead branches. In addition to making your code smaller, it should make it faster (depending on how hot the code path is) since it is eliminating branch condition evaluations at client-side runtime.
+
 ### Property
 | name | type | description |
 | --- | --- | --- |
@@ -169,7 +190,7 @@ This rule does not have any properties.
 ## Remove function call parens
 ```remove_function_call_parens```
 
-This rule will remove parens in a function call when there is only one string or one table as arguments. It does not have any properties.
+This rule will remove parens in a function call when there is only one string or one table as arguments. It does not have any properties. In large Lua programs, this can save several thousand bytes.
 
 ### Examples
 ```json5
@@ -204,6 +225,9 @@ end
 ```
 
 ### Examples
+
+This can be useful when obfuscating code, since it, along with the `rename_variables` rule, makes it less clear that a given function is an instance function. This obfuscation can result in smaller code when when used with `rename_variables` rule, since darklua can then rename repeated references to `self` with a single-letter variable name, saving thousands of bytes across a large Lua program.
+
 ```json5
 {
     rule: 'remove_method_definition',
@@ -227,7 +251,7 @@ else
 end
 ```
 
-Since the second branch is always true, the else block becomes useless, so this rule would output:
+Since the second branch is always true, the else block becomes superfluous. As such, this rule would output:
 
 ```lua
 if unknown then
@@ -336,3 +360,5 @@ The globals from Roblox Lua
 ```
 Axes, bit32, BrickColor, CellId, ColorSequence, ColorSequenceKeypoint, Color3, CFrame, DateTime, DebuggerManager, delay, DockWidgetPluginGuiInfo, elapsedTime, Enum, Faces, Instance, LoadLibrary, game, NumberRange, NumberSequence, NumberSequenceKeypoint, PathWaypoint, PhysicalProperties, plugin, PluginDrag, PluginManager, printidentity, Random, Ray, RaycastParams, Rect, Region3, Region3int16, script, settings, shared, stats, spawn, tick, time, TweenInfo, typeof, UDim, UDim2, UserSettings, utf8, Vector2, Vector2int16, Vector3, Vector3int16, version, wait, warn, workspace, ypcall
 ```
+
+Note that Lua language key words such as `return` and `do` are automatically excluded and not configurable.
