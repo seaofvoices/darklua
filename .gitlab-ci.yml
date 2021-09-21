@@ -76,8 +76,7 @@ test:
     - python3 --version
     - apt-get -qq install -y python3-pip
     - python3 -m pip --version
-    - chmod u+x ./bin/install-lua.sh
-    - ./bin/install-lua.sh
+    - ./scripts/install-lua.sh
     - export PATH=$PATH:$PWD/lua_install/bin
 
 test-lua-projects:
@@ -86,5 +85,5 @@ test-lua-projects:
     - .only-mr-and-main
     - .lua-setup
   script:
-    - lua ./bin/test-commands.lua
+    - lua ./scripts/test-commands.lua
   needs: ['build-release']

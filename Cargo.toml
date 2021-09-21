@@ -1,16 +1,16 @@
 [package]
 name = "darklua"
-version = "0.4.1"
+version = "0.5.0"
 authors = ["jeparlefrancais <jeparlefrancais21@gmail.com>"]
 edition = "2018"
 readme = "README.md"
-description = "Transform Lua 5.1 scripts"
-repository = "https://gitlab.com/jeparlefrancais/darklua"
+description = "Transform Lua scripts"
+repository = "https://gitlab.com/seaofvoices/darklua"
 license = "MIT"
 keywords = ["lua", "obsfucation", "minify"]
 
 [badges]
-gitlab = { repository = "jeparlefrancais/darklua" }
+gitlab = { repository = "seaofvoices/darklua" }
 
 [lib]
 name = "darklua_core"

@@ -1,4 +1,4 @@
-[![pipeline status](https://gitlab.com/jeparlefrancais/darklua/badges/main/pipeline.svg)](https://gitlab.com/jeparlefrancais/darklua/commits/main)
+[![pipeline status](https://gitlab.com/seaofvoices/darklua/badges/main/pipeline.svg)](https://gitlab.com/seaofvoices/darklua/commits/main)
 [![version](https://img.shields.io/crates/v/darklua)](https://crates.io/crates/darklua)
 [![license](https://img.shields.io/crates/l/darklua)](LICENSE.txt)
 
@@ -17,7 +17,7 @@ cargo install darklua
 If you want to use the lastest darklua available, install it using the git url:
 
 ```
-cargo install --git https://gitlab.com/jeparlefrancais/darklua.git
+cargo install --git https://gitlab.com/seaofvoices/darklua.git
 ```
 
 
