@@ -25,16 +25,16 @@ impl ValueInjection {
         }
     }
 
-    fn is_identifier_used(&self, identifier: &String) -> bool {
+    fn is_identifier_used(&self, identifier: &str) -> bool {
         self.identifiers.iter().any(|set| set.contains(identifier))
     }
 
-    fn insert_identifier(&mut self, identifier: &String) {
+    fn insert_identifier(&mut self, identifier: &str) {
         if let Some(set) = self.identifiers.last_mut() {
-            set.insert(identifier.clone());
+            set.insert(identifier.to_string());
         } else {
             let mut set = HashSet::new();
-            set.insert(identifier.clone());
+            set.insert(identifier.to_string());
             self.identifiers.push(set);
         }
     }
@@ -92,7 +92,7 @@ impl NodeProcessor for ValueInjection {
     }
 }
 
-pub const INJECT_GLOBAL_VALUE_RULE_NAME: &'static str = "inject_global_value";
+pub const INJECT_GLOBAL_VALUE_RULE_NAME: &str = "inject_global_value";
 
 /// A rule to replace global variables with values.
 #[derive(Debug, PartialEq, Eq)]
@@ -224,20 +224,14 @@ mod test {
         }"#,
         );
 
-        match result {
-            Ok(_) => panic!("should return an error"),
-            Err(_) => {}
-        }
+        assert!(result.is_err());
     }
 
     #[test]
     fn deserialize_from_string_notation_should_error() {
         let result = json5::from_str::<Box<dyn Rule>>("'inject_global_value'");
 
-        match result {
-            Ok(_) => panic!("should return an error"),
-            Err(_) => {}
-        }
+        assert!(result.is_err());
     }
 
     #[test]

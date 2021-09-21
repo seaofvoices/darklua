@@ -176,10 +176,8 @@ impl Fuzz<Block> for Block {
         let mut statements = Vec::new();
         let mut last_statement = None;
 
-        if rand::random() {
-            if context.take_statement() {
-                last_statement.replace(LastStatement::fuzz(context));
-            }
+        if rand::random() && context.take_statement() {
+            last_statement.replace(LastStatement::fuzz(context));
         }
 
         while context.take_statement() {
@@ -543,12 +541,10 @@ impl Fuzz<Prefix> for Prefix {
                 3 => Index(IndexExpression::fuzz(context).into()),
                 _ => Parenthese(Expression::fuzz(context)),
             }
+        } else if rand::random() {
+            Call(FunctionCall::fuzz(context))
         } else {
-            if rand::random() {
-                Call(FunctionCall::fuzz(context))
-            } else {
-                Identifier(generated_identifier())
-            }
+            Identifier(generated_identifier())
         }
     }
 }
@@ -599,12 +595,10 @@ impl Fuzz<TableEntry> for TableEntry {
                 1 => Self::Index(Expression::fuzz(context), Expression::fuzz(context)),
                 _ => Self::Value(Expression::fuzz(context)),
             }
+        } else if rand::random() {
+            Self::Field(generated_identifier(), Expression::fuzz(context))
         } else {
-            if rand::random() {
-                Self::Field(generated_identifier(), Expression::fuzz(context))
-            } else {
-                Self::Value(Expression::fuzz(context))
-            }
+            Self::Value(Expression::fuzz(context))
         }
     }
 }

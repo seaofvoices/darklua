@@ -16,13 +16,10 @@ pub trait NodeVisitor<T: NodeProcessor> {
         if let Some(last_statement) = block.mutate_last_statement() {
             processor.process_last_statement(last_statement);
 
-            match last_statement {
-                LastStatement::Return(expressions) => {
-                    expressions
-                        .iter_mut()
-                        .for_each(|expression| Self::visit_expression(expression, processor));
-                }
-                _ => {}
+            if let LastStatement::Return(expressions) = last_statement {
+                expressions
+                    .iter_mut()
+                    .for_each(|expression| Self::visit_expression(expression, processor));
             };
         };
     }

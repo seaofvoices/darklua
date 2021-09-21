@@ -113,7 +113,7 @@ impl Evaluator {
     fn prefix_has_side_effects(&self, prefix: &Prefix) -> bool {
         match prefix {
             Prefix::Call(call) => self.call_has_side_effects(call),
-            Prefix::Field(field) => self.field_has_side_effects(&field),
+            Prefix::Field(field) => self.field_has_side_effects(field),
             Prefix::Identifier(_) => false,
             Prefix::Index(index) => self.index_has_side_effects(index),
             Prefix::Parenthese(sub_expression) => self.has_side_effects(sub_expression),
@@ -175,7 +175,9 @@ impl Evaluator {
             (LuaValue::True, LuaValue::True)
             | (LuaValue::False, LuaValue::False)
             | (LuaValue::Nil, LuaValue::Nil) => LuaValue::True,
-            (LuaValue::Number(a), LuaValue::Number(b)) => LuaValue::from(a == b),
+            (LuaValue::Number(a), LuaValue::Number(b)) => {
+                LuaValue::from((a - b).abs() < f64::EPSILON)
+            }
             (LuaValue::String(a), LuaValue::String(b)) => LuaValue::from(a == b),
             _ => LuaValue::False,
         }
@@ -258,9 +260,12 @@ mod test {
                             (LuaValue::Number(expect_float), LuaValue::Number(result))=> {
                                 if expect_float.is_nan() {
                                     assert!(result.is_nan(), "{} should be NaN", result);
+                                } else if expect_float.is_infinite() {
+                                    assert!(result.is_infinite(), "{} should be infinite", result);
+                                    assert_eq!(expect_float.is_sign_positive(), result.is_sign_positive());
                                 } else {
                                     assert!(
-                                        result == expect_float || (expect_float - result).abs() < 0.1e-10,
+                                        (expect_float - result).abs() < f64::EPSILON,
                                         "{} does not approximate {}", result, expect_float
                                     );
                                 }

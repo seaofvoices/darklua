@@ -80,29 +80,27 @@ impl From<f64> for Expression {
             FpCategory::Subnormal | FpCategory::Normal => {
                 if value < 0.0 {
                     UnaryExpression::new(UnaryOperator::Minus, Expression::from(value.abs())).into()
-                } else {
-                    if value < 0.1 {
-                        let exponent = value.log10().floor();
-                        let new_value = value / 10_f64.powf(exponent);
+                } else if value < 0.1 {
+                    let exponent = value.log10().floor();
+                    let new_value = value / 10_f64.powf(exponent);
 
-                        DecimalNumber::new(new_value)
-                            .with_exponent(exponent as i64, true)
-                            .into()
-                    } else if value > 999.0 && (value / 100.0).fract() == 0.0 {
-                        let mut exponent = value.log10().floor();
-                        let mut power = 10_f64.powf(exponent);
+                    DecimalNumber::new(new_value)
+                        .with_exponent(exponent as i64, true)
+                        .into()
+                } else if value > 999.0 && (value / 100.0).fract() == 0.0 {
+                    let mut exponent = value.log10().floor();
+                    let mut power = 10_f64.powf(exponent);
 
-                        while exponent > 2.0 && (value / power).fract() != 0.0 {
-                            exponent -= 1.0;
-                            power /= 10.0;
-                        }
-
-                        DecimalNumber::new(value / power)
-                            .with_exponent(exponent as i64, true)
-                            .into()
-                    } else {
-                        DecimalNumber::new(value).into()
+                    while exponent > 2.0 && (value / power).fract() != 0.0 {
+                        exponent -= 1.0;
+                        power /= 10.0;
                     }
+
+                    DecimalNumber::new(value / power)
+                        .with_exponent(exponent as i64, true)
+                        .into()
+                } else {
+                    DecimalNumber::new(value).into()
                 }
             }
         }

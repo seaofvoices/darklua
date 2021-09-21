@@ -4,6 +4,8 @@ use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
 };
 
+use super::verify_no_rule_properties;
+
 #[derive(Debug, Clone, Default)]
 struct WhileFilter {
     evaluator: Evaluator,
@@ -27,7 +29,7 @@ impl NodeProcessor for WhileFilter {
     }
 }
 
-pub const REMOVE_UNUSED_WHILE_RULE_NAME: &'static str = "remove_unused_while";
+pub const REMOVE_UNUSED_WHILE_RULE_NAME: &str = "remove_unused_while";
 
 /// A rule that removes while statements with a known false condition.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -42,9 +44,7 @@ impl FlawlessRule for RemoveUnusedWhile {
 
 impl RuleConfiguration for RemoveUnusedWhile {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
-        for (key, _value) in properties {
-            return Err(RuleConfigurationError::UnexpectedProperty(key));
-        }
+        verify_no_rule_properties(&properties)?;
 
         Ok(())
     }

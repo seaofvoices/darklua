@@ -18,7 +18,7 @@ pub struct FileProcessing {
 }
 
 impl FileProcessing {
-    pub fn find(input: &PathBuf, output: &PathBuf, global: &GlobalOptions) -> Vec<FileProcessing> {
+    pub fn find(input: &Path, output: &Path, global: &GlobalOptions) -> Vec<FileProcessing> {
         if input.is_file() {
             vec![FileProcessing {
                 source: input.to_owned(),
@@ -36,12 +36,7 @@ impl FileProcessing {
     }
 }
 
-fn walk_dir(
-    path: &PathBuf,
-    output: &PathBuf,
-    files: &mut Vec<FileProcessing>,
-    global: &GlobalOptions,
-) {
+fn walk_dir(path: &Path, output: &Path, files: &mut Vec<FileProcessing>, global: &GlobalOptions) {
     let entries = fs::read_dir(path).expect("error while reading directory");
 
     for entry in entries.into_iter() {
@@ -57,34 +52,27 @@ fn walk_dir(
 
         if let Some(name) = file_path.file_name() {
             if file_path.is_dir() {
-                let mut next_output = output.clone();
+                let mut next_output = output.to_path_buf();
                 next_output.push(name);
                 walk_dir(&file_path, &next_output, files, global);
             } else if file_path.is_file() {
-                match file_path.extension().and_then(OsStr::to_str) {
-                    Some("lua") => {
-                        let mut file_output = output.clone();
-                        file_output.push(name);
+                if let Some("lua") = file_path.extension().and_then(OsStr::to_str) {
+                    let mut file_output = output.to_path_buf();
+                    file_output.push(name);
 
-                        files.push(FileProcessing {
-                            source: file_path.clone(),
-                            output: file_output,
-                        });
-                    }
-                    _ => {}
+                    files.push(FileProcessing {
+                        source: file_path.clone(),
+                        output: file_output,
+                    });
                 }
-            } else {
-                if global.verbose > 1 {
-                    println!(
-                        "Unexpected directory entry: {}",
-                        file_path.to_string_lossy()
-                    );
-                }
+            } else if global.verbose > 1 {
+                println!(
+                    "Unexpected directory entry: {}",
+                    file_path.to_string_lossy()
+                );
             }
-        } else {
-            if global.verbose > 1 {
-                println!("No file name for path {}", file_path.to_string_lossy());
-            }
+        } else if global.verbose > 1 {
+            println!("No file name for path {}", file_path.to_string_lossy());
         }
     }
 }

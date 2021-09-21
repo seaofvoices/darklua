@@ -4,6 +4,8 @@ use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
 };
 
+use super::verify_no_rule_properties;
+
 #[derive(Debug, Clone, Default)]
 struct Computer {
     evaluator: Evaluator,
@@ -13,8 +15,8 @@ impl Computer {
     fn replace_with(&self, expression: &mut Expression) -> Option<Expression> {
         match expression {
             Expression::Unary(_) | Expression::Binary(_) => {
-                if !self.evaluator.has_side_effects(&expression) {
-                    self.evaluator.evaluate(&expression).to_expression()
+                if !self.evaluator.has_side_effects(expression) {
+                    self.evaluator.evaluate(expression).to_expression()
                 } else {
                     None
                 }
@@ -32,7 +34,7 @@ impl NodeProcessor for Computer {
     }
 }
 
-pub const COMPUTE_EXPRESSIONS_RULE_NAME: &'static str = "compute_expression";
+pub const COMPUTE_EXPRESSIONS_RULE_NAME: &str = "compute_expression";
 
 /// A rule that compute expressions that do not have any side-effects.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -47,9 +49,7 @@ impl FlawlessRule for ComputeExpression {
 
 impl RuleConfiguration for ComputeExpression {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
-        for (key, _value) in properties {
-            return Err(RuleConfigurationError::UnexpectedProperty(key));
-        }
+        verify_no_rule_properties(&properties)?;
 
         Ok(())
     }

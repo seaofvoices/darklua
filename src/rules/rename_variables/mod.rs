@@ -15,7 +15,7 @@ use crate::rules::{
 use std::collections::HashSet;
 use std::iter::FromIterator;
 
-pub const RENAME_VARIABLES_RULE_NAME: &'static str = "rename_variables";
+pub const RENAME_VARIABLES_RULE_NAME: &str = "rename_variables";
 
 /// Rename all identifiers to small and meaningless names.
 #[derive(Debug, PartialEq, Eq)]
@@ -24,7 +24,7 @@ pub struct RenameVariables {
 }
 
 fn is_valid_identifier(identifier: &str) -> bool {
-    identifier.len() > 0
+    !identifier.is_empty()
         && identifier.is_ascii()
         && identifier
             .char_indices()
@@ -58,7 +58,7 @@ impl RenameVariables {
     }
 
     fn normalize_globals(&self) -> Vec<String> {
-        let mut globals_set: HashSet<String> = HashSet::from_iter(self.globals.iter().cloned());
+        let mut globals_set: HashSet<String> = self.globals.iter().cloned().collect();
 
         let mut result = Vec::new();
 

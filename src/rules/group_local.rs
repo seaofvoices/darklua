@@ -7,6 +7,8 @@ use crate::rules::{
 
 use std::iter;
 
+use super::verify_no_rule_properties;
+
 #[derive(Debug, Clone, Default)]
 struct GroupLocalProcessor {}
 
@@ -82,12 +84,8 @@ impl GroupLocalProcessor {
                 .extend(iter::repeat(Expression::Nil).take(variable_count));
         }
 
-        first
-            .mutate_variables()
-            .extend(other.mutate_variables().drain(..));
-        first
-            .mutate_values()
-            .extend(other.mutate_values().drain(..));
+        first.mutate_variables().append(other.mutate_variables());
+        first.mutate_values().append(other.mutate_values());
     }
 }
 
@@ -99,7 +97,7 @@ impl NodeProcessor for GroupLocalProcessor {
     }
 }
 
-pub const GROUP_LOCAL_ASSIGNMENT: &'static str = "group_local_assignment";
+pub const GROUP_LOCAL_ASSIGNMENT: &str = "group_local_assignment";
 
 /// Group local assign statements into one statement.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -114,9 +112,7 @@ impl FlawlessRule for GroupLocalAssignment {
 
 impl RuleConfiguration for GroupLocalAssignment {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
-        for (key, _value) in properties {
-            return Err(RuleConfigurationError::UnexpectedProperty(key));
-        }
+        verify_no_rule_properties(&properties)?;
 
         Ok(())
     }

@@ -36,7 +36,7 @@ fn convert_prefix_with_suffixes<'a>(
             ast::Suffix::Call(call_suffix) => match call_suffix {
                 ast::Call::AnonymousCall(arguments) => {
                     prefix =
-                        FunctionCall::new(prefix, convert_function_args(&arguments)?, None).into();
+                        FunctionCall::new(prefix, convert_function_args(arguments)?, None).into();
                 }
                 ast::Call::MethodCall(method_call) => {
                     prefix = FunctionCall::new(
@@ -57,7 +57,7 @@ fn convert_prefix_with_suffixes<'a>(
                     brackets: _,
                     expression,
                 } => {
-                    prefix = IndexExpression::new(prefix, convert_expression(&expression)?).into();
+                    prefix = IndexExpression::new(prefix, convert_expression(expression)?).into();
                 }
                 ast::Index::Dot { name, dot: _ } => {
                     prefix = FieldExpression::new(prefix, name.token().to_string()).into();
@@ -294,7 +294,7 @@ fn convert_expression(expression: &ast::Expression) -> Result<Expression, Conver
         ast::Expression::Parentheses {
             contained: _,
             expression,
-        } => convert_expression(expression)?.into(),
+        } => convert_expression(expression)?,
         ast::Expression::UnaryOperator { unop, expression } => {
             UnaryExpression::new(convert_unop(unop)?, convert_expression(expression)?).into()
         }
@@ -502,7 +502,7 @@ fn convert_block(block: &ast::Block) -> Result<Block, ConvertError> {
 }
 
 fn convert_ast(ast: Ast) -> Result<Block, ConvertError> {
-    convert_block(&ast.nodes())
+    convert_block(ast.nodes())
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -571,9 +571,34 @@ pub enum ConvertError {
 
 impl fmt::Display for ConvertError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            _ => write!(f, "[AST conversion error]"),
-        }
+        let (kind, code) = match self {
+            ConvertError::Statement { statement } => ("statement", statement),
+            ConvertError::LastStatement { statement } => ("last statement", statement),
+            ConvertError::Variable { variable } => ("variable", variable),
+            ConvertError::FunctionArguments { arguments } => ("function arguments", arguments),
+            ConvertError::Call { call } => ("function call", call),
+            ConvertError::Index { index } => ("index expression", index),
+            ConvertError::Suffix { suffix } => ("suffix", suffix),
+            ConvertError::Prefix { prefix } => ("prefix", prefix),
+            ConvertError::Number {
+                number,
+                parsing_error,
+            } => {
+                return write!(
+                    f,
+                    "unable to convert number from `{}` ({})",
+                    number, parsing_error
+                )
+            }
+            ConvertError::Expression { expression } => ("expression", expression),
+            ConvertError::FunctionParameter { parameter } => ("parameter", parameter),
+            ConvertError::FunctionParameters { parameters } => ("parameters", parameters),
+            ConvertError::TableEntry { entry } => ("table entry", entry),
+            ConvertError::BinaryOperator { operator } => ("binary operator", operator),
+            ConvertError::CompoundOperator { operator } => ("compound operator", operator),
+            ConvertError::UnaryOperator { operator } => ("unary operator", operator),
+        };
+        write!(f, "unable to convert {} from `{}`", kind, code)
     }
 }
 

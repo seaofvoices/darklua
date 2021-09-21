@@ -9,6 +9,8 @@ use crate::rules::{
 use serde::ser::{Serialize, Serializer};
 use std::mem;
 
+use super::verify_no_rule_properties;
+
 #[derive(Default)]
 struct Processor;
 
@@ -53,8 +55,7 @@ impl NodeProcessor for Processor {
     }
 }
 
-pub const CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME: &'static str =
-    "convert_local_function_to_assign";
+pub const CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME: &str = "convert_local_function_to_assign";
 
 /// Convert local function statements into local assignements when the function is not recursive.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -69,9 +70,7 @@ impl FlawlessRule for ConvertLocalFunctionToAssign {
 
 impl RuleConfiguration for ConvertLocalFunctionToAssign {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
-        for (key, _value) in properties {
-            return Err(RuleConfigurationError::UnexpectedProperty(key));
-        }
+        verify_no_rule_properties(&properties)?;
 
         Ok(())
     }

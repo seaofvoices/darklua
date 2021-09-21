@@ -6,6 +6,8 @@ use crate::rules::{
 
 use std::mem;
 
+use super::verify_no_rule_properties;
+
 enum FilterResult {
     Keep,
     Remove,
@@ -59,37 +61,32 @@ impl IfFilter {
         let mut i = 0;
 
         while i != branches.len() {
-            if {
-                if found_always_true_branch {
-                    false
-                } else {
-                    let branch = branches.get_mut(i).unwrap();
-                    let condition = branch.get_condition();
-                    let is_truthy = self.evaluator.evaluate(&condition).is_truthy();
-
-                    if let Some(is_truthy) = is_truthy {
-                        if is_truthy {
-                            found_always_true_branch = true;
-                            true
-                        } else {
-                            let side_effects = self.evaluator.has_side_effects(&condition);
-
-                            if side_effects {
-                                // only need to clear if there are side effects because it means
-                                // that we are keeping the branch just for the condition
-                                branch.mutate_block().clear();
-                            }
-
-                            side_effects
-                        }
-                    } else {
-                        true
-                    }
-                }
-            } {
-                i += 1;
-            } else {
+            if found_always_true_branch {
                 branches.remove(i);
+            } else {
+                let branch = branches.get_mut(i).unwrap();
+                let condition = branch.get_condition();
+                let is_truthy = self.evaluator.evaluate(condition).is_truthy();
+
+                if let Some(is_truthy) = is_truthy {
+                    if is_truthy {
+                        found_always_true_branch = true;
+                        i += 1;
+                    } else {
+                        let side_effects = self.evaluator.has_side_effects(condition);
+
+                        if side_effects {
+                            // only need to clear if there are side effects because it means
+                            // that we are keeping the branch just for the condition
+                            branch.mutate_block().clear();
+                            i += 1;
+                        } else {
+                            branches.remove(i);
+                        }
+                    }
+                } else {
+                    i += 1;
+                }
             }
         }
 
@@ -117,7 +114,7 @@ impl NodeProcessor for IfFilter {
     }
 }
 
-pub const REMOVE_UNUSED_IF_BRANCH_RULE_NAME: &'static str = "remove_unused_if_branch";
+pub const REMOVE_UNUSED_IF_BRANCH_RULE_NAME: &str = "remove_unused_if_branch";
 
 /// A rule that removes unused if branches. It can also turn a if statement into a do block
 /// statement.
@@ -133,9 +130,7 @@ impl FlawlessRule for RemoveUnusedIfBranch {
 
 impl RuleConfiguration for RemoveUnusedIfBranch {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
-        for (key, _value) in properties {
-            return Err(RuleConfigurationError::UnexpectedProperty(key));
-        }
+        verify_no_rule_properties(&properties)?;
 
         Ok(())
     }

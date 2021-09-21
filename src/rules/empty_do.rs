@@ -4,6 +4,8 @@ use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
 };
 
+use super::verify_no_rule_properties;
+
 struct EmptyDoFilter {
     mutated: bool,
 }
@@ -32,7 +34,7 @@ impl NodeProcessor for EmptyDoFilter {
     }
 }
 
-pub const REMOVE_EMPTY_DO_RULE_NAME: &'static str = "remove_empty_do";
+pub const REMOVE_EMPTY_DO_RULE_NAME: &str = "remove_empty_do";
 
 /// A rule that removes empty do statements.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -50,9 +52,7 @@ impl FlawlessRule for RemoveEmptyDo {
 
 impl RuleConfiguration for RemoveEmptyDo {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
-        for (key, _value) in properties {
-            return Err(RuleConfigurationError::UnexpectedProperty(key));
-        }
+        verify_no_rule_properties(&properties)?;
 
         Ok(())
     }

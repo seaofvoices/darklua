@@ -91,7 +91,7 @@ mod test {
     fn produce_all_permutations_with_three_chars() {
         let mut permutate = Permutator::new("ab".chars());
 
-        for _ in 0..2 + 2 ^ 2 {
+        for _ in 0..(2 + 2) ^ 2 {
             permutate.next();
         }
 

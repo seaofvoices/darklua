@@ -6,6 +6,8 @@ use crate::rules::{
 
 use std::mem;
 
+use super::verify_no_rule_properties;
+
 #[derive(Debug, Clone, Default)]
 struct Processor {}
 
@@ -38,7 +40,7 @@ impl NodeProcessor for Processor {
     }
 }
 
-pub const REMOVE_FUNCTION_CALL_PARENS: &'static str = "remove_function_call_parens";
+pub const REMOVE_FUNCTION_CALL_PARENS: &str = "remove_function_call_parens";
 
 /// A rule that removes parentheses when calling functions with a string or a table.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -53,9 +55,7 @@ impl FlawlessRule for RemoveFunctionCallParens {
 
 impl RuleConfiguration for RemoveFunctionCallParens {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
-        for (key, _value) in properties {
-            return Err(RuleConfigurationError::UnexpectedProperty(key));
-        }
+        verify_no_rule_properties(&properties)?;
 
         Ok(())
     }

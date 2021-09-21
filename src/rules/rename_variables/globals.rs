@@ -1,9 +1,9 @@
-pub const KEYWORDS: [&'static str; 21] = [
+pub const KEYWORDS: [&str; 21] = [
     "and", "break", "do", "else", "elseif", "end", "false", "for", "function", "if", "in", "local",
     "nil", "not", "or", "repeat", "return", "then", "true", "until", "while",
 ];
 
-pub const DEFAULT: [&'static str; 40] = [
+pub const DEFAULT: [&str; 40] = [
     "arg",
     "assert",
     "collectgarbage",
@@ -46,7 +46,7 @@ pub const DEFAULT: [&'static str; 40] = [
     "_VERSION",
 ];
 
-pub const ROBLOX: [&'static str; 55] = [
+pub const ROBLOX: [&str; 55] = [
     "Axes",
     "bit32",
     "BrickColor",

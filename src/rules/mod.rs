@@ -46,7 +46,7 @@ pub enum RulePropertyValue {
 
 /// When implementing the configure method of the Rule trait, the method returns a result that uses
 /// this error type.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum RuleConfigurationError {
     /// When a rule gets an unknown property. The string should be the unknown field name.
     UnexpectedProperty(String),
@@ -258,6 +258,13 @@ impl<'de> Deserialize<'de> for Box<dyn Rule> {
     }
 }
 
+fn verify_no_rule_properties(properties: &RuleProperties) -> Result<(), RuleConfigurationError> {
+    if let Some((key, _value)) = properties.iter().next() {
+        return Err(RuleConfigurationError::UnexpectedProperty(key.to_owned()));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -269,5 +276,26 @@ mod test {
         let rules = get_default_rules();
 
         assert_json_snapshot!("default_rules", rules);
+    }
+
+    #[test]
+    fn verify_no_rule_properties_is_ok_when_empty() {
+        let empty_properties = RuleProperties::default();
+
+        assert_eq!(verify_no_rule_properties(&empty_properties), Ok(()));
+    }
+
+    #[test]
+    fn verify_no_rule_properties_is_unexpected_rule_err() {
+        let mut properties = RuleProperties::default();
+        let some_rule_name = "rule name";
+        properties.insert(some_rule_name.to_owned(), RulePropertyValue::None);
+
+        assert_eq!(
+            verify_no_rule_properties(&properties),
+            Err(RuleConfigurationError::UnexpectedProperty(
+                some_rule_name.to_owned()
+            ))
+        );
     }
 }

@@ -192,16 +192,12 @@ impl ReadableLuaGenerator {
                     } else {
                         self.push_space();
                     }
-                } else {
-                    if total_length > self.column_span {
-                        self.push_new_line();
-                    }
+                } else if total_length > self.column_span {
+                    self.push_new_line();
                 }
             }
-        } else {
-            if self.needs_space(next_character) {
-                self.push_space();
-            }
+        } else if self.needs_space(next_character) {
+            self.push_space();
         }
     }
 
@@ -217,10 +213,8 @@ impl ReadableLuaGenerator {
             } else {
                 self.push_new_line();
             }
-        } else {
-            if !self.fits_on_current_line(content.len()) {
-                self.push_new_line();
-            }
+        } else if !self.fits_on_current_line(content.len()) {
+            self.push_new_line();
         }
         self.raw_push_str(content);
     }
@@ -231,7 +225,7 @@ impl ReadableLuaGenerator {
             .unwrap_or("")
     }
 
-    fn table_fits_on_line(&self, entries: &Vec<nodes::TableEntry>, _width: usize) -> bool {
+    fn table_fits_on_line(&self, entries: &[nodes::TableEntry], _width: usize) -> bool {
         use nodes::TableEntry;
 
         // small list of simple expressions
@@ -254,12 +248,12 @@ impl ReadableLuaGenerator {
         use nodes::Expression::*;
         match expression {
             True | False | Nil | Identifier(_) | VariableArguments | Number(_) => true,
-            Table(table) => table.len() == 0,
+            Table(table) => table.is_empty(),
             _ => false,
         }
     }
 
-    fn write_function_parameters(&mut self, parameters: &Vec<String>, is_variadic: bool) {
+    fn write_function_parameters(&mut self, parameters: &[String], is_variadic: bool) {
         let mut parameters_length = parameters
             .iter()
             .fold(0, |acc, parameter| acc + parameter.len());
@@ -275,7 +269,7 @@ impl ReadableLuaGenerator {
             }
         }
 
-        let last_index = parameters.len().checked_sub(1).unwrap_or(0);
+        let last_index = parameters.len().saturating_sub(1);
 
         if self.fits_on_current_line(parameters_length) {
             parameters.iter().enumerate().for_each(|(index, variable)| {
@@ -288,7 +282,7 @@ impl ReadableLuaGenerator {
             });
 
             if is_variadic {
-                if parameters.len() > 0 {
+                if !parameters.is_empty() {
                     self.raw_push_char(',');
                     self.raw_push_char(' ');
                 };
@@ -308,7 +302,7 @@ impl ReadableLuaGenerator {
             });
 
             if is_variadic {
-                if parameters.len() > 0 {
+                if !parameters.is_empty() {
                     self.raw_push_char(',');
                 };
                 self.push_new_line();
@@ -368,7 +362,7 @@ impl LuaGenerator for ReadableLuaGenerator {
         }
 
         if let Some(last_statement) = block.get_last_statement() {
-            if block.get_statements().len() != 0 {
+            if !block.get_statements().is_empty() {
                 self.push_new_line();
             }
             self.write_last_statement(last_statement);
@@ -385,7 +379,7 @@ impl LuaGenerator for ReadableLuaGenerator {
             Return(expressions) => {
                 self.push_str("return");
                 self.push_can_add_new_line(false);
-                let last_index = expressions.len().checked_sub(1).unwrap_or(0);
+                let last_index = expressions.len().saturating_sub(1);
 
                 expressions
                     .iter()
@@ -440,7 +434,7 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.push_can_add_new_line(false);
 
         let variables = assign.get_variables();
-        let last_variable_index = variables.len().checked_sub(1).unwrap_or(0);
+        let last_variable_index = variables.len().saturating_sub(1);
 
         variables.iter().enumerate().for_each(|(index, variable)| {
             self.raw_push_str(variable);
@@ -453,7 +447,7 @@ impl LuaGenerator for ReadableLuaGenerator {
 
         let values = assign.get_values();
 
-        if values.len() > 0 {
+        if !values.is_empty() {
             self.raw_push_str(" = ");
 
             let last_value_index = values.len() - 1;
@@ -509,7 +503,7 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.push_str("for ");
 
         let identifiers = generic_for.get_identifiers();
-        let last_identifier_index = identifiers.len().checked_sub(1).unwrap_or(0);
+        let last_identifier_index = identifiers.len().saturating_sub(1);
         identifiers
             .iter()
             .enumerate()
@@ -525,7 +519,7 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.raw_push_str(" in ");
 
         let expressions = generic_for.get_expressions();
-        let last_expression_index = expressions.len().checked_sub(1).unwrap_or(0);
+        let last_expression_index = expressions.len().saturating_sub(1);
         expressions
             .iter()
             .enumerate()
@@ -714,7 +708,7 @@ impl LuaGenerator for ReadableLuaGenerator {
         let left = binary.left();
         let right = binary.right();
 
-        if operator.left_needs_parentheses(&left) {
+        if operator.left_needs_parentheses(left) {
             self.push_char('(');
             self.write_expression(left);
             self.push_char(')');
@@ -726,7 +720,7 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.push_str(binary.operator().to_str());
         self.push_space();
 
-        if operator.right_needs_parentheses(&right) {
+        if operator.right_needs_parentheses(right) {
             self.push_char('(');
             self.write_expression(right);
             self.push_char(')');
@@ -780,7 +774,7 @@ impl LuaGenerator for ReadableLuaGenerator {
 
         if let Some(method) = &call.get_method() {
             self.push_char(':');
-            self.push_str(&method);
+            self.push_str(method);
         }
 
         self.write_arguments(call.get_arguments());
@@ -796,7 +790,7 @@ impl LuaGenerator for ReadableLuaGenerator {
             Tuple(expressions) => {
                 self.raw_push_char('(');
 
-                let last_index = expressions.len().checked_sub(1).unwrap_or(0);
+                let last_index = expressions.len().saturating_sub(1);
                 expressions
                     .iter()
                     .enumerate()
@@ -820,7 +814,7 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.pop_can_add_new_line();
 
         self.push_char('.');
-        self.raw_push_str(&field.get_field());
+        self.raw_push_str(field.get_field());
     }
 
     fn write_index(&mut self, index: &nodes::IndexExpression) {
@@ -864,12 +858,9 @@ impl LuaGenerator for ReadableLuaGenerator {
         if table_len == 0 {
             self.raw_push_char('}');
         } else {
-            let column_space = self
-                .column_span
-                .checked_sub(self.current_line_length)
-                .unwrap_or(0);
+            let column_space = self.column_span.saturating_sub(self.current_line_length);
             if self.table_fits_on_line(entries, column_space) {
-                let last_index = table_len.checked_sub(1).unwrap_or(0);
+                let last_index = table_len.saturating_sub(1);
 
                 entries.iter().enumerate().for_each(|(index, entry)| {
                     self.write_table_entry(entry);
@@ -979,7 +970,7 @@ impl LuaGenerator for ReadableLuaGenerator {
             let mut equals = "=".repeat(i);
 
             loop {
-                if value.find(&format!("]{}]", equals)).is_none() {
+                if !value.contains(&format!("]{}]", equals)) {
                     break;
                 } else {
                     i += 1;

@@ -22,9 +22,19 @@ style-check:
   stage: checks
   extends: .only-mr-and-main
   script:
+    - rustc --version
     - rustup component add rustfmt
     - cargo fmt -- --version
     - cargo fmt -- --check
+
+clippy:
+  stage: checks
+  extends: .only-mr-and-main
+  script:
+    - rustc --version
+    - rustup component add clippy
+    - cargo clippy --version
+    - cargo clippy --all-targets --all-features -- -D warnings
 
 build:
   stage: build

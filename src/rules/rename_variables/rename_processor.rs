@@ -6,7 +6,7 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
-const CHAR_SET: &'static str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789";
+const CHAR_SET: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789";
 
 #[derive(Debug)]
 pub struct RenameProcessor {
@@ -97,10 +97,9 @@ fn sort_char(a: char, b: char) -> Ordering {
 }
 
 fn sort_identifiers(a: &str, b: &str) -> Ordering {
-    let mut a_chars = a.chars();
     let mut b_chars = b.chars();
 
-    while let Some(a_char) = a_chars.next() {
+    for a_char in a.chars() {
         if let Some(b_char) = b_chars.next() {
             match sort_char(a_char, b_char) {
                 Ordering::Less => return Ordering::Less,
@@ -148,7 +147,7 @@ impl Scope for RenameProcessor {
 
 impl NodeProcessor for RenameProcessor {
     fn process_variable_expression(&mut self, variable: &mut String) {
-        if let Some(obfuscated_name) = self.get_obfuscated_name(&variable) {
+        if let Some(obfuscated_name) = self.get_obfuscated_name(variable) {
             variable.replace_range(.., obfuscated_name);
         }
     }

@@ -29,7 +29,7 @@ impl From<FieldExpression> for Prefix {
 
 impl From<Box<FieldExpression>> for Prefix {
     fn from(field: Box<FieldExpression>) -> Self {
-        Self::Field(field.into())
+        Self::Field(field)
     }
 }
 

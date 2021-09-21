@@ -49,7 +49,7 @@ fn process(file: &FileProcessing, options: &Options, global: &GlobalOptions) -> 
     generator.write_block(&block);
     let minified = generator.into_string();
 
-    write_file(&output, &minified)
+    write_file(output, &minified)
         .map_err(|io_error| CliError::OutputFile(output.clone(), format!("{}", io_error)))?;
 
     if global.verbose > 0 {
@@ -64,7 +64,7 @@ pub fn run(options: &Options, global: &GlobalOptions) {
 
     let results: Vec<MinifyResult> = file
         .iter()
-        .map(|file_processing| process(file_processing, &options, global))
+        .map(|file_processing| process(file_processing, options, global))
         .collect();
 
     let total_files = results.len();

@@ -220,7 +220,7 @@ impl FromStr for NumberExpression {
                 .map(char::is_uppercase)
                 .unwrap_or(false);
 
-            if let Some(index) = value.find("p") {
+            if let Some(index) = value.find('p') {
                 let exponent = value
                     .get(index + 1..)
                     .and_then(|string| string.parse().ok())
@@ -229,7 +229,7 @@ impl FromStr for NumberExpression {
                     .map_err(|_| Self::Err::InvalidHexadecimalNumber)?;
 
                 HexNumber::new(number, is_x_uppercase).with_exponent(exponent, false)
-            } else if let Some(index) = value.find("P") {
+            } else if let Some(index) = value.find('P') {
                 let exponent = value
                     .get(index + 1..)
                     .map(filter_underscore)
@@ -267,7 +267,7 @@ impl FromStr for NumberExpression {
                 return Err(Self::Err::InvalidDecimalNumber);
             }
 
-            if let Some(index) = value.find("e") {
+            if let Some(index) = value.find('e') {
                 // in Luau, underscores are not valid before the exponent sign
                 if value.contains("_-") || value.contains("_+") {
                     return Err(Self::Err::InvalidDecimalExponent);
@@ -285,7 +285,7 @@ impl FromStr for NumberExpression {
                     .ok_or(Self::Err::InvalidDecimalNumber)?;
 
                 DecimalNumber::new(number).with_exponent(exponent, false)
-            } else if let Some(index) = value.find("E") {
+            } else if let Some(index) = value.find('E') {
                 let exponent: i64 = value
                     .get(index + 1..)
                     .map(filter_underscore)
@@ -457,7 +457,7 @@ mod test {
                     fn $name() {
                         let number = NumberExpression::from_str($input)
                             .expect(&format!("unable to parse `{}`", $input));
-                        assert_eq!(number.compute_value(), $value as f64);
+                        assert!((number.compute_value() - $value as f64).abs() < f64::EPSILON);
                     }
                 )*
             };

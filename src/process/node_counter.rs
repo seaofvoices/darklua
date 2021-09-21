@@ -1,6 +1,7 @@
 use crate::nodes::*;
 use crate::process::NodeProcessor;
 
+#[derive(Clone, Debug, Default)]
 pub struct NodeCounter {
     pub block_count: usize,
     pub function_call_count: usize,
@@ -24,26 +25,7 @@ pub struct NodeCounter {
 
 impl NodeCounter {
     pub fn new() -> Self {
-        Self {
-            block_count: 0,
-            function_call_count: 0,
-            assign_count: 0,
-            compound_assign: 0,
-            do_count: 0,
-            function_count: 0,
-            generic_for_count: 0,
-            if_count: 0,
-            local_assign_count: 0,
-            local_function_count: 0,
-            numeric_for_count: 0,
-            repeat_count: 0,
-            while_count: 0,
-            break_count: 0,
-            continue_count: 0,
-            return_count: 0,
-            expression_count: 0,
-            variable_count: 0,
-        }
+        Self::default()
     }
 }
 

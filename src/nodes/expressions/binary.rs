@@ -27,26 +27,17 @@ impl BinaryOperator {
 
     #[inline]
     pub fn precedes_unary_expression(&self) -> bool {
-        match self {
-            Self::Caret => true,
-            _ => false,
-        }
+        matches!(self, Self::Caret)
     }
 
     #[inline]
     pub fn is_left_associative(&self) -> bool {
-        match self {
-            Self::Caret | Self::Concat => false,
-            _ => true,
-        }
+        !matches!(self, Self::Caret | Self::Concat)
     }
 
     #[inline]
     pub fn is_right_associative(&self) -> bool {
-        match self {
-            Self::Caret | Self::Concat => true,
-            _ => false,
-        }
+        matches!(self, Self::Caret | Self::Concat)
     }
 
     pub fn left_needs_parentheses(&self, left: &Expression) -> bool {

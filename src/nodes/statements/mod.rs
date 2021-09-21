@@ -37,7 +37,7 @@ pub enum Statement {
     If(IfStatement),
     LocalAssign(LocalAssignStatement),
     LocalFunction(LocalFunctionStatement),
-    NumericFor(NumericForStatement),
+    NumericFor(Box<NumericForStatement>),
     Repeat(RepeatStatement),
     While(WhileStatement),
 }
@@ -98,7 +98,7 @@ impl From<LocalFunctionStatement> for Statement {
 
 impl From<NumericForStatement> for Statement {
     fn from(numeric_for: NumericForStatement) -> Statement {
-        Statement::NumericFor(numeric_for)
+        Statement::NumericFor(numeric_for.into())
     }
 }
 

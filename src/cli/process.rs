@@ -104,7 +104,7 @@ fn process(
 
     let lua_code = options.format.generate(&config, &block);
 
-    write_file(&output, &lua_code)
+    write_file(output, &lua_code)
         .map_err(|io_error| CliError::OutputFile(output.clone(), format!("{}", io_error)))?;
 
     if global.verbose > 0 {
@@ -119,7 +119,7 @@ pub fn run(options: &Options, global: &GlobalOptions) {
 
     let results: Vec<Result<(), CliError>> = files
         .iter()
-        .map(|file_processing| process(file_processing, &options, global))
+        .map(|file_processing| process(file_processing, options, global))
         .collect();
 
     let total_files = results.len();

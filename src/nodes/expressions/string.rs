@@ -40,7 +40,7 @@ impl StringExpression {
     }
 
     pub fn is_multiline(&self) -> bool {
-        self.value.find("\n").is_some()
+        self.value.contains('\n')
     }
 
     pub fn has_single_quote(&self) -> bool {
@@ -123,48 +123,48 @@ mod test {
     fn has_single_quote_is_false_if_no_single_quotes() {
         let string = StringExpression::from_value("hello");
 
-        assert_eq!(string.has_single_quote(), false);
+        assert!(!string.has_single_quote());
     }
 
     #[test]
     fn has_single_quote_is_true_if_unescaped_single_quotes() {
         let string = StringExpression::from_value("don't");
 
-        assert_eq!(string.has_single_quote(), true);
+        assert!(string.has_single_quote());
     }
 
     #[test]
     fn has_single_quote_is_true_if_unescaped_single_quotes_with_escaped_backslash() {
         let string = StringExpression::from_value(r#"don\\'t"#);
 
-        assert_eq!(string.has_single_quote(), true);
+        assert!(string.has_single_quote());
     }
 
     #[test]
     fn has_single_quote_is_false_if_escaped_single_quotes() {
         let string = StringExpression::from_value(r#"don\'t"#);
 
-        assert_eq!(string.has_single_quote(), false);
+        assert!(!string.has_single_quote());
     }
 
     #[test]
     fn has_double_quote_is_false_if_no_double_quotes() {
         let string = StringExpression::from_value("hello");
 
-        assert_eq!(string.has_double_quote(), false);
+        assert!(!string.has_double_quote());
     }
 
     #[test]
     fn has_double_quote_is_true_if_unescaped_double_quotes() {
         let string = StringExpression::from_value(r#"Say: "Hi!""#);
 
-        assert_eq!(string.has_double_quote(), true);
+        assert!(string.has_double_quote());
     }
 
     #[test]
     fn has_double_quote_is_false_if_escaped_double_quotes() {
         let string = StringExpression::from_value(r#"hel\"o"#);
 
-        assert_eq!(string.has_double_quote(), false);
+        assert!(!string.has_double_quote());
     }
 }

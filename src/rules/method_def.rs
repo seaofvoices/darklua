@@ -4,6 +4,8 @@ use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
 };
 
+use super::verify_no_rule_properties;
+
 #[derive(Default)]
 struct FunctionMutator;
 
@@ -13,7 +15,7 @@ impl NodeProcessor for FunctionMutator {
     }
 }
 
-pub const REMOVE_METHOD_DEFINITION_RULE_NAME: &'static str = "remove_method_definition";
+pub const REMOVE_METHOD_DEFINITION_RULE_NAME: &str = "remove_method_definition";
 
 /// Change method functions into regular functions.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -28,9 +30,7 @@ impl FlawlessRule for RemoveMethodDefinition {
 
 impl RuleConfiguration for RemoveMethodDefinition {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
-        for (key, _value) in properties {
-            return Err(RuleConfigurationError::UnexpectedProperty(key));
-        }
+        verify_no_rule_properties(&properties)?;
 
         Ok(())
     }
