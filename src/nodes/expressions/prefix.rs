@@ -1,16 +1,18 @@
-use crate::nodes::{Expression, FieldExpression, FunctionCall, IndexExpression};
+use crate::nodes::{
+    FieldExpression, FunctionCall, Identifier, IndexExpression, ParentheseExpression,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Prefix {
     Call(FunctionCall),
     Field(Box<FieldExpression>),
-    Identifier(String),
+    Identifier(Identifier),
     Index(Box<IndexExpression>),
-    Parenthese(Expression),
+    Parenthese(ParentheseExpression),
 }
 
 impl Prefix {
-    pub fn from_name<S: Into<String>>(name: S) -> Self {
+    pub fn from_name<S: Into<Identifier>>(name: S) -> Self {
         Self::Identifier(name.into())
     }
 }
@@ -33,6 +35,12 @@ impl From<Box<FieldExpression>> for Prefix {
     }
 }
 
+impl From<Identifier> for Prefix {
+    fn from(identifier: Identifier) -> Self {
+        Self::Identifier(identifier)
+    }
+}
+
 impl From<IndexExpression> for Prefix {
     fn from(index: IndexExpression) -> Self {
         Self::Index(index.into())
@@ -42,5 +50,11 @@ impl From<IndexExpression> for Prefix {
 impl From<Box<IndexExpression>> for Prefix {
     fn from(index: Box<IndexExpression>) -> Self {
         Self::Index(index)
+    }
+}
+
+impl From<ParentheseExpression> for Prefix {
+    fn from(expression: ParentheseExpression) -> Self {
+        Self::Parenthese(expression)
     }
 }

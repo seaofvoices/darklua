@@ -42,11 +42,11 @@ macro_rules! fuzz_test_expression {
             .expect("should have a last statement");
 
         let generated_node = match last_statement {
-            LastStatement::Return(expressions) => {
-                if expressions.len() != 1 {
+            LastStatement::Return(statement) => {
+                if statement.len() != 1 {
                     panic!("should have exactly one expression")
                 }
-                expressions.into_iter().next().unwrap()
+                statement.into_iter_expressions().next().unwrap()
             }
             _ => panic!("return statement expected"),
         };
@@ -146,9 +146,9 @@ fn get_fuzz_duration() -> Duration {
 fn fuzz_three_terms_binary_expressions<T: LuaGenerator + Clone>(generator: T) {
     run_for_minimum_time(|| {
         let mut empty_context = FuzzContext::new(0, 0);
-        let first = Expression::True;
-        let second = Expression::False;
-        let third = Expression::Nil;
+        let first = Expression::from(true);
+        let second = Expression::from(false);
+        let third = Expression::nil();
 
         let (left, right) = if rand::random() {
             (
@@ -168,12 +168,12 @@ fn fuzz_three_terms_binary_expressions<T: LuaGenerator + Clone>(generator: T) {
         let binary = BinaryExpression::new(
             operator,
             if operator.left_needs_parentheses(&left) {
-                Expression::Parenthese(left.into())
+                left.in_parentheses()
             } else {
                 left
             },
             if operator.right_needs_parentheses(&right) {
-                Expression::Parenthese(right.into())
+                right.in_parentheses()
             } else {
                 right
             },
@@ -186,8 +186,8 @@ fn fuzz_three_terms_binary_expressions<T: LuaGenerator + Clone>(generator: T) {
 fn fuzz_binary_expressions_with_one_unary_expression<T: LuaGenerator + Clone>(generator: T) {
     run_for_minimum_time(|| {
         let mut empty_context = FuzzContext::new(0, 0);
-        let first = Expression::True;
-        let second = Expression::False;
+        let first = Expression::from(true);
+        let second = Expression::from(false);
 
         let (left, right) = if rand::random() {
             (
@@ -205,12 +205,12 @@ fn fuzz_binary_expressions_with_one_unary_expression<T: LuaGenerator + Clone>(ge
         let binary = BinaryExpression::new(
             operator,
             if operator.left_needs_parentheses(&left) {
-                Expression::Parenthese(left.into())
+                left.in_parentheses()
             } else {
                 left
             },
             if operator.right_needs_parentheses(&right) {
-                Expression::Parenthese(right.into())
+                right.in_parentheses()
             } else {
                 right
             },

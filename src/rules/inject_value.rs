@@ -1,5 +1,6 @@
 use crate::nodes::{
-    Block, DecimalNumber, Expression, LocalFunctionStatement, Prefix, StringExpression,
+    Block, DecimalNumber, Expression, LocalFunctionStatement, ParentheseExpression, Prefix,
+    StringExpression,
 };
 use crate::process::{NodeProcessor, NodeVisitor, Scope, ScopeVisitor};
 use crate::rules::{
@@ -58,7 +59,7 @@ impl Scope for ValueInjection {
     }
 
     fn insert_local_function(&mut self, function: &mut LocalFunctionStatement) {
-        self.insert_identifier(function.mutate_identifier());
+        self.insert_identifier(function.mutate_identifier().get_name());
     }
 }
 
@@ -69,7 +70,7 @@ impl NodeProcessor for ValueInjection {
         }
 
         let replace = match expression {
-            Expression::Identifier(identifier) => &self.identifier == identifier,
+            Expression::Identifier(identifier) => &self.identifier == identifier.get_name(),
             _ => false,
         };
 
@@ -81,12 +82,12 @@ impl NodeProcessor for ValueInjection {
 
     fn process_prefix_expression(&mut self, prefix: &mut Prefix) {
         let replace = match prefix {
-            Prefix::Identifier(identifier) => &self.identifier == identifier,
+            Prefix::Identifier(identifier) => &self.identifier == identifier.get_name(),
             _ => false,
         };
 
         if replace {
-            let new_prefix = Prefix::Parenthese(self.expression.clone());
+            let new_prefix = ParentheseExpression::new(self.expression.clone()).into();
             *prefix = new_prefix;
         }
     }
@@ -105,7 +106,7 @@ impl InjectGlobalValue {
     pub fn nil<S: Into<String>>(identifier: S) -> Self {
         Self {
             identifier: identifier.into(),
-            value: Expression::Nil,
+            value: Expression::nil(),
         }
     }
 
@@ -135,7 +136,7 @@ impl Default for InjectGlobalValue {
     fn default() -> Self {
         Self {
             identifier: "".to_owned(),
-            value: Expression::Nil,
+            value: Expression::nil(),
         }
     }
 }
@@ -198,9 +199,9 @@ impl RuleConfiguration for InjectGlobalValue {
         );
 
         let property_value = match self.value {
-            Expression::True => RulePropertyValue::Boolean(true),
-            Expression::False => RulePropertyValue::Boolean(false),
-            Expression::Nil => RulePropertyValue::None,
+            Expression::True(_) => RulePropertyValue::Boolean(true),
+            Expression::False(_) => RulePropertyValue::Boolean(false),
+            Expression::Nil(_) => RulePropertyValue::None,
             _ => unreachable!("unexpected expression {:?}", self.value),
         };
         rules.insert("value".to_owned(), property_value);

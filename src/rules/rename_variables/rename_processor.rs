@@ -1,4 +1,4 @@
-use crate::nodes::{Expression, LocalFunctionStatement};
+use crate::nodes::{Expression, Identifier, LocalFunctionStatement};
 use crate::process::{NodeProcessor, Scope};
 use crate::rules::rename_variables::{globals, Permutator};
 
@@ -141,14 +141,14 @@ impl Scope for RenameProcessor {
     }
 
     fn insert_local_function(&mut self, function: &mut LocalFunctionStatement) {
-        self.insert_identifier(function.mutate_identifier());
+        self.insert_identifier(function.mutate_identifier().mutate_name());
     }
 }
 
 impl NodeProcessor for RenameProcessor {
-    fn process_variable_expression(&mut self, variable: &mut String) {
-        if let Some(obfuscated_name) = self.get_obfuscated_name(variable) {
-            variable.replace_range(.., obfuscated_name);
+    fn process_variable_expression(&mut self, variable: &mut Identifier) {
+        if let Some(obfuscated_name) = self.get_obfuscated_name(variable.get_name()) {
+            variable.set_name(obfuscated_name);
         }
     }
 }

@@ -25,13 +25,13 @@ impl Default for Evaluator {
 impl Evaluator {
     pub fn evaluate(&self, expression: &Expression) -> LuaValue {
         match expression {
-            Expression::False => LuaValue::False,
+            Expression::False(_) => LuaValue::False,
             Expression::Function(_) => LuaValue::Function,
-            Expression::Nil => LuaValue::Nil,
+            Expression::Nil(_) => LuaValue::Nil,
             Expression::Number(number) => LuaValue::from(number.compute_value()),
             Expression::String(string) => LuaValue::from(string.get_value()),
             Expression::Table(_) => LuaValue::Table,
-            Expression::True => LuaValue::True,
+            Expression::True(_) => LuaValue::True,
             Expression::Binary(binary) => self.evaluate_binary(binary),
             Expression::Unary(unary) => self.evaluate_unary(unary),
             _ => LuaValue::Unknown,
@@ -40,17 +40,17 @@ impl Evaluator {
 
     pub fn has_side_effects(&self, expression: &Expression) -> bool {
         match expression {
-            Expression::False
+            Expression::False(_)
             | Expression::Function(_)
             | Expression::Identifier(_)
-            | Expression::Nil
+            | Expression::Nil(_)
             | Expression::Number(_)
             | Expression::String(_)
-            | Expression::True
-            | Expression::VariableArguments => false,
+            | Expression::True(_)
+            | Expression::VariableArguments(_) => false,
             Expression::Binary(binary) => {
                 if self.pure_metamethods {
-                    self.has_side_effects(binary.left()) || self.has_side_effects(binary.left())
+                    self.has_side_effects(binary.left()) || self.has_side_effects(binary.right())
                 } else {
                     let left = binary.left();
                     let right = binary.right();
@@ -73,7 +73,9 @@ impl Evaluator {
             }
             Expression::Field(field) => self.field_has_side_effects(field),
             Expression::Index(index) => self.index_has_side_effects(index),
-            Expression::Parenthese(sub_expression) => self.has_side_effects(sub_expression),
+            Expression::Parenthese(parenthese) => {
+                self.has_side_effects(parenthese.inner_expression())
+            }
             Expression::Table(table) => table
                 .get_entries()
                 .iter()
@@ -90,9 +92,9 @@ impl Evaluator {
     #[inline]
     fn table_entry_has_side_effects(&self, entry: &TableEntry) -> bool {
         match entry {
-            TableEntry::Field(_, expression) => self.has_side_effects(expression),
-            TableEntry::Index(key, value) => {
-                self.has_side_effects(key) || self.has_side_effects(value)
+            TableEntry::Field(entry) => self.has_side_effects(entry.get_value()),
+            TableEntry::Index(entry) => {
+                self.has_side_effects(entry.get_key()) || self.has_side_effects(entry.get_value())
             }
             TableEntry::Value(value) => self.has_side_effects(value),
         }
@@ -116,7 +118,9 @@ impl Evaluator {
             Prefix::Field(field) => self.field_has_side_effects(field),
             Prefix::Identifier(_) => false,
             Prefix::Index(index) => self.index_has_side_effects(index),
-            Prefix::Parenthese(sub_expression) => self.has_side_effects(sub_expression),
+            Prefix::Parenthese(sub_expression) => {
+                self.has_side_effects(sub_expression.inner_expression())
+            }
         }
     }
 
@@ -236,9 +240,9 @@ mod test {
     }
 
     evaluate_expressions!(
-        true_expression(Expression::True) => LuaValue::True,
-        false_expression(Expression::False) => LuaValue::False,
-        nil_expression(Expression::Nil) => LuaValue::Nil,
+        true_expression(Expression::from(true)) => LuaValue::True,
+        false_expression(Expression::from(false)) => LuaValue::False,
+        nil_expression(Expression::nil()) => LuaValue::Nil,
         number_expression(Expression::Number(DecimalNumber::new(0.0).into())) => LuaValue::Number(0.0),
         string_expression(StringExpression::from_value("foo")) => LuaValue::String("foo".to_owned()),
         table_expression(TableExpression::default()) => LuaValue::Table
@@ -282,83 +286,83 @@ mod test {
         evaluate_binary_expressions!(
             true_and_number(
                 BinaryOperator::And,
-                Expression::True,
+                true,
                 Expression::Number(DecimalNumber::new(0.0).into())
             ) => LuaValue::Number(0.0),
             true_and_true(
                 BinaryOperator::And,
-                Expression::True,
-                Expression::True
+                true,
+                true
             ) => LuaValue::True,
             true_and_false(
                 BinaryOperator::And,
-                Expression::True,
-                Expression::False
+                true,
+                false
             ) => LuaValue::False,
             true_and_nil(
                 BinaryOperator::And,
-                Expression::True,
-                Expression::Nil
+                true,
+                Expression::nil()
             ) => LuaValue::Nil,
             true_and_string(
                 BinaryOperator::And,
-                Expression::True,
+                true,
                 Expression::String(StringExpression::from_value("foo"))
             ) => LuaValue::String("foo".to_owned()),
             true_and_table(
                 BinaryOperator::And,
-                Expression::True,
+                true,
                 TableExpression::default()
             ) => LuaValue::Table,
             nil_and_true(
                 BinaryOperator::And,
-                Expression::Nil,
-                Expression::True
+                Expression::nil(),
+                true
             ) => LuaValue::Nil,
             false_and_true(
                 BinaryOperator::And,
-                Expression::False,
-                Expression::True
+                false,
+                true
             ) => LuaValue::False,
             true_or_number(
                 BinaryOperator::Or,
-                Expression::True,
+                true,
                 Expression::Number(DecimalNumber::new(0.0).into())
             ) => LuaValue::True,
             true_or_true(
                 BinaryOperator::Or,
-                Expression::True,
-                Expression::True
+                true,
+                true
             ) => LuaValue::True,
             true_or_false(
                 BinaryOperator::Or,
-                Expression::True,
-                Expression::False
+                true,
+                false
             ) => LuaValue::True,
             true_or_nil(
                 BinaryOperator::Or,
-                Expression::True,
-                Expression::Nil
+                true,
+                Expression::nil()
             ) => LuaValue::True,
             true_or_string(
                 BinaryOperator::Or,
-                Expression::True,
+                true,
                 Expression::String(StringExpression::from_value("foo"))
             ) => LuaValue::True,
             nil_or_true(
                 BinaryOperator::Or,
-                Expression::Nil,
-                Expression::True
+                Expression::nil(),
+                true
             ) => LuaValue::True,
             nil_or_false(
                 BinaryOperator::Or,
-                Expression::Nil,
-                Expression::False
+                Expression::nil(),
+                false
             ) => LuaValue::False,
             nil_or_nil(
                 BinaryOperator::Or,
-                Expression::Nil,
-                Expression::Nil
+                Expression::nil(),
+                Expression::nil()
             ) => LuaValue::Nil,
             one_plus_two(
                 BinaryOperator::Plus,
@@ -476,9 +480,9 @@ mod test {
         }
 
         evaluate_equality!(
-            true_true(Expression::True, Expression::True) => LuaValue::True,
-            false_false(Expression::False, Expression::False) => LuaValue::True,
-            nil_nil(Expression::Nil, Expression::Nil) => LuaValue::True,
+            true_true(Expression::from(true), Expression::from(true)) => LuaValue::True,
+            false_false(Expression::from(false), Expression::from(false)) => LuaValue::True,
+            nil_nil(Expression::nil(), Expression::nil()) => LuaValue::True,
             same_strings(
                 StringExpression::from_value("foo"),
                 StringExpression::from_value("foo")
@@ -487,8 +491,8 @@ mod test {
                 Expression::Number(DecimalNumber::new(0.0).into()),
                 Expression::Number(DecimalNumber::new(0.0).into())
             ) => LuaValue::True,
-            true_false(Expression::True, Expression::False) => LuaValue::False,
-            true_nil(Expression::True, Expression::False) => LuaValue::False,
+            true_false(Expression::from(true), Expression::from(false)) => LuaValue::False,
+            true_nil(Expression::from(true), Expression::from(false)) => LuaValue::False,
             different_numbers(
                 Expression::Number(DecimalNumber::new(1.0).into()),
                 Expression::Number(DecimalNumber::new(10.0).into())
@@ -517,16 +521,16 @@ mod test {
         }
 
         evaluate_unary_expressions!(
-            not_true(Not, Expression::True) => LuaValue::False,
-            not_false(Not, Expression::False) => LuaValue::True,
-            not_nil(Not, Expression::Nil) => LuaValue::True,
+            not_true(Not, Expression::from(true)) => LuaValue::False,
+            not_false(Not, Expression::from(false)) => LuaValue::True,
+            not_nil(Not, Expression::nil()) => LuaValue::True,
             not_table(Not, TableExpression::default()) => LuaValue::False,
             not_string(Not, StringExpression::from_value("foo")) => LuaValue::False,
             not_number(
                 Not,
                 Expression::Number(DecimalNumber::new(10.0).into())
             ) => LuaValue::False,
-            not_identifier(Not, Expression::Identifier("foo".to_owned())) => LuaValue::Unknown,
+            not_identifier(Not, Expression::identifier("foo")) => LuaValue::Unknown,
             minus_one(Minus, DecimalNumber::new(1.0)) => LuaValue::from(-1.0),
             minus_negative_number(Minus, DecimalNumber::new(-5.0)) => LuaValue::from(5.0),
             minus_string_converted_to_number(Minus, StringExpression::from_value("1")) => LuaValue::from(-1.0)
@@ -534,7 +538,7 @@ mod test {
     }
 
     macro_rules! has_side_effects {
-        ($($name:ident ($expression:expr)),*) => {
+        ($($name:ident => $expression:expr),* $(,)?) => {
             $(
                 #[test]
                 fn $name() {
@@ -545,7 +549,7 @@ mod test {
     }
 
     macro_rules! has_no_side_effects {
-        ($($name:ident ($expression:expr)),*) => {
+        ($($name:ident => $expression:expr),* $(,)?) => {
             $(
                 #[test]
                 fn $name() {
@@ -555,17 +559,22 @@ mod test {
         };
     }
 
-    has_side_effects!(call_to_unknown_function(FunctionCall::from_name("foo")));
+    has_side_effects!(
+        call_to_unknown_function => FunctionCall::from_name("foo"),
+        binary_true_and_call => BinaryExpression::new(
+            BinaryOperator::And,
+            Expression::from(true),
+            FunctionCall::from_name("foo"),
+        ),
+    );
 
     has_no_side_effects!(
-        true_value(Expression::True),
-        false_value(Expression::False),
-        nil_value(Expression::Nil),
-        number_value(Expression::Number(DecimalNumber::new(0.0).into())),
-        string_value(StringExpression::from_value("")),
-        identifier(Expression::Identifier("foo".to_owned())),
-        identifier_in_parentheses(Expression::Parenthese(Box::new(Expression::Identifier(
-            "foo".to_owned()
-        ))))
+        true_value => Expression::from(true),
+        false_value => Expression::from(false),
+        nil_value => Expression::nil(),
+        number_value => Expression::Number(DecimalNumber::new(0.0).into()),
+        string_value => StringExpression::from_value(""),
+        identifier => Expression::identifier("foo"),
+        identifier_in_parentheses => Expression::identifier("foo").in_parentheses(),
     );
 }

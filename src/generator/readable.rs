@@ -1,5 +1,5 @@
 use crate::generator::{utils::*, LuaGenerator};
-use crate::nodes;
+use crate::nodes::{self, Identifier};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StatementType {
@@ -44,8 +44,8 @@ impl From<&nodes::LastStatement> for StatementType {
     fn from(statement: &nodes::LastStatement) -> Self {
         use nodes::LastStatement::*;
         match statement {
-            Break => Self::Break,
-            Continue => Self::Continue,
+            Break(_) => Self::Break,
+            Continue(_) => Self::Continue,
             Return(_) => Self::Return,
         }
     }
@@ -236,9 +236,10 @@ impl ReadableLuaGenerator {
             })
             || entries.len() == 1
                 && entries.iter().all(|entry| match entry {
-                    TableEntry::Field(_identifier, value) => self.is_small_expression(value),
-                    TableEntry::Index(key, value) => {
-                        self.is_small_expression(key) && self.is_small_expression(value)
+                    TableEntry::Field(entry) => self.is_small_expression(entry.get_value()),
+                    TableEntry::Index(entry) => {
+                        self.is_small_expression(entry.get_key())
+                            && self.is_small_expression(entry.get_value())
                     }
                     _ => false,
                 })
@@ -247,16 +248,16 @@ impl ReadableLuaGenerator {
     fn is_small_expression(&self, expression: &nodes::Expression) -> bool {
         use nodes::Expression::*;
         match expression {
-            True | False | Nil | Identifier(_) | VariableArguments | Number(_) => true,
+            True(_) | False(_) | Nil(_) | Identifier(_) | VariableArguments(_) | Number(_) => true,
             Table(table) => table.is_empty(),
             _ => false,
         }
     }
 
-    fn write_function_parameters(&mut self, parameters: &[String], is_variadic: bool) {
+    fn write_function_parameters(&mut self, parameters: &[Identifier], is_variadic: bool) {
         let mut parameters_length = parameters
             .iter()
-            .fold(0, |acc, parameter| acc + parameter.len());
+            .fold(0, |acc, parameter| acc + parameter.get_name().len());
         // add a comma and a space between each parameter
         parameters_length += parameters.len() * 2;
 
@@ -273,7 +274,7 @@ impl ReadableLuaGenerator {
 
         if self.fits_on_current_line(parameters_length) {
             parameters.iter().enumerate().for_each(|(index, variable)| {
-                self.raw_push_str(variable);
+                self.raw_push_str(variable.get_name());
 
                 if index != last_index {
                     self.raw_push_char(',');
@@ -294,7 +295,7 @@ impl ReadableLuaGenerator {
             parameters.iter().enumerate().for_each(|(index, variable)| {
                 self.push_new_line();
                 self.write_indentation();
-                self.raw_push_str(variable);
+                self.raw_push_str(variable.get_name());
 
                 if index != last_index {
                     self.raw_push_char(',');
@@ -319,7 +320,7 @@ impl ReadableLuaGenerator {
     fn write_variable(&mut self, variable: &nodes::Variable) {
         use nodes::Variable::*;
         match variable {
-            Identifier(identifier) => self.push_str(identifier),
+            Identifier(identifier) => self.push_str(identifier.get_name()),
             Field(field) => self.write_field(field),
             Index(index) => self.write_index(index),
         }
@@ -374,15 +375,15 @@ impl LuaGenerator for ReadableLuaGenerator {
         use nodes::LastStatement::*;
 
         match statement {
-            Break => self.push_str("break"),
-            Continue => self.push_str("continue"),
+            Break(_) => self.push_str("break"),
+            Continue(_) => self.push_str("continue"),
             Return(expressions) => {
                 self.push_str("return");
                 self.push_can_add_new_line(false);
                 let last_index = expressions.len().saturating_sub(1);
 
                 expressions
-                    .iter()
+                    .iter_expressions()
                     .enumerate()
                     .for_each(|(index, expression)| {
                         self.write_expression(expression);
@@ -437,7 +438,7 @@ impl LuaGenerator for ReadableLuaGenerator {
         let last_variable_index = variables.len().saturating_sub(1);
 
         variables.iter().enumerate().for_each(|(index, variable)| {
-            self.raw_push_str(variable);
+            self.raw_push_str(variable.get_name());
 
             if index != last_variable_index {
                 self.raw_push_char(',');
@@ -508,7 +509,7 @@ impl LuaGenerator for ReadableLuaGenerator {
             .iter()
             .enumerate()
             .for_each(|(index, identifier)| {
-                self.raw_push_str(identifier);
+                self.raw_push_str(identifier.get_name());
 
                 if index != last_identifier_index {
                     self.raw_push_char(',');
@@ -547,7 +548,7 @@ impl LuaGenerator for ReadableLuaGenerator {
     fn write_numeric_for(&mut self, numeric_for: &nodes::NumericForStatement) {
         self.push_str("for ");
 
-        self.raw_push_str(numeric_for.get_identifier());
+        self.raw_push_str(numeric_for.get_identifier().get_name());
         self.raw_push_char('=');
         self.write_expression(numeric_for.get_start());
         self.raw_push_char(',');
@@ -601,15 +602,15 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.push_str("function ");
         let name = function.get_name();
 
-        self.raw_push_str(name.get_name());
+        self.raw_push_str(name.get_name().get_name());
         name.get_field_names().iter().for_each(|field| {
             self.raw_push_char('.');
-            self.raw_push_str(field);
+            self.raw_push_str(field.get_name());
         });
 
         if let Some(method) = name.get_method() {
             self.raw_push_char(':');
-            self.raw_push_str(method);
+            self.raw_push_str(method.get_name());
         }
 
         self.raw_push_char('(');
@@ -679,25 +680,25 @@ impl LuaGenerator for ReadableLuaGenerator {
         match expression {
             Binary(binary) => self.write_binary_expression(binary),
             Call(call) => self.write_function_call(call),
-            False => self.push_str("false"),
+            False(_) => self.push_str("false"),
             Field(field) => self.write_field(field),
             Function(function) => self.write_function(function),
-            Identifier(identifier) => self.push_str(identifier),
+            Identifier(identifier) => self.push_str(identifier.get_name()),
             Index(index) => self.write_index(index),
-            Nil => self.push_str("nil"),
+            Nil(_) => self.push_str("nil"),
             Number(number) => self.write_number(number),
             Parenthese(expression) => {
                 self.push_char('(');
                 self.push_can_add_new_line(false);
-                self.write_expression(expression);
+                self.write_expression(expression.inner_expression());
                 self.pop_can_add_new_line();
                 self.push_char(')');
             }
             String(string) => self.write_string(string),
             Table(table) => self.write_table(table),
-            True => self.push_str("true"),
+            True(_) => self.push_str("true"),
             Unary(unary) => self.write_unary_expression(unary),
-            VariableArguments => {
+            VariableArguments(_) => {
                 self.push_str_and_break_if("...", break_variable_arguments);
             }
         }
@@ -774,7 +775,7 @@ impl LuaGenerator for ReadableLuaGenerator {
 
         if let Some(method) = &call.get_method() {
             self.push_char(':');
-            self.push_str(method);
+            self.push_str(method.get_name());
         }
 
         self.write_arguments(call.get_arguments());
@@ -792,7 +793,7 @@ impl LuaGenerator for ReadableLuaGenerator {
 
                 let last_index = expressions.len().saturating_sub(1);
                 expressions
-                    .iter()
+                    .iter_values()
                     .enumerate()
                     .for_each(|(index, expression)| {
                         self.write_expression(expression);
@@ -814,7 +815,7 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.pop_can_add_new_line();
 
         self.push_char('.');
-        self.raw_push_str(field.get_field());
+        self.raw_push_str(field.get_field().get_name());
     }
 
     fn write_index(&mut self, index: &nodes::IndexExpression) {
@@ -835,13 +836,13 @@ impl LuaGenerator for ReadableLuaGenerator {
         match prefix {
             Call(call) => self.write_function_call(call),
             Field(field) => self.write_field(field),
-            Identifier(identifier) => self.push_str(identifier),
+            Identifier(identifier) => self.push_str(identifier.get_name()),
             Index(index) => self.write_index(index),
             Parenthese(expression) => {
                 self.push_char('(');
                 self.push_can_add_new_line(false);
 
-                self.write_expression(expression);
+                self.write_expression(expression.inner_expression());
 
                 self.pop_can_add_new_line();
                 self.push_char(')');
@@ -890,23 +891,21 @@ impl LuaGenerator for ReadableLuaGenerator {
     }
 
     fn write_table_entry(&mut self, entry: &nodes::TableEntry) {
-        use nodes::TableEntry::*;
-
         match entry {
-            Field(identifier, value) => {
-                self.raw_push_str(identifier);
+            nodes::TableEntry::Field(entry) => {
+                self.raw_push_str(entry.get_field().get_name());
                 self.raw_push_str(" = ");
-                self.write_expression(value);
+                self.write_expression(entry.get_value());
             }
-            Index(key, value) => {
+            nodes::TableEntry::Index(entry) => {
                 self.raw_push_char('[');
                 self.push_can_add_new_line(false);
-                self.write_expression(key);
+                self.write_expression(entry.get_key());
                 self.pop_can_add_new_line();
                 self.raw_push_str("] = ");
-                self.write_expression(value);
+                self.write_expression(entry.get_value());
             }
-            Value(expression) => self.write_expression(expression),
+            nodes::TableEntry::Value(expression) => self.write_expression(expression),
         }
     }
 

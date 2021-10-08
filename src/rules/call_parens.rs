@@ -14,8 +14,8 @@ struct Processor {}
 impl NodeProcessor for Processor {
     fn process_function_call(&mut self, call: &mut FunctionCall) {
         let new_arguments = match call.mutate_arguments() {
-            Arguments::Tuple(expressions) if expressions.len() == 1 => {
-                let expression = expressions.iter_mut().next().unwrap();
+            Arguments::Tuple(tuple) if tuple.len() == 1 => {
+                let expression = tuple.iter_mut_values().next().unwrap();
 
                 match expression {
                     Expression::String(string) => {

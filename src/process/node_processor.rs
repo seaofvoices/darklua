@@ -28,7 +28,7 @@ pub trait NodeProcessor {
     fn process_binary_expression(&mut self, _: &mut BinaryExpression) {}
     fn process_field_expression(&mut self, _: &mut FieldExpression) {}
     fn process_function_expression(&mut self, _: &mut FunctionExpression) {}
-    fn process_variable_expression(&mut self, _: &mut String) {}
+    fn process_variable_expression(&mut self, _: &mut Identifier) {}
     fn process_index_expression(&mut self, _: &mut IndexExpression) {}
     fn process_number_expression(&mut self, _: &mut NumberExpression) {}
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}

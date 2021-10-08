@@ -64,8 +64,8 @@ impl NodeProcessor for NodeCounter {
 
     fn process_last_statement(&mut self, statement: &mut LastStatement) {
         match statement {
-            LastStatement::Break => self.break_count += 1,
-            LastStatement::Continue => self.continue_count += 1,
+            LastStatement::Break(_) => self.break_count += 1,
+            LastStatement::Continue(_) => self.continue_count += 1,
             LastStatement::Return(_) => self.return_count += 1,
         }
     }
@@ -94,7 +94,7 @@ impl NodeProcessor for NodeCounter {
         self.expression_count += 1;
     }
 
-    fn process_variable_expression(&mut self, _: &mut String) {
+    fn process_variable_expression(&mut self, _: &mut Identifier) {
         self.variable_count += 1;
     }
 }

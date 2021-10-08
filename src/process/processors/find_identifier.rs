@@ -1,4 +1,4 @@
-use crate::process::NodeProcessor;
+use crate::{nodes::Identifier, process::NodeProcessor};
 
 /// A processor to find usage of a given set of identifiers.
 ///
@@ -12,7 +12,7 @@ use crate::process::NodeProcessor;
 /// let variables = vec!["foo".to_owned()];
 /// let mut find_foo = FindVariables::from(&variables);
 ///
-/// let mut foo_expression = Expression::Identifier("foo".to_owned());
+/// let mut foo_expression = Expression::identifier("foo");
 /// DefaultVisitor::visit_expression(&mut foo_expression, &mut find_foo);
 ///
 /// assert!(find_foo.has_found_usage());
@@ -25,13 +25,13 @@ use crate::process::NodeProcessor;
 /// # use darklua_core::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 /// # let variables = vec!["foo".to_owned()];
 /// # let mut find_foo = FindVariables::from(&variables);
-/// let mut bar_expression = Expression::Identifier("bar".to_owned());
+/// let mut bar_expression = Expression::identifier("bar");
 /// DefaultVisitor::visit_expression(&mut bar_expression, &mut find_foo);
 ///
 /// assert!(!find_foo.has_found_usage());
 /// ```
 pub struct FindVariables<'a> {
-    variables: &'a Vec<String>,
+    variables: Vec<&'a String>,
     usage_found: bool,
 }
 
@@ -45,16 +45,29 @@ impl<'a> FindVariables<'a> {
 impl<'a> From<&'a Vec<String>> for FindVariables<'a> {
     fn from(variables: &'a Vec<String>) -> Self {
         Self {
-            variables,
+            variables: variables.iter().collect(),
+            usage_found: false,
+        }
+    }
+}
+
+impl<'a> From<&'a Vec<Identifier>> for FindVariables<'a> {
+    fn from(variables: &'a Vec<Identifier>) -> Self {
+        Self {
+            variables: variables
+                .iter()
+                .map(|variable| variable.get_name())
+                .collect(),
             usage_found: false,
         }
     }
 }
 
 impl<'a> NodeProcessor for FindVariables<'a> {
-    fn process_variable_expression(&mut self, variable: &mut String) {
+    fn process_variable_expression(&mut self, variable: &mut Identifier) {
         if !self.usage_found {
-            self.usage_found = self.variables.iter().any(|v| v == variable)
+            let name = variable.get_name();
+            self.usage_found = self.variables.iter().any(|v| *v == name)
         }
     }
 }

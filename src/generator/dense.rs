@@ -1,5 +1,5 @@
 use crate::generator::{utils::*, LuaGenerator};
-use crate::nodes;
+use crate::nodes::{self, Identifier};
 
 /// This implementation of [LuaGenerator](trait.LuaGenerator.html) attempts to produce Lua code as
 /// small as possible. It is not meant to be read by humans.
@@ -160,11 +160,11 @@ impl DenseLuaGenerator {
             .unwrap_or("")
     }
 
-    fn write_function_parameters(&mut self, parameters: &[String], is_variadic: bool) {
+    fn write_function_parameters(&mut self, parameters: &[Identifier], is_variadic: bool) {
         let last_index = parameters.len().saturating_sub(1);
 
         parameters.iter().enumerate().for_each(|(index, variable)| {
-            self.push_str(variable);
+            self.push_str(variable.get_name());
 
             if index != last_index {
                 self.push_char(',');
@@ -182,7 +182,7 @@ impl DenseLuaGenerator {
     fn write_variable(&mut self, variable: &nodes::Variable) {
         use nodes::Variable::*;
         match variable {
-            Identifier(identifier) => self.push_str(identifier),
+            Identifier(identifier) => self.push_str(identifier.get_name()),
             Field(field) => self.write_field(field),
             Index(index) => self.write_index(index),
         }
@@ -261,7 +261,7 @@ impl LuaGenerator for DenseLuaGenerator {
             .iter()
             .enumerate()
             .for_each(|(index, identifier)| {
-                self.push_str(identifier);
+                self.push_str(identifier.get_name());
 
                 if index != last_identifier_index {
                     self.push_char(',');
@@ -314,15 +314,15 @@ impl LuaGenerator for DenseLuaGenerator {
         self.push_str("function");
         let name = function.get_name();
 
-        self.push_str(name.get_name());
+        self.push_str(name.get_name().get_name());
         name.get_field_names().iter().for_each(|field| {
             self.push_char('.');
-            self.push_str(field);
+            self.push_str(field.get_name());
         });
 
         if let Some(method) = name.get_method() {
             self.push_char(':');
-            self.push_str(method);
+            self.push_str(method.get_name());
         }
 
         self.push_char('(');
@@ -341,14 +341,14 @@ impl LuaGenerator for DenseLuaGenerator {
         use nodes::LastStatement::*;
 
         match statement {
-            Break => self.push_str("break"),
-            Continue => self.push_str("continue"),
+            Break(_) => self.push_str("break"),
+            Continue(_) => self.push_str("continue"),
             Return(expressions) => {
                 self.push_str("return");
                 let last_index = expressions.len().saturating_sub(1);
 
                 expressions
-                    .iter()
+                    .iter_expressions()
                     .enumerate()
                     .for_each(|(index, expression)| {
                         self.write_expression(expression);
@@ -368,7 +368,7 @@ impl LuaGenerator for DenseLuaGenerator {
         let last_variable_index = variables.len().saturating_sub(1);
 
         variables.iter().enumerate().for_each(|(index, variable)| {
-            self.push_str(variable);
+            self.push_str(variable.get_name());
 
             if index != last_variable_index {
                 self.push_char(',');
@@ -420,7 +420,7 @@ impl LuaGenerator for DenseLuaGenerator {
     fn write_numeric_for(&mut self, numeric_for: &nodes::NumericForStatement) {
         self.push_str("for");
 
-        self.push_str(numeric_for.get_identifier());
+        self.push_str(numeric_for.get_identifier().get_name());
         self.push_char('=');
         self.write_expression(numeric_for.get_start());
         self.push_char(',');
@@ -475,23 +475,23 @@ impl LuaGenerator for DenseLuaGenerator {
         match expression {
             Binary(binary) => self.write_binary_expression(binary),
             Call(call) => self.write_function_call(call),
-            False => self.push_str("false"),
+            False(_) => self.push_str("false"),
             Field(field) => self.write_field(field),
             Function(function) => self.write_function(function),
-            Identifier(identifier) => self.push_str(identifier),
+            Identifier(identifier) => self.push_str(identifier.get_name()),
             Index(index) => self.write_index(index),
-            Nil => self.push_str("nil"),
+            Nil(_) => self.push_str("nil"),
             Number(number) => self.write_number(number),
             Parenthese(expression) => {
                 self.push_char('(');
-                self.write_expression(expression);
+                self.write_expression(expression.inner_expression());
                 self.push_char(')');
             }
             String(string) => self.write_string(string),
             Table(table) => self.write_table(table),
-            True => self.push_str("true"),
+            True(_) => self.push_str("true"),
             Unary(unary) => self.write_unary_expression(unary),
-            VariableArguments => {
+            VariableArguments(_) => {
                 self.push_str_and_break_if("...", break_variable_arguments);
             }
         }
@@ -568,7 +568,7 @@ impl LuaGenerator for DenseLuaGenerator {
 
         if let Some(method) = &call.get_method() {
             self.push_char(':');
-            self.push_str(method);
+            self.push_str(method.get_name());
         }
 
         self.write_arguments(call.get_arguments());
@@ -578,7 +578,7 @@ impl LuaGenerator for DenseLuaGenerator {
         self.write_prefix(field.get_prefix());
 
         self.push_char('.');
-        self.push_str(field.get_field());
+        self.push_str(field.get_field().get_name());
     }
 
     fn write_index(&mut self, index: &nodes::IndexExpression) {
@@ -595,11 +595,11 @@ impl LuaGenerator for DenseLuaGenerator {
         match prefix {
             Call(call) => self.write_function_call(call),
             Field(field) => self.write_field(field),
-            Identifier(identifier) => self.push_str(identifier),
+            Identifier(identifier) => self.push_str(identifier.get_name()),
             Index(index) => self.write_index(index),
             Parenthese(expression) => {
                 self.push_char('(');
-                self.write_expression(expression);
+                self.write_expression(expression.inner_expression());
                 self.push_char(')');
             }
         }
@@ -623,22 +623,20 @@ impl LuaGenerator for DenseLuaGenerator {
     }
 
     fn write_table_entry(&mut self, entry: &nodes::TableEntry) {
-        use nodes::TableEntry::*;
-
         match entry {
-            Field(identifier, value) => {
-                self.push_str(identifier);
+            nodes::TableEntry::Field(entry) => {
+                self.push_str(entry.get_field().get_name());
                 self.push_char('=');
-                self.write_expression(value);
+                self.write_expression(entry.get_value());
             }
-            Index(key, value) => {
+            nodes::TableEntry::Index(entry) => {
                 self.push_char('[');
-                self.write_expression(key);
+                self.write_expression(entry.get_key());
                 self.push_char(']');
                 self.push_char('=');
-                self.write_expression(value);
+                self.write_expression(entry.get_value());
             }
-            Value(expression) => self.write_expression(expression),
+            nodes::TableEntry::Value(expression) => self.write_expression(expression),
         }
     }
 
@@ -718,7 +716,7 @@ impl LuaGenerator for DenseLuaGenerator {
 
                 let last_index = expressions.len().saturating_sub(1);
                 expressions
-                    .iter()
+                    .iter_values()
                     .enumerate()
                     .for_each(|(index, expression)| {
                         self.write_expression(expression);

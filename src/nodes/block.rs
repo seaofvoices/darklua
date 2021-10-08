@@ -1,4 +1,4 @@
-use crate::nodes::{LastStatement, Statement};
+use crate::nodes::{LastStatement, ReturnStatement, Statement};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Block {
@@ -88,6 +88,12 @@ impl From<LastStatement> for Block {
     }
 }
 
+impl From<ReturnStatement> for Block {
+    fn from(statement: ReturnStatement) -> Block {
+        Block::new(Vec::new(), Some(statement.into()))
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -109,7 +115,7 @@ mod test {
 
     #[test]
     fn is_empty_is_false_when_block_has_a_last_statement() {
-        let block = Block::default().with_last_statement(LastStatement::Break);
+        let block = Block::default().with_last_statement(LastStatement::new_break());
 
         assert!(!block.is_empty());
     }
@@ -131,7 +137,7 @@ mod test {
 
     #[test]
     fn clear_removes_last_statement() {
-        let mut block = Block::default().with_last_statement(LastStatement::Break);
+        let mut block = Block::default().with_last_statement(LastStatement::new_break());
         block.clear();
 
         assert!(block.is_empty());

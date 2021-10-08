@@ -1,10 +1,13 @@
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::str::FromStr;
 
+use crate::nodes::Token;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct DecimalNumber {
     float: f64,
     exponent: Option<(i64, bool)>,
+    token: Option<Token>,
 }
 
 impl Eq for DecimalNumber {}
@@ -14,7 +17,18 @@ impl DecimalNumber {
         Self {
             float: value,
             exponent: None,
+            token: None,
         }
+    }
+
+    pub fn with_token(mut self, token: Token) -> Self {
+        self.token = Some(token);
+        self
+    }
+
+    #[inline]
+    pub fn set_token(&mut self, token: Token) {
+        self.token = Some(token);
     }
 
     pub fn with_exponent(mut self, exponent: i64, is_uppercase: bool) -> Self {
@@ -56,6 +70,7 @@ pub struct HexNumber {
     integer: u64,
     exponent: Option<(u32, bool)>,
     is_x_uppercase: bool,
+    token: Option<Token>,
 }
 
 impl HexNumber {
@@ -64,7 +79,18 @@ impl HexNumber {
             integer,
             exponent: None,
             is_x_uppercase,
+            token: None,
         }
+    }
+
+    pub fn with_token(mut self, token: Token) -> Self {
+        self.token = Some(token);
+        self
+    }
+
+    #[inline]
+    pub fn set_token(&mut self, token: Token) {
+        self.token = Some(token);
     }
 
     pub fn with_exponent(mut self, exponent: u32, is_uppercase: bool) -> Self {
@@ -110,6 +136,7 @@ impl HexNumber {
 pub struct BinaryNumber {
     value: u64,
     is_b_uppercase: bool,
+    token: Option<Token>,
 }
 
 impl BinaryNumber {
@@ -117,7 +144,18 @@ impl BinaryNumber {
         Self {
             value,
             is_b_uppercase,
+            token: None,
         }
+    }
+
+    pub fn with_token(mut self, token: Token) -> Self {
+        self.token = Some(token);
+        self
+    }
+
+    #[inline]
+    pub fn set_token(&mut self, token: Token) {
+        self.token = Some(token);
     }
 
     pub fn set_uppercase(&mut self, is_uppercase: bool) {
@@ -160,6 +198,24 @@ impl NumberExpression {
             Self::Decimal(decimal) => decimal.compute_value(),
             Self::Hex(hex) => hex.compute_value(),
             Self::Binary(binary) => binary.compute_value(),
+        }
+    }
+
+    pub fn with_token(mut self, token: Token) -> Self {
+        match &mut self {
+            NumberExpression::Decimal(number) => number.set_token(token),
+            NumberExpression::Hex(number) => number.set_token(token),
+            NumberExpression::Binary(number) => number.set_token(token),
+        }
+        self
+    }
+
+    #[inline]
+    pub fn set_token(&mut self, token: Token) {
+        match self {
+            NumberExpression::Decimal(number) => number.set_token(token),
+            NumberExpression::Hex(number) => number.set_token(token),
+            NumberExpression::Binary(number) => number.set_token(token),
         }
     }
 }

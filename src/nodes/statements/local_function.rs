@@ -1,18 +1,30 @@
-use crate::nodes::Block;
+use crate::nodes::{Block, Identifier, Token};
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LocalFunctionTokens {
+    pub local: Token,
+    pub function: Token,
+    pub opening_parenthese: Token,
+    pub closing_parenthese: Token,
+    pub end: Token,
+    pub parameter_commas: Vec<Token>,
+    pub variable_arguments: Option<Token>,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LocalFunctionStatement {
-    identifier: String,
+    identifier: Identifier,
     block: Block,
-    parameters: Vec<String>,
+    parameters: Vec<Identifier>,
     is_variadic: bool,
+    tokens: Option<Box<LocalFunctionTokens>>,
 }
 
 impl LocalFunctionStatement {
     pub fn new(
-        identifier: String,
+        identifier: Identifier,
         block: Block,
-        parameters: Vec<String>,
+        parameters: Vec<Identifier>,
         is_variadic: bool,
     ) -> Self {
         Self {
@@ -20,19 +32,31 @@ impl LocalFunctionStatement {
             block,
             parameters,
             is_variadic,
+            tokens: None,
         }
     }
 
-    pub fn from_name<S: Into<String>, B: Into<Block>>(identifier: S, block: B) -> Self {
+    pub fn from_name<S: Into<Identifier>, B: Into<Block>>(identifier: S, block: B) -> Self {
         Self {
             identifier: identifier.into(),
             block: block.into(),
             parameters: Vec::new(),
             is_variadic: false,
+            tokens: None,
         }
     }
 
-    pub fn with_parameter<S: Into<String>>(mut self, parameter: S) -> Self {
+    pub fn with_tokens(mut self, tokens: LocalFunctionTokens) -> Self {
+        self.tokens = Some(tokens.into());
+        self
+    }
+
+    #[inline]
+    pub fn set_tokens(&mut self, tokens: LocalFunctionTokens) {
+        self.tokens = Some(tokens.into());
+    }
+
+    pub fn with_parameter<S: Into<Identifier>>(mut self, parameter: S) -> Self {
         self.parameters.push(parameter.into());
         self
     }
@@ -43,7 +67,7 @@ impl LocalFunctionStatement {
     }
 
     #[inline]
-    pub fn mutate_parameters(&mut self) -> &mut Vec<String> {
+    pub fn mutate_parameters(&mut self) -> &mut Vec<Identifier> {
         &mut self.parameters
     }
 
@@ -53,7 +77,7 @@ impl LocalFunctionStatement {
     }
 
     #[inline]
-    pub fn mutate_identifier(&mut self) -> &mut String {
+    pub fn mutate_identifier(&mut self) -> &mut Identifier {
         &mut self.identifier
     }
 
@@ -63,18 +87,25 @@ impl LocalFunctionStatement {
     }
 
     #[inline]
-    pub fn get_parameters(&self) -> &Vec<String> {
+    pub fn get_parameters(&self) -> &Vec<Identifier> {
         &self.parameters
     }
 
     #[inline]
-    pub fn get_name(&self) -> &str {
+    pub fn get_identifier(&self) -> &Identifier {
         &self.identifier
     }
 
     #[inline]
+    pub fn get_name(&self) -> &str {
+        self.identifier.get_name()
+    }
+
+    #[inline]
     pub fn has_parameter(&self, name: &str) -> bool {
-        self.parameters.iter().any(|parameter| parameter == name)
+        self.parameters
+            .iter()
+            .any(|parameter| parameter.get_name() == name)
     }
 
     #[inline]

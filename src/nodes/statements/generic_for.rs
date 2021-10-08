@@ -1,15 +1,26 @@
-use crate::nodes::{Block, Expression};
+use crate::nodes::{Block, Expression, Identifier, Token};
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GenericForTokens {
+    pub r#for: Token,
+    pub r#in: Token,
+    pub r#do: Token,
+    pub end: Token,
+    pub identifier_commas: Vec<Token>,
+    pub value_commas: Vec<Token>,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GenericForStatement {
-    identifiers: Vec<String>,
+    identifiers: Vec<Identifier>,
     expressions: Vec<Expression>,
     block: Block,
+    tokens: Option<GenericForTokens>,
 }
 
 impl GenericForStatement {
     pub fn new<B: Into<Block>>(
-        identifiers: Vec<String>,
+        identifiers: Vec<Identifier>,
         expressions: Vec<Expression>,
         block: B,
     ) -> Self {
@@ -17,7 +28,18 @@ impl GenericForStatement {
             identifiers,
             expressions,
             block: block.into(),
+            tokens: None,
         }
+    }
+
+    pub fn with_tokens(mut self, tokens: GenericForTokens) -> Self {
+        self.tokens = Some(tokens);
+        self
+    }
+
+    #[inline]
+    pub fn set_tokens(&mut self, tokens: GenericForTokens) {
+        self.tokens = Some(tokens);
     }
 
     #[inline]
@@ -26,8 +48,13 @@ impl GenericForStatement {
     }
 
     #[inline]
-    pub fn get_identifiers(&self) -> &Vec<String> {
+    pub fn get_identifiers(&self) -> &Vec<Identifier> {
         &self.identifiers
+    }
+
+    #[inline]
+    pub fn iter_identifiers(&self) -> impl Iterator<Item = &Identifier> {
+        self.identifiers.iter()
     }
 
     #[inline]
@@ -36,13 +63,13 @@ impl GenericForStatement {
     }
 
     #[inline]
-    pub fn mutate_identifiers(&mut self) -> &mut Vec<String> {
-        &mut self.identifiers
+    pub fn iter_mut_identifiers(&mut self) -> impl Iterator<Item = &mut Identifier> {
+        self.identifiers.iter_mut()
     }
 
     #[inline]
-    pub fn mutate_expressions(&mut self) -> &mut Vec<Expression> {
-        &mut self.expressions
+    pub fn iter_mut_expressions(&mut self) -> impl Iterator<Item = &mut Expression> {
+        self.expressions.iter_mut()
     }
 
     #[inline]

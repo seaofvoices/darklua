@@ -35,7 +35,7 @@ impl ScopeVisitor {
 
             if let LastStatement::Return(expressions) = last_statement {
                 expressions
-                    .iter_mut()
+                    .iter_mut_expressions()
                     .for_each(|expression| Self::visit_expression(expression, scope));
             };
         };
@@ -53,12 +53,12 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
         scope.process_local_assign_statement(statement);
 
         statement
-            .mutate_values()
-            .iter_mut()
+            .iter_mut_values()
             .for_each(|value| Self::visit_expression(value, scope));
 
-        statement
-            .for_each_assignment(|variable, expression| scope.insert_local(variable, expression));
+        statement.for_each_assignment(|variable, expression| {
+            scope.insert_local(variable.mutate_name(), expression)
+        });
     }
 
     fn visit_function_expression(function: &mut FunctionExpression, scope: &mut T) {
@@ -68,7 +68,7 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
         function
             .mutate_parameters()
             .iter_mut()
-            .for_each(|parameter| scope.insert(parameter));
+            .for_each(|parameter| scope.insert(parameter.mutate_name()));
 
         Self::visit_block(function.mutate_block(), scope);
         scope.pop();
@@ -82,7 +82,7 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
         statement
             .mutate_parameters()
             .iter_mut()
-            .for_each(|parameter| scope.insert(parameter));
+            .for_each(|parameter| scope.insert(parameter.mutate_name()));
 
         Self::visit_block(statement.mutate_block(), scope);
         scope.pop();
@@ -97,7 +97,7 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
         statement
             .mutate_parameters()
             .iter_mut()
-            .for_each(|parameter| scope.insert(parameter));
+            .for_each(|parameter| scope.insert(parameter.mutate_name()));
 
         Self::visit_block(statement.mutate_block(), scope);
         scope.pop();
@@ -107,14 +107,12 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
         scope.process_generic_for_statement(statement);
 
         statement
-            .mutate_expressions()
-            .iter_mut()
+            .iter_mut_expressions()
             .for_each(|expression| Self::visit_expression(expression, scope));
 
         statement
-            .mutate_identifiers()
-            .iter_mut()
-            .for_each(|identifier| scope.insert(identifier));
+            .iter_mut_identifiers()
+            .for_each(|identifier| scope.insert(identifier.mutate_name()));
 
         Self::visit_block(statement.mutate_block(), scope);
     }
@@ -130,7 +128,7 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
         };
 
         scope.push();
-        scope.insert(statement.mutate_identifier());
+        scope.insert(statement.mutate_identifier().mutate_name());
 
         Self::visit_block(statement.mutate_block(), scope);
         scope.pop();

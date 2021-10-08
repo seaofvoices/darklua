@@ -1,18 +1,30 @@
-use crate::nodes::Block;
+use crate::nodes::{Block, Identifier, Token};
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FunctionExpressionTokens {
+    pub function: Token,
+    pub opening_parenthese: Token,
+    pub closing_parenthese: Token,
+    pub end: Token,
+    pub parameter_commas: Vec<Token>,
+    pub variable_arguments: Option<Token>,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FunctionExpression {
     block: Block,
-    parameters: Vec<String>,
+    parameters: Vec<Identifier>,
     is_variadic: bool,
+    tokens: Option<Box<FunctionExpressionTokens>>,
 }
 
 impl FunctionExpression {
-    pub fn new(block: Block, parameters: Vec<String>, is_variadic: bool) -> Self {
+    pub fn new(block: Block, parameters: Vec<Identifier>, is_variadic: bool) -> Self {
         Self {
             block,
             parameters,
             is_variadic,
+            tokens: None,
         }
     }
 
@@ -21,10 +33,11 @@ impl FunctionExpression {
             block: block.into(),
             parameters: Vec::new(),
             is_variadic: false,
+            tokens: None,
         }
     }
 
-    pub fn with_parameter<S: Into<String>>(mut self, parameter: S) -> Self {
+    pub fn with_parameter<P: Into<Identifier>>(mut self, parameter: P) -> Self {
         self.parameters.push(parameter.into());
         self
     }
@@ -38,13 +51,23 @@ impl FunctionExpression {
         self.is_variadic = is_variadic;
     }
 
+    pub fn with_tokens(mut self, tokens: FunctionExpressionTokens) -> Self {
+        self.tokens = Some(tokens.into());
+        self
+    }
+
+    #[inline]
+    pub fn set_tokens(&mut self, tokens: FunctionExpressionTokens) {
+        self.tokens = Some(tokens.into());
+    }
+
     #[inline]
     pub fn get_block(&self) -> &Block {
         &self.block
     }
 
     #[inline]
-    pub fn get_parameters(&self) -> &Vec<String> {
+    pub fn get_parameters(&self) -> &Vec<Identifier> {
         &self.parameters
     }
 
@@ -59,7 +82,7 @@ impl FunctionExpression {
     }
 
     #[inline]
-    pub fn mutate_parameters(&mut self) -> &mut Vec<String> {
+    pub fn mutate_parameters(&mut self) -> &mut Vec<Identifier> {
         &mut self.parameters
     }
 }
@@ -70,6 +93,7 @@ impl Default for FunctionExpression {
             block: Block::default(),
             parameters: Vec::new(),
             is_variadic: false,
+            tokens: None,
         }
     }
 }

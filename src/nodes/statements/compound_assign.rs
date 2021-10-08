@@ -1,4 +1,4 @@
-use crate::nodes::{BinaryOperator, Expression, Variable};
+use crate::nodes::{BinaryOperator, Expression, Token, Variable};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CompoundOperator {
@@ -38,10 +38,16 @@ impl CompoundOperator {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CompoundAssignTokens {
+    pub operator: Token,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompoundAssignStatement {
     operator: CompoundOperator,
     variable: Variable,
     value: Expression,
+    tokens: Option<CompoundAssignTokens>,
 }
 
 impl CompoundAssignStatement {
@@ -54,7 +60,18 @@ impl CompoundAssignStatement {
             operator,
             variable: variable.into(),
             value: value.into(),
+            tokens: None,
         }
+    }
+
+    pub fn with_tokens(mut self, tokens: CompoundAssignTokens) -> Self {
+        self.tokens = Some(tokens);
+        self
+    }
+
+    #[inline]
+    pub fn set_tokens(&mut self, tokens: CompoundAssignTokens) {
+        self.tokens = Some(tokens);
     }
 
     #[inline]

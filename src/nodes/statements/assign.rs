@@ -1,45 +1,33 @@
-use crate::nodes::{Expression, FieldExpression, IndexExpression};
+use crate::nodes::{Expression, Token, Variable};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Variable {
-    Identifier(String),
-    Field(Box<FieldExpression>),
-    Index(Box<IndexExpression>),
-}
-
-impl Variable {
-    pub fn new<S: Into<String>>(name: S) -> Self {
-        Self::Identifier(name.into())
-    }
-}
-
-impl From<FieldExpression> for Variable {
-    fn from(field: FieldExpression) -> Self {
-        Self::Field(field.into())
-    }
-}
-
-impl From<IndexExpression> for Variable {
-    fn from(index: IndexExpression) -> Self {
-        Self::Index(index.into())
-    }
+pub struct AssignTokens {
+    pub equal: Token,
+    pub variable_commas: Vec<Token>,
+    pub value_commas: Vec<Token>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AssignStatement {
     variables: Vec<Variable>,
     values: Vec<Expression>,
+    tokens: Option<AssignTokens>,
 }
 
 impl AssignStatement {
     pub fn new(variables: Vec<Variable>, values: Vec<Expression>) -> Self {
-        Self { variables, values }
+        Self {
+            variables,
+            values,
+            tokens: None,
+        }
     }
 
     pub fn from_variable<V: Into<Variable>, E: Into<Expression>>(variable: V, value: E) -> Self {
         Self {
             variables: vec![variable.into()],
             values: vec![value.into()],
+            tokens: None,
         }
     }
 
@@ -71,5 +59,15 @@ impl AssignStatement {
         self.variables.push(variable.into());
         self.values.push(value.into());
         self
+    }
+
+    pub fn with_tokens(mut self, tokens: AssignTokens) -> Self {
+        self.tokens = Some(tokens);
+        self
+    }
+
+    #[inline]
+    pub fn set_tokens(&mut self, tokens: AssignTokens) {
+        self.tokens = Some(tokens);
     }
 }

@@ -146,7 +146,9 @@ mod test {
                         .expect("it should have a return statement");
 
                     let expected = match expected_return {
-                        LastStatement::Return(expressions) => expressions.first().unwrap(),
+                        LastStatement::Return(statement) => statement.iter_expressions()
+                            .next()
+                            .unwrap(),
                         _ => panic!("return statement expected"),
                     };
 
@@ -160,11 +162,11 @@ mod test {
                         .expect("it should have a return statement");
 
                     let parsed = match parsed_return {
-                        LastStatement::Return(expressions) => {
-                            if expressions.len() != 1 {
+                        LastStatement::Return(statement) => {
+                            if statement.len() != 1 {
                                 panic!("return statement has more than one expression")
                             }
-                            expressions.first().unwrap()
+                            statement.iter_expressions().next().unwrap()
                         },
                         _ => panic!("return statement expected"),
                     };
@@ -213,18 +215,18 @@ mod $mod_name {
             left_associative_wraps_right_operand_if_has_lower_precedence(
                 BinaryExpression::new(
                     BinaryOperator::And,
-                    Expression::False,
+                    false,
                     BinaryExpression::new(
                         BinaryOperator::Or,
-                        Expression::False,
-                        Expression::True,
+                        false,
+                        true,
                     ),
                 )
             ) => "false and (false or true)",
             left_associative_wraps_right_operand_if_has_same_precedence(
                 BinaryExpression::new(
                     BinaryOperator::Equal,
-                    Expression::True,
+                    true,
                     BinaryExpression::new(
                         BinaryOperator::LowerThan,
                         DecimalNumber::new(1.0),
@@ -302,25 +304,25 @@ mod $mod_name {
     mod snapshots {
         use super::*;
         snapshot_node!($mod_name, $generator, expression, write_expression => (
-            false_value => Expression::False,
-            true_value => Expression::True,
-            nil_value => Expression::Nil,
-            variable_arguments => Expression::VariableArguments,
-            true_in_parenthese => Expression::Parenthese(Box::new(Expression::True)),
+            false_value => false,
+            true_value => true,
+            nil_value => Expression::nil(),
+            variable_arguments => Expression::variable_arguments(),
+            true_in_parenthese => Expression::from(true).in_parentheses(),
         ));
 
         snapshot_node!($mod_name, $generator, assign, write_statement => (
             variable_with_one_value => AssignStatement::new(
                 vec![Variable::new("var")],
-                vec![Expression::False],
+                vec![Expression::from(false)],
             ),
             two_variables_with_one_value => AssignStatement::new(
                 vec![Variable::new("foo"), Variable::new("var")],
-                vec![Expression::False],
+                vec![Expression::from(false)],
             ),
             two_variables_with_two_values => AssignStatement::new(
                 vec![Variable::new("foo"), Variable::new("var")],
-                vec![Expression::Nil, Expression::False],
+                vec![Expression::nil(), Expression::from(false)],
             ),
         ));
 
@@ -342,7 +344,7 @@ mod $mod_name {
         snapshot_node!($mod_name, $generator, function_statement, write_statement => (
             empty => FunctionStatement::from_name("foo", Block::default()),
             empty_with_field =>  FunctionStatement::new(
-                FunctionName::from_name("foo").with_fields(vec!["bar".to_owned()]),
+                FunctionName::from_name("foo").with_fields(vec!["bar".into()]),
                 Block::default(),
                 Vec::new(),
                 false
@@ -357,19 +359,19 @@ mod $mod_name {
 
         snapshot_node!($mod_name, $generator, generic_for, write_statement => (
             empty => GenericForStatement::new(
-                vec!["var".to_owned()],
-                vec![Expression::True],
+                vec!["var".into()],
+                vec![Expression::from(true)],
                 Block::default()
             ),
         ));
 
         snapshot_node!($mod_name, $generator, if_statement, write_statement => (
-            empty => IfStatement::create(Expression::False, Block::default()),
-            empty_with_empty_else => IfStatement::create(Expression::False, Block::default())
+            empty => IfStatement::create(false, Block::default()),
+            empty_with_empty_else => IfStatement::create(false, Block::default())
                 .with_else_block(Block::default()),
-            empty_with_empty_multiple_branch => IfStatement::create(Expression::False, Block::default())
-                .with_branch(Expression::Nil, Block::default())
-                .with_branch(Expression::False, Block::default()),
+            empty_with_empty_multiple_branch => IfStatement::create(false, Block::default())
+                .with_new_branch(Expression::nil(), Block::default())
+                .with_new_branch(false, Block::default()),
         ));
 
         snapshot_node!($mod_name, $generator, local_assign, write_statement => (
@@ -377,7 +379,7 @@ mod $mod_name {
             foo_and_bar_unassigned => LocalAssignStatement::from_variable("foo")
                 .with_variable("bar"),
             var_assign_to_false => LocalAssignStatement::from_variable("var")
-                .with_value(Expression::False),
+                .with_value(false),
         ));
 
         snapshot_node!($mod_name, $generator, local_function, write_statement => (
@@ -397,16 +399,16 @@ mod $mod_name {
         snapshot_node!($mod_name, $generator, numeric_for, write_statement => (
             empty_without_step => NumericForStatement::new(
                 "i",
-                Expression::Identifier("start".to_owned()),
-                Expression::Identifier("max".to_owned()),
+                Expression::identifier("start"),
+                Expression::identifier("max"),
                 None,
                 Block::default()
             ),
             empty_with_step => NumericForStatement::new(
                 "i",
-                Expression::Identifier("start".to_owned()),
-                Expression::Identifier("max".to_owned()),
-                Some(Expression::Identifier("step".to_owned())),
+                Expression::identifier("start"),
+                Expression::identifier("max"),
+                Some(Expression::identifier("step")),
                 Block::default()
             ),
         ));
@@ -414,37 +416,36 @@ mod $mod_name {
         snapshot_node!($mod_name, $generator, repeat, write_statement => (
             empty => RepeatStatement::new(
                 Block::default(),
-                Expression::False
+                false
             ),
         ));
 
         snapshot_node!($mod_name, $generator, while_statement, write_statement => (
             empty => WhileStatement::new(
                 Block::default(),
-                Expression::False
+                false
             ),
         ));
 
         snapshot_node!($mod_name, $generator, last, write_last_statement => (
-            break_statement => LastStatement::Break,
-            continue_statement => LastStatement::Continue,
-            return_without_values => LastStatement::Return(Vec::new()),
-            return_one_expression => LastStatement::Return(vec![Expression::True]),
-            return_two_expressions => LastStatement::Return(vec![
-                Expression::True, Expression::Nil
-            ]),
+            break_statement => LastStatement::new_break(),
+            continue_statement => LastStatement::new_continue(),
+            return_without_values => ReturnStatement::default(),
+            return_one_expression => ReturnStatement::one(Expression::from(true)),
+            return_two_expressions => ReturnStatement::one(Expression::from(true))
+                .with_expression(Expression::nil()),
         ));
 
         snapshot_node!($mod_name, $generator, binary, write_expression => (
             true_and_false => BinaryExpression::new(
                 BinaryOperator::And,
-                Expression::True,
-                Expression::False
+                Expression::from(true),
+                Expression::from(false)
             ),
             true_equal_false =>BinaryExpression::new(
                 BinaryOperator::Equal,
-                Expression::True,
-                Expression::False
+                Expression::from(true),
+                Expression::from(false)
             ),
         ));
 
@@ -476,7 +477,7 @@ mod $mod_name {
 
         snapshot_node!($mod_name, $generator, prefix, write_prefix => (
             identifier => Prefix::from_name("foo"),
-            identifier_in_parenthese => Prefix::Parenthese(Prefix::from_name("foo").into()),
+            identifier_in_parenthese => Prefix::Parenthese(ParentheseExpression::new(Expression::identifier("foo"))),
         ));
 
         snapshot_node!($mod_name, $generator, string, write_expression => (
@@ -505,43 +506,43 @@ mod $mod_name {
         snapshot_node!($mod_name, $generator, table, write_expression => (
             empty => TableExpression::default(),
             list_with_single_value => TableExpression::new(vec![
-                TableEntry::Value(Expression::True),
+                TableEntry::Value(Expression::from(true)),
             ]),
             list_with_two_values => TableExpression::new(vec![
-                TableEntry::Value(Expression::True),
-                TableEntry::Value(Expression::False),
+                TableEntry::Value(Expression::from(true)),
+                TableEntry::Value(Expression::from(false)),
             ]),
             with_field_entry => TableExpression::new(vec![
-                TableEntry::Field("field".to_owned(), Expression::True),
+                TableFieldEntry::new("field", true).into(),
             ]),
             with_index_entry => TableExpression::new(vec![
-                TableEntry::Index(Expression::False, Expression::True),
+                TableIndexEntry::new(false, true).into(),
             ]),
             mixed_table => TableExpression::new(vec![
-                TableEntry::Value(Expression::True),
-                TableEntry::Field("field".to_owned(), Expression::True),
-                TableEntry::Index(Expression::False, Expression::True),
+                TableEntry::Value(Expression::from(true)),
+                TableFieldEntry::new("field", true).into(),
+                TableIndexEntry::new(false, true).into(),
             ]),
         ));
 
         snapshot_node!($mod_name, $generator, unary, write_expression => (
             not_true => UnaryExpression::new(
                 UnaryOperator::Not,
-                Expression::True,
+                true,
             ),
             two_unary_minus_breaks_between_them => UnaryExpression::new(
                 UnaryOperator::Minus,
                 UnaryExpression::new(
                     UnaryOperator::Minus,
-                    Expression::Identifier("a".to_owned()),
+                    Expression::identifier("a"),
                 ),
             ),
             wraps_in_parens_if_an_inner_binary_has_lower_precedence => UnaryExpression::new(
                 UnaryOperator::Not,
                 BinaryExpression::new(
                     BinaryOperator::Or,
-                    Expression::False,
-                    Expression::True,
+                    false,
+                    true,
                 ),
             ),
             does_not_wrap_in_parens_if_an_inner_binary_has_higher_precedence => UnaryExpression::new(
@@ -555,9 +556,9 @@ mod $mod_name {
         ));
 
         snapshot_node!($mod_name, $generator, arguments, write_arguments => (
-            empty_tuple => Arguments::Tuple(Vec::new()),
-            tuple_with_one_value => Arguments::Tuple(vec![Expression::True]),
-            tuple_with_two_values => Arguments::Tuple(vec![Expression::True, Expression::False]),
+            empty_tuple => TupleArguments::default(),
+            tuple_with_one_value => TupleArguments::new(vec![true.into()]),
+            tuple_with_two_values => TupleArguments::new(vec![true.into(), false.into()]),
         ));
     }
 }

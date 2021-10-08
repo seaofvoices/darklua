@@ -3,7 +3,7 @@ use rand::{thread_rng, Rng};
 use rand_distr::{Alphanumeric, Normal, Poisson};
 use std::iter;
 
-fn generated_identifier() -> String {
+fn generated_name() -> String {
     let poisson = Poisson::new(3.0).unwrap();
 
     let mut rng = thread_rng();
@@ -22,13 +22,18 @@ fn generated_identifier() -> String {
     match identifier.as_ref() {
         "and" | "break" | "do" | "else" | "elseif" | "end" | "false" | "for" | "function"
         | "if" | "in" | "local" | "nil" | "not" | "or" | "repeat" | "return" | "then" | "true"
-        | "until" | "while" => generated_identifier(),
+        | "until" | "while" => generated_name(),
         _ => identifier,
     }
 }
 
 #[inline]
-fn generated_identifiers(length: usize) -> Vec<String> {
+fn generated_identifier() -> Identifier {
+    Identifier::new(generated_name())
+}
+
+#[inline]
+fn generated_identifiers(length: usize) -> Vec<Identifier> {
     iter::repeat(())
         .take(length)
         .map(|()| generated_identifier())
@@ -45,6 +50,12 @@ fn function_param_length() -> usize {
 fn function_name_field_length() -> usize {
     let normal = Normal::new(0.0, 1.0).unwrap();
     (thread_rng().sample(normal) as f64).abs().floor() as usize
+}
+
+#[inline]
+fn generic_for_variables_length() -> usize {
+    let normal = Normal::new(0.0, 1.0).unwrap();
+    1 + (thread_rng().sample(normal) as f64).abs().floor() as usize
 }
 
 #[inline]
@@ -188,6 +199,12 @@ impl Fuzz<Block> for Block {
     }
 }
 
+impl Fuzz<Identifier> for Identifier {
+    fn fuzz(_context: &mut FuzzContext) -> Self {
+        Identifier::new(generated_name())
+    }
+}
+
 impl Fuzz<Statement> for Statement {
     fn fuzz(context: &mut FuzzContext) -> Self {
         match thread_rng().gen_range(0, 12) {
@@ -210,14 +227,14 @@ impl Fuzz<Statement> for Statement {
 impl Fuzz<LastStatement> for LastStatement {
     fn fuzz(context: &mut FuzzContext) -> Self {
         match thread_rng().gen_range(0, 3) {
-            0 => Self::Break,
-            1 => Self::Continue,
+            0 => Self::new_break(),
+            1 => Self::new_continue(),
             _ => {
                 let normal = Normal::new(0.0, 2.5).unwrap();
                 let mut rng = thread_rng();
                 let length = (rng.sample(normal) as f64).abs().floor() as usize;
 
-                Self::Return(generate_expressions(length, context))
+                ReturnStatement::new(generate_expressions(length, context)).into()
             }
         }
     }
@@ -263,16 +280,14 @@ impl Fuzz<CompoundOperator> for CompoundOperator {
 
 impl Fuzz<Variable> for Variable {
     fn fuzz(context: &mut FuzzContext) -> Self {
-        use Variable::*;
-
         if context.can_have_expression(2) {
             match thread_rng().gen_range(0, 3) {
-                0 => Identifier(generated_identifier()),
-                1 => Field(FieldExpression::fuzz(context).into()),
-                _ => Index(IndexExpression::fuzz(context).into()),
+                0 => Identifier::fuzz(context).into(),
+                1 => FieldExpression::fuzz(context).into(),
+                _ => IndexExpression::fuzz(context).into(),
             }
         } else {
-            Identifier(generated_identifier())
+            Identifier::fuzz(context).into()
         }
     }
 }
@@ -295,12 +310,12 @@ impl Fuzz<FunctionStatement> for FunctionStatement {
 }
 
 impl Fuzz<FunctionName> for FunctionName {
-    fn fuzz(_context: &mut FuzzContext) -> Self {
+    fn fuzz(context: &mut FuzzContext) -> Self {
         Self::new(
-            generated_identifier(),
+            Identifier::fuzz(context),
             generated_identifiers(function_name_field_length()),
             if rand::random() {
-                Some(generated_identifier())
+                Some(Identifier::fuzz(context))
             } else {
                 None
             },
@@ -311,7 +326,7 @@ impl Fuzz<FunctionName> for FunctionName {
 impl Fuzz<GenericForStatement> for GenericForStatement {
     fn fuzz(context: &mut FuzzContext) -> Self {
         Self::new(
-            generated_identifiers(1),
+            generated_identifiers(generic_for_variables_length()),
             generate_at_least_one_expression(generic_for_expression_length(), context),
             Block::fuzz(context),
         )
@@ -337,7 +352,7 @@ impl Fuzz<IfStatement> for IfStatement {
 impl Fuzz<LocalAssignStatement> for LocalAssignStatement {
     fn fuzz(context: &mut FuzzContext) -> Self {
         Self::new(
-            generated_identifiers(1 + assign_variables_length()),
+            generated_identifiers(assign_variables_length()),
             generate_expressions(local_assign_values_length(), context),
         )
     }
@@ -346,7 +361,7 @@ impl Fuzz<LocalAssignStatement> for LocalAssignStatement {
 impl Fuzz<LocalFunctionStatement> for LocalFunctionStatement {
     fn fuzz(context: &mut FuzzContext) -> Self {
         Self::new(
-            generated_identifier(),
+            Identifier::fuzz(context),
             Block::fuzz(context),
             generated_identifiers(function_param_length()),
             rand::random(),
@@ -357,7 +372,7 @@ impl Fuzz<LocalFunctionStatement> for LocalFunctionStatement {
 impl Fuzz<NumericForStatement> for NumericForStatement {
     fn fuzz(context: &mut FuzzContext) -> Self {
         Self::new(
-            generated_identifier(),
+            generated_name(),
             Expression::fuzz(context),
             Expression::fuzz(context),
             if rand::random() {
@@ -384,22 +399,20 @@ impl Fuzz<WhileStatement> for WhileStatement {
 
 impl Fuzz<Expression> for Expression {
     fn fuzz(context: &mut FuzzContext) -> Self {
-        use Expression::*;
-
         context.take_expression();
 
         if context.can_have_expression(2) {
             match thread_rng().gen_range(0, 15) {
-                0 => True,
-                1 => False,
-                2 => Nil,
-                3 => VariableArguments,
-                4 => Parenthese(Box::new(Self::fuzz(context))),
+                0 => true.into(),
+                1 => false.into(),
+                2 => Expression::nil(),
+                3 => Expression::variable_arguments(),
+                4 => ParentheseExpression::fuzz(context).into(),
                 5 => BinaryExpression::fuzz(context).into(),
                 6 => FunctionCall::fuzz(context).into(),
                 7 => FieldExpression::fuzz(context).into(),
                 8 => FunctionExpression::fuzz(context).into(),
-                9 => Identifier(generated_identifier()),
+                9 => Identifier::fuzz(context).into(),
                 10 => IndexExpression::fuzz(context).into(),
                 11 => NumberExpression::fuzz(context).into(),
                 12 => StringExpression::fuzz(context).into(),
@@ -408,13 +421,13 @@ impl Fuzz<Expression> for Expression {
             }
         } else {
             match thread_rng().gen_range(0, 15) {
-                0 => True,
-                1 => False,
-                2 => Nil,
-                3 => VariableArguments,
+                0 => true.into(),
+                1 => false.into(),
+                2 => Expression::nil(),
+                3 => Expression::variable_arguments(),
                 4 => FunctionCall::fuzz(context).into(),
                 5 => FunctionExpression::fuzz(context).into(),
-                6 => Identifier(generated_identifier()),
+                6 => Identifier::fuzz(context).into(),
                 7 => NumberExpression::fuzz(context).into(),
                 8 => StringExpression::fuzz(context).into(),
                 _ => TableExpression::fuzz(&mut context.share_budget()).into(),
@@ -438,11 +451,11 @@ impl Fuzz<BinaryExpression> for BinaryExpression {
         let mut right = Expression::fuzz(context);
 
         if operator.left_needs_parentheses(&left) {
-            left = Expression::Parenthese(left.into());
+            left = left.in_parentheses();
         }
 
         if operator.right_needs_parentheses(&right) {
-            right = Expression::Parenthese(right.into());
+            right = right.in_parentheses();
         }
 
         Self::new(operator, left, right)
@@ -475,14 +488,14 @@ impl Fuzz<BinaryOperator> for BinaryOperator {
 
 impl Fuzz<FieldExpression> for FieldExpression {
     fn fuzz(context: &mut FuzzContext) -> Self {
-        Self::new(Prefix::fuzz(context), generated_identifier())
+        Self::new(Prefix::fuzz(context), generated_name())
     }
 }
 
 impl Fuzz<Arguments> for Arguments {
     fn fuzz(context: &mut FuzzContext) -> Self {
         match thread_rng().gen_range(0, 3) {
-            0 => Self::Tuple(generate_expressions(function_param_length(), context)),
+            0 => TupleArguments::new(generate_expressions(function_param_length(), context)).into(),
             1 => Self::String(StringExpression::fuzz(context)),
             _ => Self::Table(TableExpression::fuzz(context)),
         }
@@ -531,21 +544,25 @@ impl Fuzz<NumberExpression> for NumberExpression {
 
 impl Fuzz<Prefix> for Prefix {
     fn fuzz(context: &mut FuzzContext) -> Self {
-        use Prefix::*;
-
         if context.can_have_expression(2) {
             match thread_rng().gen_range(0, 5) {
-                0 => Call(FunctionCall::fuzz(context)),
-                1 => Field(FieldExpression::fuzz(context).into()),
-                2 => Identifier(generated_identifier()),
-                3 => Index(IndexExpression::fuzz(context).into()),
-                _ => Parenthese(Expression::fuzz(context)),
+                0 => FunctionCall::fuzz(context).into(),
+                1 => FieldExpression::fuzz(context).into(),
+                2 => Identifier::fuzz(context).into(),
+                3 => IndexExpression::fuzz(context).into(),
+                _ => ParentheseExpression::fuzz(context).into(),
             }
         } else if rand::random() {
-            Call(FunctionCall::fuzz(context))
+            FunctionCall::fuzz(context).into()
         } else {
-            Identifier(generated_identifier())
+            Identifier::fuzz(context).into()
         }
+    }
+}
+
+impl Fuzz<ParentheseExpression> for ParentheseExpression {
+    fn fuzz(context: &mut FuzzContext) -> Self {
+        Self::new(Expression::fuzz(context))
     }
 }
 
@@ -591,15 +608,27 @@ impl Fuzz<TableEntry> for TableEntry {
     fn fuzz(context: &mut FuzzContext) -> Self {
         if context.can_have_expression(2) {
             match thread_rng().gen_range(0, 3) {
-                0 => Self::Field(generated_identifier(), Expression::fuzz(context)),
-                1 => Self::Index(Expression::fuzz(context), Expression::fuzz(context)),
+                0 => TableFieldEntry::fuzz(context).into(),
+                1 => TableIndexEntry::fuzz(context).into(),
                 _ => Self::Value(Expression::fuzz(context)),
             }
         } else if rand::random() {
-            Self::Field(generated_identifier(), Expression::fuzz(context))
+            TableFieldEntry::fuzz(context).into()
         } else {
             Self::Value(Expression::fuzz(context))
         }
+    }
+}
+
+impl Fuzz<TableFieldEntry> for TableFieldEntry {
+    fn fuzz(context: &mut FuzzContext) -> TableFieldEntry {
+        Self::new(generated_name(), Expression::fuzz(context))
+    }
+}
+
+impl Fuzz<TableIndexEntry> for TableIndexEntry {
+    fn fuzz(context: &mut FuzzContext) -> TableIndexEntry {
+        Self::new(Expression::fuzz(context), Expression::fuzz(context))
     }
 }
 
@@ -609,7 +638,7 @@ impl Fuzz<UnaryExpression> for UnaryExpression {
 
         if let Some(inner_operator) = get_binary_operator(&expression) {
             if !inner_operator.precedes_unary_expression() {
-                expression = Expression::Parenthese(expression.into());
+                expression = expression.in_parentheses();
             }
         }
 

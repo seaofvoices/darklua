@@ -1,4 +1,4 @@
-use crate::nodes::Expression;
+use crate::nodes::{Expression, Token};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BinaryOperator {
@@ -111,6 +111,7 @@ pub struct BinaryExpression {
     operator: BinaryOperator,
     left: Expression,
     right: Expression,
+    token: Option<Token>,
 }
 
 impl BinaryExpression {
@@ -123,7 +124,18 @@ impl BinaryExpression {
             operator,
             left: left.into(),
             right: right.into(),
+            token: None,
         }
+    }
+
+    pub fn with_token(mut self, token: Token) -> Self {
+        self.token = Some(token);
+        self
+    }
+
+    #[inline]
+    pub fn set_token(&mut self, token: Token) {
+        self.token = Some(token);
     }
 
     #[inline]

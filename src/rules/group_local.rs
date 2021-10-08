@@ -63,7 +63,7 @@ impl GroupLocalProcessor {
 
         let mut find_variables = FindVariables::from(first.get_variables());
 
-        next.mutate_values().iter_mut().all(|expression| {
+        next.iter_mut_values().all(|expression| {
             DefaultVisitor::visit_expression(expression, &mut find_variables);
             !find_variables.has_found_usage()
         })
@@ -72,20 +72,17 @@ impl GroupLocalProcessor {
     fn merge(&self, first: &mut LocalAssignStatement, mut other: LocalAssignStatement) {
         if first.value_count() == 0 && other.value_count() != 0 {
             let variable_count = first.variable_count();
-            first
-                .mutate_values()
-                .extend(iter::repeat(Expression::Nil).take(variable_count));
+            first.extend_values(iter::repeat(Expression::nil()).take(variable_count));
         }
 
         if other.value_count() == 0 && first.value_count() != 0 {
             let variable_count = other.variable_count();
-            other
-                .mutate_values()
-                .extend(iter::repeat(Expression::Nil).take(variable_count));
+            other.extend_values(iter::repeat(Expression::nil()).take(variable_count));
         }
 
-        first.mutate_variables().append(other.mutate_variables());
-        first.mutate_values().append(other.mutate_values());
+        let (mut variables, mut values) = other.into_assignments();
+        first.append_variables(&mut variables);
+        first.append_values(&mut values);
     }
 }
 

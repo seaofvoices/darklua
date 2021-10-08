@@ -3,6 +3,7 @@ mod field;
 mod function;
 mod index;
 mod number;
+mod parenthese;
 mod prefix;
 mod string;
 mod table;
@@ -13,12 +14,13 @@ pub use field::*;
 pub use function::*;
 pub use index::*;
 pub use number::*;
+pub use parenthese::*;
 pub use prefix::*;
 pub use string::*;
 pub use table::*;
 pub use unary::*;
 
-use crate::nodes::{FunctionCall, Variable};
+use crate::nodes::{FunctionCall, Identifier, Token, Variable};
 
 use std::num::FpCategory;
 
@@ -26,37 +28,47 @@ use std::num::FpCategory;
 pub enum Expression {
     Binary(Box<BinaryExpression>),
     Call(Box<FunctionCall>),
-    False,
+    False(Option<Token>),
     Field(Box<FieldExpression>),
     Function(FunctionExpression),
-    Identifier(String),
+    Identifier(Identifier),
     Index(Box<IndexExpression>),
-    Nil,
+    Nil(Option<Token>),
     Number(NumberExpression),
-    Parenthese(Box<Expression>),
+    Parenthese(Box<ParentheseExpression>),
     String(StringExpression),
     Table(TableExpression),
-    True,
+    True(Option<Token>),
     Unary(Box<UnaryExpression>),
-    VariableArguments,
+    VariableArguments(Option<Token>),
 }
 
 impl Expression {
-    pub fn identifier<S: Into<String>>(identifier: S) -> Self {
+    #[inline]
+    pub fn nil() -> Self {
+        Self::Nil(None)
+    }
+
+    #[inline]
+    pub fn variable_arguments() -> Self {
+        Self::VariableArguments(None)
+    }
+
+    pub fn identifier<S: Into<Identifier>>(identifier: S) -> Self {
         Self::Identifier(identifier.into())
     }
 
     pub fn in_parentheses(self) -> Self {
-        Self::Parenthese(self.into())
+        Self::Parenthese(ParentheseExpression::new(self).into())
     }
 }
 
 impl From<bool> for Expression {
     fn from(boolean: bool) -> Expression {
         if boolean {
-            Expression::True
+            Expression::True(None)
         } else {
-            Expression::False
+            Expression::False(None)
         }
     }
 }
@@ -131,6 +143,12 @@ impl From<FunctionExpression> for Expression {
     }
 }
 
+impl From<Identifier> for Expression {
+    fn from(identifier: Identifier) -> Self {
+        Expression::Identifier(identifier)
+    }
+}
+
 impl From<IndexExpression> for Expression {
     fn from(index: IndexExpression) -> Self {
         Self::Index(Box::new(index))
@@ -168,8 +186,14 @@ impl From<Prefix> for Expression {
             Prefix::Field(field) => Self::Field(field),
             Prefix::Identifier(name) => Self::Identifier(name),
             Prefix::Index(index) => Self::Index(index),
-            Prefix::Parenthese(expression) => Self::Parenthese(Box::new(expression)),
+            Prefix::Parenthese(expression) => expression.into(),
         }
+    }
+}
+
+impl From<ParentheseExpression> for Expression {
+    fn from(expression: ParentheseExpression) -> Self {
+        Self::Parenthese(expression.into())
     }
 }
 

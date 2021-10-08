@@ -1,4 +1,4 @@
-use crate::nodes::Expression;
+use crate::nodes::{Expression, Token};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UnaryOperator {
@@ -11,6 +11,7 @@ pub enum UnaryOperator {
 pub struct UnaryExpression {
     operator: UnaryOperator,
     expression: Expression,
+    token: Option<Token>,
 }
 
 impl UnaryExpression {
@@ -18,7 +19,18 @@ impl UnaryExpression {
         Self {
             operator,
             expression: expression.into(),
+            token: None,
         }
+    }
+
+    pub fn with_token(mut self, token: Token) -> Self {
+        self.token = Some(token);
+        self
+    }
+
+    #[inline]
+    pub fn set_token(&mut self, token: Token) {
+        self.token = Some(token);
     }
 
     #[inline]

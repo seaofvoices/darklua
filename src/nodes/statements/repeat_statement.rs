@@ -1,14 +1,25 @@
-use crate::nodes::{Block, Expression};
+use crate::nodes::{Block, Expression, Token};
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RepeatTokens {
+    pub repeat: Token,
+    pub until: Token,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RepeatStatement {
     block: Block,
     condition: Expression,
+    tokens: Option<RepeatTokens>,
 }
 
 impl RepeatStatement {
-    pub fn new(block: Block, condition: Expression) -> Self {
-        Self { block, condition }
+    pub fn new<B: Into<Block>, E: Into<Expression>>(block: B, condition: E) -> Self {
+        Self {
+            block: block.into(),
+            condition: condition.into(),
+            tokens: None,
+        }
     }
 
     #[inline]
@@ -29,5 +40,15 @@ impl RepeatStatement {
     #[inline]
     pub fn mutate_condition(&mut self) -> &mut Expression {
         &mut self.condition
+    }
+
+    pub fn with_tokens(mut self, tokens: RepeatTokens) -> Self {
+        self.tokens = Some(tokens);
+        self
+    }
+
+    #[inline]
+    pub fn set_tokens(&mut self, tokens: RepeatTokens) {
+        self.tokens = Some(tokens);
     }
 }

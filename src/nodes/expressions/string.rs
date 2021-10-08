@@ -1,8 +1,11 @@
 use std::str::CharIndices;
 
+use crate::nodes::Token;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StringExpression {
     value: String,
+    token: Option<Token>,
 }
 
 impl StringExpression {
@@ -20,19 +23,31 @@ impl StringExpression {
             _ => None,
         };
 
-        value.map(|value| Self { value })
+        value.map(|value| Self { value, token: None })
     }
 
     pub fn empty() -> Self {
         Self {
             value: "".to_owned(),
+            token: None,
         }
     }
 
     pub fn from_value<T: Into<String>>(value: T) -> Self {
         Self {
             value: value.into(),
+            token: None,
         }
+    }
+
+    pub fn with_token(mut self, token: Token) -> Self {
+        self.token = Some(token);
+        self
+    }
+
+    #[inline]
+    pub fn set_token(&mut self, token: Token) {
+        self.token = Some(token);
     }
 
     pub fn get_value(&self) -> &str {

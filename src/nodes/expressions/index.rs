@@ -1,17 +1,35 @@
-use crate::nodes::{Expression, Prefix};
+use crate::nodes::{Expression, Prefix, Token};
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct IndexExpressionTokens {
+    pub opening_bracket: Token,
+    pub closing_bracket: Token,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct IndexExpression {
     prefix: Prefix,
     index: Expression,
+    tokens: Option<IndexExpressionTokens>,
 }
 
 impl IndexExpression {
-    pub fn new<E: Into<Expression>>(prefix: Prefix, expression: E) -> Self {
+    pub fn new<P: Into<Prefix>, E: Into<Expression>>(prefix: P, expression: E) -> Self {
         Self {
-            prefix,
+            prefix: prefix.into(),
             index: expression.into(),
+            tokens: None,
         }
+    }
+
+    pub fn with_tokens(mut self, tokens: IndexExpressionTokens) -> Self {
+        self.tokens = Some(tokens);
+        self
+    }
+
+    #[inline]
+    pub fn set_tokens(&mut self, tokens: IndexExpressionTokens) {
+        self.tokens = Some(tokens);
     }
 
     #[inline]

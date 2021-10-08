@@ -1,17 +1,32 @@
-use crate::nodes::Prefix;
+use crate::nodes::{Identifier, Prefix, Token};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FieldExpression {
     prefix: Prefix,
-    field: String,
+    field: Identifier,
+    token: Option<Token>,
 }
 
 impl FieldExpression {
-    pub fn new<IntoPrefix: Into<Prefix>, S: Into<String>>(prefix: IntoPrefix, field: S) -> Self {
+    pub fn new<IntoPrefix: Into<Prefix>, IntoIdentifier: Into<Identifier>>(
+        prefix: IntoPrefix,
+        field: IntoIdentifier,
+    ) -> Self {
         Self {
             prefix: prefix.into(),
             field: field.into(),
+            token: None,
         }
+    }
+
+    pub fn with_token(mut self, token: Token) -> Self {
+        self.token = Some(token);
+        self
+    }
+
+    #[inline]
+    pub fn set_token(&mut self, token: Token) {
+        self.token = Some(token);
     }
 
     #[inline]
@@ -20,7 +35,7 @@ impl FieldExpression {
     }
 
     #[inline]
-    pub fn get_field(&self) -> &String {
+    pub fn get_field(&self) -> &Identifier {
         &self.field
     }
 

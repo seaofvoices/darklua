@@ -1,35 +1,54 @@
-use crate::nodes::{Arguments, Expression, Prefix};
+use crate::nodes::{Arguments, Expression, Identifier, Prefix, Token};
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FunctionCallTokens {
+    pub colon: Option<Token>,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FunctionCall {
     prefix: Box<Prefix>,
     arguments: Arguments,
-    method: Option<String>,
+    method: Option<Identifier>,
+    tokens: Option<FunctionCallTokens>,
 }
 
 impl FunctionCall {
-    pub fn new(prefix: Prefix, arguments: Arguments, method: Option<String>) -> Self {
+    pub fn new(prefix: Prefix, arguments: Arguments, method: Option<Identifier>) -> Self {
         Self {
             prefix: Box::new(prefix),
             arguments,
             method,
+            tokens: None,
         }
     }
 
-    pub fn from_name<T: Into<String>>(name: T) -> Self {
+    pub fn from_name<T: Into<Identifier>>(name: T) -> Self {
         Self {
-            prefix: Box::new(Prefix::Identifier(name.into())),
-            arguments: Arguments::Tuple(Vec::new()),
+            prefix: Box::new(name.into().into()),
+            arguments: Arguments::default(),
             method: None,
+            tokens: None,
         }
     }
 
     pub fn from_prefix<T: Into<Prefix>>(prefix: T) -> Self {
         Self {
             prefix: Box::new(prefix.into()),
-            arguments: Arguments::Tuple(Vec::new()),
+            arguments: Arguments::default(),
             method: None,
+            tokens: None,
         }
+    }
+
+    pub fn with_tokens(mut self, tokens: FunctionCallTokens) -> Self {
+        self.tokens = Some(tokens);
+        self
+    }
+
+    #[inline]
+    pub fn set_tokens(&mut self, tokens: FunctionCallTokens) {
+        self.tokens = Some(tokens);
     }
 
     pub fn with_arguments<A: Into<Arguments>>(mut self, arguments: A) -> Self {
@@ -37,12 +56,12 @@ impl FunctionCall {
         self
     }
 
-    pub fn append_argument<T: Into<Expression>>(mut self, argument: T) -> Self {
-        self.arguments = self.arguments.append_argument(argument);
+    pub fn with_argument<T: Into<Expression>>(mut self, argument: T) -> Self {
+        self.arguments = self.arguments.with_argument(argument);
         self
     }
 
-    pub fn with_method<IntoString: Into<String>>(mut self, method: IntoString) -> Self {
+    pub fn with_method<IntoString: Into<Identifier>>(mut self, method: IntoString) -> Self {
         self.method.replace(method.into());
         self
     }
@@ -53,7 +72,7 @@ impl FunctionCall {
     }
 
     #[inline]
-    pub fn get_method(&self) -> Option<&String> {
+    pub fn get_method(&self) -> Option<&Identifier> {
         self.method.as_ref()
     }
 
@@ -63,7 +82,7 @@ impl FunctionCall {
     }
 
     #[inline]
-    pub fn take_method(&mut self) -> Option<String> {
+    pub fn take_method(&mut self) -> Option<Identifier> {
         self.method.take()
     }
 
@@ -73,7 +92,7 @@ impl FunctionCall {
     }
 
     #[inline]
-    pub fn set_method(&mut self, method: String) {
+    pub fn set_method(&mut self, method: Identifier) {
         self.method.replace(method);
     }
 
