@@ -105,6 +105,16 @@ impl LuaValue {
         }
         .unwrap_or(self)
     }
+
+    /// Attempt to convert the Lua value into a string value. This will convert numbers when
+    /// possible and return the same value otherwise.
+    pub fn string_coercion(self) -> Self {
+        match &self {
+            Self::Number(value) => Some(Self::String(format!("{}", value))),
+            _ => None,
+        }
+        .unwrap_or(self)
+    }
 }
 
 impl Default for LuaValue {

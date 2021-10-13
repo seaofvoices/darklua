@@ -169,7 +169,22 @@ impl Evaluator {
             BinaryOperator::Percent => {
                 self.evaluate_math(expression, |a, b| a - b * (a / b).floor())
             }
-            _ => LuaValue::Unknown,
+            BinaryOperator::Concat => {
+                match (
+                    self.evaluate(expression.left()).string_coercion(),
+                    self.evaluate(expression.right()).string_coercion(),
+                ) {
+                    (LuaValue::String(mut left), LuaValue::String(right)) => {
+                        left.push_str(&right);
+                        LuaValue::String(left)
+                    }
+                    _ => LuaValue::Unknown,
+                }
+            }
+            BinaryOperator::LowerThan
+            | BinaryOperator::LowerOrEqualThan
+            | BinaryOperator::GreaterThan
+            | BinaryOperator::GreaterOrEqualThan => LuaValue::Unknown,
         }
     }
 
@@ -252,7 +267,7 @@ mod test {
         use super::*;
 
         macro_rules! evaluate_binary_expressions {
-            ($($name:ident ($operator:expr, $left:expr, $right:expr) => $expect:expr),*) => {
+            ($($name:ident ($operator:expr, $left:expr, $right:expr) => $expect:expr),* $(,)?) => {
                 $(
                     #[test]
                     fn $name() {
@@ -423,7 +438,37 @@ mod test {
                 BinaryOperator::Plus,
                 StringExpression::from_value("2"),
                 StringExpression::from_value("3")
-            ) => LuaValue::Number(5.0)
+            ) => LuaValue::Number(5.0),
+            concat_strings(
+                BinaryOperator::Concat,
+                StringExpression::from_value("2"),
+                StringExpression::from_value("3")
+            ) => LuaValue::from("23"),
+            concat_string_with_number(
+                BinaryOperator::Concat,
+                StringExpression::from_value("foo"),
+                11.0
+            ) => LuaValue::from("foo11"),
+            concat_number_with_string(
+                BinaryOperator::Concat,
+                11.0,
+                StringExpression::from_value("foo")
+            ) => LuaValue::from("11foo"),
+            concat_number_with_number(
+                BinaryOperator::Concat,
+                11.0,
+                33.0
+            ) => LuaValue::from("1133"),
+            concat_number_with_negative_number(
+                BinaryOperator::Concat,
+                11.0,
+                -33.0
+            ) => LuaValue::from("11-33"),
+            concat_empty_strings(
+                BinaryOperator::Concat,
+                StringExpression::empty(),
+                StringExpression::empty()
+            ) => LuaValue::from(""),
         );
 
         macro_rules! evaluate_equality {
