@@ -1,4 +1,4 @@
-use crate::generator::{utils::*, LuaGenerator};
+use crate::generator::{utils, LuaGenerator};
 use crate::nodes::{self, Identifier};
 
 /// This implementation of [LuaGenerator](trait.LuaGenerator.html) attempts to produce Lua code as
@@ -108,12 +108,12 @@ impl DenseLuaGenerator {
 
     #[inline]
     fn needs_space(&self, next_character: char) -> bool {
-        is_relevant_for_spacing(&next_character)
+        utils::is_relevant_for_spacing(&next_character)
             && self
                 .output
                 .chars()
                 .last()
-                .filter(is_relevant_for_spacing)
+                .filter(utils::is_relevant_for_spacing)
                 .is_some()
     }
 
@@ -209,7 +209,9 @@ impl LuaGenerator for DenseLuaGenerator {
             self.write_statement(statement);
 
             if let Some(next_statement) = statements.peek() {
-                if starts_with_parenthese(next_statement) && ends_with_prefix(statement) {
+                if utils::starts_with_parenthese(next_statement)
+                    && utils::ends_with_prefix(statement)
+                {
                     self.push_char(';');
                 }
             }
@@ -492,7 +494,7 @@ impl LuaGenerator for DenseLuaGenerator {
             True(_) => self.push_str("true"),
             Unary(unary) => self.write_unary_expression(unary),
             VariableArguments(_) => {
-                self.push_str_and_break_if("...", break_variable_arguments);
+                self.push_str_and_break_if("...", utils::break_variable_arguments);
             }
         }
     }
@@ -513,7 +515,7 @@ impl LuaGenerator for DenseLuaGenerator {
         }
 
         match operator {
-            BinaryOperator::Concat => self.push_str_and_break_if("..", break_concat),
+            BinaryOperator::Concat => self.push_str_and_break_if("..", utils::break_concat),
             _ => self.push_str(operator.to_str()),
         }
 
@@ -531,7 +533,7 @@ impl LuaGenerator for DenseLuaGenerator {
 
         match unary.operator() {
             Length => self.push_char('#'),
-            Minus => self.push_str_and_break_if("-", break_minus),
+            Minus => self.push_str_and_break_if("-", utils::break_minus),
             Not => self.push_str("not"),
         }
 
@@ -732,46 +734,11 @@ impl LuaGenerator for DenseLuaGenerator {
     }
 
     fn write_string(&mut self, string: &nodes::StringExpression) {
-        let value = string.get_value();
-        if string.is_multiline() {
-            let mut i = 0;
-            let mut equals = "=".repeat(i);
-
-            loop {
-                if !value.contains(&format!("]{}]", equals)) {
-                    break;
-                } else {
-                    i += 1;
-                    equals = "=".repeat(i);
-                };
-            }
-
-            self.push_str_and_break_if(
-                &format!("[{}[{}]{}]", equals, value, equals),
-                break_long_string,
-            );
+        let result = utils::write_string(string);
+        if result.starts_with('[') {
+            self.push_str_and_break_if(&result, utils::break_long_string);
         } else {
-            let string = if string.has_single_quote() {
-                if string.has_double_quote() {
-                    let mut total_escaped = 0;
-                    let mut escaped_string = value.to_owned();
-
-                    let mut chars = value.char_indices();
-
-                    while let Some(unescaped_index) = find_not_escaped_from('\'', &mut chars) {
-                        escaped_string.insert(unescaped_index + total_escaped, '\\');
-                        total_escaped += 1;
-                    }
-
-                    format!("'{}'", escaped_string)
-                } else {
-                    format!("\"{}\"", value)
-                }
-            } else {
-                format!("'{}'", value)
-            };
-
-            self.push_str(&string);
-        };
+            self.push_str(&result);
+        }
     }
 }

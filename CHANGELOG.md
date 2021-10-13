@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+* fix bugs with string generation ([!26](https://gitlab.com/seaofvoices/darklua/-/merge_requests/26))
+* add token information to AST ([!24](https://gitlab.com/seaofvoices/darklua/-/merge_requests/24))
+
 ## 0.5.0
 
 * add support for Luau syntax by switching to [full-moon](https://github.com/Kampfkarren/full-moon) for parsing ([!18](https://gitlab.com/seaofvoices/darklua/-/merge_requests/18))

@@ -219,7 +219,7 @@ impl Parser {
     }
 
     fn convert_string_expression(&self, string: &tokenizer::TokenReference) -> StringExpression {
-        let mut expression = StringExpression::new(string.token().to_string())
+        let mut expression = StringExpression::new(&string.token().to_string())
             .expect("unable to convert string expression");
         if self.hold_token_data {
             expression.set_token(self.convert_token(string));
