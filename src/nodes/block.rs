@@ -1,9 +1,16 @@
-use crate::nodes::{LastStatement, ReturnStatement, Statement};
+use crate::nodes::{LastStatement, ReturnStatement, Statement, Token};
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BlockTokens {
+    pub semicolons: Vec<Option<Token>>,
+    pub last_semicolon: Option<Token>,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Block {
     statements: Vec<Statement>,
     last_statement: Option<LastStatement>,
+    tokens: Option<Box<BlockTokens>>,
 }
 
 impl Block {
@@ -11,7 +18,18 @@ impl Block {
         Self {
             statements,
             last_statement,
+            tokens: None,
         }
+    }
+
+    pub fn with_tokens(mut self, tokens: BlockTokens) -> Self {
+        self.tokens = Some(tokens.into());
+        self
+    }
+
+    #[inline]
+    pub fn set_tokens(&mut self, tokens: BlockTokens) {
+        self.tokens = Some(tokens.into());
     }
 
     pub fn with_statement<T: Into<Statement>>(mut self, statement: T) -> Self {
