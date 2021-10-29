@@ -43,6 +43,11 @@ impl GenericForStatement {
     }
 
     #[inline]
+    pub fn get_tokens(&self) -> Option<&GenericForTokens> {
+        self.tokens.as_ref()
+    }
+
+    #[inline]
     pub fn get_block(&self) -> &Block {
         &self.block
     }
@@ -63,6 +68,11 @@ impl GenericForStatement {
     }
 
     #[inline]
+    pub fn iter_expressions(&self) -> impl Iterator<Item = &Expression> {
+        self.expressions.iter()
+    }
+
+    #[inline]
     pub fn iter_mut_identifiers(&mut self) -> impl Iterator<Item = &mut Identifier> {
         self.identifiers.iter_mut()
     }
@@ -75,5 +85,15 @@ impl GenericForStatement {
     #[inline]
     pub fn mutate_block(&mut self) -> &mut Block {
         &mut self.block
+    }
+
+    #[inline]
+    pub fn identifiers_len(&self) -> usize {
+        self.identifiers.len()
+    }
+
+    #[inline]
+    pub fn expressions_len(&self) -> usize {
+        self.expressions.len()
     }
 }

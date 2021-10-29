@@ -32,13 +32,33 @@ impl AssignStatement {
     }
 
     #[inline]
+    pub fn variables_len(&self) -> usize {
+        self.variables.len()
+    }
+
+    #[inline]
+    pub fn values_len(&self) -> usize {
+        self.values.len()
+    }
+
+    #[inline]
     pub fn get_variables(&self) -> &Vec<Variable> {
         &self.variables
     }
 
     #[inline]
+    pub fn iter_variables(&self) -> impl Iterator<Item = &Variable> {
+        self.variables.iter()
+    }
+
+    #[inline]
     pub fn get_values(&self) -> &Vec<Expression> {
         &self.values
+    }
+
+    #[inline]
+    pub fn iter_values(&self) -> impl Iterator<Item = &Expression> {
+        self.values.iter()
     }
 
     #[inline]
@@ -69,5 +89,10 @@ impl AssignStatement {
     #[inline]
     pub fn set_tokens(&mut self, tokens: AssignTokens) {
         self.tokens = Some(tokens);
+    }
+
+    #[inline]
+    pub fn get_tokens(&self) -> Option<&AssignTokens> {
+        self.tokens.as_ref()
     }
 }

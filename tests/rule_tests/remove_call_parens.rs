@@ -1,6 +1,7 @@
 use darklua_core::rules::{RemoveFunctionCallParens, Rule};
 
 test_rule!(
+    remove_function_call_parens,
     RemoveFunctionCallParens::default(),
     call_statement_with_empty_string("foo('')") => "foo''",
     call_statement_with_empty_table("foo({})") => "foo{}",

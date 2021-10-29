@@ -39,4 +39,9 @@ impl DoStatement {
     pub fn set_tokens(&mut self, tokens: DoTokens) {
         self.tokens = Some(tokens);
     }
+
+    #[inline]
+    pub fn get_tokens(&self) -> Option<&DoTokens> {
+        self.tokens.as_ref()
+    }
 }

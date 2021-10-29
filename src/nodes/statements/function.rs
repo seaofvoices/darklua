@@ -43,6 +43,11 @@ impl FunctionName {
         self.tokens = Some(tokens);
     }
 
+    #[inline]
+    pub fn get_tokens(&self) -> Option<&FunctionNameTokens> {
+        self.tokens.as_ref()
+    }
+
     pub fn with_field<S: Into<Identifier>>(mut self, field: S) -> Self {
         self.field_names.push(field.into());
         self
@@ -148,6 +153,11 @@ impl FunctionStatement {
         self.tokens = Some(tokens.into());
     }
 
+    #[inline]
+    pub fn get_tokens(&self) -> Option<&FunctionStatementTokens> {
+        self.tokens.as_ref().map(|tokens| tokens.as_ref())
+    }
+
     pub fn with_parameter<S: Into<Identifier>>(mut self, parameter: S) -> Self {
         self.parameters.push(parameter.into());
         self
@@ -169,8 +179,18 @@ impl FunctionStatement {
     }
 
     #[inline]
+    pub fn parameters_count(&self) -> usize {
+        self.parameters.len()
+    }
+
+    #[inline]
     pub fn get_parameters(&self) -> &Vec<Identifier> {
         &self.parameters
+    }
+
+    #[inline]
+    pub fn iter_parameters(&self) -> impl Iterator<Item = &Identifier> {
+        self.parameters.iter()
     }
 
     #[inline]
@@ -198,5 +218,10 @@ impl FunctionStatement {
             self.name.push_field(method_name);
             self.parameters.insert(0, Identifier::new("self"));
         }
+    }
+
+    #[inline]
+    pub fn has_parameters(&self) -> bool {
+        !self.parameters.is_empty()
     }
 }

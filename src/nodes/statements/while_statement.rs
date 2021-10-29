@@ -52,4 +52,9 @@ impl WhileStatement {
     pub fn set_tokens(&mut self, tokens: WhileTokens) {
         self.tokens = Some(tokens);
     }
+
+    #[inline]
+    pub fn get_tokens(&self) -> Option<&WhileTokens> {
+        self.tokens.as_ref()
+    }
 }

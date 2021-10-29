@@ -12,7 +12,7 @@ pub enum CompoundOperator {
 }
 
 impl CompoundOperator {
-    pub fn to_str(&self) -> &str {
+    pub fn to_str(&self) -> &'static str {
         match self {
             Self::Plus => "+=",
             Self::Minus => "-=",
@@ -72,6 +72,11 @@ impl CompoundAssignStatement {
     #[inline]
     pub fn set_tokens(&mut self, tokens: CompoundAssignTokens) {
         self.tokens = Some(tokens);
+    }
+
+    #[inline]
+    pub fn get_tokens(&self) -> Option<&CompoundAssignTokens> {
+        self.tokens.as_ref()
     }
 
     #[inline]

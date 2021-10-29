@@ -68,7 +68,7 @@ impl BinaryOperator {
         }
     }
 
-    pub fn to_str(&self) -> &str {
+    pub fn to_str(&self) -> &'static str {
         match self {
             Self::And => "and",
             Self::Or => "or",
@@ -136,6 +136,11 @@ impl BinaryExpression {
     #[inline]
     pub fn set_token(&mut self, token: Token) {
         self.token = Some(token);
+    }
+
+    #[inline]
+    pub fn get_token(&self) -> Option<&Token> {
+        self.token.as_ref()
     }
 
     #[inline]

@@ -1,6 +1,7 @@
 use darklua_core::rules::{GroupLocalAssignment, Rule};
 
 test_rule!(
+    group_local_assignment,
     GroupLocalAssignment::default(),
     local_with_no_values("local foo; local bar") => "local foo, bar",
     two_locals("local foo = 1 local bar = 2") => "local foo, bar = 1, 2",

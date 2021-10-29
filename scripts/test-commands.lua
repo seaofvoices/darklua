@@ -190,13 +190,33 @@ local projects = {
 -- define commands to test on each project
 local testSuite = {
     DarkluaTest.new('minify', 'minify $input $output'),
-    DarkluaTest.new('default-process', 'process $input $output'),
+    DarkluaTest.new('default-process-dense', 'process $input $output --format dense'),
     DarkluaTest.new('default-process-readable', 'process $input $output --format readable'),
-    DarkluaTest.new('rename', 'process $input $output', {
+    DarkluaTest.new('default-process-retain-lines', 'process $input $output --format retain-lines'),
+    DarkluaTest.new('rename-dense', 'process $input $output --format dense', {
         process = {{
             rule = 'rename_variables',
             globals = {'$default', '$roblox'},
         }}
+    }),
+    DarkluaTest.new('rename-retain-lines', 'process $input $output --format retain-lines', {
+        process = {{
+            rule = 'rename_variables',
+            globals = {'$default', '$roblox'},
+        }}
+    }),
+    DarkluaTest.new('process-retain-lines', 'process $input $output --format retain-lines', {
+        process = {
+            'compute_expression',
+            'remove_unused_if_branch',
+            'remove_unused_while',
+            'remove_empty_do',
+            {
+                rule = 'rename_variables',
+                globals = { '$default', '$roblox' },
+            },
+            'remove_function_call_parens',
+        }
     }),
 }
 
@@ -236,7 +256,9 @@ for _, project in ipairs(projects) do
             os.exit(1)
         end
 
-        cleanCallback()
+        if cleanCallback then
+            cleanCallback()
+        end
 
         results[test.Name][project.RepositoryName] = success
     end

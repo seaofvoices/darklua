@@ -7,7 +7,7 @@ use full_moon::{
 
 use crate::nodes::*;
 
-pub fn get_binary_operator_token(
+fn get_binary_operator_token(
     operator: &ast::BinOp,
 ) -> Result<&tokenizer::TokenReference, ConvertError> {
     use ast::BinOp;
@@ -34,7 +34,7 @@ pub fn get_binary_operator_token(
     }
 }
 
-pub fn get_unary_operator_token(
+fn get_unary_operator_token(
     operator: &ast::UnOp,
 ) -> Result<&tokenizer::TokenReference, ConvertError> {
     use ast::UnOp;
@@ -47,7 +47,7 @@ pub fn get_unary_operator_token(
     }
 }
 
-pub fn get_compound_operator_token(
+fn get_compound_operator_token(
     operator: &ast::types::CompoundOp,
 ) -> Result<&tokenizer::TokenReference, ConvertError> {
     use ast::types::CompoundOp;
@@ -488,8 +488,11 @@ impl Parser {
     }
 
     fn convert_token(&self, token: &tokenizer::TokenReference) -> Token {
-        let mut new_token =
-            Token::new(token.start_position().bytes(), token.end_position().bytes());
+        let mut new_token = Token::new_with_line(
+            token.start_position().bytes(),
+            token.end_position().bytes(),
+            token.start_position().line(),
+        );
 
         for trivia_token in token.leading_trivia() {
             new_token.push_leading_trivia(self.convert_trivia(trivia_token));
@@ -517,7 +520,11 @@ impl Parser {
             TokenKind::Whitespace => TriviaKind::Whitespace,
             _ => todo!("unexpected token kind"),
         }
-        .at(token.start_position().bytes(), token.end_position().bytes())
+        .at(
+            token.start_position().bytes(),
+            token.end_position().bytes(),
+            token.start_position().line(),
+        )
     }
 
     fn convert_token_to_identifier(&self, token: &tokenizer::TokenReference) -> Identifier {
@@ -1503,11 +1510,15 @@ mod test {
 
         fn create_true(start: usize, whitespace_length: usize) -> Expression {
             let end = start + 4;
-            let token = Token::new(start, end);
+            let token = Token::new_with_line(start, end, 1);
             Expression::True(Some(if whitespace_length == 0 {
                 token
             } else {
-                token.with_trailing_trivia(TriviaKind::Whitespace.at(end, end + whitespace_length))
+                token.with_trailing_trivia(TriviaKind::Whitespace.at(
+                    end,
+                    end + whitespace_length,
+                    1,
+                ))
             }))
         }
 
@@ -1516,13 +1527,24 @@ mod test {
             start: usize,
             whitespace_length: usize,
         ) -> Identifier {
+            create_identifier_at_line(identifier, start, whitespace_length, 1)
+        }
+
+        fn create_identifier_at_line(
+            identifier: &str,
+            start: usize,
+            whitespace_length: usize,
+            line: usize,
+        ) -> Identifier {
             let end = start + identifier.len();
             Identifier::new(identifier).with_token({
-                let token = Token::new(start, end);
+                let token = Token::new_with_line(start, end, line);
                 if whitespace_length != 0 {
-                    token.with_trailing_trivia(
-                        TriviaKind::Whitespace.at(end, end + whitespace_length),
-                    )
+                    token.with_trailing_trivia(TriviaKind::Whitespace.at(
+                        end,
+                        end + whitespace_length,
+                        line,
+                    ))
                 } else {
                     token
                 }
@@ -1530,7 +1552,15 @@ mod test {
         }
 
         fn spaced_token(start: usize, end: usize) -> Token {
-            Token::new(start, end).with_trailing_trivia(TriviaKind::Whitespace.at(end, end + 1))
+            spaced_token_at_line(start, end, 1)
+        }
+
+        fn spaced_token_at_line(start: usize, end: usize, line: usize) -> Token {
+            Token::new_with_line(start, end, line).with_trailing_trivia(TriviaKind::Whitespace.at(
+                end,
+                end + 1,
+                line,
+            ))
         }
 
         fn default_block() -> Block {
@@ -1540,12 +1570,16 @@ mod test {
             })
         }
 
+        fn token_at_first_line(start: usize, end: usize) -> Token {
+            Token::new_with_line(start, end, 1)
+        }
+
         test_parse_last_statement_with_tokens!(
             return_with_comment("return -- comment") => ReturnStatement::default()
                 .with_tokens(ReturnTokens {
-                    r#return: Token::new(0, 6)
-                        .with_trailing_trivia(TriviaKind::Whitespace.at(6, 7))
-                        .with_trailing_trivia(TriviaKind::Comment.at(7, 17)),
+                    r#return: token_at_first_line(0, 6)
+                        .with_trailing_trivia(TriviaKind::Whitespace.at(6, 7, 1))
+                        .with_trailing_trivia(TriviaKind::Comment.at(7, 17, 1)),
                     commas: Vec::new(),
                 }),
             return_true("return true") => ReturnStatement::one(create_true(7, 0))
@@ -1554,72 +1588,72 @@ mod test {
                     commas: Vec::new(),
                 }),
             return_false("return false") => ReturnStatement::one(
-                Expression::False(Some(Token::new(7, 12)))
+                Expression::False(Some(token_at_first_line(7, 12)))
             ).with_tokens(ReturnTokens {
                 r#return: spaced_token(0, 6),
                 commas: Vec::new(),
             }),
             return_nil("return nil") => ReturnStatement::one(
-                Expression::Nil(Some(Token::new(7, 10)))
+                Expression::Nil(Some(token_at_first_line(7, 10)))
             ).with_tokens(ReturnTokens {
                 r#return: spaced_token(0, 6),
                 commas: Vec::new(),
             }),
             return_variable_arguments("return ...") => ReturnStatement::one(
-                Expression::VariableArguments(Some(Token::new(7, 10)))
+                Expression::VariableArguments(Some(token_at_first_line(7, 10)))
             ).with_tokens(ReturnTokens {
                 r#return: spaced_token(0, 6),
                 commas: Vec::new(),
             }),
             return_empty_single_quote_string("return ''") => ReturnStatement::one(
-                StringExpression::empty().with_token(Token::new(7, 9))
+                StringExpression::empty().with_token(token_at_first_line(7, 9))
             ).with_tokens(ReturnTokens {
                 r#return: spaced_token(0, 6),
                 commas: Vec::new(),
             }),
             return_empty_double_quote_string("return \"\"") => ReturnStatement::one(
-                StringExpression::empty().with_token(Token::new(7, 9))
+                StringExpression::empty().with_token(token_at_first_line(7, 9))
             ).with_tokens(ReturnTokens {
                 r#return: spaced_token(0, 6),
                 commas: Vec::new(),
             }),
             return_double_quote_string("return \"abc\"") => ReturnStatement::one(
-                StringExpression::from_value("abc").with_token(Token::new(7, 12))
+                StringExpression::from_value("abc").with_token(token_at_first_line(7, 12))
             ).with_tokens(ReturnTokens {
                 r#return: spaced_token(0, 6),
                 commas: Vec::new(),
             }),
             return_integer_number("return 123") => ReturnStatement::one(
-                DecimalNumber::new(123.0).with_token(Token::new(7, 10))
+                DecimalNumber::new(123.0).with_token(token_at_first_line(7, 10))
             ).with_tokens(ReturnTokens {
                 r#return: spaced_token(0, 6),
                 commas: Vec::new(),
             }),
             return_float("return 12.34 -- value") => ReturnStatement::one(
                 DecimalNumber::new(12.34).with_token(
-                    spaced_token(7, 12).with_trailing_trivia(TriviaKind::Comment.at(13, 21))
+                    spaced_token(7, 12).with_trailing_trivia(TriviaKind::Comment.at(13, 21, 1))
                 )
             ).with_tokens(ReturnTokens {
                 r#return: spaced_token(0, 6),
                 commas: Vec::new(),
             }),
             return_binary_number("return 0b1010") => ReturnStatement::one(
-                BinaryNumber::new(0b1010, false).with_token(Token::new(7, 13))
+                BinaryNumber::new(0b1010, false).with_token(token_at_first_line(7, 13))
             ).with_tokens(ReturnTokens {
                 r#return: spaced_token(0, 6),
                 commas: Vec::new(),
             }),
             return_hexadecimal_number("return 0x12EF") => ReturnStatement::one(
-                HexNumber::new(0x12EF, false).with_token(Token::new(7, 13))
+                HexNumber::new(0x12EF, false).with_token(token_at_first_line(7, 13))
             ).with_tokens(ReturnTokens {
                 r#return: spaced_token(0, 6),
                 commas: Vec::new(),
             }),
             return_empty_table("return {--[[ inside ]]}") => ReturnStatement::one(
                 TableExpression::default().with_tokens(TableTokens {
-                    opening_brace: Token::new(7, 8)
-                        .with_trailing_trivia(TriviaKind::Comment.at(8, 22)),
-                    closing_brace: Token::new(22, 23),
+                    opening_brace: token_at_first_line(7, 8)
+                        .with_trailing_trivia(TriviaKind::Comment.at(8, 22, 1)),
+                    closing_brace: token_at_first_line(22, 23),
                     separators: Vec::new(),
                 })
             ).with_tokens(ReturnTokens {
@@ -1643,8 +1677,8 @@ mod test {
                     .append_array_value(create_true(8, 0))
                     .append_array_value(create_true(14, 0))
                     .with_tokens(TableTokens {
-                        opening_brace: Token::new(7, 8),
-                        closing_brace: Token::new(18, 19),
+                        opening_brace: token_at_first_line(7, 8),
+                        closing_brace: token_at_first_line(18, 19),
                         separators: vec![spaced_token(12, 13)],
                     })
             ).with_tokens(ReturnTokens {
@@ -1661,7 +1695,7 @@ mod test {
                     )
                     .with_tokens(TableTokens {
                         opening_brace: spaced_token(7, 8),
-                        closing_brace: Token::new(23, 24),
+                        closing_brace: token_at_first_line(23, 24),
                         separators: vec![spaced_token(21, 22)],
                     })
             ).with_tokens(ReturnTokens {
@@ -1675,14 +1709,14 @@ mod test {
                             create_identifier("var", 10, 0),
                             create_true(17, 1),
                         ).with_tokens(TableIndexEntryTokens {
-                            opening_bracket: Token::new(9, 10),
+                            opening_bracket: token_at_first_line(9, 10),
                             closing_bracket: spaced_token(13, 14),
                             equal: spaced_token(15, 16),
                         })
                     )
                     .with_tokens(TableTokens {
                         opening_brace: spaced_token(7, 8),
-                        closing_brace: Token::new(22, 23),
+                        closing_brace: token_at_first_line(22, 23),
                         separators: Vec::new(),
                     })
             ).with_tokens(ReturnTokens {
@@ -1693,7 +1727,7 @@ mod test {
                 FieldExpression::new(
                     Prefix::from_name(create_identifier("math", 7, 0)),
                     create_identifier("huge", 12, 0)
-                ).with_token(Token::new(11, 12))
+                ).with_token(token_at_first_line(11, 12))
             ).with_tokens(ReturnTokens {
                 r#return: spaced_token(0, 6),
                 commas: Vec::new(),
@@ -1703,9 +1737,9 @@ mod test {
                     FieldExpression::new(
                         Prefix::from_name(create_identifier("table", 7, 0)),
                         create_identifier("ok", 13, 1)
-                    ).with_token(Token::new(12, 13)),
+                    ).with_token(token_at_first_line(12, 13)),
                     create_identifier("result", 17, 0)
-                ).with_token(Token::new(16, 17))
+                ).with_token(token_at_first_line(16, 17))
             ).with_tokens(ReturnTokens {
                 r#return: spaced_token(0, 6),
                 commas: Vec::new(),
@@ -1751,7 +1785,7 @@ mod test {
                         .with_tokens(
                             ParentheseTokens {
                                 left_parenthese: spaced_token(7, 8),
-                                right_parenthese: Token::new(14, 15),
+                                right_parenthese: token_at_first_line(14, 15),
                             }
                         )
                 )
@@ -1762,13 +1796,13 @@ mod test {
             return_empty_function("return function  ( --[[params]]) end") => ReturnStatement::one(
                 FunctionExpression::from_block(default_block())
                     .with_tokens(FunctionExpressionTokens {
-                        function: Token::new(7, 15)
-                            .with_trailing_trivia(TriviaKind::Whitespace.at(15, 17)),
-                        opening_parenthese: Token::new(17, 18)
-                            .with_trailing_trivia(TriviaKind::Whitespace.at(18, 19))
-                            .with_trailing_trivia(TriviaKind::Comment.at(19, 31)),
+                        function: token_at_first_line(7, 15)
+                            .with_trailing_trivia(TriviaKind::Whitespace.at(15, 17, 1)),
+                        opening_parenthese: token_at_first_line(17, 18)
+                            .with_trailing_trivia(TriviaKind::Whitespace.at(18, 19, 1))
+                            .with_trailing_trivia(TriviaKind::Comment.at(19, 31, 1)),
                         closing_parenthese: spaced_token(31, 32),
-                        end: Token::new(33, 36),
+                        end: token_at_first_line(33, 36),
                         parameter_commas: Vec::new(),
                         variable_arguments: None,
                     }),
@@ -1780,10 +1814,10 @@ mod test {
                 FunctionExpression::from_block(default_block()).with_parameter(
                     create_identifier("a", 16, 1)
                 ).with_tokens(FunctionExpressionTokens {
-                    function: Token::new(7, 15),
-                    opening_parenthese: Token::new(15, 16),
-                    closing_parenthese: Token::new(18, 19),
-                    end: Token::new(19, 22),
+                    function: token_at_first_line(7, 15),
+                    opening_parenthese: token_at_first_line(15, 16),
+                    closing_parenthese: token_at_first_line(18, 19),
+                    end: token_at_first_line(19, 22),
                     parameter_commas: Vec::new(),
                     variable_arguments: None,
                 }),
@@ -1793,17 +1827,17 @@ mod test {
             }),
             return_empty_function_with_two_params("return function(a, b--[[foo]]) end") => ReturnStatement::one(
                 FunctionExpression::from_block(default_block())
-                    .with_parameter(Identifier::new("a").with_token(Token::new(16, 17)))
+                    .with_parameter(Identifier::new("a").with_token(token_at_first_line(16, 17)))
                     .with_parameter(
                         Identifier::new("b").with_token(
-                            Token::new(19, 20).with_trailing_trivia(TriviaKind::Comment.at(20, 29))
+                            token_at_first_line(19, 20).with_trailing_trivia(TriviaKind::Comment.at(20, 29, 1))
                         )
                     )
                     .with_tokens(FunctionExpressionTokens {
-                        function: Token::new(7, 15),
-                        opening_parenthese: Token::new(15, 16),
+                        function: token_at_first_line(7, 15),
+                        opening_parenthese: token_at_first_line(15, 16),
                         closing_parenthese: spaced_token(29, 30),
-                        end: Token::new(31, 34),
+                        end: token_at_first_line(31, 34),
                         parameter_commas: vec![spaced_token(17, 18)],
                         variable_arguments: None,
                     }),
@@ -1815,10 +1849,10 @@ mod test {
                 FunctionExpression::from_block(default_block())
                     .variadic()
                     .with_tokens(FunctionExpressionTokens {
-                        function: Token::new(7, 15),
-                        opening_parenthese: Token::new(15, 16),
+                        function: token_at_first_line(7, 15),
+                        opening_parenthese: token_at_first_line(15, 16),
                         closing_parenthese: spaced_token(20, 21),
-                        end: Token::new(22, 25),
+                        end: token_at_first_line(22, 25),
                         parameter_commas: Vec::new(),
                         variable_arguments: Some(spaced_token(16, 19)),
                     }),
@@ -1829,29 +1863,29 @@ mod test {
             return_two_values("return true ,  true--end") => ReturnStatement::default()
                 .with_expression(create_true(7, 1))
                 .with_expression(Expression::True(Some(
-                    Token::new(15, 19).with_trailing_trivia(TriviaKind::Comment.at(19, 24))
+                    token_at_first_line(15, 19).with_trailing_trivia(TriviaKind::Comment.at(19, 24, 1))
                 )))
                 .with_tokens(ReturnTokens {
                     r#return: spaced_token(0, 6),
                     commas: vec![
-                        Token::new(12, 13).with_trailing_trivia(TriviaKind::Whitespace.at(13, 15))
+                        token_at_first_line(12, 13).with_trailing_trivia(TriviaKind::Whitespace.at(13, 15, 1))
                     ],
                 }),
             return_variable("return var") => ReturnStatement::default()
                 .with_expression(
-                    Identifier::new("var").with_token(Token::new(7, 10))
+                    Identifier::new("var").with_token(token_at_first_line(7, 10))
                 )
                 .with_tokens(ReturnTokens {
                     r#return: spaced_token(0, 6),
                     commas: Vec::new(),
                 }),
-            break_statement("break") => LastStatement::Break(Some(Token::new(0, 5))),
+            break_statement("break") => LastStatement::Break(Some(token_at_first_line(0, 5))),
             break_statement_with_comment("break-- bye") => LastStatement::Break(Some(
-                Token::new(0, 5).with_trailing_trivia(TriviaKind::Comment.at(5, 11))
+                token_at_first_line(0, 5).with_trailing_trivia(TriviaKind::Comment.at(5, 11, 1))
             )),
-            continue_statement("continue") => LastStatement::Continue(Some(Token::new(0, 8))),
+            continue_statement("continue") => LastStatement::Continue(Some(token_at_first_line(0, 8))),
             continue_statement_with_comment("continue-- bye") => LastStatement::Continue(Some(
-                Token::new(0, 8).with_trailing_trivia(TriviaKind::Comment.at(8, 14))
+                token_at_first_line(0, 8).with_trailing_trivia(TriviaKind::Comment.at(8, 14, 1))
             )),
         );
 
@@ -1862,47 +1896,47 @@ mod test {
             ).with_tokens(LocalFunctionTokens {
                 local: spaced_token(0, 5),
                 function: spaced_token(6, 14),
-                opening_parenthese: Token::new(20, 21),
-                closing_parenthese: Token::new(21, 22),
-                end: Token::new(22, 25),
+                opening_parenthese: token_at_first_line(20, 21),
+                closing_parenthese: token_at_first_line(21, 22),
+                end: token_at_first_line(22, 25),
                 parameter_commas: Vec::new(),
                 variable_arguments: None,
             }),
             empty_local_function_variadic("local function name(...)end") => LocalFunctionStatement::from_name(
-                Identifier::new("name").with_token(Token::new(15, 19)),
+                Identifier::new("name").with_token(token_at_first_line(15, 19)),
                 default_block(),
             )
             .variadic()
             .with_tokens(LocalFunctionTokens {
                 local: spaced_token(0, 5),
                 function: spaced_token(6, 14),
-                opening_parenthese: Token::new(19, 20),
-                closing_parenthese: Token::new(23, 24),
-                end: Token::new(24, 27),
+                opening_parenthese: token_at_first_line(19, 20),
+                closing_parenthese: token_at_first_line(23, 24),
+                end: token_at_first_line(24, 27),
                 parameter_commas: Vec::new(),
-                variable_arguments: Some(Token::new(20, 23)),
+                variable_arguments: Some(token_at_first_line(20, 23)),
             }),
             empty_local_function_variadic_with_one_parameter("local function name(a,b) end")
                 => LocalFunctionStatement::from_name(
-                    Identifier::new("name").with_token(Token::new(15, 19)),
+                    Identifier::new("name").with_token(token_at_first_line(15, 19)),
                     default_block(),
                 )
-                .with_parameter(Identifier::new("a").with_token(Token::new(20, 21)))
-                .with_parameter(Identifier::new("b").with_token(Token::new(22, 23)))
+                .with_parameter(Identifier::new("a").with_token(token_at_first_line(20, 21)))
+                .with_parameter(Identifier::new("b").with_token(token_at_first_line(22, 23)))
                 .with_tokens(LocalFunctionTokens {
                     local: spaced_token(0, 5),
                     function: spaced_token(6, 14),
-                    opening_parenthese: Token::new(19, 20),
+                    opening_parenthese: token_at_first_line(19, 20),
                     closing_parenthese: spaced_token(23, 24),
-                    end: Token::new(25, 28),
-                    parameter_commas: vec![Token::new(21, 22)],
+                    end: token_at_first_line(25, 28),
+                    parameter_commas: vec![token_at_first_line(21, 22)],
                     variable_arguments: None,
                 }),
             call_function("call()") => FunctionCall::from_name(
                 create_identifier("call", 0, 0)
             ).with_arguments(TupleArguments::default().with_tokens(TupleArgumentsTokens {
-                opening_parenthese: Token::new(4, 5),
-                closing_parenthese: Token::new(5, 6),
+                opening_parenthese: token_at_first_line(4, 5),
+                closing_parenthese: token_at_first_line(5, 6),
                 commas: Vec::new(),
             })).with_tokens(FunctionCallTokens {
                 colon: None,
@@ -1911,10 +1945,10 @@ mod test {
                 FieldExpression::new(
                     create_identifier("foo", 0, 0),
                     create_identifier("bar", 4, 0)
-                ).with_token(Token::new(3, 4))
+                ).with_token(token_at_first_line(3, 4))
             ).with_arguments(TupleArguments::default().with_tokens(TupleArgumentsTokens {
-                opening_parenthese: Token::new(7, 8),
-                closing_parenthese: Token::new(8, 9),
+                opening_parenthese: token_at_first_line(7, 8),
+                closing_parenthese: token_at_first_line(8, 9),
                 commas: Vec::new(),
             })).with_tokens(FunctionCallTokens {
                 colon: None,
@@ -1922,8 +1956,8 @@ mod test {
             call_method("foo: bar()") => FunctionCall::from_name(create_identifier("foo", 0, 0))
                 .with_method(create_identifier("bar", 5, 0))
                 .with_arguments(TupleArguments::default().with_tokens(TupleArgumentsTokens {
-                    opening_parenthese: Token::new(8, 9),
-                    closing_parenthese: Token::new(9, 10),
+                    opening_parenthese: token_at_first_line(8, 9),
+                    closing_parenthese: token_at_first_line(9, 10),
                     commas: Vec::new(),
                 }))
                 .with_tokens(FunctionCallTokens {
@@ -1938,12 +1972,12 @@ mod test {
                     .with_argument(create_true(9, 1))
                     .with_tokens(TupleArgumentsTokens {
                         opening_parenthese: spaced_token(7, 8),
-                        closing_parenthese: Token::new(14, 15),
+                        closing_parenthese: token_at_first_line(14, 15),
                         commas: Vec::new(),
                     })
                 )
             .with_tokens(FunctionCallTokens {
-                colon: Some(Token::new(3, 4)),
+                colon: Some(token_at_first_line(3, 4)),
             }),
             call_function_with_one_argument("call ( true ) ") =>  FunctionCall::from_name(
                 create_identifier("call", 0, 1)
@@ -1968,8 +2002,8 @@ mod test {
                     .with_argument(create_true(5, 0))
                     .with_argument(create_true(11, 0))
                     .with_tokens(TupleArgumentsTokens {
-                        opening_parenthese: Token::new(4, 5),
-                        closing_parenthese: Token::new(15, 16),
+                        opening_parenthese: token_at_first_line(4, 5),
+                        closing_parenthese: token_at_first_line(15, 16),
                         commas: vec![spaced_token(9, 10)],
                     })
                 )
@@ -1982,8 +2016,8 @@ mod test {
                         TupleArguments::default()
                             .with_argument(create_true(5, 0))
                             .with_tokens(TupleArgumentsTokens {
-                                opening_parenthese: Token::new(4, 5),
-                                closing_parenthese: Token::new(9, 10),
+                                opening_parenthese: token_at_first_line(4, 5),
+                                closing_parenthese: token_at_first_line(9, 10),
                                 commas: Vec::new(),
                             })
                         )
@@ -1993,7 +2027,7 @@ mod test {
             )
             .with_arguments(TupleArguments::default().with_tokens(TupleArgumentsTokens {
                 opening_parenthese: spaced_token(10, 11),
-                closing_parenthese: Token::new(12, 13),
+                closing_parenthese: token_at_first_line(12, 13),
                 commas: Vec::new(),
             }))
             .with_tokens(FunctionCallTokens {
@@ -2003,7 +2037,7 @@ mod test {
                 create_identifier("call", 0, 0)
             ).with_arguments(TableExpression::default().with_tokens(TableTokens {
                 opening_brace: spaced_token(4, 5),
-                closing_brace: Token::new(6, 7),
+                closing_brace: token_at_first_line(6, 7),
                 separators: Vec::new(),
             })).with_tokens(FunctionCallTokens {
                 colon: None,
@@ -2011,37 +2045,37 @@ mod test {
             call_with_empty_string_argument("call ''") => FunctionCall::from_name(
                 create_identifier("call", 0, 1)
             ).with_arguments(
-                StringExpression::empty().with_token(Token::new(5, 7))
+                StringExpression::empty().with_token(token_at_first_line(5, 7))
             ).with_tokens(FunctionCallTokens {
                 colon: None,
             }),
             empty_do("do end") => DoStatement::new(default_block())
                 .with_tokens(DoTokens {
                     r#do: spaced_token(0, 2),
-                    end: Token::new(3, 6),
+                    end: token_at_first_line(3, 6),
                 }),
             empty_do_with_long_comment("do --[[ hello ]] end") => DoStatement::new(default_block())
                 .with_tokens(DoTokens {
-                    r#do: Token::new(0, 2)
-                        .with_trailing_trivia(TriviaKind::Whitespace.at(2, 3))
-                        .with_trailing_trivia(TriviaKind::Comment.at(3, 16))
-                        .with_trailing_trivia(TriviaKind::Whitespace.at(16, 17)),
-                    end: Token::new(17, 20),
+                    r#do: token_at_first_line(0, 2)
+                        .with_trailing_trivia(TriviaKind::Whitespace.at(2, 3, 1))
+                        .with_trailing_trivia(TriviaKind::Comment.at(3, 16, 1))
+                        .with_trailing_trivia(TriviaKind::Whitespace.at(16, 17, 1)),
+                    end: token_at_first_line(17, 20),
                 }),
             assign_variable("var = true") => AssignStatement::from_variable(
                 create_identifier("var", 0, 1),
-                Expression::True(Some(Token::new(6, 10))),
+                Expression::True(Some(token_at_first_line(6, 10))),
             ).with_tokens(AssignTokens {
                 equal: spaced_token(4, 5),
                 variable_commas: Vec::new(),
                 value_commas: Vec::new(),
             }),
             assign_two_variables_with_two_values("var, var2 = true, true") => AssignStatement::from_variable(
-                Identifier::new("var").with_token(Token::new(0, 3)),
+                Identifier::new("var").with_token(token_at_first_line(0, 3)),
                 create_true(12, 0),
             ).append_assignment(
                 create_identifier("var2", 5, 1),
-                Expression::True(Some(Token::new(18, 22))),
+                Expression::True(Some(token_at_first_line(18, 22))),
             ).with_tokens(AssignTokens {
                 equal: spaced_token(10, 11),
                 variable_commas: vec![spaced_token(3, 4)],
@@ -2050,27 +2084,27 @@ mod test {
             empty_function_statement("function name() end")
                 => FunctionStatement::new(
                     FunctionName::from_name(
-                        Identifier::new("name").with_token(Token::new(9, 13))
+                        Identifier::new("name").with_token(token_at_first_line(9, 13))
                     ).with_tokens(FunctionNameTokens { periods: Vec::new(), colon: None }),
                     default_block(),
                     Vec::new(),
                     false,
                 ).with_tokens(FunctionStatementTokens {
                     function: spaced_token(0, 8),
-                    opening_parenthese: Token::new(13, 14),
+                    opening_parenthese: token_at_first_line(13, 14),
                     closing_parenthese: spaced_token(14, 15),
-                    end: Token::new(16, 19),
+                    end: token_at_first_line(16, 19),
                     parameter_commas: Vec::new(),
                     variable_arguments: None
                 }),
             empty_function_statement_with_field("function name.field ()end")
                 => FunctionStatement::new(
                     FunctionName::from_name(
-                        Identifier::new("name").with_token(Token::new(9, 13))
+                        Identifier::new("name").with_token(token_at_first_line(9, 13))
                     ).with_field(
                         Identifier::new("field").with_token(spaced_token(14, 19))
                     ).with_tokens(FunctionNameTokens {
-                        periods: vec![Token::new(13, 14)],
+                        periods: vec![token_at_first_line(13, 14)],
                         colon: None,
                     }),
                     default_block(),
@@ -2078,69 +2112,69 @@ mod test {
                     false,
                 ).with_tokens(FunctionStatementTokens {
                     function: spaced_token(0, 8),
-                    opening_parenthese: Token::new(20, 21),
-                    closing_parenthese: Token::new(21, 22),
-                    end: Token::new(22, 25),
+                    opening_parenthese: token_at_first_line(20, 21),
+                    closing_parenthese: token_at_first_line(21, 22),
+                    end: token_at_first_line(22, 25),
                     parameter_commas: Vec::new(),
                     variable_arguments: None
                 }),
             empty_function_statement_with_method("function name:method ()end")
                 => FunctionStatement::new(
                     FunctionName::from_name(
-                        Identifier::new("name").with_token(Token::new(9, 13))
+                        Identifier::new("name").with_token(token_at_first_line(9, 13))
                     )
                     .with_method(create_identifier("method", 14, 1))
                     .with_tokens(FunctionNameTokens {
                         periods: Vec::new(),
-                        colon: Some(Token::new(13, 14)),
+                        colon: Some(token_at_first_line(13, 14)),
                     }),
                     default_block(),
                     Vec::new(),
                     false,
                 ).with_tokens(FunctionStatementTokens {
                     function: spaced_token(0, 8),
-                    opening_parenthese: Token::new(21, 22),
-                    closing_parenthese: Token::new(22, 23),
-                    end: Token::new(23, 26),
+                    opening_parenthese: token_at_first_line(21, 22),
+                    closing_parenthese: token_at_first_line(22, 23),
+                    end: token_at_first_line(23, 26),
                     parameter_commas: Vec::new(),
                     variable_arguments: None
                 }),
             empty_function_statement_variadic("function name(...) end")
                 => FunctionStatement::new(
                     FunctionName::from_name(
-                        Identifier::new("name").with_token(Token::new(9, 13))
+                        Identifier::new("name").with_token(token_at_first_line(9, 13))
                     ).with_tokens(FunctionNameTokens { periods: Vec::new(), colon: None }),
                     default_block(),
                     Vec::new(),
                     true,
                 ).with_tokens(FunctionStatementTokens {
                     function: spaced_token(0, 8),
-                    opening_parenthese: Token::new(13, 14),
-                    closing_parenthese: Token::new(17, 18)
-                        .with_trailing_trivia(TriviaKind::Whitespace.at(18, 19)),
-                    end: Token::new(19, 22),
+                    opening_parenthese: token_at_first_line(13, 14),
+                    closing_parenthese: token_at_first_line(17, 18)
+                        .with_trailing_trivia(TriviaKind::Whitespace.at(18, 19, 1)),
+                    end: token_at_first_line(19, 22),
                     parameter_commas: Vec::new(),
-                    variable_arguments: Some(Token::new(14, 17))
+                    variable_arguments: Some(token_at_first_line(14, 17))
                 }),
             empty_function_statement_variadic_with_one_parameter("function name(a,...)end")
                 => FunctionStatement::new(
                     FunctionName::from_name(
-                        Identifier::new("name").with_token(Token::new(9, 13))
+                        Identifier::new("name").with_token(token_at_first_line(9, 13))
                     ).with_tokens(FunctionNameTokens { periods: Vec::new(), colon: None }),
                     default_block(),
                     vec![
-                        Identifier::new("a").with_token(Token::new(14, 15))
+                        Identifier::new("a").with_token(token_at_first_line(14, 15))
                     ],
                     true,
                 ).with_tokens(FunctionStatementTokens {
                     function: spaced_token(0, 8),
-                    opening_parenthese: Token::new(13, 14),
-                    closing_parenthese: Token::new(19, 20),
-                    end: Token::new(20, 23),
+                    opening_parenthese: token_at_first_line(13, 14),
+                    closing_parenthese: token_at_first_line(19, 20),
+                    end: token_at_first_line(20, 23),
                     parameter_commas: vec![
-                        Token::new(15, 16),
+                        token_at_first_line(15, 16),
                     ],
-                    variable_arguments: Some(Token::new(16, 19))
+                    variable_arguments: Some(token_at_first_line(16, 19))
                 }),
             empty_generic_for("for key in foo do end") => GenericForStatement::new(
                 vec![
@@ -2154,13 +2188,13 @@ mod test {
                 r#for: spaced_token(0, 3),
                 r#in: spaced_token(8, 10),
                 r#do: spaced_token(15, 17),
-                end: Token::new(18, 21),
+                end: token_at_first_line(18, 21),
                 identifier_commas: Vec::new(),
                 value_commas: Vec::new(),
             }),
             empty_generic_for_multiple_variables("for key, value in foo do end") => GenericForStatement::new(
                 vec![
-                    Identifier::new("key").with_token(Token::new(4, 7)),
+                    Identifier::new("key").with_token(token_at_first_line(4, 7)),
                     create_identifier("value", 9, 1),
                 ],
                 vec![
@@ -2171,7 +2205,7 @@ mod test {
                 r#for: spaced_token(0, 3),
                 r#in: spaced_token(15, 17),
                 r#do: spaced_token(22, 24),
-                end: Token::new(25, 28),
+                end: token_at_first_line(25, 28),
                 identifier_commas: vec![spaced_token(7, 8)],
                 value_commas: Vec::new(),
             }),
@@ -2186,19 +2220,19 @@ mod test {
                 r#for: spaced_token(0, 3),
                 r#in: spaced_token(8, 10),
                 r#do: spaced_token(20, 22),
-                end: Token::new(23, 26),
+                end: token_at_first_line(23, 26),
                 identifier_commas: Vec::new(),
                 value_commas: vec![
-                    Token::new(16, 17).with_trailing_trivia(TriviaKind::Whitespace.at(17, 18)),
+                    token_at_first_line(16, 17).with_trailing_trivia(TriviaKind::Whitespace.at(17, 18, 1)),
                 ],
             }),
             empty_if_statement("if true then end") => IfStatement::create(
                 create_true(3, 1),
                 default_block()
             ).with_tokens(IfStatementTokens {
-                r#if: Token::new(0, 2).with_trailing_trivia(TriviaKind::Whitespace.at(2, 3)),
-                then: Token::new(8, 12).with_trailing_trivia(TriviaKind::Whitespace.at(12, 13)),
-                end: Token::new(13, 16),
+                r#if: token_at_first_line(0, 2).with_trailing_trivia(TriviaKind::Whitespace.at(2, 3, 1)),
+                then: token_at_first_line(8, 12).with_trailing_trivia(TriviaKind::Whitespace.at(12, 13, 1)),
+                end: token_at_first_line(13, 16),
                 r#else: None,
             }),
             empty_if_statement_with_empty_else("if true then else end") => IfStatement::create(
@@ -2209,7 +2243,7 @@ mod test {
             .with_tokens(IfStatementTokens {
                 r#if: spaced_token(0, 2),
                 then: spaced_token(8, 12),
-                end: Token::new(18, 21),
+                end: token_at_first_line(18, 21),
                 r#else: Some(spaced_token(13, 17)),
             }),
             empty_if_statement_with_empty_elseif("if true then elseif true then end")
@@ -2224,7 +2258,7 @@ mod test {
                 .with_tokens(IfStatementTokens {
                     r#if: spaced_token(0, 2),
                     then: spaced_token(8, 12),
-                    end: Token::new(30, 33),
+                    end: token_at_first_line(30, 33),
                     r#else: None,
                 }),
             local_assignment_with_no_values("local var ") => LocalAssignStatement::from_variable(
@@ -2269,8 +2303,8 @@ mod test {
                 r#for: spaced_token(0, 3),
                 equal: spaced_token(6, 7),
                 r#do: spaced_token(20, 22),
-                end: Token::new(23, 26),
-                end_comma: Token::new(13, 14),
+                end: token_at_first_line(23, 26),
+                end_comma: token_at_first_line(13, 14),
                 step_comma: None,
             }),
             empty_numeric_for_with_step("for i = start , bound , step do end")
@@ -2284,7 +2318,7 @@ mod test {
                     r#for: spaced_token(0, 3),
                     equal: spaced_token(6, 7),
                     r#do: spaced_token(29, 31),
-                    end: Token::new(32, 35),
+                    end: token_at_first_line(32, 35),
                     end_comma: spaced_token(14, 15),
                     step_comma: Some(spaced_token(22, 23)),
                 }),
@@ -2299,11 +2333,11 @@ mod test {
                 default_block(),
                 create_true(6, 1),
             ).with_tokens(WhileTokens {
-                r#while: Token::new(0, 5)
-                    .with_trailing_trivia(TriviaKind::Whitespace.at(5, 6)),
-                r#do: Token::new(11, 13)
-                    .with_trailing_trivia(TriviaKind::Whitespace.at(13, 14)),
-                end: Token::new(14, 17),
+                r#while: token_at_first_line(0, 5)
+                    .with_trailing_trivia(TriviaKind::Whitespace.at(5, 6, 1)),
+                r#do: token_at_first_line(11, 13)
+                    .with_trailing_trivia(TriviaKind::Whitespace.at(13, 14, 1)),
+                end: token_at_first_line(14, 17),
             }),
             compound_increment("var += amount") => CompoundAssignStatement::new(
                 CompoundOperator::Plus,
@@ -2316,25 +2350,25 @@ mod test {
             return_nothing_with_semicolon("return;") => Block::from(
                 ReturnStatement::default()
                     .with_tokens(ReturnTokens {
-                        r#return: Token::new(0, 6),
+                        r#return: token_at_first_line(0, 6),
                         commas: Vec::new(),
                     }),
             ).with_tokens(BlockTokens {
                 semicolons: vec![],
-                last_semicolon: Some(Token::new(6, 7)),
+                last_semicolon: Some(token_at_first_line(6, 7)),
             }),
             return_nothing_with_semicolon_and_comment("return; -- return nothing") => Block::from(
                 ReturnStatement::default()
                     .with_tokens(ReturnTokens {
-                        r#return: Token::new(0, 6),
+                        r#return: token_at_first_line(0, 6),
                         commas: Vec::new(),
                     }),
             ).with_tokens(BlockTokens {
                 semicolons: vec![],
                 last_semicolon: Some(
-                    Token::new(6, 7)
-                        .with_trailing_trivia(TriviaKind::Whitespace.at(7, 8))
-                        .with_trailing_trivia(TriviaKind::Comment.at(8, 25))
+                    token_at_first_line(6, 7)
+                        .with_trailing_trivia(TriviaKind::Whitespace.at(7, 8, 1))
+                        .with_trailing_trivia(TriviaKind::Comment.at(8, 25, 1))
                 ),
             }),
             two_local_declarations("local a;\nlocal b;\n") => Block::from(
@@ -2346,9 +2380,9 @@ mod test {
                         value_commas: Vec::new(),
                     })
             ).with_statement(
-                LocalAssignStatement::from_variable(create_identifier("b", 15, 0))
+                LocalAssignStatement::from_variable(create_identifier_at_line("b", 15, 0, 2))
                     .with_tokens(LocalAssignTokens {
-                        local: spaced_token(9, 14),
+                        local: spaced_token_at_line(9, 14, 2),
                         equal: None,
                         variable_commas: Vec::new(),
                         value_commas: Vec::new(),
@@ -2356,7 +2390,7 @@ mod test {
             ).with_tokens(BlockTokens {
                 semicolons: vec![
                     Some(spaced_token(7, 8)),
-                    Some(spaced_token(16, 17)),
+                    Some(spaced_token_at_line(16, 17, 2)),
                 ],
                 last_semicolon: None,
             }),

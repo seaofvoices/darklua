@@ -1,0 +1,8 @@
+---
+source: src/generator/token_based.rs
+expression: output
+
+---
+call(a--new comment
+,b--new comment
+)

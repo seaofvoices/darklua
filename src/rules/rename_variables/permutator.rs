@@ -37,13 +37,12 @@ impl<I: Iterator<Item = char> + Clone> Iterator for Permutator<I> {
             self.current_producers.pop();
 
             while let Some(previous_producer) = self.current_producers.last_mut() {
+                self.root.pop();
                 if let Some(next_root_char) = previous_producer.next() {
-                    self.root.pop();
                     self.root.push(next_root_char);
                     count_pop -= 1;
                     break;
                 } else {
-                    self.root.pop();
                     self.current_producers.pop();
                     count_pop += 1;
                 }

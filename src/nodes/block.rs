@@ -32,6 +32,11 @@ impl Block {
         self.tokens = Some(tokens.into());
     }
 
+    #[inline]
+    pub fn get_tokens(&self) -> Option<&BlockTokens> {
+        self.tokens.as_ref().map(|tokens| tokens.as_ref())
+    }
+
     pub fn with_statement<T: Into<Statement>>(mut self, statement: T) -> Self {
         self.statements.push(statement.into());
         self

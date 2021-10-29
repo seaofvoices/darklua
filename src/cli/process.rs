@@ -2,6 +2,7 @@ use crate::cli::error::CliError;
 use crate::cli::utils::{maybe_plural, write_file, Config, FileProcessing};
 use crate::cli::GlobalOptions;
 
+use darklua_core::generator::TokenBasedLuaGenerator;
 use darklua_core::{
     generator::{DenseLuaGenerator, LuaGenerator, ReadableLuaGenerator},
     nodes::Block,
@@ -18,10 +19,18 @@ use structopt::StructOpt;
 pub enum LuaFormat {
     Dense,
     Readable,
+    Token,
 }
 
 impl LuaFormat {
-    pub fn generate(&self, config: &Config, block: &Block) -> String {
+    pub fn build_parser(&self) -> Parser {
+        match self {
+            LuaFormat::Dense | LuaFormat::Readable => Parser::default(),
+            LuaFormat::Token => Parser::default().preserve_tokens(),
+        }
+    }
+
+    pub fn generate(&self, config: &Config, block: &Block, code: &str) -> String {
         match self {
             Self::Dense => {
                 let mut generator = DenseLuaGenerator::new(config.column_span);
@@ -30,6 +39,11 @@ impl LuaFormat {
             }
             Self::Readable => {
                 let mut generator = ReadableLuaGenerator::new(config.column_span);
+                generator.write_block(block);
+                generator.into_string()
+            }
+            Self::Token => {
+                let mut generator = TokenBasedLuaGenerator::new(code);
                 generator.write_block(block);
                 generator.into_string()
             }
@@ -44,8 +58,9 @@ impl FromStr for LuaFormat {
         match format {
             "dense" => Ok(Self::Dense),
             "readable" => Ok(Self::Readable),
+            "retain-lines" => Ok(Self::Token),
             _ => Err(format!(
-                "format '{}' does not exist! (possible options are: 'dense' or 'readable'",
+                "format '{}' does not exist! (possible options are: 'dense', 'readable' or 'retain-lines'",
                 format
             )),
         }
@@ -63,8 +78,8 @@ pub struct Options {
     /// Choose a specific configuration file.
     #[structopt(long, short)]
     pub config_path: Option<PathBuf>,
-    /// Choose how Lua code is formatted ('dense' or 'readable').
-    #[structopt(long, default_value = "dense")]
+    /// Choose how Lua code is formatted ('dense', 'readable' or 'retain-lines').
+    #[structopt(long, default_value = "retain-lines")]
     pub format: LuaFormat,
 }
 
@@ -85,7 +100,7 @@ fn process(
     let input = fs::read_to_string(source)
         .map_err(|io_error| CliError::InputFile(format!("{}", io_error)))?;
 
-    let parser = Parser::default();
+    let parser = options.format.build_parser();
 
     let mut block = parser
         .parse(&input)
@@ -102,7 +117,7 @@ fn process(
             })?;
     }
 
-    let lua_code = options.format.generate(&config, &block);
+    let lua_code = options.format.generate(&config, &block, &input);
 
     write_file(output, &lua_code)
         .map_err(|io_error| CliError::OutputFile(output.clone(), format!("{}", io_error)))?;

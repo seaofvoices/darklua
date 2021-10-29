@@ -42,11 +42,13 @@ pub struct RemoveEmptyDo {}
 
 impl FlawlessRule for RemoveEmptyDo {
     fn flawless_process(&self, block: &mut Block, _: &mut Context) {
-        while {
+        loop {
             let mut processor = EmptyDoFilter::default();
             DefaultVisitor::visit_block(block, &mut processor);
-            processor.has_mutated()
-        } {}
+            if !processor.has_mutated() {
+                break;
+            }
+        }
     }
 }
 

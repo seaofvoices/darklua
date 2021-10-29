@@ -1,6 +1,7 @@
 use darklua_core::rules::{RemoveUnusedIfBranch, Rule};
 
 test_rule!(
+    remove_unused_if_branch,
     RemoveUnusedIfBranch::default(),
     falsy_branch_is_removed("if false then end") => "",
     falsy_branch_with_empty_else_block_is_removed("if false then else end") => "",

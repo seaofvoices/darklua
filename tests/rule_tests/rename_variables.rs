@@ -1,6 +1,7 @@
 use darklua_core::rules::{RenameVariables, Rule};
 
 test_rule!(
+    rename_variables,
     RenameVariables::default(),
     local_assign("local foo") => "local a",
     local_assign_with_multiple_variable("local foo, bar") => "local a, b",

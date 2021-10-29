@@ -22,7 +22,7 @@ fn generated_name() -> String {
     match identifier.as_ref() {
         "and" | "break" | "do" | "else" | "elseif" | "end" | "false" | "for" | "function"
         | "if" | "in" | "local" | "nil" | "not" | "or" | "repeat" | "return" | "then" | "true"
-        | "until" | "while" => generated_name(),
+        | "goto" | "until" | "while" => generated_name(),
         _ => identifier,
     }
 }

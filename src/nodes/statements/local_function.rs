@@ -56,6 +56,11 @@ impl LocalFunctionStatement {
         self.tokens = Some(tokens.into());
     }
 
+    #[inline]
+    pub fn get_tokens(&self) -> Option<&LocalFunctionTokens> {
+        self.tokens.as_ref().map(|tokens| tokens.as_ref())
+    }
+
     pub fn with_parameter<S: Into<Identifier>>(mut self, parameter: S) -> Self {
         self.parameters.push(parameter.into());
         self
@@ -92,6 +97,11 @@ impl LocalFunctionStatement {
     }
 
     #[inline]
+    pub fn iter_parameters(&self) -> impl Iterator<Item = &Identifier> {
+        self.parameters.iter()
+    }
+
+    #[inline]
     pub fn get_identifier(&self) -> &Identifier {
         &self.identifier
     }
@@ -109,8 +119,18 @@ impl LocalFunctionStatement {
     }
 
     #[inline]
+    pub fn has_parameters(&self) -> bool {
+        !self.parameters.is_empty()
+    }
+
+    #[inline]
     pub fn is_variadic(&self) -> bool {
         self.is_variadic
+    }
+
+    #[inline]
+    pub fn parameters_count(&self) -> usize {
+        self.parameters.len()
     }
 }
 

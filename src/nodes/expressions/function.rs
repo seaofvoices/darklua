@@ -62,6 +62,11 @@ impl FunctionExpression {
     }
 
     #[inline]
+    pub fn get_tokens(&self) -> Option<&FunctionExpressionTokens> {
+        self.tokens.as_ref().map(|tokens| tokens.as_ref())
+    }
+
+    #[inline]
     pub fn get_block(&self) -> &Block {
         &self.block
     }
@@ -69,6 +74,11 @@ impl FunctionExpression {
     #[inline]
     pub fn get_parameters(&self) -> &Vec<Identifier> {
         &self.parameters
+    }
+
+    #[inline]
+    pub fn iter_parameters(&self) -> impl Iterator<Item = &Identifier> {
+        self.parameters.iter()
     }
 
     #[inline]
@@ -84,6 +94,16 @@ impl FunctionExpression {
     #[inline]
     pub fn mutate_parameters(&mut self) -> &mut Vec<Identifier> {
         &mut self.parameters
+    }
+
+    #[inline]
+    pub fn parameters_count(&self) -> usize {
+        self.parameters.len()
+    }
+
+    #[inline]
+    pub fn has_parameters(&self) -> bool {
+        !self.parameters.is_empty()
     }
 }
 

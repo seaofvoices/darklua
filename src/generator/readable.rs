@@ -685,17 +685,11 @@ impl LuaGenerator for ReadableLuaGenerator {
             False(_) => self.push_str("false"),
             Field(field) => self.write_field(field),
             Function(function) => self.write_function(function),
-            Identifier(identifier) => self.push_str(identifier.get_name()),
+            Identifier(identifier) => self.write_identifier(identifier),
             Index(index) => self.write_index(index),
             Nil(_) => self.push_str("nil"),
             Number(number) => self.write_number(number),
-            Parenthese(expression) => {
-                self.push_char('(');
-                self.push_can_add_new_line(false);
-                self.write_expression(expression.inner_expression());
-                self.pop_can_add_new_line();
-                self.push_char(')');
-            }
+            Parenthese(parenthese) => self.write_parenthese(parenthese),
             String(string) => self.write_string(string),
             Table(table) => self.write_table(table),
             True(_) => self.push_str("true"),
@@ -785,30 +779,23 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.pop_can_add_new_line();
     }
 
-    fn write_arguments(&mut self, arguments: &nodes::Arguments) {
-        use nodes::Arguments::*;
-        match arguments {
-            String(string) => self.write_string(string),
-            Table(table) => self.write_table(table),
-            Tuple(expressions) => {
-                self.raw_push_char('(');
+    fn write_tuple_arguments(&mut self, arguments: &nodes::TupleArguments) {
+        self.raw_push_char('(');
 
-                let last_index = expressions.len().saturating_sub(1);
-                expressions
-                    .iter_values()
-                    .enumerate()
-                    .for_each(|(index, expression)| {
-                        self.write_expression(expression);
+        let last_index = arguments.len().saturating_sub(1);
+        arguments
+            .iter_values()
+            .enumerate()
+            .for_each(|(index, expression)| {
+                self.write_expression(expression);
 
-                        if index != last_index {
-                            self.raw_push_char(',');
-                            self.raw_push_char(' ');
-                        }
-                    });
+                if index != last_index {
+                    self.raw_push_char(',');
+                    self.raw_push_char(' ');
+                }
+            });
 
-                self.push_char(')');
-            }
-        }
+        self.push_char(')');
     }
 
     fn write_field(&mut self, field: &nodes::FieldExpression) {
@@ -830,26 +817,6 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.push_char(']');
 
         self.pop_can_add_new_line();
-    }
-
-    fn write_prefix(&mut self, prefix: &nodes::Prefix) {
-        use nodes::Prefix::*;
-
-        match prefix {
-            Call(call) => self.write_function_call(call),
-            Field(field) => self.write_field(field),
-            Identifier(identifier) => self.push_str(identifier.get_name()),
-            Index(index) => self.write_index(index),
-            Parenthese(expression) => {
-                self.push_char('(');
-                self.push_can_add_new_line(false);
-
-                self.write_expression(expression.inner_expression());
-
-                self.pop_can_add_new_line();
-                self.push_char(')');
-            }
-        }
     }
 
     fn write_table(&mut self, table: &nodes::TableExpression) {
@@ -912,56 +879,7 @@ impl LuaGenerator for ReadableLuaGenerator {
     }
 
     fn write_number(&mut self, number: &nodes::NumberExpression) {
-        use nodes::NumberExpression::*;
-
-        match number {
-            Decimal(number) => {
-                let float = number.get_raw_float();
-                if float.is_nan() {
-                    self.push_str("(0/0)");
-                } else if float.is_infinite() {
-                    self.push_char('(');
-                    if float.is_sign_negative() {
-                        self.push_char('-');
-                    }
-                    self.push_str("1/0)")
-                } else {
-                    self.push_str(&format!("{:.}", float));
-
-                    if let Some(exponent) = number.get_exponent() {
-                        let exponent_char = number
-                            .is_uppercase()
-                            .map(|is_uppercase| if is_uppercase { 'E' } else { 'e' })
-                            .unwrap_or('e');
-                        self.raw_push_char(exponent_char);
-                        self.raw_push_str(&format!("{}", exponent));
-                    };
-                }
-            }
-            Hex(number) => {
-                self.push_str(&format!(
-                    "0{}{:x}",
-                    if number.is_x_uppercase() { 'X' } else { 'x' },
-                    number.get_raw_integer()
-                ));
-
-                if let Some(exponent) = number.get_exponent() {
-                    let exponent_char = number
-                        .is_exponent_uppercase()
-                        .map(|is_uppercase| if is_uppercase { 'P' } else { 'p' })
-                        .unwrap_or('p');
-                    self.raw_push_char(exponent_char);
-                    self.raw_push_str(&format!("{}", exponent));
-                };
-            }
-            Binary(number) => {
-                self.push_str(&format!(
-                    "0{}{:b}",
-                    if number.is_b_uppercase() { 'B' } else { 'b' },
-                    number.get_raw_value()
-                ));
-            }
-        }
+        self.push_str(&utils::write_number(number));
     }
 
     fn write_string(&mut self, string: &nodes::StringExpression) {
@@ -971,5 +889,19 @@ impl LuaGenerator for ReadableLuaGenerator {
         } else {
             self.push_str(&result);
         }
+    }
+
+    fn write_identifier(&mut self, identifier: &nodes::Identifier) {
+        self.push_str(identifier.get_name());
+    }
+
+    fn write_parenthese(&mut self, parenthese: &nodes::ParentheseExpression) {
+        self.push_char('(');
+        self.push_can_add_new_line(false);
+
+        self.write_expression(parenthese.inner_expression());
+
+        self.pop_can_add_new_line();
+        self.push_char(')');
     }
 }

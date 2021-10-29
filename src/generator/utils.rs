@@ -2,11 +2,13 @@
 //! and its implementations.
 
 use crate::nodes::{
-    Expression, FieldExpression, FunctionCall, IndexExpression, Prefix, Statement,
-    StringExpression, Variable,
+    Expression, FieldExpression, FunctionCall, IndexExpression, NumberExpression, Prefix,
+    Statement, StringExpression, Variable,
 };
 
-const FORCE_QUOTED_STRING_THRESHOLD: usize = 40;
+const QUOTED_STRING_MAX_LENGTH: usize = 60;
+const LONG_STRING_MIN_LENGTH: usize = 20;
+const FORCE_LONG_STRING_NEW_LINE_THRESHOLD: usize = 6;
 
 pub fn is_relevant_for_spacing(character: &char) -> bool {
     character.is_ascii_alphabetic() || character.is_digit(10) || *character == '_'
@@ -132,6 +134,58 @@ fn index_starts_with_parenthese(index: &IndexExpression) -> bool {
     prefix_starts_with_parenthese(index.get_prefix())
 }
 
+pub fn write_number(number: &NumberExpression) -> String {
+    match number {
+        NumberExpression::Decimal(number) => {
+            let float = number.get_raw_float();
+            if float.is_nan() {
+                "(0/0)".to_owned()
+            } else if float.is_infinite() {
+                format!("({}1/0)", if float.is_sign_negative() { "-" } else { "" })
+            } else {
+                format!(
+                    "{:.}{}",
+                    float,
+                    number
+                        .get_exponent()
+                        .map(|exponent| {
+                            let exponent_char = number
+                                .is_uppercase()
+                                .map(|is_uppercase| if is_uppercase { 'E' } else { 'e' })
+                                .unwrap_or('e');
+                            format!("{}{}", exponent_char, exponent)
+                        })
+                        .unwrap_or_else(|| "".to_owned())
+                )
+            }
+        }
+        NumberExpression::Hex(number) => {
+            format!(
+                "0{}{:x}{}",
+                if number.is_x_uppercase() { 'X' } else { 'x' },
+                number.get_raw_integer(),
+                number
+                    .get_exponent()
+                    .map(|exponent| {
+                        let exponent_char = number
+                            .is_exponent_uppercase()
+                            .map(|is_uppercase| if is_uppercase { 'P' } else { 'p' })
+                            .unwrap_or('p');
+                        format!("{}{}", exponent_char, exponent)
+                    })
+                    .unwrap_or_else(|| "".to_owned())
+            )
+        }
+        NumberExpression::Binary(number) => {
+            format!(
+                "0{}{:b}",
+                if number.is_b_uppercase() { 'B' } else { 'b' },
+                number.get_raw_value()
+            )
+        }
+    }
+}
+
 fn needs_escaping(character: char) -> bool {
     !(character.is_ascii_graphic() || character == ' ') || character == '\\'
 }
@@ -160,6 +214,11 @@ fn escape(character: char) -> String {
     }
 }
 
+#[inline]
+pub fn count_new_lines(string: &str) -> usize {
+    string.chars().filter(|c| *c == '\n').count()
+}
+
 pub fn write_string(string: &StringExpression) -> String {
     let value = string.get_value();
 
@@ -185,10 +244,14 @@ pub fn write_string(string: &StringExpression) -> String {
         }
     }
 
-    if value.len() < FORCE_QUOTED_STRING_THRESHOLD || value.contains(needs_quoted_string) {
-        write_quoted(value)
-    } else {
+    if !value.contains(needs_quoted_string)
+        && value.len() >= LONG_STRING_MIN_LENGTH
+        && (value.len() >= QUOTED_STRING_MAX_LENGTH
+            || count_new_lines(value) >= FORCE_LONG_STRING_NEW_LINE_THRESHOLD)
+    {
         write_long_bracket(value)
+    } else {
+        write_quoted(value)
     }
 }
 

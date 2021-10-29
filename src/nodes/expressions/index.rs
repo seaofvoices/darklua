@@ -33,6 +33,11 @@ impl IndexExpression {
     }
 
     #[inline]
+    pub fn get_tokens(&self) -> Option<&IndexExpressionTokens> {
+        self.tokens.as_ref()
+    }
+
+    #[inline]
     pub fn get_prefix(&self) -> &Prefix {
         &self.prefix
     }

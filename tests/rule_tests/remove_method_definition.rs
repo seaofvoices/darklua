@@ -1,6 +1,7 @@
 use darklua_core::rules::{RemoveMethodDefinition, Rule};
 
 test_rule!(
+    remove_method_definition,
     RemoveMethodDefinition::default(),
     name_without_method("function foo() end") => "function foo() end",
     name_with_method("function foo:bar() end") => "function foo.bar(self) end",

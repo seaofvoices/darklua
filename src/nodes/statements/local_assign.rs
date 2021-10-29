@@ -42,6 +42,11 @@ impl LocalAssignStatement {
         self.tokens = Some(tokens);
     }
 
+    #[inline]
+    pub fn get_tokens(&self) -> Option<&LocalAssignTokens> {
+        self.tokens.as_ref()
+    }
+
     pub fn with_variable<S: Into<Identifier>>(mut self, variable: S) -> Self {
         self.variables.push(variable.into());
         self
@@ -77,6 +82,11 @@ impl LocalAssignStatement {
     }
 
     #[inline]
+    pub fn iter_variables(&self) -> impl Iterator<Item = &Identifier> {
+        self.variables.iter()
+    }
+
+    #[inline]
     pub fn append_variables(&mut self, variables: &mut Vec<Identifier>) {
         self.variables.append(variables);
     }
@@ -102,6 +112,11 @@ impl LocalAssignStatement {
     }
 
     #[inline]
+    pub fn iter_values(&self) -> impl Iterator<Item = &Expression> {
+        self.values.iter()
+    }
+
+    #[inline]
     pub fn append_values(&mut self, values: &mut Vec<Expression>) {
         self.values.append(values);
     }
@@ -114,5 +129,10 @@ impl LocalAssignStatement {
     #[inline]
     pub fn variable_count(&self) -> usize {
         self.variables.len()
+    }
+
+    #[inline]
+    pub fn has_values(&self) -> bool {
+        !self.values.is_empty()
     }
 }

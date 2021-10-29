@@ -51,4 +51,9 @@ impl RepeatStatement {
     pub fn set_tokens(&mut self, tokens: RepeatTokens) {
         self.tokens = Some(tokens);
     }
+
+    #[inline]
+    pub fn get_tokens(&self) -> Option<&RepeatTokens> {
+        self.tokens.as_ref()
+    }
 }

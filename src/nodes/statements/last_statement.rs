@@ -75,6 +75,11 @@ impl ReturnStatement {
     pub fn set_tokens(&mut self, tokens: ReturnTokens) {
         self.tokens = Some(tokens);
     }
+
+    #[inline]
+    pub fn get_tokens(&self) -> Option<&ReturnTokens> {
+        self.tokens.as_ref()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

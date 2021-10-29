@@ -139,6 +139,7 @@ dependencies = [
  "full_moon",
  "insta",
  "json5",
+ "paste 1.0.5",
  "pretty_assertions",
  "rand",
  "rand_distr",
@@ -202,7 +203,7 @@ dependencies = [
  "cfg-if",
  "derive_more",
  "full_moon_derive",
- "paste",
+ "paste 0.1.18",
  "peg",
  "serde",
  "smol_str",
@@ -354,6 +355,12 @@ dependencies = [
  "paste-impl",
  "proc-macro-hack",
 ]
+
+[[package]]
+name = "paste"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acbf547ad0c65e31259204bd90935776d1c693cec2f4ff7abb7a1bbbd40dfe58"
 
 [[package]]
 name = "paste-impl"

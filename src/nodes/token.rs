@@ -1,7 +1,19 @@
+use std::borrow::Cow;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Position {
-    Reference { start: usize, end: usize },
-    LineNumber { content: String, line_number: usize },
+    LineNumberReference {
+        start: usize,
+        end: usize,
+        line_number: usize,
+    },
+    LineNumber {
+        content: Cow<'static, str>,
+        line_number: usize,
+    },
+    Any {
+        content: Cow<'static, str>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -11,9 +23,22 @@ pub enum TriviaKind {
 }
 
 impl TriviaKind {
-    pub fn at(self, start: usize, end: usize) -> Trivia {
+    pub fn at(self, start: usize, end: usize, line_number: usize) -> Trivia {
         Trivia {
-            position: Position::Reference { start, end },
+            position: Position::LineNumberReference {
+                start,
+                end,
+                line_number,
+            },
+            kind: self,
+        }
+    }
+
+    pub fn with_content<IntoCowStr: Into<Cow<'static, str>>>(self, content: IntoCowStr) -> Trivia {
+        Trivia {
+            position: Position::Any {
+                content: content.into(),
+            },
             kind: self,
         }
     }
@@ -25,6 +50,21 @@ pub struct Trivia {
     kind: TriviaKind,
 }
 
+impl Trivia {
+    pub fn read<'a: 'b, 'b>(&'a self, code: &'b str) -> &'b str {
+        match &self.position {
+            Position::LineNumberReference { start, end, .. } => code
+                .get(*start..*end)
+                .expect("unable to extract code from position"),
+            Position::LineNumber { content, .. } | Position::Any { content } => content,
+        }
+    }
+
+    pub fn kind(&self) -> TriviaKind {
+        self.kind.clone()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Token {
     position: Position,
@@ -33,9 +73,35 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn new(start: usize, end: usize) -> Self {
+    /// Creates a token where the position refers to the original code where
+    /// the token was parsed with the line number where it starts.
+    pub fn new_with_line(start: usize, end: usize, line_number: usize) -> Self {
         Self {
-            position: Position::Reference { start, end },
+            position: Position::LineNumberReference {
+                start,
+                end,
+                line_number,
+            },
+            leading_trivia: Vec::new(),
+            trailing_trivia: Vec::new(),
+        }
+    }
+
+    /// Creates a new token that is not contrained to any existing position.
+    pub fn from_content<IntoCowStr: Into<Cow<'static, str>>>(content: IntoCowStr) -> Self {
+        Self {
+            position: Position::Any {
+                content: content.into(),
+            },
+            leading_trivia: Vec::new(),
+            trailing_trivia: Vec::new(),
+        }
+    }
+
+    /// Creates a new token from a position.
+    pub fn from_position(position: Position) -> Self {
+        Self {
+            position,
             leading_trivia: Vec::new(),
             trailing_trivia: Vec::new(),
         }
@@ -60,24 +126,68 @@ impl Token {
     pub fn push_trailing_trivia(&mut self, trivia: Trivia) {
         self.trailing_trivia.push(trivia);
     }
+
+    #[inline]
+    pub fn iter_leading_trivia(&self) -> impl Iterator<Item = &Trivia> {
+        self.leading_trivia.iter()
+    }
+
+    #[inline]
+    pub fn iter_trailing_trivia(&self) -> impl Iterator<Item = &Trivia> {
+        self.trailing_trivia.iter()
+    }
+
+    pub fn read<'a: 'b, 'b>(&'a self, code: &'b str) -> &'b str {
+        match &self.position {
+            Position::LineNumberReference { start, end, .. } => code
+                .get(*start..*end)
+                .expect("unable to extract code from position"),
+            Position::LineNumber { content, .. } | Position::Any { content } => content,
+        }
+    }
+
+    pub fn get_line_number(&self) -> Option<usize> {
+        match &self.position {
+            Position::LineNumber { line_number, .. }
+            | Position::LineNumberReference { line_number, .. } => Some(*line_number),
+            Position::Any { .. } => None,
+        }
+    }
+
+    pub fn replace_with_content<IntoCowStr: Into<Cow<'static, str>>>(
+        &mut self,
+        content: IntoCowStr,
+    ) {
+        self.position = match &self.position {
+            Position::LineNumber { line_number, .. }
+            | Position::LineNumberReference { line_number, .. } => Position::LineNumber {
+                line_number: *line_number,
+                content: content.into(),
+            },
+
+            Position::Any { .. } => Position::Any {
+                content: content.into(),
+            },
+        };
+    }
 }
 
 #[cfg(test)]
 mod test {
-    // use super::*;
+    use super::*;
 
     #[test]
-    fn do_test() {
-        // struct A {
-        //     start: usize,
-        //     end: usize,
-        // }
-        // struct B {
-        //     content: String,
-        //     // line_number: Option<usize>,
-        //     line_number: usize,
-        // }
-        // assert_eq!(4, std::mem::size_of::<Position>());
-        // assert_eq!(std::mem::size_of::<A>(), std::mem::size_of::<B>());
+    fn read_line_number_reference_token() {
+        let code = "return true";
+        let token = Token::new_with_line(7, 11, 1);
+
+        assert_eq!("true", token.read(code));
+    }
+
+    #[test]
+    fn read_any_position_token() {
+        let token = Token::from_content("true");
+
+        assert_eq!("true", token.read(""));
     }
 }

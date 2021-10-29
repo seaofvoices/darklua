@@ -1,6 +1,7 @@
 use darklua_core::rules::{RemoveUnusedWhile, Rule};
 
 test_rule!(
+    remove_unused_while,
     RemoveUnusedWhile::default(),
     while_with_false_condition("while false do end") => "",
     while_with_nil_condition("while nil do end") => "",

@@ -170,6 +170,11 @@ impl StringExpression {
         self.token = Some(token);
     }
 
+    #[inline]
+    pub fn get_token(&self) -> Option<&Token> {
+        self.token.as_ref()
+    }
+
     pub fn get_value(&self) -> &str {
         &self.value
     }

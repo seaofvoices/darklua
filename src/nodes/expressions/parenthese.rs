@@ -44,4 +44,9 @@ impl ParentheseExpression {
     pub fn set_tokens(&mut self, tokens: ParentheseTokens) {
         self.tokens = Some(tokens);
     }
+
+    #[inline]
+    pub fn get_tokens(&self) -> Option<&ParentheseTokens> {
+        self.tokens.as_ref()
+    }
 }

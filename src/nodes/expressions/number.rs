@@ -31,6 +31,11 @@ impl DecimalNumber {
         self.token = Some(token);
     }
 
+    #[inline]
+    fn get_token(&self) -> Option<&Token> {
+        self.token.as_ref()
+    }
+
     pub fn with_exponent(mut self, exponent: i64, is_uppercase: bool) -> Self {
         self.exponent.replace((exponent, is_uppercase));
         self
@@ -91,6 +96,11 @@ impl HexNumber {
     #[inline]
     pub fn set_token(&mut self, token: Token) {
         self.token = Some(token);
+    }
+
+    #[inline]
+    fn get_token(&self) -> Option<&Token> {
+        self.token.as_ref()
     }
 
     pub fn with_exponent(mut self, exponent: u32, is_uppercase: bool) -> Self {
@@ -158,6 +168,11 @@ impl BinaryNumber {
         self.token = Some(token);
     }
 
+    #[inline]
+    fn get_token(&self) -> Option<&Token> {
+        self.token.as_ref()
+    }
+
     pub fn set_uppercase(&mut self, is_uppercase: bool) {
         self.is_b_uppercase = is_uppercase;
     }
@@ -216,6 +231,15 @@ impl NumberExpression {
             NumberExpression::Decimal(number) => number.set_token(token),
             NumberExpression::Hex(number) => number.set_token(token),
             NumberExpression::Binary(number) => number.set_token(token),
+        }
+    }
+
+    #[inline]
+    pub fn get_token(&self) -> Option<&Token> {
+        match self {
+            NumberExpression::Decimal(number) => number.get_token(),
+            NumberExpression::Hex(number) => number.get_token(),
+            NumberExpression::Binary(number) => number.get_token(),
         }
     }
 }

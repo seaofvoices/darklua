@@ -49,6 +49,11 @@ impl NumericForStatement {
     }
 
     #[inline]
+    pub fn get_tokens(&self) -> Option<&NumericForTokens> {
+        self.tokens.as_ref()
+    }
+
+    #[inline]
     pub fn get_block(&self) -> &Block {
         &self.block
     }

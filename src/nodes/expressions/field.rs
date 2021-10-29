@@ -30,6 +30,11 @@ impl FieldExpression {
     }
 
     #[inline]
+    pub fn get_token(&self) -> Option<&Token> {
+        self.token.as_ref()
+    }
+
+    #[inline]
     pub fn get_prefix(&self) -> &Prefix {
         &self.prefix
     }

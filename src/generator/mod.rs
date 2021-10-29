@@ -3,10 +3,12 @@
 
 mod dense;
 mod readable;
+mod token_based;
 mod utils;
 
 pub use dense::DenseLuaGenerator;
 pub use readable::ReadableLuaGenerator;
+pub use token_based::TokenBasedLuaGenerator;
 
 use crate::nodes;
 
@@ -50,20 +52,51 @@ pub trait LuaGenerator {
     fn write_repeat_statement(&mut self, repeat: &nodes::RepeatStatement);
     fn write_while_statement(&mut self, while_statement: &nodes::WhileStatement);
 
+    fn write_variable(&mut self, variable: &nodes::Variable) {
+        use nodes::Variable::*;
+        match variable {
+            Identifier(identifier) => self.write_identifier(identifier),
+            Field(field) => self.write_field(field),
+            Index(index) => self.write_index(index),
+        }
+    }
+
     fn write_expression(&mut self, expression: &nodes::Expression);
 
+    fn write_identifier(&mut self, identifier: &nodes::Identifier);
     fn write_binary_expression(&mut self, binary: &nodes::BinaryExpression);
     fn write_unary_expression(&mut self, unary: &nodes::UnaryExpression);
     fn write_function(&mut self, function: &nodes::FunctionExpression);
     fn write_function_call(&mut self, call: &nodes::FunctionCall);
     fn write_field(&mut self, field: &nodes::FieldExpression);
     fn write_index(&mut self, index: &nodes::IndexExpression);
-    fn write_prefix(&mut self, prefix: &nodes::Prefix);
+    fn write_parenthese(&mut self, parenthese: &nodes::ParentheseExpression);
+
+    fn write_prefix(&mut self, prefix: &nodes::Prefix) {
+        use nodes::Prefix::*;
+        match prefix {
+            Call(call) => self.write_function_call(call),
+            Field(field) => self.write_field(field),
+            Identifier(identifier) => self.write_identifier(identifier),
+            Index(index) => self.write_index(index),
+            Parenthese(parenthese) => self.write_parenthese(parenthese),
+        }
+    }
+
     fn write_table(&mut self, table: &nodes::TableExpression);
     fn write_table_entry(&mut self, entry: &nodes::TableEntry);
     fn write_number(&mut self, number: &nodes::NumberExpression);
 
-    fn write_arguments(&mut self, arguments: &nodes::Arguments);
+    fn write_arguments(&mut self, arguments: &nodes::Arguments) {
+        use nodes::Arguments::*;
+        match arguments {
+            String(string) => self.write_string(string),
+            Table(table) => self.write_table(table),
+            Tuple(tuple) => self.write_tuple_arguments(tuple),
+        }
+    }
+
+    fn write_tuple_arguments(&mut self, arguments: &nodes::TupleArguments);
 
     fn write_string(&mut self, string: &nodes::StringExpression);
 }
@@ -129,6 +162,33 @@ mod test {
         };
     }
 
+    macro_rules! blocks_consistency {
+        (
+            $generator:expr => (
+                $($name:ident => $code:literal),+,
+            )
+        ) => {
+            $(
+                #[test]
+                fn $name() {
+                    let parser = $crate::Parser::default();
+
+                    let expected_block = parser.parse($code)
+                        .expect(&format!("unable to parse `{}`", $code));
+
+                    let mut generator = $generator;
+                    generator.write_block(&expected_block);
+                    let generated_code = generator.into_string();
+
+                    let generated_block = parser.parse(&generated_code)
+                        .expect(&format!("unable to parse generated code `{}`", &generated_code));
+
+                    assert_eq!(expected_block, generated_block);
+                }
+            )*
+        };
+    }
+
     macro_rules! binary_precedence {
         (
             $generator:expr => (
@@ -155,8 +215,9 @@ mod test {
                     let mut generator = $generator;
                     generator.write_expression(&$input.into());
 
-                    let parsed_block = parser.parse(&format!("return {}", generator.into_string()))
-                        .unwrap();
+                    let generated_code = format!("return {}", generator.into_string());
+                    let parsed_block = parser.parse(&generated_code)
+                        .expect(&format!("unable to parse generated code: `{}`", &generated_code));
 
                     let parsed_return = parsed_block.get_last_statement()
                         .expect("it should have a return statement");
@@ -183,6 +244,20 @@ mod test {
 mod $mod_name {
     use super::*;
     use $crate::nodes::*;
+
+    mod edge_cases {
+        use super::*;
+
+        blocks_consistency!($generator => (
+            index_with_bracket_string => "return ok[ [[field]]]",
+            call_with_bracket_string => "return ok[[ [field] ]]",
+            concat_numbers => "return 9 .. 3",
+            concat_number_with_variable_arguments => "return 9 .. ...",
+            concat_variable_arguments_with_number => "return ... ..1",
+            double_unary_minus => "return - -10",
+            binary_minus_with_unary_minus => "return 100- -10",
+        ));
+    }
 
     mod numbers {
         use super::*;
@@ -568,4 +643,5 @@ mod $mod_name {
 
     snapshot_generator!(dense, DenseLuaGenerator::default());
     snapshot_generator!(readable, ReadableLuaGenerator::default());
+    snapshot_generator!(token_based, TokenBasedLuaGenerator::new(""));
 }

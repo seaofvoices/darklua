@@ -178,15 +178,6 @@ impl DenseLuaGenerator {
             self.push_str("...");
         };
     }
-
-    fn write_variable(&mut self, variable: &nodes::Variable) {
-        use nodes::Variable::*;
-        match variable {
-            Identifier(identifier) => self.push_str(identifier.get_name()),
-            Field(field) => self.write_field(field),
-            Index(index) => self.write_index(index),
-        }
-    }
 }
 
 impl Default for DenseLuaGenerator {
@@ -480,15 +471,11 @@ impl LuaGenerator for DenseLuaGenerator {
             False(_) => self.push_str("false"),
             Field(field) => self.write_field(field),
             Function(function) => self.write_function(function),
-            Identifier(identifier) => self.push_str(identifier.get_name()),
+            Identifier(identifier) => self.write_identifier(identifier),
             Index(index) => self.write_index(index),
             Nil(_) => self.push_str("nil"),
             Number(number) => self.write_number(number),
-            Parenthese(expression) => {
-                self.push_char('(');
-                self.write_expression(expression.inner_expression());
-                self.push_char(')');
-            }
+            Parenthese(parenthese) => self.write_parenthese(parenthese),
             String(string) => self.write_string(string),
             Table(table) => self.write_table(table),
             True(_) => self.push_str("true"),
@@ -589,22 +576,6 @@ impl LuaGenerator for DenseLuaGenerator {
         self.push_char('[');
         self.write_expression(index.get_index());
         self.push_char(']');
-    }
-
-    fn write_prefix(&mut self, prefix: &nodes::Prefix) {
-        use nodes::Prefix::*;
-
-        match prefix {
-            Call(call) => self.write_function_call(call),
-            Field(field) => self.write_field(field),
-            Identifier(identifier) => self.push_str(identifier.get_name()),
-            Index(index) => self.write_index(index),
-            Parenthese(expression) => {
-                self.push_char('(');
-                self.write_expression(expression.inner_expression());
-                self.push_char(')');
-            }
-        }
     }
 
     fn write_table(&mut self, table: &nodes::TableExpression) {
@@ -708,29 +679,22 @@ impl LuaGenerator for DenseLuaGenerator {
         }
     }
 
-    fn write_arguments(&mut self, arguments: &nodes::Arguments) {
-        use nodes::Arguments::*;
-        match arguments {
-            String(string) => self.write_string(string),
-            Table(table) => self.write_table(table),
-            Tuple(expressions) => {
-                self.merge_char('(');
+    fn write_tuple_arguments(&mut self, arguments: &nodes::TupleArguments) {
+        self.merge_char('(');
 
-                let last_index = expressions.len().saturating_sub(1);
-                expressions
-                    .iter_values()
-                    .enumerate()
-                    .for_each(|(index, expression)| {
-                        self.write_expression(expression);
+        let last_index = arguments.len().saturating_sub(1);
+        arguments
+            .iter_values()
+            .enumerate()
+            .for_each(|(index, expression)| {
+                self.write_expression(expression);
 
-                        if index != last_index {
-                            self.push_char(',');
-                        }
-                    });
+                if index != last_index {
+                    self.push_char(',');
+                }
+            });
 
-                self.push_char(')');
-            }
-        }
+        self.push_char(')');
     }
 
     fn write_string(&mut self, string: &nodes::StringExpression) {
@@ -740,5 +704,15 @@ impl LuaGenerator for DenseLuaGenerator {
         } else {
             self.push_str(&result);
         }
+    }
+
+    fn write_identifier(&mut self, identifier: &nodes::Identifier) {
+        self.push_str(identifier.get_name());
+    }
+
+    fn write_parenthese(&mut self, parenthese: &nodes::ParentheseExpression) {
+        self.push_char('(');
+        self.write_expression(parenthese.inner_expression());
+        self.push_char(')');
     }
 }

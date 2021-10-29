@@ -1,39 +1,41 @@
 use darklua_core::rules::{InjectGlobalValue, Rule};
 
 test_rule!(
+    inject_global_nil,
     InjectGlobalValue::nil("foo"),
-    inject_nil("return foo") => "return nil"
+    inject_nil("return foo") => "return nil",
+    can_replace_variable_when_out_of_scope_string("do local foo end return foo")
+        => "do local foo end return nil"
 );
 
 test_rule!(
+    inject_global_true,
     InjectGlobalValue::boolean("foo", true),
     inject_true("return foo") => "return true"
 );
 
 test_rule!(
+    inject_global_false,
     InjectGlobalValue::boolean("foo", false),
     inject_false("return foo") => "return false"
 );
 
 test_rule!(
+    inject_global_string,
     InjectGlobalValue::string("foo", "bar"),
     inject_string("return foo") => "return 'bar'"
 );
 
 test_rule!(
+    inject_global_number,
     InjectGlobalValue::float("foo", 10.0),
     inject_integer("return foo") => "return 10"
 );
 
 test_rule!(
+    inject_global_negative_number,
     InjectGlobalValue::float("foo", -1.0),
     inject_negative_integer("return foo") => "return -1"
-);
-
-test_rule!(
-    InjectGlobalValue::nil("foo"),
-    can_replace_variable_when_out_of_scope_string("do local foo end return foo")
-        => "do local foo end return nil"
 );
 
 test_rule_wihout_effects!(

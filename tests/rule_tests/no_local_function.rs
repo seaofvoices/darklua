@@ -1,6 +1,7 @@
 use darklua_core::rules::{ConvertLocalFunctionToAssign, Rule};
 
 test_rule!(
+    convert_local_function_to_assign,
     ConvertLocalFunctionToAssign::default(),
     empty_function("local function foo() end") => "local foo = function() end",
     empty_function_with_arguments("local function foo(a, b) end") => "local foo = function(a, b) end",

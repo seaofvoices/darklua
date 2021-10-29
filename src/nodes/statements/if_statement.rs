@@ -41,6 +41,11 @@ impl IfBranch {
     }
 
     #[inline]
+    pub fn get_tokens(&self) -> Option<&IfBranchTokens> {
+        self.tokens.as_ref()
+    }
+
+    #[inline]
     pub fn get_block(&self) -> &Block {
         &self.block
     }
@@ -103,6 +108,11 @@ impl IfStatement {
         self.tokens = Some(tokens);
     }
 
+    #[inline]
+    pub fn get_tokens(&self) -> Option<&IfStatementTokens> {
+        self.tokens.as_ref()
+    }
+
     pub fn with_branch(mut self, branch: IfBranch) -> Self {
         self.branches.push(branch);
         self
@@ -139,6 +149,11 @@ impl IfStatement {
     #[inline]
     pub fn get_branches(&self) -> &Vec<IfBranch> {
         &self.branches
+    }
+
+    #[inline]
+    pub fn iter_branches(&self) -> impl Iterator<Item = &IfBranch> {
+        self.branches.iter()
     }
 
     #[inline]

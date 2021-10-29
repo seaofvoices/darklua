@@ -36,6 +36,11 @@ impl TupleArguments {
         self.tokens = Some(tokens);
     }
 
+    #[inline]
+    pub fn get_tokens(&self) -> Option<&TupleArgumentsTokens> {
+        self.tokens.as_ref()
+    }
+
     pub fn with_argument<T: Into<Expression>>(mut self, argument: T) -> Self {
         self.values.push(argument.into());
         self

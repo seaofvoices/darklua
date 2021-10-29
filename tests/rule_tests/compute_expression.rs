@@ -1,6 +1,7 @@
 use darklua_core::rules::{ComputeExpression, Rule};
 
 test_rule!(
+    compute_expression,
     ComputeExpression::default(),
     binary_true_and_false("return true and false") => "return false",
     number_addition("return 1 + 2") => "return 3",

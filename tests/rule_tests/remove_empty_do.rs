@@ -1,6 +1,7 @@
 use darklua_core::rules::{RemoveEmptyDo, Rule};
 
 test_rule!(
+    remove_empty_do,
     RemoveEmptyDo::default(),
     multiple_empty_do_statements("do end do end") => "",
     empty_do_statement_in_numeric_for("for i=a, b do do end end") => "for i=a, b do end",

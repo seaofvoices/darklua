@@ -28,6 +28,11 @@ impl TableFieldEntry {
     }
 
     #[inline]
+    pub fn get_token(&self) -> Option<&Token> {
+        self.token.as_ref()
+    }
+
+    #[inline]
     pub fn get_field(&self) -> &Identifier {
         &self.field
     }
@@ -79,6 +84,11 @@ impl TableIndexEntry {
     #[inline]
     pub fn set_tokens(&mut self, tokens: TableIndexEntryTokens) {
         self.tokens = Some(tokens.into());
+    }
+
+    #[inline]
+    pub fn get_tokens(&self) -> Option<&TableIndexEntryTokens> {
+        self.tokens.as_ref().map(|tokens| tokens.as_ref())
     }
 
     #[inline]
@@ -153,8 +163,18 @@ impl TableExpression {
     }
 
     #[inline]
+    pub fn get_tokens(&self) -> Option<&TableTokens> {
+        self.tokens.as_ref()
+    }
+
+    #[inline]
     pub fn get_entries(&self) -> &Vec<TableEntry> {
         &self.entries
+    }
+
+    #[inline]
+    pub fn iter_entries(&self) -> impl Iterator<Item = &TableEntry> {
+        self.entries.iter()
     }
 
     #[inline]

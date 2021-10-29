@@ -51,6 +51,11 @@ impl FunctionCall {
         self.tokens = Some(tokens);
     }
 
+    #[inline]
+    pub fn get_tokens(&self) -> Option<&FunctionCallTokens> {
+        self.tokens.as_ref()
+    }
+
     pub fn with_arguments<A: Into<Arguments>>(mut self, arguments: A) -> Self {
         self.arguments = arguments.into();
         self

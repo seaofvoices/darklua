@@ -7,6 +7,16 @@ pub enum UnaryOperator {
     Not,
 }
 
+impl UnaryOperator {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            Self::Length => "#",
+            Self::Minus => "-",
+            Self::Not => "not",
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UnaryExpression {
     operator: UnaryOperator,
@@ -31,6 +41,11 @@ impl UnaryExpression {
     #[inline]
     pub fn set_token(&mut self, token: Token) {
         self.token = Some(token);
+    }
+
+    #[inline]
+    pub fn get_token(&self) -> Option<&Token> {
+        self.token.as_ref()
     }
 
     #[inline]
