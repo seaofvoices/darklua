@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.0
+
 * add new generator that retains line numbers ([!28](https://gitlab.com/seaofvoices/darklua/-/merge_requests/28))
 * add token information to Block ([!27](https://gitlab.com/seaofvoices/darklua/-/merge_requests/27))
 * add computation of binary expression using concat operator ([!25](https://gitlab.com/seaofvoices/darklua/-/merge_requests/25))
