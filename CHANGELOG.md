@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.6.1
+
+* enhance the `inject_global_value` rule to work also from the global table (`_G`) ([!30](https://gitlab.com/seaofvoices/darklua/-/merge_requests/30))
+
 ## 0.6.0
 
 * add new generator that retains line numbers ([!28](https://gitlab.com/seaofvoices/darklua/-/merge_requests/28))

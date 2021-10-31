@@ -1,5 +1,5 @@
 macro_rules! test_rule {
-    ($rule_name:ident, $rule:expr, $($name:ident ($input:literal) => $output:literal),*) => {
+    ($rule_name:ident, $rule:expr, $($name:ident ($input:literal) => $output:literal),* $(,)?) => {
         paste::paste! {
 
         mod [<$rule_name _with_readable_generator>] {
@@ -112,7 +112,7 @@ macro_rules! test_rule {
 }
 
 macro_rules! test_rule_wihout_effects {
-    ($rule:expr, $($name:ident ($input:literal)),*) => {
+    ($rule:expr, $($name:ident ($input:literal)),* $(,)?) => {
         $(
             #[test]
             fn $name() {

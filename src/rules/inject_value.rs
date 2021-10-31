@@ -65,12 +65,21 @@ impl Scope for ValueInjection {
 
 impl NodeProcessor for ValueInjection {
     fn process_expression(&mut self, expression: &mut Expression) {
-        if self.is_identifier_used(&self.identifier) {
-            return;
-        }
-
         let replace = match expression {
-            Expression::Identifier(identifier) => &self.identifier == identifier.get_name(),
+            Expression::Identifier(identifier) => {
+                &self.identifier == identifier.get_name()
+                    && !self.is_identifier_used(&self.identifier)
+            }
+            Expression::Field(field) => {
+                &self.identifier == field.get_field().get_name()
+                    && !self.is_identifier_used("_G")
+                    && matches!(field.get_prefix(), Prefix::Identifier(prefix) if prefix.get_name() == "_G")
+            }
+            Expression::Index(index) => {
+                !self.is_identifier_used("_G")
+                    && matches!(index.get_index(), Expression::String(string) if string.get_value() == self.identifier)
+                    && matches!(index.get_prefix(), Prefix::Identifier(prefix) if prefix.get_name() == "_G")
+            }
             _ => false,
         };
 

@@ -134,7 +134,7 @@ dependencies = [
 
 [[package]]
 name = "darklua"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "full_moon",
  "insta",

@@ -4,43 +4,52 @@ test_rule!(
     inject_global_nil,
     InjectGlobalValue::nil("foo"),
     inject_nil("return foo") => "return nil",
+    inject_nil_from_global_table("call(_G.foo)") => "call(nil)",
+    inject_nil_from_global_table_index("call(_G['foo'])") => "call(nil)",
     can_replace_variable_when_out_of_scope_string("do local foo end return foo")
-        => "do local foo end return nil"
+        => "do local foo end return nil",
+    inject_nil_from_global_table_even_if_redefined("local foo return _G.foo") => "local foo return nil",
 );
 
 test_rule!(
     inject_global_true,
     InjectGlobalValue::boolean("foo", true),
-    inject_true("return foo") => "return true"
+    inject_true("return foo") => "return true",
+    inject_true_from_global_table("local a = _G.foo") => "local a = true",
 );
 
 test_rule!(
     inject_global_false,
     InjectGlobalValue::boolean("foo", false),
-    inject_false("return foo") => "return false"
+    inject_false("return foo") => "return false",
+    inject_false_from_global_table("if _G.foo then return end") => "if false then return end",
 );
 
 test_rule!(
     inject_global_string,
     InjectGlobalValue::string("foo", "bar"),
-    inject_string("return foo") => "return 'bar'"
+    inject_string("return foo") => "return 'bar'",
+    inject_string_from_global_table("var = _G.foo") => "var = 'bar'",
 );
 
 test_rule!(
     inject_global_number,
     InjectGlobalValue::float("foo", 10.0),
-    inject_integer("return foo") => "return 10"
+    inject_integer("return foo") => "return 10",
+    inject_integer_from_global_table("return _G.foo") => "return 10",
 );
 
 test_rule!(
     inject_global_negative_number,
     InjectGlobalValue::float("foo", -1.0),
-    inject_negative_integer("return foo") => "return -1"
+    inject_negative_integer("return foo") => "return -1",
+    inject_negative_integer_from_global_table("return _G.foo + 1") => "return -1 + 1",
 );
 
 test_rule_wihout_effects!(
     InjectGlobalValue::nil("foo"),
-    does_not_override_local_variable("local foo return foo")
+    does_not_override_local_variable("local foo return foo"),
+    does_not_inline_if_global_table_is_redefined("local _G return _G.foo"),
 );
 
 #[test]
