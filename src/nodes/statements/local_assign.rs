@@ -8,6 +8,19 @@ pub struct LocalAssignTokens {
     pub value_commas: Vec<Token>,
 }
 
+impl LocalAssignTokens {
+    pub fn clear_comments(&mut self) {
+        self.local.clear_comments();
+        self.variable_commas
+            .iter_mut()
+            .for_each(Token::clear_comments);
+        self.value_commas.iter_mut().for_each(Token::clear_comments);
+        if let Some(token) = &mut self.equal {
+            token.clear_comments();
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LocalAssignStatement {
     variables: Vec<Identifier>,
@@ -134,5 +147,14 @@ impl LocalAssignStatement {
     #[inline]
     pub fn has_values(&self) -> bool {
         !self.values.is_empty()
+    }
+
+    pub fn clear_comments(&mut self) {
+        self.variables
+            .iter_mut()
+            .for_each(Identifier::clear_comments);
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
     }
 }

@@ -62,4 +62,10 @@ impl UnaryExpression {
     pub fn operator(&self) -> UnaryOperator {
         self.operator
     }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(token) = &mut self.token {
+            token.clear_comments();
+        }
+    }
 }

@@ -11,6 +11,22 @@ pub struct LocalFunctionTokens {
     pub variable_arguments: Option<Token>,
 }
 
+impl LocalFunctionTokens {
+    pub fn clear_comments(&mut self) {
+        self.local.clear_comments();
+        self.function.clear_comments();
+        self.opening_parenthese.clear_comments();
+        self.closing_parenthese.clear_comments();
+        self.end.clear_comments();
+        self.parameter_commas
+            .iter_mut()
+            .for_each(Token::clear_comments);
+        if let Some(token) = &mut self.variable_arguments {
+            token.clear_comments();
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LocalFunctionStatement {
     identifier: Identifier,
@@ -131,6 +147,15 @@ impl LocalFunctionStatement {
     #[inline]
     pub fn parameters_count(&self) -> usize {
         self.parameters.len()
+    }
+
+    pub fn clear_comments(&mut self) {
+        self.parameters
+            .iter_mut()
+            .for_each(Identifier::clear_comments);
+        if let Some(tokens) = self.tokens.as_mut() {
+            tokens.clear_comments();
+        }
     }
 }
 

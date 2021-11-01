@@ -218,6 +218,12 @@ impl StringExpression {
             }
         })
     }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(token) = &mut self.token {
+            token.clear_comments();
+        }
+    }
 }
 
 fn read_number(

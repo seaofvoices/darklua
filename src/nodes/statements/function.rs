@@ -6,6 +6,15 @@ pub struct FunctionNameTokens {
     pub colon: Option<Token>,
 }
 
+impl FunctionNameTokens {
+    pub fn clear_comments(&mut self) {
+        self.periods.iter_mut().for_each(Token::clear_comments);
+        if let Some(token) = &mut self.colon {
+            token.clear_comments();
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FunctionName {
     name: Identifier,
@@ -96,6 +105,12 @@ impl FunctionName {
     pub fn mutate_identifier(&mut self) -> &mut Identifier {
         &mut self.name
     }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -106,6 +121,21 @@ pub struct FunctionStatementTokens {
     pub end: Token,
     pub parameter_commas: Vec<Token>,
     pub variable_arguments: Option<Token>,
+}
+
+impl FunctionStatementTokens {
+    pub fn clear_comments(&mut self) {
+        self.function.clear_comments();
+        self.opening_parenthese.clear_comments();
+        self.closing_parenthese.clear_comments();
+        self.end.clear_comments();
+        self.parameter_commas
+            .iter_mut()
+            .for_each(Token::clear_comments);
+        if let Some(token) = &mut self.variable_arguments {
+            token.clear_comments();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -223,5 +253,15 @@ impl FunctionStatement {
     #[inline]
     pub fn has_parameters(&self) -> bool {
         !self.parameters.is_empty()
+    }
+
+    pub fn clear_comments(&mut self) {
+        self.name.clear_comments();
+        self.parameters
+            .iter_mut()
+            .for_each(Identifier::clear_comments);
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
     }
 }

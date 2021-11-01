@@ -6,6 +6,13 @@ pub struct IndexExpressionTokens {
     pub closing_bracket: Token,
 }
 
+impl IndexExpressionTokens {
+    pub fn clear_comments(&mut self) {
+        self.opening_bracket.clear_comments();
+        self.closing_bracket.clear_comments();
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct IndexExpression {
     prefix: Prefix,
@@ -55,5 +62,11 @@ impl IndexExpression {
     #[inline]
     pub fn mutate_index(&mut self) -> &mut Expression {
         &mut self.index
+    }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
     }
 }

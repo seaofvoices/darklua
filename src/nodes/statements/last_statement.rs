@@ -6,6 +6,13 @@ pub struct ReturnTokens {
     pub commas: Vec<Token>,
 }
 
+impl ReturnTokens {
+    pub fn clear_comments(&mut self) {
+        self.r#return.clear_comments();
+        self.commas.iter_mut().for_each(Token::clear_comments);
+    }
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ReturnStatement {
     expressions: Vec<Expression>,
@@ -79,6 +86,12 @@ impl ReturnStatement {
     #[inline]
     pub fn get_tokens(&self) -> Option<&ReturnTokens> {
         self.tokens.as_ref()
+    }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
     }
 }
 

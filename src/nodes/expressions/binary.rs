@@ -167,6 +167,12 @@ impl BinaryExpression {
     pub fn operator(&self) -> BinaryOperator {
         self.operator
     }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(token) = &mut self.token {
+            token.clear_comments();
+        }
+    }
 }
 
 #[cfg(test)]

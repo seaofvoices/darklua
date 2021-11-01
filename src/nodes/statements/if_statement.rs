@@ -6,6 +6,13 @@ pub struct IfBranchTokens {
     pub then: Token,
 }
 
+impl IfBranchTokens {
+    pub fn clear_comments(&mut self) {
+        self.elseif.clear_comments();
+        self.then.clear_comments();
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct IfBranch {
     condition: Expression,
@@ -64,6 +71,12 @@ impl IfBranch {
     pub fn mutate_condition(&mut self) -> &mut Expression {
         &mut self.condition
     }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -72,6 +85,17 @@ pub struct IfStatementTokens {
     pub then: Token,
     pub end: Token,
     pub r#else: Option<Token>,
+}
+
+impl IfStatementTokens {
+    pub fn clear_comments(&mut self) {
+        self.r#if.clear_comments();
+        self.then.clear_comments();
+        self.end.clear_comments();
+        if let Some(token) = &mut self.r#else {
+            token.clear_comments();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -195,5 +219,12 @@ impl IfStatement {
     #[inline]
     pub fn take_else_block(&mut self) -> Option<Block> {
         self.else_block.take()
+    }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
+        self.branches.iter_mut().for_each(IfBranch::clear_comments);
     }
 }

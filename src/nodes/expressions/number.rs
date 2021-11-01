@@ -68,6 +68,12 @@ impl DecimalNumber {
             self.float
         }
     }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(token) = &mut self.token {
+            token.clear_comments();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -140,6 +146,12 @@ impl HexNumber {
             self.integer as f64
         }
     }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(token) = &mut self.token {
+            token.clear_comments();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -189,6 +201,12 @@ impl BinaryNumber {
     #[inline]
     pub fn get_raw_value(&self) -> u64 {
         self.value
+    }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(token) = &mut self.token {
+            token.clear_comments();
+        }
     }
 }
 
@@ -240,6 +258,14 @@ impl NumberExpression {
             NumberExpression::Decimal(number) => number.get_token(),
             NumberExpression::Hex(number) => number.get_token(),
             NumberExpression::Binary(number) => number.get_token(),
+        }
+    }
+
+    pub fn clear_comments(&mut self) {
+        match self {
+            NumberExpression::Decimal(number) => number.clear_comments(),
+            NumberExpression::Hex(number) => number.clear_comments(),
+            NumberExpression::Binary(number) => number.clear_comments(),
         }
     }
 }

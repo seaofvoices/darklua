@@ -103,4 +103,10 @@ impl CompoundAssignStatement {
     pub fn mutate_value(&mut self) -> &mut Expression {
         &mut self.value
     }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.operator.clear_comments();
+        }
+    }
 }

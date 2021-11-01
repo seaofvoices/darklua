@@ -51,6 +51,13 @@ impl TableFieldEntry {
     pub fn mutate_value(&mut self) -> &mut Expression {
         &mut self.value
     }
+
+    pub fn clear_comments(&mut self) {
+        self.field.clear_comments();
+        if let Some(token) = &mut self.token {
+            token.clear_comments();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -58,6 +65,14 @@ pub struct TableIndexEntryTokens {
     pub opening_bracket: Token,
     pub closing_bracket: Token,
     pub equal: Token,
+}
+
+impl TableIndexEntryTokens {
+    pub fn clear_comments(&mut self) {
+        self.opening_bracket.clear_comments();
+        self.closing_bracket.clear_comments();
+        self.equal.clear_comments();
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -110,6 +125,12 @@ impl TableIndexEntry {
     pub fn mutate_value(&mut self) -> &mut Expression {
         &mut self.value
     }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -117,6 +138,16 @@ pub enum TableEntry {
     Field(TableFieldEntry),
     Index(TableIndexEntry),
     Value(Expression),
+}
+
+impl TableEntry {
+    pub fn clear_comments(&mut self) {
+        match self {
+            TableEntry::Field(entry) => entry.clear_comments(),
+            TableEntry::Index(entry) => entry.clear_comments(),
+            TableEntry::Value(_) => {}
+        }
+    }
 }
 
 impl From<TableFieldEntry> for TableEntry {
@@ -136,6 +167,14 @@ pub struct TableTokens {
     pub opening_brace: Token,
     pub closing_brace: Token,
     pub separators: Vec<Token>,
+}
+
+impl TableTokens {
+    pub fn clear_comments(&mut self) {
+        self.opening_brace.clear_comments();
+        self.closing_brace.clear_comments();
+        self.separators.iter_mut().for_each(Token::clear_comments);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -219,6 +258,13 @@ impl TableExpression {
     pub fn append_array_value<E: Into<Expression>>(mut self, value: E) -> Self {
         self.entries.push(TableEntry::Value(value.into()));
         self
+    }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
+        self.entries.iter_mut().for_each(TableEntry::clear_comments)
     }
 }
 

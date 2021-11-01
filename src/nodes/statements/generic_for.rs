@@ -10,6 +10,19 @@ pub struct GenericForTokens {
     pub value_commas: Vec<Token>,
 }
 
+impl GenericForTokens {
+    pub fn clear_comments(&mut self) {
+        self.r#for.clear_comments();
+        self.r#in.clear_comments();
+        self.r#do.clear_comments();
+        self.end.clear_comments();
+        self.identifier_commas
+            .iter_mut()
+            .for_each(Token::clear_comments);
+        self.value_commas.iter_mut().for_each(Token::clear_comments);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GenericForStatement {
     identifiers: Vec<Identifier>,
@@ -95,5 +108,11 @@ impl GenericForStatement {
     #[inline]
     pub fn expressions_len(&self) -> usize {
         self.expressions.len()
+    }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
     }
 }

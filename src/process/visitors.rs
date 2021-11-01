@@ -60,6 +60,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Expression::Index(index) => Self::visit_index_expression(index, processor),
             Expression::Number(number) => processor.process_number_expression(number),
             Expression::Parenthese(expression) => {
+                processor.process_parenthese_expression(expression);
                 Self::visit_expression(expression.mutate_inner_expression(), processor)
             }
             Expression::String(string) => processor.process_string_expression(string),
@@ -239,6 +240,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Prefix::Identifier(identifier) => processor.process_variable_expression(identifier),
             Prefix::Index(index) => Self::visit_index_expression(index, processor),
             Prefix::Parenthese(expression) => {
+                processor.process_parenthese_expression(expression);
                 Self::visit_expression(expression.mutate_inner_expression(), processor)
             }
         };

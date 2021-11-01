@@ -6,6 +6,13 @@ pub struct RepeatTokens {
     pub until: Token,
 }
 
+impl RepeatTokens {
+    pub fn clear_comments(&mut self) {
+        self.repeat.clear_comments();
+        self.until.clear_comments();
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RepeatStatement {
     block: Block,
@@ -55,5 +62,11 @@ impl RepeatStatement {
     #[inline]
     pub fn get_tokens(&self) -> Option<&RepeatTokens> {
         self.tokens.as_ref()
+    }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
     }
 }

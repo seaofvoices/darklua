@@ -7,6 +7,14 @@ pub struct TupleArgumentsTokens {
     pub commas: Vec<Token>,
 }
 
+impl TupleArgumentsTokens {
+    pub fn clear_comments(&mut self) {
+        self.opening_parenthese.clear_comments();
+        self.closing_parenthese.clear_comments();
+        self.commas.iter_mut().for_each(Token::clear_comments);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TupleArguments {
     values: Vec<Expression>,
@@ -65,6 +73,12 @@ impl TupleArguments {
     pub fn iter_mut_values(&mut self) -> impl Iterator<Item = &mut Expression> {
         self.values.iter_mut()
     }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
+    }
 }
 
 impl Default for TupleArguments {
@@ -104,6 +118,13 @@ impl Arguments {
 
     pub fn with_argument<T: Into<Expression>>(self, argument: T) -> Self {
         TupleArguments::from(self).with_argument(argument).into()
+    }
+
+    pub fn clear_comments(&mut self) {
+        match self {
+            Arguments::Tuple(tuple) => tuple.clear_comments(),
+            Arguments::String(_) | Arguments::Table(_) => {}
+        }
     }
 }
 

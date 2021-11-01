@@ -170,6 +170,13 @@ impl Token {
             },
         };
     }
+
+    pub fn clear_comments(&mut self) {
+        self.leading_trivia
+            .retain(|trivia| trivia.kind() != TriviaKind::Comment);
+        self.trailing_trivia
+            .retain(|trivia| trivia.kind() != TriviaKind::Comment);
+    }
 }
 
 #[cfg(test)]

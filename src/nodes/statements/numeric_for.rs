@@ -10,6 +10,19 @@ pub struct NumericForTokens {
     pub step_comma: Option<Token>,
 }
 
+impl NumericForTokens {
+    pub fn clear_comments(&mut self) {
+        self.r#for.clear_comments();
+        self.equal.clear_comments();
+        self.r#do.clear_comments();
+        self.end.clear_comments();
+        self.end_comma.clear_comments();
+        if let Some(token) = &mut self.step_comma {
+            token.clear_comments();
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NumericForStatement {
     identifier: Identifier,
@@ -106,5 +119,11 @@ impl NumericForStatement {
     #[inline]
     pub fn set_identifier<S: Into<Identifier>>(&mut self, identifier: S) {
         self.identifier = identifier.into();
+    }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
     }
 }

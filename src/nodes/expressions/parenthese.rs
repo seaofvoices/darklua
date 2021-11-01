@@ -6,6 +6,13 @@ pub struct ParentheseTokens {
     pub right_parenthese: Token,
 }
 
+impl ParentheseTokens {
+    pub fn clear_comments(&mut self) {
+        self.left_parenthese.clear_comments();
+        self.right_parenthese.clear_comments();
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ParentheseExpression {
     expression: Expression,
@@ -48,5 +55,11 @@ impl ParentheseExpression {
     #[inline]
     pub fn get_tokens(&self) -> Option<&ParentheseTokens> {
         self.tokens.as_ref()
+    }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
     }
 }

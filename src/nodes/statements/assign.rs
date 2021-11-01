@@ -7,6 +7,16 @@ pub struct AssignTokens {
     pub value_commas: Vec<Token>,
 }
 
+impl AssignTokens {
+    pub fn clear_comments(&mut self) {
+        self.equal.clear_comments();
+        self.variable_commas
+            .iter_mut()
+            .for_each(Token::clear_comments);
+        self.value_commas.iter_mut().for_each(Token::clear_comments);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AssignStatement {
     variables: Vec<Variable>,
@@ -94,5 +104,11 @@ impl AssignStatement {
     #[inline]
     pub fn get_tokens(&self) -> Option<&AssignTokens> {
         self.tokens.as_ref()
+    }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
     }
 }

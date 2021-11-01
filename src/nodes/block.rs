@@ -6,6 +6,19 @@ pub struct BlockTokens {
     pub last_semicolon: Option<Token>,
 }
 
+impl BlockTokens {
+    pub fn clear_comments(&mut self) {
+        self.semicolons.iter_mut().for_each(|semicolon| {
+            if let Some(semicolon) = semicolon {
+                semicolon.clear_comments();
+            }
+        });
+        if let Some(last_semicolon) = &mut self.last_semicolon {
+            last_semicolon.clear_comments();
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Block {
     statements: Vec<Statement>,
@@ -122,6 +135,12 @@ impl Block {
         if let Some(tokens) = &mut self.tokens {
             tokens.semicolons.clear();
             tokens.last_semicolon = None;
+        }
+    }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
         }
     }
 }

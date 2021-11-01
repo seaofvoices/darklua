@@ -10,6 +10,21 @@ pub struct FunctionExpressionTokens {
     pub variable_arguments: Option<Token>,
 }
 
+impl FunctionExpressionTokens {
+    pub fn clear_comments(&mut self) {
+        self.function.clear_comments();
+        self.opening_parenthese.clear_comments();
+        self.closing_parenthese.clear_comments();
+        self.end.clear_comments();
+        self.parameter_commas
+            .iter_mut()
+            .for_each(Token::clear_comments);
+        if let Some(token) = &mut self.variable_arguments {
+            token.clear_comments();
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FunctionExpression {
     block: Block,
@@ -104,6 +119,15 @@ impl FunctionExpression {
     #[inline]
     pub fn has_parameters(&self) -> bool {
         !self.parameters.is_empty()
+    }
+
+    pub fn clear_comments(&mut self) {
+        self.parameters
+            .iter_mut()
+            .for_each(Identifier::clear_comments);
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
     }
 }
 

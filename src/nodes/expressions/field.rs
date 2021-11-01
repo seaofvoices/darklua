@@ -47,4 +47,11 @@ impl FieldExpression {
     pub fn mutate_prefix(&mut self) -> &mut Prefix {
         &mut self.prefix
     }
+
+    pub fn clear_comments(&mut self) {
+        self.field.clear_comments();
+        if let Some(token) = &mut self.token {
+            token.clear_comments();
+        }
+    }
 }

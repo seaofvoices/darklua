@@ -52,6 +52,12 @@ impl Identifier {
     pub fn into_name(self) -> String {
         self.name
     }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(token) = &mut self.token {
+            token.clear_comments();
+        }
+    }
 }
 
 impl<IntoString: Into<String>> From<IntoString> for Identifier {

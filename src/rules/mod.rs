@@ -7,6 +7,7 @@ mod group_local;
 mod inject_value;
 mod method_def;
 mod no_local_function;
+mod remove_comments;
 mod rename_variables;
 mod unused_if_branch;
 mod unused_while;
@@ -18,6 +19,7 @@ pub use group_local::*;
 pub use inject_value::*;
 pub use method_def::*;
 pub use no_local_function::*;
+pub use remove_comments::*;
 pub use rename_variables::*;
 pub use unused_if_branch::*;
 pub use unused_while::*;
@@ -127,6 +129,7 @@ impl<T: FlawlessRule + RuleConfiguration> Rule for T {
 /// processed block will work as much as the original one.
 pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
     vec![
+        Box::new(RemoveComments::default()),
         Box::new(ComputeExpression::default()),
         Box::new(RemoveUnusedIfBranch::default()),
         Box::new(RemoveUnusedWhile::default()),
@@ -150,6 +153,7 @@ impl FromStr for Box<dyn Rule> {
             }
             GROUP_LOCAL_ASSIGNMENT => Box::new(GroupLocalAssignment::default()),
             INJECT_GLOBAL_VALUE_RULE_NAME => Box::new(InjectGlobalValue::default()),
+            REMOVE_COMMENTS_RULE_NAME => Box::new(RemoveComments::default()),
             REMOVE_EMPTY_DO_RULE_NAME => Box::new(RemoveEmptyDo::default()),
             REMOVE_FUNCTION_CALL_PARENS => Box::new(RemoveFunctionCallParens::default()),
             REMOVE_METHOD_DEFINITION_RULE_NAME => Box::new(RemoveMethodDefinition::default()),

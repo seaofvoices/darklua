@@ -7,6 +7,14 @@ pub struct WhileTokens {
     pub end: Token,
 }
 
+impl WhileTokens {
+    pub fn clear_comments(&mut self) {
+        self.r#while.clear_comments();
+        self.r#do.clear_comments();
+        self.end.clear_comments();
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WhileStatement {
     block: Block,
@@ -56,5 +64,11 @@ impl WhileStatement {
     #[inline]
     pub fn get_tokens(&self) -> Option<&WhileTokens> {
         self.tokens.as_ref()
+    }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
     }
 }

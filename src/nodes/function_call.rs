@@ -5,6 +5,14 @@ pub struct FunctionCallTokens {
     pub colon: Option<Token>,
 }
 
+impl FunctionCallTokens {
+    pub fn clear_comments(&mut self) {
+        if let Some(colon) = &mut self.colon {
+            colon.clear_comments();
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FunctionCall {
     prefix: Box<Prefix>,
@@ -109,5 +117,11 @@ impl FunctionCall {
     #[inline]
     pub fn mutate_prefix(&mut self) -> &mut Prefix {
         &mut self.prefix
+    }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
     }
 }
