@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* fix block mutations to handle semicolon tokens ([!32](https://gitlab.com/seaofvoices/darklua/-/merge_requests/32))
 * enhance the `compute_expression` rule by improving the evaluation of binary and unary expressions ([!31](https://gitlab.com/seaofvoices/darklua/-/merge_requests/31))
 
 ## 0.6.1

@@ -78,7 +78,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
     }
 
     fn write_block_with_tokens(&mut self, block: &Block, tokens: &BlockTokens) {
-        let mut iterator = block.get_statements().iter().enumerate().peekable();
+        let mut iterator = block.iter_statements().enumerate().peekable();
 
         while let Some((index, statement)) = iterator.next() {
             self.write_statement(statement);
@@ -1421,7 +1421,7 @@ mod test {
             .parse(code)
             .unwrap();
 
-        let call = match block.mutate_statements().last_mut().unwrap() {
+        let call = match block.iter_mut_statements().last().unwrap() {
             Statement::Call(call) => call,
             _ => panic!("unexpected statement"),
         };

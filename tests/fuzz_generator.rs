@@ -36,8 +36,7 @@ macro_rules! fuzz_test_expression {
         };
 
         let last_statement = generated_block
-            .mutate_last_statement()
-            .take()
+            .take_last_statement()
             .expect("should have a last statement");
 
         let generated_node = match last_statement {

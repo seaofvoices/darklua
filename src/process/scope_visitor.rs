@@ -26,8 +26,7 @@ impl ScopeVisitor {
         scope.process_block(block);
 
         block
-            .mutate_statements()
-            .iter_mut()
+            .iter_mut_statements()
             .for_each(|statement| Self::visit_statement(statement, scope));
 
         if let Some(last_statement) = block.mutate_last_statement() {

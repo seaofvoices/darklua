@@ -53,8 +53,8 @@ impl Block {
     }
 
     #[inline]
-    pub fn get_statements(&self) -> &Vec<Statement> {
-        &self.statements
+    pub fn iter_statements(&self) -> impl Iterator<Item = &Statement> {
+        self.statements.iter()
     }
 
     #[inline]
@@ -67,29 +67,62 @@ impl Block {
         F: FnMut(&mut Statement) -> bool,
     {
         let mut i = 0;
+        let mut to_remove = Vec::new();
 
         while i != self.statements.len() {
             if f(&mut self.statements[i]) {
                 i += 1;
             } else {
                 self.statements.remove(i);
+                to_remove.push(i);
+
+                if let Some(tokens) = &mut self.tokens {
+                    tokens.semicolons.remove(i);
+                }
             }
         }
     }
 
     #[inline]
-    pub fn mutate_statements(&mut self) -> &mut Vec<Statement> {
-        &mut self.statements
+    pub fn iter_mut_statements(&mut self) -> impl Iterator<Item = &mut Statement> {
+        self.statements.iter_mut()
+    }
+
+    pub fn take_statements(&mut self) -> Vec<Statement> {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.semicolons.clear();
+        }
+        self.statements.drain(..).collect()
+    }
+
+    pub fn take_last_statement(&mut self) -> Option<LastStatement> {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.last_semicolon.take();
+        }
+        self.last_statement.take()
+    }
+
+    pub fn set_statements(&mut self, statements: Vec<Statement>) {
+        self.statements = statements;
+
+        if let Some(tokens) = &mut self.tokens {
+            tokens.semicolons.clear();
+        }
     }
 
     #[inline]
-    pub fn mutate_last_statement(&mut self) -> &mut Option<LastStatement> {
-        &mut self.last_statement
+    pub fn mutate_last_statement(&mut self) -> Option<&mut LastStatement> {
+        self.last_statement.as_mut()
     }
 
     pub fn clear(&mut self) {
         self.statements.clear();
         self.last_statement.take();
+
+        if let Some(tokens) = &mut self.tokens {
+            tokens.semicolons.clear();
+            tokens.last_semicolon = None;
+        }
     }
 }
 
@@ -164,5 +197,61 @@ mod test {
         block.clear();
 
         assert!(block.is_empty());
+    }
+
+    #[test]
+    fn clean_removes_semicolon_tokens() {
+        let mut block = Block::default()
+            .with_statement(DoStatement::default())
+            .with_tokens(BlockTokens {
+                semicolons: vec![Some(Token::from_content(";"))],
+                last_semicolon: None,
+            });
+        block.clear();
+
+        assert!(block.get_tokens().unwrap().semicolons.is_empty());
+    }
+
+    #[test]
+    fn clean_removes_last_semicolon_token() {
+        let mut block = Block::default()
+            .with_last_statement(LastStatement::new_break())
+            .with_tokens(BlockTokens {
+                semicolons: Vec::new(),
+                last_semicolon: Some(Token::from_content(";")),
+            });
+        block.clear();
+
+        assert!(block.get_tokens().unwrap().last_semicolon.is_none());
+    }
+
+    #[test]
+    fn set_statements_clear_semicolon_tokens() {
+        let mut block = Block::default()
+            .with_statement(DoStatement::default())
+            .with_tokens(BlockTokens {
+                semicolons: vec![Some(Token::from_content(";"))],
+                last_semicolon: None,
+            });
+        block.set_statements(Vec::new());
+
+        assert!(block.get_tokens().unwrap().semicolons.is_empty());
+    }
+
+    #[test]
+    fn take_last_statement_clear_semicolon_token() {
+        let mut block = Block::default()
+            .with_last_statement(LastStatement::new_break())
+            .with_tokens(BlockTokens {
+                semicolons: Vec::new(),
+                last_semicolon: Some(Token::from_content(";")),
+            });
+
+        assert_eq!(
+            block.take_last_statement(),
+            Some(LastStatement::new_break())
+        );
+
+        assert!(block.get_tokens().unwrap().last_semicolon.is_none());
     }
 }

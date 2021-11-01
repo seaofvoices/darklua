@@ -14,7 +14,7 @@ struct GroupLocalProcessor {}
 
 impl GroupLocalProcessor {
     fn filter_statements(&self, block: &mut Block) -> Vec<Statement> {
-        let statements = block.mutate_statements();
+        let mut statements = block.take_statements();
         let mut filter_statements = Vec::new();
         let mut iter = statements.drain(..);
         let mut previous_statement = iter.next();
@@ -90,7 +90,7 @@ impl NodeProcessor for GroupLocalProcessor {
     fn process_block(&mut self, block: &mut Block) {
         let filter_statements = self.filter_statements(block);
 
-        *block.mutate_statements() = filter_statements;
+        block.set_statements(filter_statements);
     }
 }
 

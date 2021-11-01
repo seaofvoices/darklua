@@ -339,8 +339,7 @@ impl LuaGenerator for ReadableLuaGenerator {
     }
 
     fn write_block(&mut self, block: &nodes::Block) {
-        let statements = block.get_statements();
-        let mut statements = statements.iter().peekable();
+        let mut statements = block.iter_statements().peekable();
 
         while let Some(statement) = statements.next() {
             let current_type: StatementType = statement.into();
@@ -365,7 +364,7 @@ impl LuaGenerator for ReadableLuaGenerator {
         }
 
         if let Some(last_statement) = block.get_last_statement() {
-            if !block.get_statements().is_empty() {
+            if block.iter_statements().next().is_some() {
                 self.push_new_line();
             }
             self.write_last_statement(last_statement);

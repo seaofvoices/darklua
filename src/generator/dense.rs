@@ -193,8 +193,7 @@ impl LuaGenerator for DenseLuaGenerator {
     }
 
     fn write_block(&mut self, block: &nodes::Block) {
-        let statements = block.get_statements();
-        let mut statements = statements.iter().peekable();
+        let mut statements = block.iter_statements().peekable();
 
         while let Some(statement) = statements.next() {
             self.write_statement(statement);
