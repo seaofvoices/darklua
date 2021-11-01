@@ -7,10 +7,6 @@ use crate::nodes::*;
 /// A struct to convert an Expression node into a LuaValue object.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Evaluator {
-    /// When evaluating expressions related to tables, this value tells the evaluator if
-    /// metamethods can have side effects. For example, indexing a normal table in Lua does not
-    /// have any side effects, but if the table is a metatable, it's __index metamethod can
-    /// possibly have side effects (since it can be a function call).
     pure_metamethods: bool,
 }
 
@@ -23,6 +19,15 @@ impl Default for Evaluator {
 }
 
 impl Evaluator {
+    /// When evaluating expressions related to tables, this value tells the evaluator if
+    /// metamethods can have side effects. For example, indexing a normal table in Lua does not
+    /// have any side effects, but if the table is a metatable, it's `__index` metamethod can
+    /// possibly have side effects (since it can be a function call).
+    pub fn assume_pure_metamethods(mut self) -> Self {
+        self.pure_metamethods = true;
+        self
+    }
+
     pub fn evaluate(&self, expression: &Expression) -> LuaValue {
         match expression {
             Expression::False(_) => LuaValue::False,
@@ -49,25 +54,46 @@ impl Evaluator {
             | Expression::True(_)
             | Expression::VariableArguments(_) => false,
             Expression::Binary(binary) => {
-                if self.pure_metamethods {
-                    self.has_side_effects(binary.left()) || self.has_side_effects(binary.right())
-                } else {
-                    let left = binary.left();
-                    let right = binary.right();
+                let left = binary.left();
+                let right = binary.right();
 
-                    self.maybe_table(&self.evaluate(left))
-                        || self.maybe_table(&self.evaluate(right))
-                        || self.has_side_effects(left)
-                        || self.has_side_effects(right)
+                let left_value = self.evaluate(left);
+                let left_side_effect = self.has_side_effects(binary.left());
+
+                match binary.operator() {
+                    BinaryOperator::And => {
+                        if left_value.is_truthy().unwrap_or(true) {
+                            left_side_effect || self.has_side_effects(binary.right())
+                        } else {
+                            left_side_effect
+                        }
+                    }
+                    BinaryOperator::Or => {
+                        if left_value.is_truthy().unwrap_or(false) {
+                            left_side_effect
+                        } else {
+                            left_side_effect || self.has_side_effects(binary.right())
+                        }
+                    }
+                    _ => {
+                        if self.pure_metamethods {
+                            left_side_effect || self.has_side_effects(binary.right())
+                        } else {
+                            self.maybe_metatable(&left_value)
+                                || self.maybe_metatable(&self.evaluate(right))
+                                || self.has_side_effects(left)
+                                || self.has_side_effects(right)
+                        }
+                    }
                 }
             }
             Expression::Unary(unary) => {
-                if self.pure_metamethods {
+                if self.pure_metamethods || matches!(unary.operator(), UnaryOperator::Not) {
                     self.has_side_effects(unary.get_expression())
                 } else {
                     let sub_expression = unary.get_expression();
 
-                    self.maybe_table(&self.evaluate(sub_expression))
+                    self.maybe_metatable(&self.evaluate(sub_expression))
                         || self.has_side_effects(sub_expression)
                 }
             }
@@ -125,15 +151,16 @@ impl Evaluator {
     }
 
     #[inline]
-    fn maybe_table(&self, value: &LuaValue) -> bool {
+    fn maybe_metatable(&self, value: &LuaValue) -> bool {
         match value {
             LuaValue::False
             | LuaValue::Function
             | LuaValue::Nil
             | LuaValue::Number(_)
             | LuaValue::String(_)
+            | LuaValue::Table
             | LuaValue::True => false,
-            LuaValue::Table | LuaValue::Unknown => true,
+            LuaValue::Unknown => true,
         }
     }
 
@@ -611,15 +638,80 @@ mod test {
             Expression::from(true),
             FunctionCall::from_name("foo"),
         ),
+        binary_false_or_call => BinaryExpression::new(
+            BinaryOperator::Or,
+            Expression::from(false),
+            FunctionCall::from_name("var"),
+        ),
+        addition_unknown_variable_and_number => BinaryExpression::new(
+            BinaryOperator::Plus,
+            Expression::identifier("var"),
+            1.0,
+        ),
+        addition_number_with_unknown_variable => BinaryExpression::new(
+            BinaryOperator::Plus,
+            1.0,
+            Expression::identifier("var"),
+        ),
+        unary_minus_on_variable => UnaryExpression::new(UnaryOperator::Minus, Identifier::new("var")),
+        length_on_variable => UnaryExpression::new(UnaryOperator::Length, Identifier::new("var")),
+        field_index => FieldExpression::new(Identifier::new("var"), "field"),
+        table_value_with_call_in_entry => TableExpression::default()
+            .append_array_value(FunctionCall::from_name("call")),
     );
 
     has_no_side_effects!(
         true_value => Expression::from(true),
         false_value => Expression::from(false),
         nil_value => Expression::nil(),
+        table_value => TableExpression::default(),
         number_value => Expression::Number(DecimalNumber::new(0.0).into()),
         string_value => StringExpression::from_value(""),
         identifier => Expression::identifier("foo"),
         identifier_in_parentheses => Expression::identifier("foo").in_parentheses(),
+        binary_false_and_call => BinaryExpression::new(
+            BinaryOperator::And,
+            Expression::from(false),
+            FunctionCall::from_name("foo"),
+        ),
+        binary_true_or_call => BinaryExpression::new(
+            BinaryOperator::Or,
+            Expression::from(true),
+            FunctionCall::from_name("foo"),
+        ),
+        not_variable => UnaryExpression::new(UnaryOperator::Not, Identifier::new("var")),
     );
+
+    mod assume_pure_metamethods {
+        use super::*;
+
+        macro_rules! has_no_side_effects {
+            ($($name:ident => $expression:expr),* $(,)?) => {
+                $(
+                    #[test]
+                    fn $name() {
+                        let evaluator = Evaluator::default().assume_pure_metamethods();
+                        assert!(!evaluator.has_side_effects(&$expression.into()));
+                    }
+                )*
+            };
+        }
+
+        has_no_side_effects!(
+            addition_unknown_variable_and_number => BinaryExpression::new(
+                BinaryOperator::Plus,
+                Expression::identifier("foo"),
+                1.0,
+            ),
+            addition_number_with_unknown_variable => BinaryExpression::new(
+                BinaryOperator::Plus,
+                1.0,
+                Expression::identifier("foo"),
+            ),
+            unary_minus_on_variable => UnaryExpression::new(UnaryOperator::Minus, Identifier::new("var")),
+            length_on_variable => UnaryExpression::new(UnaryOperator::Length, Identifier::new("var")),
+            not_on_variable => UnaryExpression::new(UnaryOperator::Not, Identifier::new("var")),
+            field_index => FieldExpression::new(Identifier::new("var"), "field"),
+        );
+    }
 }

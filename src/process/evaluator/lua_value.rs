@@ -185,6 +185,11 @@ mod test {
         assert!(LuaValue::String("".to_owned()).is_truthy().unwrap());
     }
 
+    #[test]
+    fn table_value_is_truthy() {
+        assert!(LuaValue::Table.is_truthy().unwrap());
+    }
+
     mod number_coercion {
         use super::*;
 

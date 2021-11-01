@@ -1,4 +1,4 @@
-use crate::nodes::{Block, Expression};
+use crate::nodes::{BinaryOperator, Block, Expression};
 use crate::process::{DefaultVisitor, Evaluator, NodeProcessor, NodeVisitor};
 use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
@@ -12,11 +12,51 @@ struct Computer {
 }
 
 impl Computer {
-    fn replace_with(&self, expression: &mut Expression) -> Option<Expression> {
+    fn replace_with(&mut self, expression: &Expression) -> Option<Expression> {
         match expression {
-            Expression::Unary(_) | Expression::Binary(_) => {
+            Expression::Unary(_) => {
                 if !self.evaluator.has_side_effects(expression) {
                     self.evaluator.evaluate(expression).to_expression()
+                } else {
+                    None
+                }
+            }
+            Expression::Binary(binary) => {
+                if !self.evaluator.has_side_effects(expression) {
+                    self.evaluator
+                        .evaluate(expression)
+                        .to_expression()
+                        .or_else(|| {
+                            match binary.operator() {
+                                BinaryOperator::And => {
+                                    self.evaluator.evaluate(binary.left()).is_truthy().map(
+                                        |is_truthy| {
+                                            if is_truthy {
+                                                binary.right().clone()
+                                            } else {
+                                                binary.left().clone()
+                                            }
+                                        },
+                                    )
+                                }
+                                BinaryOperator::Or => {
+                                    self.evaluator.evaluate(binary.left()).is_truthy().map(
+                                        |is_truthy| {
+                                            if is_truthy {
+                                                binary.left().clone()
+                                            } else {
+                                                binary.right().clone()
+                                            }
+                                        },
+                                    )
+                                }
+                                _ => None,
+                            }
+                            .map(|mut expression| {
+                                self.process_expression(&mut expression);
+                                expression
+                            })
+                        })
                 } else {
                     None
                 }
