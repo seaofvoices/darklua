@@ -74,6 +74,12 @@ impl DecimalNumber {
             token.clear_comments();
         }
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(token) = &mut self.token {
+            token.clear_whitespaces();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -152,6 +158,12 @@ impl HexNumber {
             token.clear_comments();
         }
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(token) = &mut self.token {
+            token.clear_whitespaces();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -206,6 +218,12 @@ impl BinaryNumber {
     pub fn clear_comments(&mut self) {
         if let Some(token) = &mut self.token {
             token.clear_comments();
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(token) = &mut self.token {
+            token.clear_whitespaces();
         }
     }
 }
@@ -266,6 +284,14 @@ impl NumberExpression {
             NumberExpression::Decimal(number) => number.clear_comments(),
             NumberExpression::Hex(number) => number.clear_comments(),
             NumberExpression::Binary(number) => number.clear_comments(),
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        match self {
+            NumberExpression::Decimal(number) => number.clear_whitespaces(),
+            NumberExpression::Hex(number) => number.clear_whitespaces(),
+            NumberExpression::Binary(number) => number.clear_whitespaces(),
         }
     }
 }

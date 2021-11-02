@@ -54,4 +54,11 @@ impl FieldExpression {
             token.clear_comments();
         }
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.field.clear_whitespaces();
+        if let Some(token) = &mut self.token {
+            token.clear_whitespaces();
+        }
+    }
 }

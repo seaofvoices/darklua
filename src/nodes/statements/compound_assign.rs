@@ -109,4 +109,10 @@ impl CompoundAssignStatement {
             tokens.operator.clear_comments();
         }
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.operator.clear_whitespaces();
+        }
+    }
 }

@@ -58,6 +58,12 @@ impl Identifier {
             token.clear_comments();
         }
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(token) = &mut self.token {
+            token.clear_whitespaces();
+        }
+    }
 }
 
 impl<IntoString: Into<String>> From<IntoString> for Identifier {

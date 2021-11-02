@@ -224,6 +224,12 @@ impl StringExpression {
             token.clear_comments();
         }
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(token) = &mut self.token {
+            token.clear_whitespaces();
+        }
+    }
 }
 
 fn read_number(

@@ -58,6 +58,13 @@ impl TableFieldEntry {
             token.clear_comments();
         }
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.field.clear_whitespaces();
+        if let Some(token) = &mut self.token {
+            token.clear_whitespaces();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -72,6 +79,12 @@ impl TableIndexEntryTokens {
         self.opening_bracket.clear_comments();
         self.closing_bracket.clear_comments();
         self.equal.clear_comments();
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.opening_bracket.clear_whitespaces();
+        self.closing_bracket.clear_whitespaces();
+        self.equal.clear_whitespaces();
     }
 }
 
@@ -131,6 +144,12 @@ impl TableIndexEntry {
             tokens.clear_comments();
         }
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -145,6 +164,14 @@ impl TableEntry {
         match self {
             TableEntry::Field(entry) => entry.clear_comments(),
             TableEntry::Index(entry) => entry.clear_comments(),
+            TableEntry::Value(_) => {}
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        match self {
+            TableEntry::Field(entry) => entry.clear_whitespaces(),
+            TableEntry::Index(entry) => entry.clear_whitespaces(),
             TableEntry::Value(_) => {}
         }
     }
@@ -174,6 +201,14 @@ impl TableTokens {
         self.opening_brace.clear_comments();
         self.closing_brace.clear_comments();
         self.separators.iter_mut().for_each(Token::clear_comments);
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.opening_brace.clear_whitespaces();
+        self.closing_brace.clear_whitespaces();
+        self.separators
+            .iter_mut()
+            .for_each(Token::clear_whitespaces);
     }
 }
 
@@ -265,6 +300,15 @@ impl TableExpression {
             tokens.clear_comments();
         }
         self.entries.iter_mut().for_each(TableEntry::clear_comments)
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
+        }
+        self.entries
+            .iter_mut()
+            .for_each(TableEntry::clear_whitespaces)
     }
 }
 

@@ -11,6 +11,11 @@ impl IfBranchTokens {
         self.elseif.clear_comments();
         self.then.clear_comments();
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.elseif.clear_whitespaces();
+        self.then.clear_whitespaces();
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -77,6 +82,12 @@ impl IfBranch {
             tokens.clear_comments();
         }
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -94,6 +105,15 @@ impl IfStatementTokens {
         self.end.clear_comments();
         if let Some(token) = &mut self.r#else {
             token.clear_comments();
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.r#if.clear_whitespaces();
+        self.then.clear_whitespaces();
+        self.end.clear_whitespaces();
+        if let Some(token) = &mut self.r#else {
+            token.clear_whitespaces();
         }
     }
 }
@@ -226,5 +246,14 @@ impl IfStatement {
             tokens.clear_comments();
         }
         self.branches.iter_mut().for_each(IfBranch::clear_comments);
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
+        }
+        self.branches
+            .iter_mut()
+            .for_each(IfBranch::clear_whitespaces);
     }
 }

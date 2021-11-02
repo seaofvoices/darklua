@@ -13,6 +13,12 @@ impl WhileTokens {
         self.r#do.clear_comments();
         self.end.clear_comments();
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.r#while.clear_whitespaces();
+        self.r#do.clear_whitespaces();
+        self.end.clear_whitespaces();
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -69,6 +75,12 @@ impl WhileStatement {
     pub fn clear_comments(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
         }
     }
 }

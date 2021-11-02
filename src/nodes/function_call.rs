@@ -11,6 +11,12 @@ impl FunctionCallTokens {
             colon.clear_comments();
         }
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(colon) = &mut self.colon {
+            colon.clear_whitespaces();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -122,6 +128,12 @@ impl FunctionCall {
     pub fn clear_comments(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
         }
     }
 }

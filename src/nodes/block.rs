@@ -17,6 +17,17 @@ impl BlockTokens {
             last_semicolon.clear_comments();
         }
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.semicolons.iter_mut().for_each(|semicolon| {
+            if let Some(semicolon) = semicolon {
+                semicolon.clear_whitespaces();
+            }
+        });
+        if let Some(last_semicolon) = &mut self.last_semicolon {
+            last_semicolon.clear_whitespaces();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -141,6 +152,12 @@ impl Block {
     pub fn clear_comments(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
         }
     }
 }

@@ -19,6 +19,19 @@ impl LocalAssignTokens {
             token.clear_comments();
         }
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.local.clear_whitespaces();
+        self.variable_commas
+            .iter_mut()
+            .for_each(Token::clear_whitespaces);
+        self.value_commas
+            .iter_mut()
+            .for_each(Token::clear_whitespaces);
+        if let Some(token) = &mut self.equal {
+            token.clear_whitespaces();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -155,6 +168,15 @@ impl LocalAssignStatement {
             .for_each(Identifier::clear_comments);
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.variables
+            .iter_mut()
+            .for_each(Identifier::clear_whitespaces);
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
         }
     }
 }

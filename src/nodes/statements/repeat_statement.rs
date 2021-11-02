@@ -11,6 +11,11 @@ impl RepeatTokens {
         self.repeat.clear_comments();
         self.until.clear_comments();
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.repeat.clear_whitespaces();
+        self.until.clear_whitespaces();
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -67,6 +72,12 @@ impl RepeatStatement {
     pub fn clear_comments(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
         }
     }
 }

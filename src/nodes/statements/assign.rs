@@ -15,6 +15,16 @@ impl AssignTokens {
             .for_each(Token::clear_comments);
         self.value_commas.iter_mut().for_each(Token::clear_comments);
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.equal.clear_whitespaces();
+        self.variable_commas
+            .iter_mut()
+            .for_each(Token::clear_whitespaces);
+        self.value_commas
+            .iter_mut()
+            .for_each(Token::clear_whitespaces);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -109,6 +119,12 @@ impl AssignStatement {
     pub fn clear_comments(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
         }
     }
 }

@@ -21,6 +21,17 @@ impl NumericForTokens {
             token.clear_comments();
         }
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.r#for.clear_whitespaces();
+        self.equal.clear_whitespaces();
+        self.r#do.clear_whitespaces();
+        self.end.clear_whitespaces();
+        self.end_comma.clear_whitespaces();
+        if let Some(token) = &mut self.step_comma {
+            token.clear_whitespaces();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -124,6 +135,12 @@ impl NumericForStatement {
     pub fn clear_comments(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
         }
     }
 }

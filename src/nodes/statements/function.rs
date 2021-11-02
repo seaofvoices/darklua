@@ -13,6 +13,13 @@ impl FunctionNameTokens {
             token.clear_comments();
         }
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.periods.iter_mut().for_each(Token::clear_whitespaces);
+        if let Some(token) = &mut self.colon {
+            token.clear_whitespaces();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -111,6 +118,12 @@ impl FunctionName {
             tokens.clear_comments();
         }
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -134,6 +147,19 @@ impl FunctionStatementTokens {
             .for_each(Token::clear_comments);
         if let Some(token) = &mut self.variable_arguments {
             token.clear_comments();
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.function.clear_whitespaces();
+        self.opening_parenthese.clear_whitespaces();
+        self.closing_parenthese.clear_whitespaces();
+        self.end.clear_whitespaces();
+        self.parameter_commas
+            .iter_mut()
+            .for_each(Token::clear_whitespaces);
+        if let Some(token) = &mut self.variable_arguments {
+            token.clear_whitespaces();
         }
     }
 }
@@ -262,6 +288,16 @@ impl FunctionStatement {
             .for_each(Identifier::clear_comments);
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.name.clear_whitespaces();
+        self.parameters
+            .iter_mut()
+            .for_each(Identifier::clear_whitespaces);
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
         }
     }
 }

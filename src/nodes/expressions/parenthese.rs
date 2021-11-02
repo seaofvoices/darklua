@@ -11,6 +11,11 @@ impl ParentheseTokens {
         self.left_parenthese.clear_comments();
         self.right_parenthese.clear_comments();
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.left_parenthese.clear_whitespaces();
+        self.right_parenthese.clear_whitespaces();
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -60,6 +65,12 @@ impl ParentheseExpression {
     pub fn clear_comments(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
         }
     }
 }

@@ -11,6 +11,11 @@ impl IndexExpressionTokens {
         self.opening_bracket.clear_comments();
         self.closing_bracket.clear_comments();
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.opening_bracket.clear_whitespaces();
+        self.closing_bracket.clear_whitespaces();
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -67,6 +72,12 @@ impl IndexExpression {
     pub fn clear_comments(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
         }
     }
 }

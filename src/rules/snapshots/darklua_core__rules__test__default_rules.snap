@@ -4,6 +4,7 @@ expression: rules
 
 ---
 [
+  "remove_spaces",
   "remove_comments",
   "compute_expression",
   "remove_unused_if_branch",

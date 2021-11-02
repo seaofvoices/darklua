@@ -13,6 +13,12 @@ impl TupleArgumentsTokens {
         self.closing_parenthese.clear_comments();
         self.commas.iter_mut().for_each(Token::clear_comments);
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.opening_parenthese.clear_whitespaces();
+        self.closing_parenthese.clear_whitespaces();
+        self.commas.iter_mut().for_each(Token::clear_whitespaces);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -79,6 +85,12 @@ impl TupleArguments {
             tokens.clear_comments();
         }
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
+        }
+    }
 }
 
 impl Default for TupleArguments {
@@ -123,6 +135,13 @@ impl Arguments {
     pub fn clear_comments(&mut self) {
         match self {
             Arguments::Tuple(tuple) => tuple.clear_comments(),
+            Arguments::String(_) | Arguments::Table(_) => {}
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        match self {
+            Arguments::Tuple(tuple) => tuple.clear_whitespaces(),
             Arguments::String(_) | Arguments::Table(_) => {}
         }
     }

@@ -8,6 +8,7 @@ mod inject_value;
 mod method_def;
 mod no_local_function;
 mod remove_comments;
+mod remove_spaces;
 mod rename_variables;
 mod unused_if_branch;
 mod unused_while;
@@ -20,6 +21,7 @@ pub use inject_value::*;
 pub use method_def::*;
 pub use no_local_function::*;
 pub use remove_comments::*;
+pub use remove_spaces::*;
 pub use rename_variables::*;
 pub use unused_if_branch::*;
 pub use unused_while::*;
@@ -129,6 +131,7 @@ impl<T: FlawlessRule + RuleConfiguration> Rule for T {
 /// processed block will work as much as the original one.
 pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
     vec![
+        Box::new(RemoveSpaces::default()),
         Box::new(RemoveComments::default()),
         Box::new(ComputeExpression::default()),
         Box::new(RemoveUnusedIfBranch::default()),
@@ -157,6 +160,7 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_EMPTY_DO_RULE_NAME => Box::new(RemoveEmptyDo::default()),
             REMOVE_FUNCTION_CALL_PARENS => Box::new(RemoveFunctionCallParens::default()),
             REMOVE_METHOD_DEFINITION_RULE_NAME => Box::new(RemoveMethodDefinition::default()),
+            REMOVE_SPACES_RULE_NAME => Box::new(RemoveSpaces::default()),
             REMOVE_UNUSED_IF_BRANCH_RULE_NAME => Box::new(RemoveUnusedIfBranch::default()),
             REMOVE_UNUSED_WHILE_RULE_NAME => Box::new(RemoveUnusedWhile::default()),
             RENAME_VARIABLES_RULE_NAME => Box::new(RenameVariables::default()),

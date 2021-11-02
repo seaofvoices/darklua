@@ -23,6 +23,19 @@ impl FunctionExpressionTokens {
             token.clear_comments();
         }
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.function.clear_whitespaces();
+        self.opening_parenthese.clear_whitespaces();
+        self.closing_parenthese.clear_whitespaces();
+        self.end.clear_whitespaces();
+        self.parameter_commas
+            .iter_mut()
+            .for_each(Token::clear_whitespaces);
+        if let Some(token) = &mut self.variable_arguments {
+            token.clear_whitespaces();
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -127,6 +140,15 @@ impl FunctionExpression {
             .for_each(Identifier::clear_comments);
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.parameters
+            .iter_mut()
+            .for_each(Identifier::clear_whitespaces);
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
         }
     }
 }

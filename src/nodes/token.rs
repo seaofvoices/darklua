@@ -177,6 +177,13 @@ impl Token {
         self.trailing_trivia
             .retain(|trivia| trivia.kind() != TriviaKind::Comment);
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.leading_trivia
+            .retain(|trivia| trivia.kind() != TriviaKind::Whitespace);
+        self.trailing_trivia
+            .retain(|trivia| trivia.kind() != TriviaKind::Whitespace);
+    }
 }
 
 #[cfg(test)]

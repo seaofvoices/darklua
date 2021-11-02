@@ -2,6 +2,8 @@
 
 You can find the available rules and their properties here. The default rule stack is:
 
+  - [Remove spaces](#remove-spaces)
+  - [Remove comments](#remove-comments)
   - [Compute expressions](#compute-expressions)
   - [Convert local functions to assignments](#convert-local-functions-to-assignments)
   - [Group local assignments](#group-local-assignments)
@@ -15,6 +17,70 @@ You can find the available rules and their properties here. The default rule sta
 There are also other rules available for more processing:
 
   - [Inject global value](#inject-global-value)
+
+---
+
+## Remove spaces
+```remove_spaces```
+
+This rule does not have any properties. As the name suggest, it will remove all the data associated to spaces from the code.
+
+```lua
+local function getAverage(array)
+    local sum = 0
+    for _, element in ipairs(array) do
+        sum = sum + element
+    end
+    return sum / #array
+end
+```
+
+Will convert into the following code:
+
+```lua
+local function getAverage(array)
+local sum=0
+for _,element in ipairs(array)do
+sum=sum+element
+end
+return sum/#array
+end
+```
+
+It is important to note that when generating code with the `dense` or `readable` generator (e.g. `darklua process src --format dense`), all the spacing (whitespaces, tabs, new lines) will not be considered. The only way to retain the spacing information is to use the `retain-lines` format and avoid this rule.
+
+### Examples
+```json5
+{
+    rule: 'remove_spaces',
+}
+```
+
+---
+
+## Remove comments
+```remove_comments```
+
+This rule does not have any properties. As the name suggest, it will remove all comments.
+
+```lua
+return nil -- this is a comment
+```
+
+Will output the following code:
+
+```lua
+return nil
+```
+
+It is important to note that when generating code with the `dense` or `readable` generator (e.g. `darklua process src --format dense`), the comments will already be removed. The only way to retain comments is to use the `retain-lines` format and avoid this rule.
+
+### Examples
+```json5
+{
+    rule: 'remove_comments',
+}
+```
 
 ---
 

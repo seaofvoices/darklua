@@ -11,6 +11,11 @@ impl ReturnTokens {
         self.r#return.clear_comments();
         self.commas.iter_mut().for_each(Token::clear_comments);
     }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.r#return.clear_whitespaces();
+        self.commas.iter_mut().for_each(Token::clear_whitespaces);
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -91,6 +96,12 @@ impl ReturnStatement {
     pub fn clear_comments(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
         }
     }
 }
