@@ -3,20 +3,33 @@ pub mod minify;
 pub mod process;
 pub mod utils;
 
+use log::LevelFilter;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 pub struct GlobalOptions {
     /// Sets verbosity level (can be specified multiple times)
     #[structopt(long, short, global(true), parse(from_occurrences))]
-    pub verbose: u8,
+    verbose: u8,
+}
+
+impl GlobalOptions {
+    pub fn get_log_level_filter(&self) -> LevelFilter {
+        match self.verbose {
+            0 => LevelFilter::Error,
+            1 => LevelFilter::Warn,
+            2 => LevelFilter::Info,
+            3 => LevelFilter::Debug,
+            _ => LevelFilter::Trace,
+        }
+    }
 }
 
 #[derive(Debug, StructOpt)]
 pub enum Command {
     /// Minify lua files
     Minify(minify::Options),
-    /// Obfuscate lua files
+    /// Process lua files with rules
     Process(process::Options),
 }
 

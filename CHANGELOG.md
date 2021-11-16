@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* add logging to time processing steps ([!35](https://gitlab.com/seaofvoices/darklua/-/merge_requests/35))
 * add rule to remove spaces ([!34](https://gitlab.com/seaofvoices/darklua/-/merge_requests/34))
 * add rule to remove comments ([!33](https://gitlab.com/seaofvoices/darklua/-/merge_requests/33))
 * fix block mutations to handle semicolon tokens ([!32](https://gitlab.com/seaofvoices/darklua/-/merge_requests/32))

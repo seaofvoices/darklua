@@ -1,5 +1,5 @@
 use crate::cli::error::CliError;
-use crate::cli::utils::{maybe_plural, write_file, Config, FileProcessing};
+use crate::cli::utils::{maybe_plural, write_file, Config, FileProcessing, Timer};
 use crate::cli::GlobalOptions;
 
 use darklua_core::generator::TokenBasedLuaGenerator;
@@ -83,13 +83,7 @@ pub struct Options {
     pub format: LuaFormat,
 }
 
-fn process(
-    file: &FileProcessing,
-    options: &Options,
-    global: &GlobalOptions,
-) -> Result<(), CliError> {
-    let config = Config::new(&options.config_path, global)?;
-
+fn process(file: &FileProcessing, config: &Config, options: &Options) -> Result<(), CliError> {
     let source = &file.source;
     let output = &file.output;
 
@@ -102,40 +96,97 @@ fn process(
 
     let parser = options.format.build_parser();
 
+    let parser_timer = Timer::now();
+
     let mut block = parser
         .parse(&input)
         .map_err(|parser_error| CliError::Parser(source.clone(), parser_error))?;
 
+    let parser_time = parser_timer.duration_label();
+    log::debug!("parsed `{}` in {}", source.display(), parser_time,);
+
+    let rule_timer = Timer::now();
+
     for (index, rule) in config.process.iter().enumerate() {
         let mut context = Context::default();
+        log::trace!(
+            "[{}] apply rule `{}`{}",
+            source.display(),
+            rule.get_name(),
+            if rule.has_properties() {
+                format!("{:?}", rule.serialize_to_properties())
+            } else {
+                "".to_owned()
+            }
+        );
         rule.process(&mut block, &mut context)
-            .map_err(|rule_errors| CliError::RuleError {
-                file: source.clone(),
-                rule_name: rule.get_name().to_owned(),
-                rule_number: index,
-                errors: rule_errors,
+            .map_err(|rule_errors| {
+                let error = CliError::RuleError {
+                    file: source.clone(),
+                    rule_name: rule.get_name().to_owned(),
+                    rule_number: index,
+                    errors: rule_errors,
+                };
+                log::trace!(
+                    "[{}] rule `{}` errored: {}",
+                    source.display(),
+                    rule.get_name(),
+                    error
+                );
+
+                error
             })?;
     }
+    let rule_time = rule_timer.duration_label();
+    log::debug!("rules applied for `{}` in {}", source.display(), rule_time,);
 
-    let lua_code = options.format.generate(&config, &block, &input);
+    let generator_timer = Timer::now();
+    let lua_code = options.format.generate(config, &block, &input);
+    let generator_time = generator_timer.duration_label();
+    log::debug!(
+        "generated code for `{}` in {}",
+        source.display(),
+        generator_time,
+    );
 
     write_file(output, &lua_code)
         .map_err(|io_error| CliError::OutputFile(output.clone(), format!("{}", io_error)))?;
 
-    if global.verbose > 0 {
-        println!("Successfully processed <{}>", source.to_string_lossy());
-    };
+    log::debug!("Successfully processed `{}`", source.display());
 
     Ok(())
 }
 
 pub fn run(options: &Options, global: &GlobalOptions) {
+    log::debug!("running `process`: {:?}", options);
+
     let files = FileProcessing::find(&options.input_path, &options.output_path, global);
+
+    log::trace!(
+        "planned work: [\n    {:?}\n]",
+        files
+            .iter()
+            .map(|file| format!("{} -> {}", file.source.display(), file.output.display()))
+            .collect::<Vec<_>>()
+            .join(",\n    ")
+    );
+
+    let config = match Config::new(&options.config_path) {
+        Ok(config) => config,
+        Err(error) => {
+            eprintln!("{}", error);
+            return;
+        }
+    };
+
+    let timer = Timer::now();
 
     let results: Vec<Result<(), CliError>> = files
         .iter()
-        .map(|file_processing| process(file_processing, options, global))
+        .map(|file_processing| process(file_processing, &config, options))
         .collect();
+
+    let process_duration = timer.duration_label();
 
     let total_files = results.len();
 
@@ -150,19 +201,21 @@ pub fn run(options: &Options, global: &GlobalOptions) {
     let error_count = errors.len();
 
     if error_count == 0 {
-        println!(
-            "Successfully processed {} file{}",
+        log::info!(
+            "Successfully processed {} file{} (in {})",
             total_files,
-            maybe_plural(total_files)
+            maybe_plural(total_files),
+            process_duration,
         );
     } else {
         let success_count = total_files - error_count;
 
         if success_count > 0 {
             eprintln!(
-                "Successfully processed {} file{}.",
+                "Successfully processed {} file{}. (in {})",
                 success_count,
-                maybe_plural(success_count)
+                maybe_plural(success_count),
+                process_duration,
             );
         }
 

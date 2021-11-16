@@ -108,11 +108,15 @@ pub trait RuleConfiguration {
     /// The rule deserializer will construct the default rule and then send the properties through
     /// this method to modify the behavior of the rule.
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError>;
-    /// This method should the unique name of the rule.
+    /// This method should return the unique name of the rule.
     fn get_name(&self) -> &'static str;
     /// For implementing the serialize trait on the Rule trait, this method should return all
     /// properties that differs from their default value.
     fn serialize_to_properties(&self) -> RuleProperties;
+    /// Returns `true` if the rule has at least one property.
+    fn has_properties(&self) -> bool {
+        !self.serialize_to_properties().is_empty()
+    }
 }
 
 pub trait FlawlessRule {

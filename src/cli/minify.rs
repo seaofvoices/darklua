@@ -26,9 +26,7 @@ pub struct Options {
 
 type MinifyResult = Result<(), CliError>;
 
-fn process(file: &FileProcessing, options: &Options, global: &GlobalOptions) -> MinifyResult {
-    let config = Config::new(&options.config_path, global)?;
-
+fn minify(file: &FileProcessing, config: &Config) -> MinifyResult {
     let source = &file.source;
     let output = &file.output;
 
@@ -52,19 +50,36 @@ fn process(file: &FileProcessing, options: &Options, global: &GlobalOptions) -> 
     write_file(output, &minified)
         .map_err(|io_error| CliError::OutputFile(output.clone(), format!("{}", io_error)))?;
 
-    if global.verbose > 0 {
-        println!("Successfully processed <{}>", source.to_string_lossy());
-    };
+    log::debug!("Successfully processed <{}>", source.display());
 
     Ok(())
 }
 
 pub fn run(options: &Options, global: &GlobalOptions) {
-    let file = FileProcessing::find(&options.input_path, &options.output_path, global);
+    log::debug!("running `minify`: {:?}", options);
 
-    let results: Vec<MinifyResult> = file
+    let files = FileProcessing::find(&options.input_path, &options.output_path, global);
+
+    log::trace!(
+        "planned work: [\n    {:?}\n]",
+        files
+            .iter()
+            .map(|file| format!("{} -> {}", file.source.display(), file.output.display()))
+            .collect::<Vec<_>>()
+            .join(",\n    ")
+    );
+
+    let config = match Config::new(&options.config_path) {
+        Ok(config) => config,
+        Err(error) => {
+            eprintln!("{}", error);
+            return;
+        }
+    };
+
+    let results: Vec<MinifyResult> = files
         .iter()
-        .map(|file_processing| process(file_processing, options, global))
+        .map(|file_processing| minify(file_processing, &config))
         .collect();
 
     let total_files = results.len();
@@ -80,7 +95,7 @@ pub fn run(options: &Options, global: &GlobalOptions) {
     let error_count = errors.len();
 
     if error_count == 0 {
-        println!(
+        log::info!(
             "Successfully minified {} file{}",
             total_files,
             maybe_plural(total_files)

@@ -1,6 +1,8 @@
 mod config;
+mod timer;
 
 pub use config::*;
+pub use timer::*;
 
 use crate::cli::GlobalOptions;
 
@@ -65,14 +67,14 @@ fn walk_dir(path: &Path, output: &Path, files: &mut Vec<FileProcessing>, global:
                         output: file_output,
                     });
                 }
-            } else if global.verbose > 1 {
-                println!(
+            } else {
+                log::info!(
                     "Unexpected directory entry: {}",
                     file_path.to_string_lossy()
                 );
             }
-        } else if global.verbose > 1 {
-            println!("No file name for path {}", file_path.to_string_lossy());
+        } else {
+            log::info!("No file name for path {}", file_path.to_string_lossy());
         }
     }
 }

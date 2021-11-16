@@ -1,6 +1,5 @@
 use crate::cli::error::CliError;
 use crate::cli::utils::DEFAULT_COLUMN_SPAN;
-use crate::cli::GlobalOptions;
 
 use darklua_core::rules::{get_default_rules, Rule};
 
@@ -41,7 +40,7 @@ fn parse_string(content: &str, path: &Path) -> Result<Config, CliError> {
 }
 
 impl Config {
-    pub fn new(config_path: &Option<PathBuf>, global: &GlobalOptions) -> Result<Self, CliError> {
+    pub fn new(config_path: &Option<PathBuf>) -> Result<Self, CliError> {
         let config = if let Some(config_path) = config_path {
             if config_path.exists() {
                 Self::read_file(config_path).map_err(CliError::from)?
@@ -52,12 +51,10 @@ impl Config {
             Self::read_default_file().map_err(CliError::from)?
         };
 
-        if global.verbose > 0 {
-            if let Some(path) = &config.path {
-                println!("Using configuration file: {}", path.to_string_lossy());
-            } else {
-                println!("Using default configuration");
-            }
+        if let Some(path) = &config.path {
+            log::info!("Using configuration file: {}", path.to_string_lossy());
+        } else {
+            log::info!("Using default configuration");
         }
 
         Ok(config)
