@@ -1,8 +1,3 @@
-pub const KEYWORDS: [&str; 21] = [
-    "and", "break", "do", "else", "elseif", "end", "false", "for", "function", "if", "in", "local",
-    "nil", "not", "or", "repeat", "return", "then", "true", "until", "while",
-];
-
 pub const DEFAULT: [&str; 40] = [
     "arg",
     "assert",
@@ -46,10 +41,11 @@ pub const DEFAULT: [&str; 40] = [
     "_VERSION",
 ];
 
-pub const ROBLOX: [&str; 55] = [
+pub const ROBLOX: [&str; 58] = [
     "Axes",
     "bit32",
     "BrickColor",
+    "CatalogSearchParams",
     "CellId",
     "ColorSequence",
     "ColorSequenceKeypoint",
@@ -68,6 +64,7 @@ pub const ROBLOX: [&str; 55] = [
     "NumberRange",
     "NumberSequence",
     "NumberSequenceKeypoint",
+    "OverlapParams",
     "PathWaypoint",
     "PhysicalProperties",
     "plugin",
@@ -85,6 +82,7 @@ pub const ROBLOX: [&str; 55] = [
     "shared",
     "stats",
     "spawn",
+    "task",
     "tick",
     "time",
     "TweenInfo",

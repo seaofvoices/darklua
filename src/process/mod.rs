@@ -6,6 +6,7 @@ mod node_counter;
 mod node_processor;
 pub mod processors;
 mod scope_visitor;
+pub(crate) mod utils;
 mod visitors;
 
 pub use evaluator::*;

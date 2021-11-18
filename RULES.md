@@ -10,6 +10,7 @@ You can find the available rules and their properties here. The default rule sta
   - [Remove empty do statements](#remove-empty-do-statements)
   - [Remove function call parens](#remove-function-call-parens)
   - [Remove method definitions](#remove-method-definitions)
+  - [Convert index to field](#convert-index-to-field)
   - [Remove unused if branch](#remove-unused-if-branch)
   - [Remove unused while](#remove-unused-while)
   - [Rename variables](#rename-variables)
@@ -297,6 +298,30 @@ This can be useful when obfuscating code, since it, along with the `rename_varia
 ```json5
 {
     rule: 'remove_method_definition',
+}
+```
+
+---
+
+## Convert index to field
+```convert_index_to_field```
+
+This rule will convert index expressions into field expressions when the value which is used to index can be evaluated to a string and makes a valid identifier. It will process the following code
+
+```lua
+return var['field']
+```
+
+Into:
+
+```lua
+return var.field
+```
+
+### Examples
+```json5
+{
+    rule: 'convert_index_to_field',
 }
 ```
 

@@ -2,6 +2,7 @@
 
 mod call_parens;
 mod compute_expression;
+mod convert_index_to_field;
 mod empty_do;
 mod group_local;
 mod inject_value;
@@ -15,6 +16,7 @@ mod unused_while;
 
 pub use call_parens::*;
 pub use compute_expression::*;
+pub use convert_index_to_field::*;
 pub use empty_do::*;
 pub use group_local::*;
 pub use inject_value::*;
@@ -142,6 +144,7 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::new(RemoveUnusedWhile::default()),
         Box::new(RemoveEmptyDo::default()),
         Box::new(RemoveMethodDefinition::default()),
+        Box::new(ConvertIndexToField::default()),
         Box::new(ConvertLocalFunctionToAssign::default()),
         Box::new(GroupLocalAssignment::default()),
         Box::new(RenameVariables::default()),
@@ -155,6 +158,7 @@ impl FromStr for Box<dyn Rule> {
     fn from_str(string: &str) -> Result<Self, Self::Err> {
         let rule: Box<dyn Rule> = match string {
             COMPUTE_EXPRESSIONS_RULE_NAME => Box::new(ComputeExpression::default()),
+            CONVERT_INDEX_TO_FIELD_RULE_NAME => Box::new(ConvertIndexToField::default()),
             CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => {
                 Box::new(ConvertLocalFunctionToAssign::default())
             }

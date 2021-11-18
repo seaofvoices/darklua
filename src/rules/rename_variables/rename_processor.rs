@@ -1,6 +1,6 @@
 use crate::nodes::{Expression, Identifier, LocalFunctionStatement};
-use crate::process::{NodeProcessor, Scope};
-use crate::rules::rename_variables::{globals, Permutator};
+use crate::process::{utils::KEYWORDS, NodeProcessor, Scope};
+use crate::rules::rename_variables::Permutator;
 
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
@@ -19,7 +19,7 @@ pub struct RenameProcessor {
 impl RenameProcessor {
     pub fn new<I: IntoIterator<Item = String>>(iter: I) -> Self {
         let mut avoid_identifier = HashSet::from_iter(iter);
-        avoid_identifier.extend(globals::KEYWORDS.iter().map(|s| (*s).to_owned()));
+        avoid_identifier.extend(KEYWORDS.iter().map(|s| (*s).to_owned()));
 
         Self {
             real_to_obfuscated: Vec::new(),
