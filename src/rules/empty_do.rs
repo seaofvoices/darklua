@@ -86,7 +86,7 @@ mod test {
 
         let mut block = Block::default().with_statement(DoStatement::new(Block::default()));
 
-        rule.process(&mut block, &mut Context::default())
+        rule.process(&mut block, &mut Context::mock())
             .expect("rule should succeed");
 
         assert_eq!(block, Block::default());
@@ -99,7 +99,7 @@ mod test {
         let block_with_do_statement = Block::default().with_statement(DoStatement::default());
         let mut block = Block::default().with_statement(DoStatement::new(block_with_do_statement));
 
-        rule.process(&mut block, &mut Context::default())
+        rule.process(&mut block, &mut Context::mock())
             .expect("rule should succeed");
 
         assert_eq!(block, Block::default());

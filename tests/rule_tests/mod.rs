@@ -1,3 +1,9 @@
+use std::path::PathBuf;
+
+fn get_process_context() -> darklua_core::rules::Context {
+    darklua_core::rules::Context::new(PathBuf::new())
+}
+
 macro_rules! test_rule {
     ($rule_name:ident, $rule:expr, $($name:ident ($input:literal) => $output:literal),* $(,)?) => {
         paste::paste! {
@@ -12,7 +18,7 @@ macro_rules! test_rule {
 
                 let mut block = $crate::utils::parse_input($input);
                 let expect_block = $crate::utils::parse_input($output);
-                let mut context = darklua_core::rules::Context::default();
+                let mut context = $crate::rule_tests::get_process_context();
 
                 $rule.process(&mut block, &mut context)
                     .expect("rule should suceed");
@@ -43,7 +49,7 @@ macro_rules! test_rule {
 
                 let mut block = $crate::utils::parse_input($input);
                 let expect_block = $crate::utils::parse_input($output);
-                let mut context = darklua_core::rules::Context::default();
+                let mut context = $crate::rule_tests::get_process_context();
 
                 $rule.process(&mut block, &mut context)
                     .expect("rule should suceed");
@@ -77,7 +83,7 @@ macro_rules! test_rule {
                 };
 
                 let expect_block = $crate::utils::parse_input($output);
-                let mut context = darklua_core::rules::Context::default();
+                let mut context = $crate::rule_tests::get_process_context();
 
                 let mut block = Parser::default()
                     .preserve_tokens()
@@ -120,7 +126,7 @@ macro_rules! test_rule_wihout_effects {
 
                 let mut block = $crate::utils::parse_input($input);
                 let expect_block = block.clone();
-                let mut context = darklua_core::rules::Context::default();
+                let mut context = $crate::rule_tests::get_process_context();
 
                 $rule.process(&mut block, &mut context)
                     .expect("rule should suceed");

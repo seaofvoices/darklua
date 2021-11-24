@@ -30,6 +30,11 @@ impl Identifier {
     }
 
     #[inline]
+    pub fn contains(&self, compare: &str) -> bool {
+        self.name == compare
+    }
+
+    #[inline]
     pub fn get_name(&self) -> &String {
         &self.name
     }
@@ -95,5 +100,16 @@ mod test {
                 content: "newVar".into(),
             })
         );
+    }
+
+    #[test]
+    fn contains_is_true_if_the_identifier_matches() {
+        assert!(Identifier::new("var").contains("var"));
+    }
+
+
+    #[test]
+    fn contains_is_false_if_the_identifier_does_not_match() {
+        assert!(!Identifier::new("var").contains("notVar"));
     }
 }

@@ -10,7 +10,7 @@ macro_rules! test_remove_comments_rule {
                     generator::{LuaGenerator, TokenBasedLuaGenerator},
                     rules::Rule,
                 };
-                let mut context = darklua_core::rules::Context::default();
+                let mut context = $crate::rule_tests::get_process_context();
 
                 let mut block = Parser::default()
                     .preserve_tokens()

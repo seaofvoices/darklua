@@ -8,6 +8,7 @@ mod group_local;
 mod inject_value;
 mod method_def;
 mod no_local_function;
+mod path_import;
 mod remove_comments;
 mod remove_spaces;
 mod rename_variables;
@@ -22,6 +23,7 @@ pub use group_local::*;
 pub use inject_value::*;
 pub use method_def::*;
 pub use no_local_function::*;
+pub use path_import::*;
 pub use remove_comments::*;
 pub use remove_spaces::*;
 pub use rename_variables::*;
@@ -35,11 +37,29 @@ use serde::ser::SerializeMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 use std::fmt;
+use std::path::PathBuf;
 use std::str::FromStr;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum RobloxLocation {
+    Service { service: String, path: PathBuf },
+    RelativeToLibrary { relative_path: PathBuf },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum ResolverConfig {
+    RobloxLibrary {
+        library_root: PathBuf,
+        external_dependencies: RobloxLocation,
+        // aliases: { map names to location }
+    },
+}
 
 /// In order to be able to weakly-type the properties of any rule, this enum makes it possible to
 /// easily use serde to gather the value associated with a property.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum RulePropertyValue {
     Boolean(bool),
@@ -47,6 +67,7 @@ pub enum RulePropertyValue {
     Usize(usize),
     Float(f64),
     StringList(Vec<String>),
+    Resolver(ResolverConfig),
     None,
 }
 
@@ -70,6 +91,13 @@ pub enum RuleConfigurationError {
     /// When the value type is invalid. The string is the property name that was given the wrong
     /// value type.
     UnexpectedValueType(String),
+    /// When a specific value is not expected. The suggestion field should provide a message with
+    /// examples of accepted values.
+    UnexpectedValue {
+        property: String,
+        value: String,
+        suggestion: Option<String>,
+    },
 }
 
 impl fmt::Display for RuleConfigurationError {
@@ -87,6 +115,25 @@ impl fmt::Display for RuleConfigurationError {
                 write!(f, "list of string expected for field '{}'", property)
             }
             UnexpectedValueType(property) => write!(f, "unexpected type for field '{}'", property),
+            UnexpectedValue {
+                property,
+                value,
+                suggestion,
+            } => {
+                if let Some(suggestion) = suggestion {
+                    write!(
+                        f,
+                        "unexpected value for field '{}', received '{}' ({})",
+                        property, value, suggestion
+                    )
+                } else {
+                    write!(
+                        f,
+                        "unexpected value for field '{}', received '{}'",
+                        property, value
+                    )
+                }
+            }
         }
     }
 }
@@ -94,8 +141,23 @@ impl fmt::Display for RuleConfigurationError {
 pub type RuleProperties = HashMap<String, RulePropertyValue>;
 
 /// The intent of this struct is to hold data shared across all rules applied to a file.
-#[derive(Debug, Clone, Default)]
-pub struct Context {}
+#[derive(Debug, Clone)]
+pub struct Context {
+    current_file_path: PathBuf,
+}
+
+impl Context {
+    pub fn new(current_file_path: PathBuf) -> Self {
+        Self { current_file_path }
+    }
+
+    #[cfg(test)]
+    pub fn mock() -> Self {
+        Self {
+            current_file_path: PathBuf::new(),
+        }
+    }
+}
 
 pub type RuleProcessResult = Result<(), Vec<String>>;
 
@@ -277,6 +339,18 @@ impl<'de> Deserialize<'de> for Box<dyn Rule> {
 fn verify_no_rule_properties(properties: &RuleProperties) -> Result<(), RuleConfigurationError> {
     if let Some((key, _value)) = properties.iter().next() {
         return Err(RuleConfigurationError::UnexpectedProperty(key.to_owned()));
+    }
+    Ok(())
+}
+
+fn verify_required_rule_properties(
+    properties: &RuleProperties,
+    names: &[&str],
+) -> Result<(), RuleConfigurationError> {
+    for name in names.iter() {
+        if !properties.contains_key(*name) {
+            return Err(RuleConfigurationError::MissingProperty(name.to_string()));
+        }
     }
     Ok(())
 }

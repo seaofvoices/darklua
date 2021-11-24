@@ -108,7 +108,7 @@ fn process(file: &FileProcessing, config: &Config, options: &Options) -> Result<
     let rule_timer = Timer::now();
 
     for (index, rule) in config.process.iter().enumerate() {
-        let mut context = Context::default();
+        let mut context = Context::new(source.to_owned());
         log::trace!(
             "[{}] apply rule `{}`{}",
             source.display(),
