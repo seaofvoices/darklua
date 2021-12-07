@@ -38,7 +38,7 @@ impl FunctionExpressionTokens {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct FunctionExpression {
     block: Block,
     parameters: Vec<Identifier>,
@@ -149,17 +149,6 @@ impl FunctionExpression {
             .for_each(Identifier::clear_whitespaces);
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
-        }
-    }
-}
-
-impl Default for FunctionExpression {
-    fn default() -> Self {
-        Self {
-            block: Block::default(),
-            parameters: Vec::new(),
-            is_variadic: false,
-            tokens: None,
         }
     }
 }

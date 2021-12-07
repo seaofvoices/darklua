@@ -21,7 +21,7 @@ impl TupleArgumentsTokens {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TupleArguments {
     values: Vec<Expression>,
     tokens: Option<TupleArgumentsTokens>,
@@ -89,15 +89,6 @@ impl TupleArguments {
     pub fn clear_whitespaces(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
-        }
-    }
-}
-
-impl Default for TupleArguments {
-    fn default() -> Self {
-        Self {
-            values: Vec::new(),
-            tokens: None,
         }
     }
 }

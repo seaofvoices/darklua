@@ -75,7 +75,7 @@ struct FunctionBodyTokens {
     pub variable_arguments: Option<Token>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Parser {
     hold_token_data: bool,
 }
@@ -1011,14 +1011,6 @@ impl Parser {
 
     fn convert_ast(&self, ast: Ast) -> Result<Block, ConvertError> {
         self.convert_block(ast.nodes())
-    }
-}
-
-impl Default for Parser {
-    fn default() -> Self {
-        Self {
-            hold_token_data: false,
-        }
     }
 }
 

@@ -70,7 +70,7 @@ impl Config {
     fn read_default_file() -> Result<Self, CliError> {
         DEFAULT_CONFIG_PATHS
             .iter()
-            .map(|path| Path::new(path))
+            .map(Path::new)
             .filter(|path| path.exists())
             .find_map(|path| Some(Self::read_file(path)))
             .unwrap_or_else(|| Ok(Self::default()))

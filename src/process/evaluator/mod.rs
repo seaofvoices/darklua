@@ -5,17 +5,9 @@ pub use lua_value::*;
 use crate::nodes::*;
 
 /// A struct to convert an Expression node into a LuaValue object.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Evaluator {
     pure_metamethods: bool,
-}
-
-impl Default for Evaluator {
-    fn default() -> Self {
-        Self {
-            pure_metamethods: false,
-        }
-    }
 }
 
 impl Evaluator {

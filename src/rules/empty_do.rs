@@ -6,6 +6,7 @@ use crate::rules::{
 
 use super::verify_no_rule_properties;
 
+#[derive(Debug, Default)]
 struct EmptyDoFilter {
     mutated: bool,
 }
@@ -13,12 +14,6 @@ struct EmptyDoFilter {
 impl EmptyDoFilter {
     pub fn has_mutated(&self) -> bool {
         self.mutated
-    }
-}
-
-impl Default for EmptyDoFilter {
-    fn default() -> Self {
-        Self { mutated: false }
     }
 }
 
