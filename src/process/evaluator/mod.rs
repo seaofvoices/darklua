@@ -31,7 +31,16 @@ impl Evaluator {
             Expression::True(_) => LuaValue::True,
             Expression::Binary(binary) => self.evaluate_binary(binary),
             Expression::Unary(unary) => self.evaluate_unary(unary),
-            _ => LuaValue::Unknown,
+            Expression::Parenthese(parenthese) => {
+                // when the evaluator will be able to manage tuples, keep only the first element
+                // of the tuple here (or coerce the tuple to `nil` if it is empty)
+                self.evaluate(parenthese.inner_expression())
+            }
+            Expression::Call(_)
+            | Expression::Field(_)
+            | Expression::Identifier(_)
+            | Expression::Index(_)
+            | Expression::VariableArguments(_) => LuaValue::Unknown,
         }
     }
 
@@ -277,8 +286,15 @@ mod test {
         true_expression(Expression::from(true)) => LuaValue::True,
         false_expression(Expression::from(false)) => LuaValue::False,
         nil_expression(Expression::nil()) => LuaValue::Nil,
-        number_expression(Expression::Number(DecimalNumber::new(0.0).into())) => LuaValue::Number(0.0),
+        number_expression(DecimalNumber::new(0.0)) => LuaValue::Number(0.0),
         string_expression(StringExpression::from_value("foo")) => LuaValue::String("foo".to_owned()),
+        true_wrapped_in_parens(ParentheseExpression::new(true)) => LuaValue::True,
+        false_wrapped_in_parens(ParentheseExpression::new(false)) => LuaValue::False,
+        nil_wrapped_in_parens(ParentheseExpression::new(Expression::nil())) => LuaValue::Nil,
+        number_wrapped_in_parens(ParentheseExpression::new(DecimalNumber::new(0.0)))
+            => LuaValue::Number(0.0),
+        string_wrapped_in_parens(ParentheseExpression::new(StringExpression::from_value("foo")))
+            => LuaValue::String("foo".to_owned()),
         table_expression(TableExpression::default()) => LuaValue::Table
     );
 
