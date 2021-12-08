@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* enhance the `compute_expression` rule by processing `<`, `<=`, `>` and `>=` operators ([!40](https://gitlab.com/seaofvoices/darklua/-/merge_requests/40))
 * enhance the `compute_expression` rule by processing parentheses expressions ([!39](https://gitlab.com/seaofvoices/darklua/-/merge_requests/39))
 * add rule to convert index expression to field expression ([!36](https://gitlab.com/seaofvoices/darklua/-/merge_requests/36))
 * add logging to time processing steps ([!35](https://gitlab.com/seaofvoices/darklua/-/merge_requests/35))

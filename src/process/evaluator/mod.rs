@@ -209,10 +209,12 @@ impl Evaluator {
                     _ => LuaValue::Unknown,
                 }
             }
-            BinaryOperator::LowerThan
-            | BinaryOperator::LowerOrEqualThan
-            | BinaryOperator::GreaterThan
-            | BinaryOperator::GreaterOrEqualThan => LuaValue::Unknown,
+            BinaryOperator::LowerThan => self.evaluate_relational(expression, |a, b| a < b),
+            BinaryOperator::LowerOrEqualThan => self.evaluate_relational(expression, |a, b| a <= b),
+            BinaryOperator::GreaterThan => self.evaluate_relational(expression, |a, b| a > b),
+            BinaryOperator::GreaterOrEqualThan => {
+                self.evaluate_relational(expression, |a, b| a >= b)
+            }
         }
     }
 
@@ -247,6 +249,51 @@ impl Evaluator {
         } else {
             LuaValue::Unknown
         }
+    }
+
+    fn evaluate_relational<F>(&self, expression: &BinaryExpression, operation: F) -> LuaValue
+    where
+        F: Fn(f64, f64) -> bool,
+    {
+        let left = self.evaluate(expression.left());
+
+        match left {
+            LuaValue::Number(left) => {
+                let right = self.evaluate(expression.right());
+
+                if let LuaValue::Number(right) = right {
+                    if operation(left, right) {
+                        LuaValue::True
+                    } else {
+                        LuaValue::False
+                    }
+                } else {
+                    LuaValue::Unknown
+                }
+            }
+            LuaValue::String(left) => {
+                let right = self.evaluate(expression.right());
+
+                if let LuaValue::String(right) = right {
+                    self.compare_strings(&left, &right, expression.operator())
+                } else {
+                    LuaValue::Unknown
+                }
+            }
+            _ => LuaValue::Unknown,
+        }
+    }
+
+    fn compare_strings(&self, left: &str, right: &str, operator: BinaryOperator) -> LuaValue {
+        LuaValue::from(match operator {
+            BinaryOperator::Equal => left == right,
+            BinaryOperator::NotEqual => left != right,
+            BinaryOperator::LowerThan => left < right,
+            BinaryOperator::LowerOrEqualThan => left <= right,
+            BinaryOperator::GreaterThan => left > right,
+            BinaryOperator::GreaterOrEqualThan => left >= right,
+            _ => return LuaValue::Unknown,
+        })
     }
 
     fn evaluate_unary(&self, expression: &UnaryExpression) -> LuaValue {
@@ -504,10 +551,30 @@ mod test {
                 StringExpression::empty(),
                 StringExpression::empty()
             ) => LuaValue::from(""),
+            number_lower_than_string(
+                BinaryOperator::LowerThan,
+                1.0,
+                StringExpression::empty()
+            ) => LuaValue::Unknown,
+            number_string_greater_than_number(
+                BinaryOperator::GreaterThan,
+                StringExpression::from_value("100"),
+                1.0
+            ) => LuaValue::Unknown,
+            number_string_greater_or_equal_than_number(
+                BinaryOperator::GreaterOrEqualThan,
+                StringExpression::from_value("100"),
+                100.0
+            ) => LuaValue::Unknown,
+            number_lower_or_equal_than_number_string(
+                BinaryOperator::GreaterOrEqualThan,
+                100.0,
+                StringExpression::from_value("100")
+            ) => LuaValue::Unknown,
         );
 
         macro_rules! evaluate_equality {
-            ($($name:ident ($left:expr, $right:expr) => $value:expr),*) => {
+            ($($name:ident ($left:expr, $right:expr) => $value:expr),* $(,)?) => {
                 $(
                     mod $name {
                         use super::*;
@@ -580,7 +647,160 @@ mod test {
             different_strings(
                 StringExpression::from_value("foo"),
                 StringExpression::from_value("bar")
-            ) => LuaValue::False
+            ) => LuaValue::False,
+        );
+
+        macro_rules! evaluate_equality_with_relational_operators {
+            ($($name:ident => $value:expr),* $(,)?) => {
+                $(
+                    mod $name {
+                        use super::*;
+
+                        #[test]
+                        fn lower() {
+                            let value: Expression = $value.into();
+                            let binary = BinaryExpression::new(BinaryOperator::LowerThan, value.clone(), value);
+                            assert_eq!(LuaValue::False, Evaluator::default().evaluate(&binary.into()));
+                        }
+
+                        #[test]
+                        fn lower_or_equal() {
+                            let value: Expression = $value.into();
+                            let binary = BinaryExpression::new(BinaryOperator::LowerOrEqualThan, value.clone(), value);
+                            assert_eq!(LuaValue::True, Evaluator::default().evaluate(&binary.into()));
+                        }
+
+                        #[test]
+                        fn greater() {
+                            let value: Expression = $value.into();
+                            let binary = BinaryExpression::new(BinaryOperator::GreaterThan, value.clone(), value);
+                            assert_eq!(LuaValue::False, Evaluator::default().evaluate(&binary.into()));
+                        }
+
+                        #[test]
+                        fn greater_or_equal() {
+                            let value: Expression = $value.into();
+                            let binary = BinaryExpression::new(BinaryOperator::GreaterOrEqualThan, value.clone(), value);
+                            assert_eq!(LuaValue::True, Evaluator::default().evaluate(&binary.into()));
+                        }
+                    }
+                )*
+            };
+        }
+
+        evaluate_equality_with_relational_operators!(
+            zero => 1.0,
+            one => 1.0,
+            hundred => 100.0,
+            string => StringExpression::from_value("var"),
+        );
+
+        macro_rules! evaluate_strict_relational_operators {
+            ($($name_lower:ident($lower:expr) < $name_greater:ident($greater:expr)),* $(,)?) => {
+                mod lower_or_greater_than {
+                    use super::*;
+                    paste::paste! {
+
+                    $(
+                        #[test]
+                        fn [<$name_lower _lower_than_ $name_greater>]() {
+                            let binary = BinaryExpression::new(
+                                BinaryOperator::LowerThan,
+                                $lower,
+                                $greater,
+                            );
+                            assert_eq!(LuaValue::True, Evaluator::default().evaluate(&binary.into()));
+                        }
+
+                        #[test]
+                        fn [<$name_lower _lower_or_equal_than_ $name_greater>]() {
+                            let binary = BinaryExpression::new(
+                                BinaryOperator::LowerOrEqualThan,
+                                $lower,
+                                $greater,
+                            );
+                            assert_eq!(LuaValue::True, Evaluator::default().evaluate(&binary.into()));
+                        }
+
+                        #[test]
+                        fn [<$name_lower _greater_than_ $name_greater>]() {
+                            let binary = BinaryExpression::new(
+                                BinaryOperator::GreaterThan,
+                                $lower,
+                                $greater,
+                            );
+                            assert_eq!(LuaValue::False, Evaluator::default().evaluate(&binary.into()));
+                        }
+
+                        #[test]
+                        fn [<$name_lower _greater_or_equal_than_ $name_greater>]() {
+                            let binary = BinaryExpression::new(
+                                BinaryOperator::GreaterOrEqualThan,
+                                $lower,
+                                $greater,
+                            );
+                            assert_eq!(LuaValue::False, Evaluator::default().evaluate(&binary.into()));
+                        }
+
+                        #[test]
+                        fn [<$name_greater _lower_than_ $name_lower>]() {
+                            let binary = BinaryExpression::new(
+                                BinaryOperator::LowerThan,
+                                $greater,
+                                $lower,
+                            );
+                            assert_eq!(LuaValue::False, Evaluator::default().evaluate(&binary.into()));
+                        }
+
+                        #[test]
+                        fn [<$name_greater _lower_or_equal_than_ $name_lower>]() {
+                            let binary = BinaryExpression::new(
+                                BinaryOperator::LowerOrEqualThan,
+                                $greater,
+                                $lower,
+                            );
+                            assert_eq!(LuaValue::False, Evaluator::default().evaluate(&binary.into()));
+                        }
+
+                        #[test]
+                        fn [<$name_greater _greater_than_ $name_lower>]() {
+                            let binary = BinaryExpression::new(
+                                BinaryOperator::GreaterThan,
+                                $greater,
+                                $lower,
+                            );
+                            assert_eq!(LuaValue::True, Evaluator::default().evaluate(&binary.into()));
+                        }
+
+                        #[test]
+                        fn [<$name_greater _greater_or_equal_than_ $name_lower>]() {
+                            let binary = BinaryExpression::new(
+                                BinaryOperator::GreaterOrEqualThan,
+                                $greater,
+                                $lower,
+                            );
+                            assert_eq!(LuaValue::True, Evaluator::default().evaluate(&binary.into()));
+                        }
+                    )*
+
+                    }
+                }
+            };
+        }
+
+        evaluate_strict_relational_operators!(
+            one(1.0) < hundred(100.0),
+            minus_15(-15.0) < minus_2_5(-2.5),
+            string_a(StringExpression::from_value("a"))
+                < string_b(StringExpression::from_value("b")),
+            string_a(StringExpression::from_value("a"))
+                < string_aa(StringExpression::from_value("aa")),
+            string_1(StringExpression::from_value("1"))
+                < string_a(StringExpression::from_value("a")),
+            string_111(StringExpression::from_value("111"))
+                < string_a(StringExpression::from_value("a")),
+            empty_string(StringExpression::from_value(""))
+                < string_colon(StringExpression::from_value(":")),
         );
     }
 
