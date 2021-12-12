@@ -1,14 +1,18 @@
-image: 'rust:latest'
+image: "rust:latest"
 
 cache:
   paths:
     - cargo/
+    - site/node_modules/
 
 stages:
+  - install
   - checks
+  - pre-build
   - build
   - test
   - integration-test
+  - deploy
 
 variables:
   CARGO_HOME: $CI_PROJECT_DIR/cargo
@@ -18,6 +22,100 @@ variables:
     - main
     - merge_requests
 
+npm-install-site:
+  image: node:16
+  stage: install
+  extends: .only-mr-and-main
+  script:
+    - cd site
+    - npm install
+  cache:
+    key: node-modules-cache
+    paths:
+      - site/node_modules/
+    policy: push
+  needs: []
+
+npm-install-wasm-tests:
+  image: node:16
+  stage: install
+  extends: .only-mr-and-main
+  script:
+    - cd site/darklua-wasm/javascript-tests
+    - npm install
+  cache:
+    key: node-modules-tests-cache
+    paths:
+      - site/darklua-wasm/javascript-tests/node_modules/
+    policy: push
+  needs: []
+
+install-wasm-pack:
+  stage: install
+  extends: .only-mr-and-main
+  script:
+    - cargo install wasm-pack --version 0.9.1 # https://github.com/rustwasm/wasm-pack/issues/823
+  cache:
+    key: wasm-pack-install
+    paths:
+      - $CARGO_HOME/bin/wasm-pack
+    policy: push
+  needs: []
+
+darklua-wasm-build-nodejs:
+  stage: pre-build
+  extends: .only-mr-and-main
+  script:
+    - $CARGO_HOME/bin/wasm-pack -V
+    - $CARGO_HOME/bin/wasm-pack build site/darklua-wasm -t nodejs
+    - mv site/darklua-wasm/pkg site/darklua-wasm/pkg-nodejs
+  cache:
+    key: wasm-pack-install
+    paths:
+      - $CARGO_HOME/bin/wasm-pack
+    policy: pull
+  artifacts:
+    expire_in: 1 hour
+    paths:
+      - site/darklua-wasm/pkg-nodejs
+  needs:
+    - install-wasm-pack
+
+darklua-wasm-build-release:
+  stage: pre-build
+  extends: .only-mr-and-main
+  script:
+    - $CARGO_HOME/bin/wasm-pack -V
+    - $CARGO_HOME/bin/wasm-pack build site/darklua-wasm -t bundler --release
+  cache:
+    key: wasm-pack-install
+    paths:
+      - $CARGO_HOME/bin/wasm-pack
+    policy: pull
+  artifacts:
+    expire_in: 1 hour
+    paths:
+      - site/darklua-wasm/pkg
+  needs:
+    - install-wasm-pack
+
+wasm-javascript-tests:
+  image: node:16
+  stage: test
+  extends: .only-mr-and-main
+  script:
+    - mv site/darklua-wasm/pkg-nodejs site/darklua-wasm/pkg
+    - cd site/darklua-wasm/javascript-tests
+    - npm run test
+  cache:
+    key: node-modules-tests-cache
+    paths:
+      - site/darklua-wasm/javascript-tests/node_modules/
+    policy: pull
+  needs:
+    - npm-install-wasm-tests
+    - darklua-wasm-build-nodejs
+
 style-check:
   stage: checks
   extends: .only-mr-and-main
@@ -26,6 +124,7 @@ style-check:
     - rustup component add rustfmt
     - cargo fmt -- --version
     - cargo fmt -- --check
+  needs: []
 
 clippy:
   stage: checks
@@ -35,6 +134,22 @@ clippy:
     - rustup component add clippy
     - cargo clippy --version
     - cargo clippy --all-targets --all-features -- -D warnings
+  needs: []
+
+style-check-site:
+  image: node:16
+  stage: checks
+  extends: .only-mr-and-main
+  script:
+    - cd site
+    - npm run style-check
+  cache:
+    key: node-modules-cache
+    paths:
+      - site/node_modules/
+    policy: pull
+  needs:
+    - npm-install-site
 
 build:
   stage: build
@@ -48,6 +163,7 @@ build:
     paths:
       - cargo/
       - target/
+  needs: []
 
 build-release:
   stage: build
@@ -61,13 +177,49 @@ build-release:
     paths:
       - cargo/
       - target/
+  needs:
+    - clippy
+    - style-check
+
+build-site:
+  image: node:16
+  stage: build
+  extends: .only-mr-and-main
+  script:
+    - cd site
+    - npx gatsby --version
+    - npx gatsby build
+  cache:
+    key: node-modules-cache
+    paths:
+      - site/node_modules/
+    policy: pull
+  artifacts:
+    paths:
+      - site/public
+  needs:
+    - npm-install-site
+    - darklua-wasm-build-release
+
+pages:
+  stage: deploy
+  script:
+    - mv site/public public
+  artifacts:
+    paths:
+      - public
+  only:
+    - main
+  needs:
+    - build-site
 
 test:
   stage: test
   extends: .only-mr-and-main
   script:
     - cargo test --locked --verbose
-  needs: ['build']
+  needs:
+    - build
 
 .lua-setup:
   before_script:
@@ -86,4 +238,5 @@ test-lua-projects:
     - .lua-setup
   script:
     - lua ./scripts/test-commands.lua
-  needs: ['build-release']
+  needs:
+    - build-release

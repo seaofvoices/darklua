@@ -6,8 +6,10 @@ edition = "2018"
 readme = "README.md"
 description = "Transform Lua scripts"
 repository = "https://gitlab.com/seaofvoices/darklua"
+homepage = "https://darklua.com"
 license = "MIT"
 keywords = ["lua", "obsfucation", "minify"]
+exclude = ["site"]
 
 [badges]
 gitlab = { repository = "seaofvoices/darklua" }
