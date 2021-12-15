@@ -1,19 +1,33 @@
+pub mod engine_impl;
+mod function_value;
+mod table_value;
+
 use crate::nodes::{Expression, NumberExpression, StringExpression};
+
+use function_value::*;
+pub use table_value::*;
 
 /// Represents an evaluated Expression result.
 #[derive(Debug, Clone, PartialEq)]
 pub enum LuaValue {
     False,
     Function,
+    Function2(FunctionValue),
     Nil,
     Number(f64),
     String(String),
-    Table,
+    Table(TableValue),
     True,
     Unknown,
 }
 
+impl Eq for LuaValue {}
+
 impl LuaValue {
+    pub fn empty_table() -> Self {
+        Self::Table(TableValue::default())
+    }
+
     /// As defined in Lua, all values are considered true, except for false and nil. An option is
     /// returned as the LuaValue may be unknown, so it would return none.
     /// ```rust
@@ -25,7 +39,6 @@ impl LuaValue {
     ///
     /// // all the others are true
     /// assert!(LuaValue::True.is_truthy().unwrap());
-    /// assert!(LuaValue::Table.is_truthy().unwrap());
     /// assert!(LuaValue::Number(0.0).is_truthy().unwrap());
     /// assert!(LuaValue::String("hello".to_owned()).is_truthy().unwrap());
     ///
@@ -151,6 +164,24 @@ impl From<f64> for LuaValue {
     }
 }
 
+impl From<TableValue> for LuaValue {
+    fn from(value: TableValue) -> Self {
+        Self::Table(value)
+    }
+}
+
+impl From<FunctionValue> for LuaValue {
+    fn from(function: FunctionValue) -> Self {
+        LuaValue::Function2(function)
+    }
+}
+
+impl From<EngineFunction> for LuaValue {
+    fn from(function: EngineFunction) -> Self {
+        LuaValue::Function2(FunctionValue::Engine(function))
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -187,7 +218,7 @@ mod test {
 
     #[test]
     fn table_value_is_truthy() {
-        assert!(LuaValue::Table.is_truthy().unwrap());
+        assert!(LuaValue::empty_table().is_truthy().unwrap());
     }
 
     mod number_coercion {

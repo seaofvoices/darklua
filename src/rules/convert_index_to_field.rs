@@ -13,8 +13,8 @@ use super::verify_no_rule_properties;
 use std::mem;
 
 #[derive(Debug, Clone, Default)]
-struct Converter {
-    evaluator: Evaluator,
+struct Converter<'a> {
+    evaluator: Evaluator<'a>,
 }
 
 fn is_identifier(string: &str) -> bool {
@@ -23,7 +23,7 @@ fn is_identifier(string: &str) -> bool {
         && !matches!(string, keywords::matches_any!())
 }
 
-impl Converter {
+impl Converter<'_> {
     fn convert_to_field(&self, index: &IndexExpression) -> Option<FieldExpression> {
         if let LuaValue::String(string) = self.evaluator.evaluate(index.get_index()) {
             if is_identifier(&string) {
@@ -37,7 +37,7 @@ impl Converter {
     }
 }
 
-impl NodeProcessor for Converter {
+impl NodeProcessor for Converter<'_> {
     fn process_expression(&mut self, expression: &mut Expression) {
         let field: Option<Expression> = if let Expression::Index(index) = expression {
             self.convert_to_field(index).map(Into::into)

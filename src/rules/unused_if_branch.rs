@@ -15,11 +15,11 @@ enum FilterResult {
 }
 
 #[derive(Debug, Clone, Default)]
-struct IfFilter {
-    evaluator: Evaluator,
+struct IfFilter<'a> {
+    evaluator: Evaluator<'a>,
 }
 
-impl IfFilter {
+impl IfFilter<'_> {
     fn filter(&self, statement: &mut IfStatement) -> FilterResult {
         let found_always_true_branch = self.filter_branches(statement);
 
@@ -94,7 +94,7 @@ impl IfFilter {
     }
 }
 
-impl NodeProcessor for IfFilter {
+impl NodeProcessor for IfFilter<'_> {
     fn process_block(&mut self, block: &mut Block) {
         block.filter_statements(|statement| {
             let result = match statement {

@@ -7,11 +7,11 @@ use crate::rules::{
 use super::verify_no_rule_properties;
 
 #[derive(Debug, Clone, Default)]
-struct WhileFilter {
-    evaluator: Evaluator,
+struct WhileFilter<'a> {
+    evaluator: Evaluator<'a>,
 }
 
-impl NodeProcessor for WhileFilter {
+impl NodeProcessor for WhileFilter<'_> {
     fn process_block(&mut self, block: &mut Block) {
         block.filter_statements(|statement| match statement {
             Statement::While(while_statement) => {

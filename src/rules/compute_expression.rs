@@ -7,11 +7,11 @@ use crate::rules::{
 use super::verify_no_rule_properties;
 
 #[derive(Debug, Clone, Default)]
-struct Computer {
-    evaluator: Evaluator,
+struct Computer<'a> {
+    evaluator: Evaluator<'a>,
 }
 
-impl Computer {
+impl Computer<'_> {
     fn replace_with(&mut self, expression: &Expression) -> Option<Expression> {
         match expression {
             Expression::Unary(_) => {
@@ -66,7 +66,7 @@ impl Computer {
     }
 }
 
-impl NodeProcessor for Computer {
+impl NodeProcessor for Computer<'_> {
     fn process_expression(&mut self, expression: &mut Expression) {
         if let Some(replace_with) = self.replace_with(expression) {
             *expression = replace_with;
