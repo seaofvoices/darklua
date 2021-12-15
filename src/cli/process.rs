@@ -1,5 +1,5 @@
 use crate::cli::error::CliError;
-use crate::cli::utils::{maybe_plural, write_file, Config, FileProcessing, Timer};
+use crate::cli::utils::{log_array, maybe_plural, write_file, Config, FileProcessing, Timer};
 use crate::cli::GlobalOptions;
 
 use darklua_core::generator::TokenBasedLuaGenerator;
@@ -69,7 +69,7 @@ impl FromStr for LuaFormat {
 
 #[derive(Debug, StructOpt)]
 pub struct Options {
-    /// Path to the lua file to minify.
+    /// Path to the lua file to process.
     #[structopt(parse(from_os_str))]
     pub input_path: PathBuf,
     /// Where to output the result.
@@ -163,12 +163,12 @@ pub fn run(options: &Options, global: &GlobalOptions) {
     let files = FileProcessing::find(&options.input_path, &options.output_path, global);
 
     log::trace!(
-        "planned work: [\n    {:?}\n]",
-        files
-            .iter()
-            .map(|file| format!("{} -> {}", file.source.display(), file.output.display()))
-            .collect::<Vec<_>>()
-            .join(",\n    ")
+        "planned work: {}",
+        log_array(files.iter().map(|file| if file.is_in_place() {
+            format!("{}", file.source.display())
+        } else {
+            format!("{} -> {}", file.source.display(), file.output.display())
+        }))
     );
 
     let config = match Config::new(&options.config_path) {
@@ -217,13 +217,18 @@ pub fn run(options: &Options, global: &GlobalOptions) {
                 maybe_plural(success_count),
                 process_duration,
             );
+            eprintln!(
+                "But {} error{} happened:",
+                error_count,
+                maybe_plural(error_count)
+            );
+        } else {
+            eprintln!(
+                "{} error{} happened:",
+                error_count,
+                maybe_plural(error_count)
+            );
         }
-
-        eprintln!(
-            "But {} error{} happened:",
-            error_count,
-            maybe_plural(error_count)
-        );
 
         errors.iter().for_each(|error| eprintln!("-> {}", error));
         process::exit(1);

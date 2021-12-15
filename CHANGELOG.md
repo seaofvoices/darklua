@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* fix command line tracing logs for planned work ([!42](https://gitlab.com/seaofvoices/darklua/-/merge_requests/42))
 * fix extra space generated with retain-lines generator on field expressions ([!41](https://gitlab.com/seaofvoices/darklua/-/merge_requests/41))
 * enhance the `compute_expression` rule by processing `<`, `<=`, `>` and `>=` operators ([!40](https://gitlab.com/seaofvoices/darklua/-/merge_requests/40))
 * enhance the `compute_expression` rule by processing parentheses expressions ([!39](https://gitlab.com/seaofvoices/darklua/-/merge_requests/39))

@@ -1,5 +1,5 @@
 use crate::cli::error::CliError;
-use crate::cli::utils::{maybe_plural, write_file, Config, FileProcessing};
+use crate::cli::utils::{log_array, maybe_plural, write_file, Config, FileProcessing};
 use crate::cli::GlobalOptions;
 
 use darklua_core::{
@@ -61,12 +61,12 @@ pub fn run(options: &Options, global: &GlobalOptions) {
     let files = FileProcessing::find(&options.input_path, &options.output_path, global);
 
     log::trace!(
-        "planned work: [\n    {:?}\n]",
-        files
-            .iter()
-            .map(|file| format!("{} -> {}", file.source.display(), file.output.display()))
-            .collect::<Vec<_>>()
-            .join(",\n    ")
+        "planned work: {}",
+        log_array(files.iter().map(|file| if file.is_in_place() {
+            format!("{}", file.source.display())
+        } else {
+            format!("{} -> {}", file.source.display(), file.output.display())
+        }))
     );
 
     let config = match Config::new(&options.config_path) {
@@ -107,15 +107,20 @@ pub fn run(options: &Options, global: &GlobalOptions) {
             eprintln!(
                 "Successfully minified {} file{}.",
                 success_count,
-                maybe_plural(success_count)
+                maybe_plural(success_count),
+            );
+            eprintln!(
+                "But {} error{} happened:",
+                error_count,
+                maybe_plural(error_count)
+            );
+        } else {
+            eprintln!(
+                "{} error{} happened:",
+                error_count,
+                maybe_plural(error_count)
             );
         }
-
-        eprintln!(
-            "But {} error{} happened:",
-            error_count,
-            maybe_plural(error_count)
-        );
 
         errors.iter().for_each(|error| eprintln!("-> {}", error));
         process::exit(1);

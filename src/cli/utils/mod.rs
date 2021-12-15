@@ -36,6 +36,10 @@ impl FileProcessing {
             Vec::new()
         }
     }
+
+    pub fn is_in_place(&self) -> bool {
+        self.source == self.output
+    }
 }
 
 fn walk_dir(path: &Path, output: &Path, files: &mut Vec<FileProcessing>, global: &GlobalOptions) {
@@ -97,4 +101,14 @@ pub fn maybe_plural(count: usize) -> &'static str {
     } else {
         ""
     }
+}
+
+pub fn log_array(iterator: impl Iterator<Item = String>) -> String {
+    let mut elements: Vec<_> = iterator.collect();
+    if elements.len() > 7 {
+        let difference = elements.len() - 7;
+        elements.truncate(7);
+        elements.push(format!("... and {} more", difference));
+    }
+    format!("[\n    {}\n]", elements.join(",\n    "))
 }
