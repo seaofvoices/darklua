@@ -2,17 +2,17 @@ mod execution_effect;
 mod local_variable;
 mod state;
 
-use crate::nodes::*;
+use crate::{nodes::*, process::FunctionValue};
 
 use execution_effect::ExecutionEffect;
 use state::State;
 
-use super::{Evaluator, LuaValue};
+use super::{LuaValue, TableValue, TupleValue};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EvaluationResult {
     None,
-    Return(Vec<LuaValue>),
+    Return(TupleValue),
     Break,
     Continue,
 }
@@ -49,10 +49,12 @@ impl VirtualLuaExecution {
         self
     }
 
-    pub fn evaluate_function(&mut self, block: &Block) -> Option<Vec<LuaValue>> {
+    pub fn evaluate_chunk(&mut self, block: &Block) -> TupleValue {
         match self.process_block(block) {
-            EvaluationResult::Return(value) => Some(value),
-            EvaluationResult::None | EvaluationResult::Break | EvaluationResult::Continue => None,
+            EvaluationResult::Return(value) => value,
+            EvaluationResult::None | EvaluationResult::Break | EvaluationResult::Continue => {
+                TupleValue::empty()
+            }
         }
     }
 
@@ -69,33 +71,57 @@ impl VirtualLuaExecution {
             Statement::Assign(assign) => {
                 let values = assign.get_values();
                 for (i, variable) in assign.iter_variables().enumerate() {
-                    match variable {
-                        Variable::Identifier(identifier) => {
-                            let value = values
-                                .get(i)
-                                .map(|expression| self.evaluate_expression(expression))
-                                .unwrap_or(LuaValue::Nil);
-                            let identifier_value = identifier.get_name();
-
-                            if let Some(state) = self
-                                .find_ancestor_with_identifier(identifier_value)
-                                .and_then(|id| self.mut_state(id))
-                            {
-                                state.assign_identifier(identifier_value, value);
-                                self.effects.add(identifier_value);
-                            }
-                        }
-                        Variable::Field(_) => todo!(),
-                        Variable::Index(_) => todo!(),
-                    }
+                    let value = values
+                        .get(i)
+                        .map(|expression| self.evaluate_expression(expression))
+                        .unwrap_or(LuaValue::Nil);
+                    self.assign_variable(variable, value);
                 }
                 EvaluationResult::None
             }
             Statement::Do(do_statement) => self.process_block(do_statement.get_block()),
-            Statement::Call(_) => todo!(),
-            Statement::CompoundAssign(_) => todo!(),
-            Statement::Function(_) => todo!(),
-            Statement::GenericFor(_) => todo!(),
+            Statement::Call(call) => {
+                self.evaluate_call(call);
+                EvaluationResult::None
+            }
+            Statement::CompoundAssign(assign) => {
+                let value = self.evaluate_compound_assign(assign);
+                self.assign_variable(assign.get_variable(), value);
+                EvaluationResult::None
+            }
+            Statement::Function(function) => {
+                // TODO
+                let name = function.get_name();
+
+                let root_identifier = name.get_name().get_name();
+                if let Some(state) = self
+                    .find_ancestor_with_identifier(root_identifier)
+                    .and_then(|id| self.mut_state(id))
+                {
+                    state.assign_identifier(root_identifier, LuaValue::Function);
+                    self.effects.add(root_identifier);
+                }
+
+                let parent_id = self.fork_state();
+                let function_state_id = self.current_state().id();
+
+                for parameter in function.iter_parameters() {
+                    self.mut_state(function_state_id)
+                        .expect("function state should exist")
+                        .insert_local(parameter.get_name(), LuaValue::Unknown);
+                }
+
+                self.process_conditional_block(function.get_block());
+
+                self.current = parent_id;
+
+                EvaluationResult::None
+            }
+            Statement::GenericFor(for_statement) => {
+                // TODO
+                self.process_conditional_block(for_statement.get_block());
+                EvaluationResult::None
+            }
             Statement::If(if_statement) => {
                 let mut else_should_run = Some(true);
                 for branch in if_statement.get_branches() {
@@ -134,14 +160,16 @@ impl VirtualLuaExecution {
                 EvaluationResult::None
             }
             Statement::LocalAssign(assign) => {
-                let values = assign.get_values();
-                for (i, identifier) in assign.iter_variables().enumerate() {
-                    let value = values
-                        .get(i)
-                        .map(|expression| self.evaluate_expression(expression))
-                        .unwrap_or(LuaValue::Nil);
-                    self.current_state_mut()
-                        .insert_local(identifier.get_name(), value);
+                let values: Vec<_> = assign
+                    .iter_values()
+                    .map(|expression| self.evaluate_expression(expression))
+                    .collect();
+
+                for (index, value) in values.into_iter().enumerate() {
+                    if let Some(identifier) = assign.get_variable(index) {
+                        self.current_state_mut()
+                            .insert_local(identifier.get_name(), value);
+                    }
                 }
 
                 EvaluationResult::None
@@ -150,6 +178,19 @@ impl VirtualLuaExecution {
                 let name = function.get_name();
                 self.current_state_mut()
                     .insert_local(name, LuaValue::Function);
+
+                let parent_id = self.fork_state();
+                let function_state_id = self.current_state().id();
+
+                for parameter in function.iter_parameters() {
+                    self.mut_state(function_state_id)
+                        .expect("local function state should exist")
+                        .insert_local(parameter.get_name(), LuaValue::Unknown);
+                }
+
+                self.process_conditional_block(function.get_block());
+
+                self.current = parent_id;
 
                 EvaluationResult::None
             }
@@ -270,6 +311,23 @@ impl VirtualLuaExecution {
         }
     }
 
+    fn assign_variable(&mut self, variable: &Variable, value: LuaValue) {
+        match variable {
+            Variable::Identifier(identifier) => {
+                let identifier_value = identifier.get_name();
+                if let Some(state) = self
+                    .find_ancestor_with_identifier(identifier_value)
+                    .and_then(|id| self.mut_state(id))
+                {
+                    state.assign_identifier(identifier_value, value);
+                    self.effects.add(identifier_value);
+                }
+            }
+            Variable::Field(_) => todo!(),
+            Variable::Index(_) => todo!(),
+        }
+    }
+
     fn process_block(&mut self, block: &Block) -> EvaluationResult {
         let parent_id = self.fork_state();
 
@@ -302,7 +360,8 @@ impl VirtualLuaExecution {
                 statement
                     .iter_expressions()
                     .map(|expression| self.evaluate_expression(expression))
-                    .collect(),
+                    .collect::<TupleValue>()
+                    .flatten(),
             ),
         }
     }
@@ -321,12 +380,41 @@ impl VirtualLuaExecution {
         }
     }
 
+    fn evaluate_compound_assign(&mut self, assign: &CompoundAssignStatement) -> LuaValue {
+        // evaluate variable first, then the expression value
+        let left = self.evaluate_variable(assign.get_variable());
+        let right = self.evaluate_expression(assign.get_value());
+        match assign.get_operator() {
+            CompoundOperator::Plus => self.evaluate_math_values(left, right, |a, b| a + b),
+            CompoundOperator::Minus => self.evaluate_math_values(left, right, |a, b| a - b),
+            CompoundOperator::Asterisk => self.evaluate_math_values(left, right, |a, b| a * b),
+            CompoundOperator::Slash => self.evaluate_math_values(left, right, |a, b| a / b),
+            CompoundOperator::Caret => self.evaluate_math_values(left, right, |a, b| a.powf(b)),
+            CompoundOperator::Percent => {
+                self.evaluate_math_values(left, right, |a, b| a - b * (a / b).floor())
+            }
+            CompoundOperator::Concat => self.evaluate_concat(left, right),
+        }
+    }
+
     fn evaluate_expression(&mut self, expression: &Expression) -> LuaValue {
-        let evaluator = Evaluator::new(self);
-        evaluator.evaluate(expression)
-        // TODO: iterate through expression to find potential side effect that needs
-        // to blur variables (like function calls, index or field expressions)
-        // TODO: potentially replace expression here since they can be evaluated
+        match expression {
+            Expression::False(_) => LuaValue::False,
+            Expression::Function(_) => LuaValue::Function,
+            Expression::Nil(_) => LuaValue::Nil,
+            Expression::Number(number) => LuaValue::from(number.compute_value()),
+            Expression::String(string) => LuaValue::from(string.get_value()),
+            Expression::Table(table) => self.evaluate_table(table),
+            Expression::True(_) => LuaValue::True,
+            Expression::Binary(binary) => self.evaluate_binary(binary),
+            Expression::Unary(unary) => self.evaluate_unary(unary),
+            Expression::Parenthese(parenthese) => self.evaluate_parenthese(parenthese),
+            Expression::Identifier(identifier) => self.evaluate_identifier(identifier),
+            Expression::Field(field) => self.evaluate_field(field),
+            Expression::Index(index) => self.evaluate_index(index),
+            Expression::Call(call) => self.evaluate_call(call).into(),
+            Expression::VariableArguments(_) => LuaValue::Unknown,
+        }
     }
 
     fn current_state_mut(&mut self) -> &mut State {
@@ -351,18 +439,297 @@ impl VirtualLuaExecution {
         self.states.get_mut(id)
     }
 
-    pub(crate) fn evaluate_identifier(&self, name: &str) -> LuaValue {
-        self.current_state()
-            .read(name, self)
-            .unwrap_or(LuaValue::Unknown)
-    }
-
     fn find_ancestor_with_identifier(&self, identifier: &str) -> Option<usize> {
         let mut current = self.current_state();
         while !current.has_identifier(identifier) {
             current = self.get_state(current.parent()?)?;
         }
         Some(current.id())
+    }
+
+    fn evaluate_call(&mut self, call: &FunctionCall) -> TupleValue {
+        match self.evaluate_prefix(call.get_prefix()).coerce_to_single_value() {
+            LuaValue::Function2(function) => {
+                match function {
+                    FunctionValue::Lua(_) => {
+                        // TODO: blur every variable that function captures
+                        todo!()
+                    },
+                    FunctionValue::Engine(engine) => {
+                        let arguments = self.evaluate_arguments(call.get_arguments());
+                        engine.execute(arguments)
+                    }
+                }
+            }
+            LuaValue::Nil
+            | LuaValue::Table(_) // TODO: table can be called
+            | LuaValue::Function
+            | LuaValue::Number(_)
+            | LuaValue::String(_)
+            | LuaValue::True
+            | LuaValue::False
+            | LuaValue::Unknown => LuaValue::Unknown.into(),
+            // unreachable because of the call to `coerce_to_single_value`
+            LuaValue::Tuple(_) => LuaValue::Unknown.into(),
+        }
+    }
+
+    fn evaluate_arguments(&mut self, arguments: &Arguments) -> TupleValue {
+        match arguments {
+            Arguments::Tuple(tuple) => tuple
+                .iter_values()
+                .map(|value| self.evaluate_expression(value))
+                .collect(),
+            Arguments::String(string) => TupleValue::singleton(string.get_value()),
+            Arguments::Table(table) => TupleValue::singleton(self.evaluate_table(table)),
+        }
+    }
+
+    fn evaluate_binary(&mut self, binary: &BinaryExpression) -> LuaValue {
+        match binary.operator() {
+            BinaryOperator::And => {
+                let left = self.evaluate_expression(binary.left());
+                match left.is_truthy() {
+                    Some(true) => self.evaluate_expression(binary.right()),
+                    Some(false) => left,
+                    None => LuaValue::Unknown,
+                }
+            }
+            BinaryOperator::Or => {
+                let left = self.evaluate_expression(binary.left());
+                match left.is_truthy() {
+                    Some(true) => left,
+                    Some(false) => self.evaluate_expression(binary.right()),
+                    None => LuaValue::Unknown,
+                }
+            }
+            BinaryOperator::Equal => {
+                let left = self.evaluate_expression(binary.left());
+                let right = self.evaluate_expression(binary.right());
+                self.evaluate_equal(&left, &right)
+            }
+            BinaryOperator::NotEqual => {
+                let left = self.evaluate_expression(binary.left());
+                let right = self.evaluate_expression(binary.right());
+                let result = self.evaluate_equal(&left, &right);
+
+                match result {
+                    LuaValue::True => LuaValue::False,
+                    LuaValue::False => LuaValue::True,
+                    _ => LuaValue::Unknown,
+                }
+            }
+            BinaryOperator::Plus => self.evaluate_math(binary.left(), binary.right(), |a, b| a + b),
+            BinaryOperator::Minus => {
+                self.evaluate_math(binary.left(), binary.right(), |a, b| a - b)
+            }
+            BinaryOperator::Asterisk => {
+                self.evaluate_math(binary.left(), binary.right(), |a, b| a * b)
+            }
+            BinaryOperator::Slash => {
+                self.evaluate_math(binary.left(), binary.right(), |a, b| a / b)
+            }
+            BinaryOperator::Caret => {
+                self.evaluate_math(binary.left(), binary.right(), |a, b| a.powf(b))
+            }
+            BinaryOperator::Percent => self.evaluate_math(binary.left(), binary.right(), |a, b| {
+                a - b * (a / b).floor()
+            }),
+            BinaryOperator::Concat => {
+                let left = self.evaluate_expression(binary.left());
+                let right = self.evaluate_expression(binary.right());
+
+                self.evaluate_concat(left, right)
+            }
+            BinaryOperator::LowerThan => self.evaluate_relational(binary, |a, b| a < b),
+            BinaryOperator::LowerOrEqualThan => self.evaluate_relational(binary, |a, b| a <= b),
+            BinaryOperator::GreaterThan => self.evaluate_relational(binary, |a, b| a > b),
+            BinaryOperator::GreaterOrEqualThan => self.evaluate_relational(binary, |a, b| a >= b),
+        }
+    }
+
+    fn evaluate_concat(&mut self, left: LuaValue, right: LuaValue) -> LuaValue {
+        match (left.string_coercion(), right.string_coercion()) {
+            (LuaValue::String(mut left), LuaValue::String(right)) => {
+                left.push_str(&right);
+                LuaValue::String(left)
+            }
+            _ => LuaValue::Unknown,
+        }
+    }
+
+    fn evaluate_equal(&self, left: &LuaValue, right: &LuaValue) -> LuaValue {
+        match (left, right) {
+            (LuaValue::Unknown, _) | (_, LuaValue::Unknown) => LuaValue::Unknown,
+            (LuaValue::True, LuaValue::True)
+            | (LuaValue::False, LuaValue::False)
+            | (LuaValue::Nil, LuaValue::Nil) => LuaValue::True,
+            (LuaValue::Number(a), LuaValue::Number(b)) => {
+                LuaValue::from((a - b).abs() < f64::EPSILON)
+            }
+            (LuaValue::String(a), LuaValue::String(b)) => LuaValue::from(a == b),
+            _ => LuaValue::False,
+        }
+    }
+
+    fn evaluate_math<F>(&mut self, left: &Expression, right: &Expression, operation: F) -> LuaValue
+    where
+        F: Fn(f64, f64) -> f64,
+    {
+        let left = self.evaluate_expression(left).number_coercion();
+        let right = self.evaluate_expression(right).number_coercion();
+
+        if let LuaValue::Number(left) = left {
+            if let LuaValue::Number(right) = right {
+                LuaValue::Number(operation(left, right))
+            } else {
+                LuaValue::Unknown
+            }
+        } else {
+            LuaValue::Unknown
+        }
+    }
+
+    fn evaluate_math_values<F>(&mut self, left: LuaValue, right: LuaValue, operation: F) -> LuaValue
+    where
+        F: Fn(f64, f64) -> f64,
+    {
+        let left = left.number_coercion();
+
+        if let LuaValue::Number(left) = left {
+            let right = right.number_coercion();
+
+            if let LuaValue::Number(right) = right {
+                LuaValue::Number(operation(left, right))
+            } else {
+                LuaValue::Unknown
+            }
+        } else {
+            LuaValue::Unknown
+        }
+    }
+
+    fn evaluate_relational<F>(&mut self, expression: &BinaryExpression, operation: F) -> LuaValue
+    where
+        F: Fn(f64, f64) -> bool,
+    {
+        let left = self.evaluate_expression(expression.left());
+
+        match left {
+            LuaValue::Number(left) => {
+                let right = self.evaluate_expression(expression.right());
+
+                if let LuaValue::Number(right) = right {
+                    if operation(left, right) {
+                        LuaValue::True
+                    } else {
+                        LuaValue::False
+                    }
+                } else {
+                    LuaValue::Unknown
+                }
+            }
+            LuaValue::String(left) => {
+                let right = self.evaluate_expression(expression.right());
+
+                if let LuaValue::String(right) = right {
+                    self.compare_strings(&left, &right, expression.operator())
+                } else {
+                    LuaValue::Unknown
+                }
+            }
+            _ => LuaValue::Unknown,
+        }
+    }
+
+    fn compare_strings(&self, left: &str, right: &str, operator: BinaryOperator) -> LuaValue {
+        LuaValue::from(match operator {
+            BinaryOperator::Equal => left == right,
+            BinaryOperator::NotEqual => left != right,
+            BinaryOperator::LowerThan => left < right,
+            BinaryOperator::LowerOrEqualThan => left <= right,
+            BinaryOperator::GreaterThan => left > right,
+            BinaryOperator::GreaterOrEqualThan => left >= right,
+            _ => return LuaValue::Unknown,
+        })
+    }
+
+    fn evaluate_unary(&mut self, unary: &UnaryExpression) -> LuaValue {
+        match unary.operator() {
+            UnaryOperator::Not => self
+                .evaluate_expression(unary.get_expression())
+                .is_truthy()
+                .map(|value| LuaValue::from(!value))
+                .unwrap_or(LuaValue::Unknown),
+            UnaryOperator::Minus => {
+                match self
+                    .evaluate_expression(unary.get_expression())
+                    .number_coercion()
+                {
+                    LuaValue::Number(value) => LuaValue::from(-value),
+                    _ => LuaValue::Unknown,
+                }
+            }
+            _ => LuaValue::Unknown,
+        }
+    }
+
+    fn evaluate_table(&mut self, _table: &TableExpression) -> LuaValue {
+        // TODO
+        TableValue::default().into()
+    }
+
+    fn evaluate_parenthese(&mut self, parenthese: &ParentheseExpression) -> LuaValue {
+        self.evaluate_expression(parenthese.inner_expression())
+            .coerce_to_single_value()
+    }
+
+    fn evaluate_identifier(&self, identifier: &Identifier) -> LuaValue {
+        self.current_state()
+            .read(identifier.get_name(), self)
+            .unwrap_or(LuaValue::Unknown)
+    }
+
+    fn evaluate_field(&mut self, field: &FieldExpression) -> LuaValue {
+        match self.evaluate_prefix(field.get_prefix()).coerce_to_single_value() {
+            LuaValue::Table(table) => {
+                table.get(&field.get_field().get_name().to_owned().into())
+                    .cloned()
+                    .unwrap_or(LuaValue::Unknown)
+            }
+            LuaValue::Nil
+            | LuaValue::Function
+            | LuaValue::Function2(_)
+            | LuaValue::Number(_)
+            | LuaValue::String(_) // TODO: strings can be indexed
+            | LuaValue::True
+            | LuaValue::False
+            | LuaValue::Unknown => LuaValue::Unknown,
+            // unreachable because of the call to `coerce_to_single_value`
+            LuaValue::Tuple(_) => LuaValue::Unknown,
+        }
+    }
+
+    fn evaluate_index(&mut self, _index: &IndexExpression) -> LuaValue {
+        todo!()
+    }
+
+    fn evaluate_prefix(&mut self, prefix: &Prefix) -> LuaValue {
+        match prefix {
+            Prefix::Field(field) => self.evaluate_field(field),
+            Prefix::Identifier(identifier) => self.evaluate_identifier(identifier),
+            Prefix::Index(index) => self.evaluate_index(index),
+            Prefix::Parenthese(parenthese) => self.evaluate_parenthese(parenthese),
+            Prefix::Call(call) => self.evaluate_call(call).into(),
+        }
+    }
+
+    fn evaluate_variable(&mut self, variable: &Variable) -> LuaValue {
+        match variable {
+            Variable::Identifier(identifier) => self.evaluate_identifier(identifier),
+            Variable::Field(field) => self.evaluate_field(field),
+            Variable::Index(index) => self.evaluate_index(index),
+        }
     }
 }
 
@@ -382,8 +749,8 @@ mod test {
                     let mut state = VirtualLuaExecution::default();
 
                     pretty_assertions::assert_eq!(
-                        state.evaluate_function(&block),
-                        Some(vec![$( LuaValue::from($result), )*])
+                        state.evaluate_chunk(&block),
+                        TupleValue::new(vec![ $( LuaValue::from($result), )* ])
                     );
                 }
             )*

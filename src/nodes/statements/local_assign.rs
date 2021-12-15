@@ -108,6 +108,11 @@ impl LocalAssignStatement {
     }
 
     #[inline]
+    pub fn get_variable(&self, index: usize) -> Option<&Identifier> {
+        self.variables.get(index)
+    }
+
+    #[inline]
     pub fn iter_variables(&self) -> impl Iterator<Item = &Identifier> {
         self.variables.iter()
     }

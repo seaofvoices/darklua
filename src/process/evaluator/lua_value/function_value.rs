@@ -1,8 +1,8 @@
 use crate::nodes::Block;
 
-use super::LuaValue;
+use super::TupleValue;
 
-pub type EngineFunctionImpl = fn(Vec<LuaValue>) -> Vec<LuaValue>;
+pub type EngineFunctionImpl = fn(TupleValue) -> TupleValue;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FunctionValue {
@@ -11,7 +11,7 @@ pub enum FunctionValue {
 }
 
 impl FunctionValue {
-    pub fn execute(&self, arguments: Vec<LuaValue>) -> Vec<LuaValue> {
+    pub fn execute(&self, arguments: TupleValue) -> TupleValue {
         match self {
             FunctionValue::Lua(_) => todo!(),
             FunctionValue::Engine(engine) => engine.execute(arguments),
@@ -48,7 +48,7 @@ impl EngineFunction {
         Self { implementation }
     }
 
-    fn execute(&self, arguments: Vec<LuaValue>) -> Vec<LuaValue> {
+    pub fn execute(&self, arguments: TupleValue) -> TupleValue {
         (self.implementation)(arguments)
     }
 }

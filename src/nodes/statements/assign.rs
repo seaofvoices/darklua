@@ -67,6 +67,11 @@ impl AssignStatement {
     }
 
     #[inline]
+    pub fn get_variable(&self, index: usize) -> Option<&Variable> {
+        self.variables.get(index)
+    }
+
+    #[inline]
     pub fn iter_variables(&self) -> impl Iterator<Item = &Variable> {
         self.variables.iter()
     }

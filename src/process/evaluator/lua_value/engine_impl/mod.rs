@@ -44,8 +44,8 @@ mod test {
                             .with_global_value(stringify!($library_name), $library);
 
                         pretty_assertions::assert_eq!(
-                            state.evaluate_function(&block),
-                            Some(vec![$( LuaValue::from($result), )*])
+                            state.evaluate_chunk(&block),
+                            crate::process::TupleValue::new(vec![$( LuaValue::from($result), )*])
                         );
                     }
                 )*

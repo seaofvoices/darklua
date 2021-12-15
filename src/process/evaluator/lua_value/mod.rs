@@ -1,11 +1,15 @@
 pub mod engine_impl;
 mod function_value;
 mod table_value;
+mod tuple_value;
+
+use std::iter::FromIterator;
 
 use crate::nodes::{Expression, NumberExpression, StringExpression};
 
-use function_value::*;
+pub use function_value::*;
 pub use table_value::*;
+pub use tuple_value::*;
 
 /// Represents an evaluated Expression result.
 #[derive(Debug, Clone, PartialEq)]
@@ -18,6 +22,7 @@ pub enum LuaValue {
     String(String),
     Table(TableValue),
     True,
+    Tuple(TupleValue),
     Unknown,
 }
 
@@ -96,7 +101,8 @@ impl LuaValue {
     /// Attempt to convert the Lua value into a number value. This will convert strings when
     /// possible and return the same value otherwise.
     pub fn number_coercion(self) -> Self {
-        match &self {
+        let single_value = self.coerce_to_single_value();
+        match &single_value {
             Self::String(string) => {
                 let string = string.trim();
 
@@ -116,17 +122,27 @@ impl LuaValue {
             }
             _ => None,
         }
-        .unwrap_or(self)
+        .unwrap_or(single_value)
     }
 
     /// Attempt to convert the Lua value into a string value. This will convert numbers when
     /// possible and return the same value otherwise.
     pub fn string_coercion(self) -> Self {
-        match &self {
+        let single_value = self.coerce_to_single_value();
+        match &single_value {
             Self::Number(value) => Some(Self::String(format!("{}", value))),
             _ => None,
         }
-        .unwrap_or(self)
+        .unwrap_or(single_value)
+    }
+
+    /// This method only has effect on the Tuple variant. If the value is a tuple, then it will
+    /// return only the first value from the tuple, or `nil` if the tuple is empty.
+    pub fn coerce_to_single_value(self) -> Self {
+        match self {
+            Self::Tuple(tuple) => tuple.coerce_to_single_value(),
+            _ => self,
+        }
     }
 }
 
@@ -172,13 +188,31 @@ impl From<TableValue> for LuaValue {
 
 impl From<FunctionValue> for LuaValue {
     fn from(function: FunctionValue) -> Self {
-        LuaValue::Function2(function)
+        Self::Function2(function)
     }
 }
 
 impl From<EngineFunction> for LuaValue {
     fn from(function: EngineFunction) -> Self {
-        LuaValue::Function2(FunctionValue::Engine(function))
+        Self::Function2(FunctionValue::Engine(function))
+    }
+}
+
+impl From<TupleValue> for LuaValue {
+    fn from(tuple: TupleValue) -> Self {
+        Self::Tuple(tuple)
+    }
+}
+
+impl FromIterator<LuaValue> for LuaValue {
+    fn from_iter<T: IntoIterator<Item = LuaValue>>(iter: T) -> Self {
+        Self::Tuple(TupleValue::new(iter.into_iter().collect()))
+    }
+}
+
+impl From<Vec<LuaValue>> for LuaValue {
+    fn from(values: Vec<LuaValue>) -> Self {
+        Self::Tuple(TupleValue::new(values))
     }
 }
 
