@@ -48,7 +48,12 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         }
     }
 
+    #[inline]
     fn write_token(&mut self, token: &Token) {
+        self.write_token_options(token, true)
+    }
+
+    fn write_token_options(&mut self, token: &Token, space_check: bool) {
         for trivia in token.iter_leading_trivia() {
             self.write_trivia(trivia);
         }
@@ -57,16 +62,20 @@ impl<'a> TokenBasedLuaGenerator<'a> {
 
         if self.currently_commenting {
             self.uncomment();
-        } else if let Some(next_character) = content.chars().next() {
-            if self.needs_space(next_character) {
-                self.output.push(' ');
-            }
         }
 
         if let Some(line_number) = token.get_line_number() {
             while line_number > self.current_line {
                 self.output.push('\n');
                 self.current_line += 1;
+            }
+        }
+
+        if space_check {
+            if let Some(next_character) = content.chars().next() {
+                if self.needs_space(next_character) {
+                    self.output.push(' ');
+                }
             }
         }
 
@@ -231,7 +240,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
 
     fn write_field_with_token(&mut self, field: &FieldExpression, token: &Token) {
         self.write_prefix(field.get_prefix());
-        self.write_token(token);
+        self.write_token_options(token, false);
         self.write_identifier(field.get_field());
     }
 
@@ -1392,6 +1401,9 @@ mod test {
         return_empty_function_with_two_arguments => "return function(a, b)\nend",
         return_empty_variadic_function_with_two_arguments => "return function(a, b, ...)\nend",
         return_identity_function => "return function(...)\n\treturn ...\nend",
+        return_field => "return math.huge",
+        return_field_ending_with_number => "return UDim2.new",
+        return_field_split_on_lines => "return value.\n\tproperty\n\t.name",
     );
 
     #[test]

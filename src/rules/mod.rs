@@ -2,6 +2,7 @@
 
 mod call_parens;
 mod compute_expression;
+mod configuration_error;
 mod convert_index_to_field;
 mod empty_do;
 mod group_local;
@@ -11,11 +12,13 @@ mod no_local_function;
 mod remove_comments;
 mod remove_spaces;
 mod rename_variables;
+mod rule_property;
 mod unused_if_branch;
 mod unused_while;
 
 pub use call_parens::*;
 pub use compute_expression::*;
+pub use configuration_error::RuleConfigurationError;
 pub use convert_index_to_field::*;
 pub use empty_do::*;
 pub use group_local::*;
@@ -25,6 +28,7 @@ pub use no_local_function::*;
 pub use remove_comments::*;
 pub use remove_spaces::*;
 pub use rename_variables::*;
+pub use rule_property::*;
 pub use unused_if_branch::*;
 pub use unused_while::*;
 
@@ -36,62 +40,6 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
-
-/// In order to be able to weakly-type the properties of any rule, this enum makes it possible to
-/// easily use serde to gather the value associated with a property.
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum RulePropertyValue {
-    Boolean(bool),
-    String(String),
-    Usize(usize),
-    Float(f64),
-    StringList(Vec<String>),
-    None,
-}
-
-/// When implementing the configure method of the Rule trait, the method returns a result that uses
-/// this error type.
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum RuleConfigurationError {
-    /// When a rule gets an unknown property. The string should be the unknown field name.
-    UnexpectedProperty(String),
-    /// When a rule has a required property. The string should be the field name.
-    MissingProperty(String),
-    /// When a property is associated with something else than an expected string. The string is
-    /// the property name.
-    StringExpected(String),
-    /// When a property is associated with something else than an expected unsigned number. The
-    /// string is the property name.
-    UsizeExpected(String),
-    /// When a property is associated with something else than an expected list of strings. The
-    /// string is the property name.
-    StringListExpected(String),
-    /// When the value type is invalid. The string is the property name that was given the wrong
-    /// value type.
-    UnexpectedValueType(String),
-}
-
-impl fmt::Display for RuleConfigurationError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use RuleConfigurationError::*;
-
-        match self {
-            UnexpectedProperty(property) => write!(f, "unexpected field '{}'", property),
-            MissingProperty(property) => write!(f, "missing required field '{}'", property),
-            StringExpected(property) => write!(f, "string value expected for field '{}'", property),
-            UsizeExpected(property) => {
-                write!(f, "unsigned integer expected for field '{}'", property)
-            }
-            StringListExpected(property) => {
-                write!(f, "list of string expected for field '{}'", property)
-            }
-            UnexpectedValueType(property) => write!(f, "unexpected type for field '{}'", property),
-        }
-    }
-}
-
-pub type RuleProperties = HashMap<String, RulePropertyValue>;
 
 /// The intent of this struct is to hold data shared across all rules applied to a file.
 #[derive(Debug, Clone, Default)]
