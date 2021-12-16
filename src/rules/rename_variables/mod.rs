@@ -47,10 +47,15 @@ impl RenameVariables {
                 "$roblox" => self
                     .globals
                     .extend(globals::ROBLOX.to_vec().into_iter().map(String::from)),
-                identifier if !is_valid_identifier(identifier) => {
-                    return Err(RuleConfigurationError::StringExpected("".to_owned()))
+                identifier if is_valid_identifier(identifier) => {
+                    self.globals.push(value);
                 }
-                _ => self.globals.push(value),
+                _ => {
+                    return Err(RuleConfigurationError::StringExpected(format!(
+                        "identifier `{}` is not valid",
+                        value
+                    )))
+                }
             }
         }
 

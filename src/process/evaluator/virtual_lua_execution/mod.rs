@@ -1,11 +1,13 @@
 mod execution_effect;
 mod local_variable;
 mod state;
+mod table_storage;
 
 use crate::{nodes::*, process::FunctionValue};
 
 use execution_effect::ExecutionEffect;
 use state::State;
+use table_storage::TableStorage;
 
 use super::{LuaValue, TableValue, TupleValue};
 
@@ -30,6 +32,7 @@ pub struct VirtualLuaExecution {
     current: usize,
     effects: ExecutionEffect,
     max_loop_iteration: usize,
+    table_storage: TableStorage,
 }
 
 impl Default for VirtualLuaExecution {
@@ -39,6 +42,7 @@ impl Default for VirtualLuaExecution {
             current: 0,
             effects: ExecutionEffect::default(),
             max_loop_iteration: 500,
+            table_storage: TableStorage::default(),
         }
     }
 }
@@ -90,8 +94,8 @@ impl VirtualLuaExecution {
                 EvaluationResult::None
             }
             Statement::Function(function) => {
-                // TODO
                 let name = function.get_name();
+                // TODO: build function name into a field expression and apply the function value
 
                 let root_identifier = name.get_name().get_name();
                 if let Some(state) = self
@@ -313,19 +317,39 @@ impl VirtualLuaExecution {
 
     fn assign_variable(&mut self, variable: &Variable, value: LuaValue) {
         match variable {
-            Variable::Identifier(identifier) => {
-                let identifier_value = identifier.get_name();
-                if let Some(state) = self
-                    .find_ancestor_with_identifier(identifier_value)
-                    .and_then(|id| self.mut_state(id))
-                {
-                    state.assign_identifier(identifier_value, value);
-                    self.effects.add(identifier_value);
+            Variable::Identifier(identifier) => self.assign_identifier(identifier, value),
+            Variable::Field(field) => self.assign_prefix(
+                field.get_prefix(),
+                LuaValue::from(field.get_field().get_name().as_str()),
+                value,
+            ),
+            Variable::Index(index) => {
+                let key = self.evaluate_expression(index.get_index());
+                self.assign_prefix(index.get_prefix(), key, value);
+            }
+        }
+    }
+
+    fn assign_identifier(&mut self, identifier: &Identifier, value: LuaValue) {
+        let name = identifier.get_name();
+        if let Some(state) = self
+            .find_ancestor_with_identifier(name)
+            .and_then(|id| self.mut_state(id))
+        {
+            state.assign_identifier(name, value);
+            self.effects.add(name);
+        }
+    }
+
+    fn assign_prefix(&mut self, prefix: &Prefix, key: LuaValue, value: LuaValue) {
+        match self.evaluate_prefix(prefix) {
+            LuaValue::TableRef(table_id) => {
+                if let Some(table) = self.table_storage.mutate(table_id) {
+                    table.insert(key, value);
                 }
             }
-            Variable::Field(_) => todo!(),
-            Variable::Index(_) => todo!(),
-        }
+            _ => {}
+        };
     }
 
     fn process_block(&mut self, block: &Block) -> EvaluationResult {
@@ -397,7 +421,7 @@ impl VirtualLuaExecution {
         }
     }
 
-    fn evaluate_expression(&mut self, expression: &Expression) -> LuaValue {
+    pub fn evaluate_expression(&mut self, expression: &Expression) -> LuaValue {
         match expression {
             Expression::False(_) => LuaValue::False,
             Expression::Function(_) => LuaValue::Function,
@@ -448,12 +472,18 @@ impl VirtualLuaExecution {
     }
 
     fn evaluate_call(&mut self, call: &FunctionCall) -> TupleValue {
-        match self.evaluate_prefix(call.get_prefix()).coerce_to_single_value() {
+        // TODO: if in conditional mode, there may be more processing to do
+        let prefix = self
+            .evaluate_prefix(call.get_prefix())
+            .coerce_to_single_value();
+        let arguments = self.evaluate_arguments(call.get_arguments());
+        match prefix {
             LuaValue::Function2(function) => {
                 match function {
                     FunctionValue::Lua(_) => {
-                        // TODO: blur every variable that function captures
-                        todo!()
+                        self.pass_argument_to_unknown_function(arguments);
+                        // TODO: run the function with the parameters
+                        LuaValue::Unknown.into()
                     },
                     FunctionValue::Engine(engine) => {
                         let arguments = self.evaluate_arguments(call.get_arguments());
@@ -463,14 +493,29 @@ impl VirtualLuaExecution {
             }
             LuaValue::Nil
             | LuaValue::Table(_) // TODO: table can be called
+            | LuaValue::TableRef(_)
             | LuaValue::Function
             | LuaValue::Number(_)
             | LuaValue::String(_)
             | LuaValue::True
             | LuaValue::False
-            | LuaValue::Unknown => LuaValue::Unknown.into(),
+            | LuaValue::Unknown => {
+                self.pass_argument_to_unknown_function(arguments);
+                LuaValue::Unknown.into()
+            }
             // unreachable because of the call to `coerce_to_single_value`
             LuaValue::Tuple(_) => LuaValue::Unknown.into(),
+        }
+    }
+
+    fn pass_argument_to_unknown_function(&mut self, arguments: TupleValue) {
+        for value in arguments.iter() {
+            if let LuaValue::TableRef(id) = &value {
+                if let Some(table) = self.table_storage.mutate(*id) {
+                    table.clear();
+                    table.set_unknown_mutations();
+                }
+            }
         }
     }
 
@@ -479,7 +524,8 @@ impl VirtualLuaExecution {
             Arguments::Tuple(tuple) => tuple
                 .iter_values()
                 .map(|value| self.evaluate_expression(value))
-                .collect(),
+                .collect::<TupleValue>()
+                .flatten(),
             Arguments::String(string) => TupleValue::singleton(string.get_value()),
             Arguments::Table(table) => TupleValue::singleton(self.evaluate_table(table)),
         }
@@ -674,9 +720,24 @@ impl VirtualLuaExecution {
         }
     }
 
-    fn evaluate_table(&mut self, _table: &TableExpression) -> LuaValue {
-        // TODO
-        TableValue::default().into()
+    fn evaluate_table(&mut self, table: &TableExpression) -> LuaValue {
+        let table_value = table
+            .iter_entries()
+            .fold(TableValue::default(), |table_value, entry| match entry {
+                TableEntry::Field(field) => table_value.with_entry(
+                    LuaValue::from(field.get_field().get_name().as_str()),
+                    self.evaluate_expression(field.get_value()),
+                ),
+                TableEntry::Index(index) => table_value.with_entry(
+                    self.evaluate_expression(index.get_value()),
+                    self.evaluate_expression(index.get_value()),
+                ),
+                TableEntry::Value(value) => {
+                    table_value.with_array_element(self.evaluate_expression(value))
+                }
+            });
+        let id = self.table_storage.insert(table_value);
+        LuaValue::TableRef(id)
     }
 
     fn evaluate_parenthese(&mut self, parenthese: &ParentheseExpression) -> LuaValue {
@@ -697,6 +758,13 @@ impl VirtualLuaExecution {
                     .cloned()
                     .unwrap_or(LuaValue::Unknown)
             }
+            LuaValue::TableRef(id) => {
+                self.table_storage.get(id)
+                    .expect("table should exist")
+                    .get(&field.get_field().get_name().to_owned().into())
+                    .cloned()
+                    .unwrap_or(LuaValue::Unknown)
+            }
             LuaValue::Nil
             | LuaValue::Function
             | LuaValue::Function2(_)
@@ -710,8 +778,34 @@ impl VirtualLuaExecution {
         }
     }
 
-    fn evaluate_index(&mut self, _index: &IndexExpression) -> LuaValue {
-        todo!()
+    fn evaluate_index(&mut self, index: &IndexExpression) -> LuaValue {
+        let key = self
+            .evaluate_expression(index.get_index())
+            .coerce_to_single_value();
+        match self.evaluate_prefix(index.get_prefix()).coerce_to_single_value() {
+            LuaValue::Table(table) => {
+                table.get(&key)
+                    .cloned()
+                    .unwrap_or(LuaValue::Unknown)
+            }
+            LuaValue::TableRef(id) => {
+                self.table_storage.get(id)
+                    .expect("table should exist")
+                    .get(&key)
+                    .cloned()
+                    .unwrap_or(LuaValue::Unknown)
+            }
+            LuaValue::Nil
+            | LuaValue::Function
+            | LuaValue::Function2(_)
+            | LuaValue::Number(_)
+            | LuaValue::String(_) // TODO: strings can be indexed
+            | LuaValue::True
+            | LuaValue::False
+            | LuaValue::Unknown => LuaValue::Unknown,
+            // unreachable because of the call to `coerce_to_single_value`
+            LuaValue::Tuple(_) => LuaValue::Unknown,
+        }
     }
 
     fn evaluate_prefix(&mut self, prefix: &Prefix) -> LuaValue {
@@ -831,5 +925,6 @@ mod test {
         numeric_for_returns_in_if(
             "local n = 0 for i = 1, 10 do n = n + i if i == 3 then return 'ok' end end return n"
         ) => ["ok"],
+        define_table_and_return_field("local a = { b = 'ok' } return a.b") => ["ok"],
     );
 }

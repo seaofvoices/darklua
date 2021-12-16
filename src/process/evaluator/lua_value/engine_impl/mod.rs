@@ -1,18 +1,20 @@
-use super::LuaValue;
+use super::{EngineFunction, LuaValue, TupleValue};
 
 mod lua_math;
 
+fn unimplemented_callback(_parameters: TupleValue) -> TupleValue {
+    LuaValue::Unknown.into()
+}
+
 macro_rules! create_library {
     ($module:ident, $( $function:ident ),* $(,)? ) => {
-        LuaValue::from(
-            super::TableValue::default()
-                $(
-                    .with_entry(
-                        stringify!($function),
-                        super::function_value::EngineFunction::new($module::$function),
-                    )
-                )*
-        )
+        super::TableValue::default()
+            $(
+                .with_entry(
+                    stringify!($function),
+                    EngineFunction::new($module::$function),
+                )
+            )*
     };
 }
 
@@ -21,6 +23,12 @@ pub fn create_roblox_math_library() -> LuaValue {
         lua_math, abs, acos, asin, atan, atan2, ceil, clamp, cos, cosh, deg, exp, floor, fmod,
         frexp, log, log10, max, min, modf, pow, rad, round, sign, sin, sinh, sqrt, tan, tanh,
     )
+    .with_entry("huge", f64::INFINITY)
+    .with_entry("pi", std::f64::consts::PI)
+    .with_entry("noise", EngineFunction::new(unimplemented_callback))
+    .with_entry("random", EngineFunction::new(unimplemented_callback))
+    .with_entry("randomseed", EngineFunction::new(unimplemented_callback))
+    .into()
 }
 
 #[cfg(test)]

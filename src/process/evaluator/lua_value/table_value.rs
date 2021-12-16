@@ -6,6 +6,7 @@ use super::LuaValue;
 pub struct TableValue {
     array: Vec<LuaValue>,
     pairs: Vec<(LuaValue, LuaValue)>,
+    unknown_mutations: bool,
     // metatable: Option<TableValue>
 }
 
@@ -20,12 +21,37 @@ impl TableValue {
         self
     }
 
+    pub fn set_unknown_mutations(&mut self) {
+        self.unknown_mutations = true;
+    }
+
+    pub fn clear(&mut self) {
+        self.array.clear();
+        self.pairs.clear();
+    }
+
     #[inline]
     pub fn push_element(&mut self, value: LuaValue) {
         self.array.push(value);
     }
 
-    pub fn insert_entry<T: Into<LuaValue>, U: Into<LuaValue>>(&mut self, new_key: T, new_value: U) {
+    pub fn insert<T: Into<LuaValue>, U: Into<LuaValue>>(&mut self, new_key: T, new_value: U) {
+        let new_key = new_key.into();
+
+        if let Some(index) = self.get_array_index(&new_key) {
+            if index < self.array.len() {
+                self.array[index] = new_value.into();
+                return;
+            } else if index == self.array.len() {
+                self.array.push(new_value.into());
+                return;
+            }
+        }
+
+        self.insert_entry(new_key, new_value);
+    }
+
+    fn insert_entry<T: Into<LuaValue>, U: Into<LuaValue>>(&mut self, new_key: T, new_value: U) {
         let new_key = new_key.into();
         let mut new_value = new_value.into();
         if new_value == LuaValue::Nil {
@@ -38,14 +64,10 @@ impl TableValue {
     }
 
     pub fn get(&self, key: &LuaValue) -> Option<&LuaValue> {
-        if let LuaValue::Number(index) = key {
-            let index = *index;
-            if index >= 1.0 && index.trunc() == index {
-                let index = index as usize;
-                if index < self.array.len() {
-                    if let Some(element) = self.array.get(index) {
-                        return Some(element);
-                    }
+        if let Some(index) = self.get_array_index(key) {
+            if index < self.array.len() {
+                if let Some(element) = self.array.get(index) {
+                    return Some(element);
                 }
             }
         }
@@ -53,10 +75,29 @@ impl TableValue {
             .iter()
             .find(|(existing_key, _)| existing_key == key)
             .map(|(_, value)| value)
+            .or_else(|| {
+                if self.unknown_mutations {
+                    Some(&LuaValue::Unknown)
+                } else {
+                    None
+                }
+            })
     }
 
     fn remove_key(&mut self, key: &LuaValue) {
         self.pairs.retain(|(existing_key, _)| existing_key != key);
+    }
+
+    fn get_array_index(&self, key: &LuaValue) -> Option<usize> {
+        if let LuaValue::Number(index) = *key {
+            if index >= 1.0 && index.trunc() == index {
+                Some(index as usize)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 }
 

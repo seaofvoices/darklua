@@ -164,7 +164,8 @@ impl<'a> Evaluator<'a> {
             | LuaValue::String(_)
             | LuaValue::Table(_) // TODO
             | LuaValue::True => false,
-            LuaValue::Unknown => true,
+            LuaValue::TableRef(_) // TODO
+            | LuaValue::Unknown => true,
             LuaValue::Tuple(tuple) => self.maybe_metatable(tuple.as_single_value()),
         }
     }
@@ -333,6 +334,9 @@ impl<'a> Evaluator<'a> {
                     .cloned()
                     .unwrap_or(LuaValue::Unknown)
             }
+            LuaValue::TableRef(_id) => {
+                LuaValue::Unknown
+            }
             LuaValue::Nil
             | LuaValue::Function
             | LuaValue::Function2(_)
@@ -359,7 +363,8 @@ impl<'a> Evaluator<'a> {
                 results.into_iter().next().unwrap_or(LuaValue::Nil)
             }
             LuaValue::Nil
-            |LuaValue::Table(_) // TODO: table can be called
+            | LuaValue::Table(_) // TODO: table can be called
+            | LuaValue::TableRef(_)
             | LuaValue::Function
             | LuaValue::Number(_)
             | LuaValue::String(_)

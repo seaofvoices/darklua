@@ -60,6 +60,14 @@ impl TupleValue {
         }
         Self { values: new_values }
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = &LuaValue> {
+        self.values.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut LuaValue> {
+        self.values.iter_mut()
+    }
 }
 
 impl From<LuaValue> for TupleValue {

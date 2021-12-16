@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, iter::FromIterator};
 
 use serde::{Deserialize, Serialize};
 
@@ -53,6 +53,12 @@ impl<T: Into<RulePropertyValue>> From<Option<T>> for RulePropertyValue {
             Some(value) => value.into(),
             None => Self::None,
         }
+    }
+}
+
+impl FromIterator<String> for RulePropertyValue {
+    fn from_iter<T: IntoIterator<Item = String>>(iter: T) -> Self {
+        Self::StringList(iter.into_iter().collect())
     }
 }
 

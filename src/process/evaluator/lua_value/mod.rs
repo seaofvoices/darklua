@@ -21,6 +21,7 @@ pub enum LuaValue {
     Number(f64),
     String(String),
     Table(TableValue),
+    TableRef(usize),
     True,
     Tuple(TupleValue),
     Unknown,
