@@ -153,13 +153,13 @@ impl LocalAssignStatement {
     }
 
     #[inline]
-    pub fn value_count(&self) -> usize {
-        self.values.len()
+    pub fn variables_len(&self) -> usize {
+        self.variables.len()
     }
 
     #[inline]
-    pub fn variable_count(&self) -> usize {
-        self.variables.len()
+    pub fn values_len(&self) -> usize {
+        self.values.len()
     }
 
     #[inline]

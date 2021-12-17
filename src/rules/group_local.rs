@@ -55,9 +55,9 @@ impl GroupLocalProcessor {
     }
 
     fn should_merge(&self, first: &LocalAssignStatement, next: &mut LocalAssignStatement) -> bool {
-        let first_value_count = first.value_count();
+        let first_value_count = first.values_len();
 
-        if first.variable_count() > first_value_count && first_value_count != 0 {
+        if first.variables_len() > first_value_count && first_value_count != 0 {
             return false;
         }
 
@@ -70,13 +70,13 @@ impl GroupLocalProcessor {
     }
 
     fn merge(&self, first: &mut LocalAssignStatement, mut other: LocalAssignStatement) {
-        if first.value_count() == 0 && other.value_count() != 0 {
-            let variable_count = first.variable_count();
+        if first.values_len() == 0 && other.values_len() != 0 {
+            let variable_count = first.variables_len();
             first.extend_values(iter::repeat(Expression::nil()).take(variable_count));
         }
 
-        if other.value_count() == 0 && first.value_count() != 0 {
-            let variable_count = other.variable_count();
+        if other.values_len() == 0 && first.values_len() != 0 {
+            let variable_count = other.variables_len();
             other.extend_values(iter::repeat(Expression::nil()).take(variable_count));
         }
 

@@ -35,6 +35,7 @@ pub struct VirtualLuaExecution {
     effects: ExecutionEffect,
     max_loop_iteration: usize,
     table_storage: TableStorage,
+    perform_mutations: bool,
 }
 
 impl Default for VirtualLuaExecution {
@@ -45,11 +46,17 @@ impl Default for VirtualLuaExecution {
             effects: ExecutionEffect::default(),
             max_loop_iteration: 500,
             table_storage: TableStorage::default(),
+            perform_mutations: false,
         }
     }
 }
 
 impl VirtualLuaExecution {
+    pub fn perform_mutations(mut self) -> Self {
+        self.perform_mutations = true;
+        self
+    }
+
     pub fn with_global_value<S: Into<String>>(mut self, name: S, value: LuaValue) -> Self {
         self.current_state_mut().insert_local(name, value);
         self
@@ -72,42 +79,40 @@ impl VirtualLuaExecution {
         parent
     }
 
+    fn get_assignment_values<'a>(
+        &mut self,
+        variable_count: usize,
+        values: impl Iterator<Item = &'a mut Expression>,
+    ) -> Vec<LuaValue> {
+        let mut computed_values = values
+            .map(|expression| self.evaluate_expression(expression))
+            .collect::<TupleValue>()
+            .flatten()
+            .into_iter()
+            .collect::<Vec<_>>();
+
+        let value_difference = variable_count.saturating_sub(computed_values.len());
+        if value_difference > 0 {
+            let repeat_value = if computed_values
+                .last()
+                .filter(|value| matches!(value, LuaValue::Unknown))
+                .is_some()
+            {
+                LuaValue::Unknown
+            } else {
+                LuaValue::Nil
+            };
+            computed_values.extend(iter::repeat(repeat_value).take(value_difference));
+        }
+
+        computed_values
+    }
+
     pub fn process(&mut self, statement: &mut Statement) -> EvaluationResult {
         match statement {
             Statement::Assign(assign) => {
-                let last_value_index = assign.values_len().saturating_sub(1);
-                let mut computed_values: Vec<_> = assign
-                    .iter_mut_values()
-                    .enumerate()
-                    .map(|(i, expression)| {
-                        if i == last_value_index {
-                            self.evaluate_expression(expression)
-                        } else {
-                            self.evaluate_expression(expression)
-                                .coerce_to_single_value()
-                        }
-                    })
-                    .collect();
-
-                if let Some(last_value) = computed_values.pop() {
-                    for value in TupleValue::from(last_value).flatten().into_iter() {
-                        computed_values.push(value);
-                    }
-                }
-
-                let value_difference = assign.variables_len().saturating_sub(assign.values_len());
-                if value_difference > 0 {
-                    let repeat_value = if computed_values
-                        .last()
-                        .filter(|value| matches!(value, LuaValue::Unknown))
-                        .is_some()
-                    {
-                        LuaValue::Unknown
-                    } else {
-                        LuaValue::Nil
-                    };
-                    computed_values.extend(iter::repeat(repeat_value).take(value_difference));
-                }
+                let computed_values =
+                    self.get_assignment_values(assign.variables_len(), assign.iter_mut_values());
 
                 for (variable, value) in
                     assign.iter_mut_variables().zip(computed_values.into_iter())
@@ -200,16 +205,13 @@ impl VirtualLuaExecution {
                 EvaluationResult::None
             }
             Statement::LocalAssign(assign) => {
-                let values: Vec<_> = assign
-                    .iter_mut_values()
-                    .map(|expression| self.evaluate_expression(expression))
-                    .collect();
+                let computed_values =
+                    self.get_assignment_values(assign.variables_len(), assign.iter_mut_values());
 
-                for (index, value) in values.into_iter().enumerate() {
-                    if let Some(identifier) = assign.get_variable(index) {
-                        self.current_state_mut()
-                            .insert_local(identifier.get_name(), value);
-                    }
+                for (identifier, value) in assign.iter_variables().zip(computed_values.into_iter())
+                {
+                    self.current_state_mut()
+                        .insert_local(identifier.get_name(), value);
                 }
 
                 EvaluationResult::None
