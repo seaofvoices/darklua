@@ -201,6 +201,11 @@ impl IfStatement {
     }
 
     #[inline]
+    pub fn iter_mut_branches(&mut self) -> impl Iterator<Item = &mut IfBranch> {
+        self.branches.iter_mut()
+    }
+
+    #[inline]
     pub fn branch_count(&self) -> usize {
         self.branches.len()
     }

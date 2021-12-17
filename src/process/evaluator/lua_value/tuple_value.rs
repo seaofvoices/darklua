@@ -72,8 +72,11 @@ impl TupleValue {
 
 impl From<LuaValue> for TupleValue {
     fn from(value: LuaValue) -> Self {
-        Self {
-            values: vec![value],
+        match value {
+            LuaValue::Tuple(tuple) => tuple,
+            _ => Self {
+                values: vec![value],
+            },
         }
     }
 }
@@ -123,6 +126,22 @@ impl_from_tuples!(a, b, c, d, e, f,);
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn from_luavalue_tuple_variant_return_same_tuple() {
+        pretty_assertions::assert_eq!(
+            TupleValue::from(LuaValue::Tuple(TupleValue::empty())),
+            TupleValue::empty(),
+        );
+    }
+
+    #[test]
+    fn from_unknown_luavalue_variant_return_tuple_with_unknown() {
+        pretty_assertions::assert_eq!(
+            TupleValue::from(LuaValue::Unknown),
+            TupleValue::singleton(LuaValue::Unknown),
+        );
+    }
 
     mod flatten {
         use super::*;

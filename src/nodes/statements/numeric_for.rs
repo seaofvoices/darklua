@@ -113,8 +113,8 @@ impl NumericForStatement {
     }
 
     #[inline]
-    pub fn mutate_step(&mut self) -> &mut Option<Expression> {
-        &mut self.step
+    pub fn mutate_step(&mut self) -> Option<&mut Expression> {
+        self.step.as_mut()
     }
 
     #[inline]

@@ -44,7 +44,7 @@ mod test {
                 $(
                     #[test]
                     fn $name() {
-                        let block = crate::Parser::default()
+                        let mut block = crate::Parser::default()
                             .parse($code)
                             .expect("code should parse");
 
@@ -52,7 +52,7 @@ mod test {
                             .with_global_value(stringify!($library_name), $library);
 
                         pretty_assertions::assert_eq!(
-                            state.evaluate_chunk(&block),
+                            state.evaluate_chunk(&mut block),
                             crate::process::TupleValue::new(vec![$( LuaValue::from($result), )*])
                         );
                     }

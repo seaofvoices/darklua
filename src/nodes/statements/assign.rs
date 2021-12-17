@@ -77,6 +77,11 @@ impl AssignStatement {
     }
 
     #[inline]
+    pub fn iter_mut_variables(&mut self) -> impl Iterator<Item = &mut Variable> {
+        self.variables.iter_mut()
+    }
+
+    #[inline]
     pub fn get_values(&self) -> &Vec<Expression> {
         &self.values
     }
@@ -84,6 +89,11 @@ impl AssignStatement {
     #[inline]
     pub fn iter_values(&self) -> impl Iterator<Item = &Expression> {
         self.values.iter()
+    }
+
+    #[inline]
+    pub fn iter_mut_values(&mut self) -> impl Iterator<Item = &mut Expression> {
+        self.values.iter_mut()
     }
 
     #[inline]
