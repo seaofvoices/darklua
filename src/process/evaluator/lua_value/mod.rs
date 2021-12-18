@@ -88,13 +88,13 @@ impl LuaValue {
     }
 
     /// Attempt to convert the Lua value into an expression node.
-    pub fn to_expression(self) -> Option<Expression> {
+    pub fn to_expression(&self) -> Option<Expression> {
         match self {
             Self::False => Some(Expression::from(false)),
             Self::True => Some(Expression::from(true)),
             Self::Nil => Some(Expression::nil()),
             Self::String(value) => Some(StringExpression::from_value(value).into()),
-            Self::Number(value) => Some(Expression::from(value)),
+            Self::Number(value) => Some(Expression::from(*value)),
             _ => None,
         }
     }

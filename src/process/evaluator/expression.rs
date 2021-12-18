@@ -329,10 +329,10 @@ impl<'a> Evaluator<'a> {
 
     fn evaluate_field(&self, field: &FieldExpression) -> LuaValue {
         match self.evaluate_prefix(field.get_prefix()).coerce_to_single_value() {
-            LuaValue::Table(table) => {
-                table.get(&field.get_field().get_name().to_owned().into())
-                    .cloned()
-                    .unwrap_or(LuaValue::Unknown)
+            LuaValue::Table(_table) => {
+                // TODO: table.get(&field.get_field().get_name().to_owned().into())
+                //     .clone()
+                LuaValue::Unknown
             }
             LuaValue::TableRef(_id) => {
                 LuaValue::Unknown
@@ -351,7 +351,8 @@ impl<'a> Evaluator<'a> {
     }
 
     fn evaluate_index(&self, _index: &IndexExpression) -> LuaValue {
-        todo!()
+        // TODO
+        LuaValue::Unknown
     }
 
     fn evaluate_call(&self, call: &FunctionCall) -> LuaValue {

@@ -9,7 +9,7 @@ use crate::{nodes::*, process::FunctionValue};
 
 use execution_effect::ExecutionEffect;
 use state::State;
-use table_storage::TableStorage;
+pub use table_storage::{TableId, TableStorage};
 
 use super::{LuaValue, TableValue, TupleValue};
 
@@ -25,6 +25,19 @@ impl EvaluationResult {
     #[inline]
     fn is_none(&self) -> bool {
         *self == Self::None
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum BinaryEvaluationResult {
+    Value(LuaValue),
+    Left(LuaValue),
+    Right(LuaValue),
+}
+
+impl From<LuaValue> for BinaryEvaluationResult {
+    fn from(value: LuaValue) -> Self {
+        Self::Value(value)
     }
 }
 
@@ -271,7 +284,8 @@ impl VirtualLuaExecution {
                             .expect("for loop state should exist")
                             .insert_local(&variable_name, LuaValue::Number(variable));
 
-                        let result = self.process_block(for_statement.mutate_block());
+                        let result =
+                            self.process_block_without_mutations(for_statement.mutate_block());
                         match result {
                             EvaluationResult::Return(_) => return result,
                             EvaluationResult::Break => {
@@ -295,10 +309,10 @@ impl VirtualLuaExecution {
                 loop {
                     if iteration >= self.max_loop_iteration {
                         self.process_conditional_block(repeat.mutate_block());
-                        // TODO process condition expression
+                        self.process_conditional_expression(repeat.mutate_condition());
                         break EvaluationResult::None;
                     }
-                    let result = self.process_block(repeat.mutate_block());
+                    let result = self.process_block_without_mutations(repeat.mutate_block());
                     match result {
                         EvaluationResult::Return(_) => return result,
                         EvaluationResult::Break => {
@@ -324,7 +338,7 @@ impl VirtualLuaExecution {
                 let mut iteration = 0;
                 loop {
                     if iteration >= self.max_loop_iteration {
-                        // TODO process condition expression
+                        self.process_conditional_expression(while_statement.mutate_condition());
                         self.process_conditional_block(while_statement.mutate_block());
                         break EvaluationResult::None;
                     }
@@ -333,7 +347,8 @@ impl VirtualLuaExecution {
                         .is_truthy()
                     {
                         Some(true) => {
-                            let result = self.process_block(while_statement.mutate_block());
+                            let result = self
+                                .process_block_without_mutations(while_statement.mutate_block());
                             match result {
                                 EvaluationResult::Return(_) => return result,
                                 EvaluationResult::Break => {
@@ -430,10 +445,35 @@ impl VirtualLuaExecution {
         }
     }
 
+    fn process_block_without_mutations(&mut self, block: &mut Block) -> EvaluationResult {
+        let restore_mutations = self.perform_mutations;
+        self.perform_mutations = false;
+        let result = self.process_block(block);
+        self.perform_mutations = restore_mutations;
+        result
+    }
+
+    fn process_expression_without_mutations(&mut self, expression: &mut Expression) -> LuaValue {
+        let restore_mutations = self.perform_mutations;
+        self.perform_mutations = false;
+        let result = self.evaluate_expression(expression);
+        self.perform_mutations = restore_mutations;
+        result
+    }
+
+    fn process_conditional_expression(&mut self, expression: &mut Expression) {
+        self.effects.enable();
+        self.process_expression_without_mutations(expression);
+        self.disable_effects();
+    }
+
     fn process_conditional_block(&mut self, block: &mut Block) {
         self.effects.enable();
-        self.process_block(block);
+        self.process_block_without_mutations(block);
+        self.disable_effects();
+    }
 
+    fn disable_effects(&mut self) {
         for identifier in self.effects.disable() {
             if let Some(state) = self
                 .find_ancestor_with_identifier(&identifier)
@@ -470,15 +510,57 @@ impl VirtualLuaExecution {
             Expression::String(string) => LuaValue::from(string.get_value()),
             Expression::Table(table) => self.evaluate_table(table),
             Expression::True(_) => LuaValue::True,
-            Expression::Binary(binary) => self.evaluate_binary(binary),
-            Expression::Unary(unary) => self.evaluate_unary(unary),
-            Expression::Parenthese(parenthese) => self.evaluate_parenthese(parenthese),
-            Expression::Identifier(identifier) => self.evaluate_identifier(identifier),
-            Expression::Field(field) => self.evaluate_field(field),
-            Expression::Index(index) => self.evaluate_index(index),
+            Expression::Binary(binary) => match self.evaluate_binary(binary) {
+                BinaryEvaluationResult::Value(value) => self.replace_expression(expression, value),
+                BinaryEvaluationResult::Left(value) => {
+                    if self.perform_mutations {
+                        *expression = value
+                            .to_expression()
+                            .unwrap_or_else(|| binary.left().clone())
+                    }
+                    value
+                }
+                BinaryEvaluationResult::Right(value) => {
+                    if self.perform_mutations {
+                        *expression = value
+                            .to_expression()
+                            .unwrap_or_else(|| binary.right().clone())
+                    }
+                    value
+                }
+            },
+            Expression::Unary(unary) => {
+                let value = self.evaluate_unary(unary);
+                self.replace_expression(expression, value)
+            }
+            Expression::Parenthese(parenthese) => {
+                let value = self.evaluate_parenthese(parenthese);
+                self.replace_expression(expression, value)
+            }
+            Expression::Identifier(identifier) => {
+                let value = self.evaluate_identifier(identifier);
+                self.replace_expression(expression, value)
+            }
+            Expression::Field(field) => {
+                let value = self.evaluate_field(field);
+                self.replace_expression(expression, value)
+            }
+            Expression::Index(index) => {
+                let value = self.evaluate_index(index);
+                self.replace_expression(expression, value)
+            }
             Expression::Call(call) => self.evaluate_call(call).into(),
             Expression::VariableArguments(_) => LuaValue::Unknown,
         }
+    }
+
+    fn replace_expression(&self, expression: &mut Expression, value: LuaValue) -> LuaValue {
+        if self.perform_mutations {
+            if let Some(new_expression) = value.to_expression() {
+                *expression = new_expression;
+            }
+        }
+        value
     }
 
     fn current_state_mut(&mut self) -> &mut State {
@@ -571,28 +653,38 @@ impl VirtualLuaExecution {
         }
     }
 
-    fn evaluate_binary(&mut self, binary: &mut BinaryExpression) -> LuaValue {
+    fn evaluate_binary(&mut self, binary: &mut BinaryExpression) -> BinaryEvaluationResult {
         match binary.operator() {
             BinaryOperator::And => {
                 let left = self.evaluate_expression(binary.mutate_left());
                 match left.is_truthy() {
-                    Some(true) => self.evaluate_expression(binary.mutate_right()),
-                    Some(false) => left,
-                    None => LuaValue::Unknown,
+                    Some(true) => BinaryEvaluationResult::Right(
+                        self.evaluate_expression(binary.mutate_right()),
+                    ),
+                    Some(false) => BinaryEvaluationResult::Left(left),
+                    None => {
+                        self.evaluate_expression(binary.mutate_right());
+                        BinaryEvaluationResult::Value(LuaValue::Unknown)
+                    }
                 }
             }
             BinaryOperator::Or => {
                 let left = self.evaluate_expression(binary.mutate_left());
                 match left.is_truthy() {
-                    Some(true) => left,
-                    Some(false) => self.evaluate_expression(binary.mutate_right()),
-                    None => LuaValue::Unknown,
+                    Some(true) => BinaryEvaluationResult::Left(left),
+                    Some(false) => BinaryEvaluationResult::Right(
+                        self.evaluate_expression(binary.mutate_right()),
+                    ),
+                    None => {
+                        self.evaluate_expression(binary.mutate_right());
+                        BinaryEvaluationResult::Value(LuaValue::Unknown)
+                    }
                 }
             }
             BinaryOperator::Equal => {
                 let left = self.evaluate_expression(binary.mutate_left());
                 let right = self.evaluate_expression(binary.mutate_right());
-                self.evaluate_equal(&left, &right)
+                self.evaluate_equal(&left, &right).into()
             }
             BinaryOperator::NotEqual => {
                 let left = self.evaluate_expression(binary.mutate_left());
@@ -604,23 +696,30 @@ impl VirtualLuaExecution {
                     LuaValue::False => LuaValue::True,
                     _ => LuaValue::Unknown,
                 }
+                .into()
             }
-            BinaryOperator::Plus => self.evaluate_math(binary, |a, b| a + b),
-            BinaryOperator::Minus => self.evaluate_math(binary, |a, b| a - b),
-            BinaryOperator::Asterisk => self.evaluate_math(binary, |a, b| a * b),
-            BinaryOperator::Slash => self.evaluate_math(binary, |a, b| a / b),
-            BinaryOperator::Caret => self.evaluate_math(binary, |a, b| a.powf(b)),
-            BinaryOperator::Percent => self.evaluate_math(binary, |a, b| a - b * (a / b).floor()),
+            BinaryOperator::Plus => self.evaluate_math(binary, |a, b| a + b).into(),
+            BinaryOperator::Minus => self.evaluate_math(binary, |a, b| a - b).into(),
+            BinaryOperator::Asterisk => self.evaluate_math(binary, |a, b| a * b).into(),
+            BinaryOperator::Slash => self.evaluate_math(binary, |a, b| a / b).into(),
+            BinaryOperator::Caret => self.evaluate_math(binary, |a, b| a.powf(b)).into(),
+            BinaryOperator::Percent => self
+                .evaluate_math(binary, |a, b| a - b * (a / b).floor())
+                .into(),
             BinaryOperator::Concat => {
                 let left = self.evaluate_expression(binary.mutate_left());
                 let right = self.evaluate_expression(binary.mutate_right());
 
-                self.evaluate_concat(left, right)
+                self.evaluate_concat(left, right).into()
             }
-            BinaryOperator::LowerThan => self.evaluate_relational(binary, |a, b| a < b),
-            BinaryOperator::LowerOrEqualThan => self.evaluate_relational(binary, |a, b| a <= b),
-            BinaryOperator::GreaterThan => self.evaluate_relational(binary, |a, b| a > b),
-            BinaryOperator::GreaterOrEqualThan => self.evaluate_relational(binary, |a, b| a >= b),
+            BinaryOperator::LowerThan => self.evaluate_relational(binary, |a, b| a < b).into(),
+            BinaryOperator::LowerOrEqualThan => {
+                self.evaluate_relational(binary, |a, b| a <= b).into()
+            }
+            BinaryOperator::GreaterThan => self.evaluate_relational(binary, |a, b| a > b).into(),
+            BinaryOperator::GreaterOrEqualThan => {
+                self.evaluate_relational(binary, |a, b| a >= b).into()
+            }
         }
     }
 
@@ -751,7 +850,7 @@ impl VirtualLuaExecution {
                     self.evaluate_expression(field.mutate_value()),
                 ),
                 TableEntry::Index(index) => table_value.with_entry(
-                    self.evaluate_expression(index.mutate_value()),
+                    self.evaluate_expression(index.mutate_key()),
                     self.evaluate_expression(index.mutate_value()),
                 ),
                 TableEntry::Value(value) => {
@@ -777,16 +876,14 @@ impl VirtualLuaExecution {
     fn evaluate_field(&mut self, field: &mut FieldExpression) -> LuaValue {
         match self.evaluate_prefix(field.mutate_prefix()).coerce_to_single_value() {
             LuaValue::Table(table) => {
-                table.get(&field.get_field().get_name().to_owned().into())
-                    .cloned()
-                    .unwrap_or(LuaValue::Unknown)
+                let key = field.get_field().get_name().to_owned().into();
+                table.get(&key).clone()
             }
             LuaValue::TableRef(id) => {
                 self.table_storage.get(id)
                     .expect("table should exist")
                     .get(&field.get_field().get_name().to_owned().into())
-                    .cloned()
-                    .unwrap_or(LuaValue::Unknown)
+                    .clone()
             }
             LuaValue::Nil
             | LuaValue::Function
@@ -807,16 +904,12 @@ impl VirtualLuaExecution {
             .coerce_to_single_value();
         match self.evaluate_prefix(index.mutate_prefix()).coerce_to_single_value() {
             LuaValue::Table(table) => {
-                table.get(&key)
-                    .cloned()
-                    .unwrap_or(LuaValue::Unknown)
+                table.get(&key).clone()
             }
             LuaValue::TableRef(id) => {
                 self.table_storage.get(id)
                     .expect("table should exist")
-                    .get(&key)
-                    .cloned()
-                    .unwrap_or(LuaValue::Unknown)
+                    .get(&key).clone()
             }
             LuaValue::Nil
             | LuaValue::Function

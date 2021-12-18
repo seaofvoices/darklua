@@ -15,6 +15,7 @@ mod rename_variables;
 mod rule_property;
 mod unused_if_branch;
 mod unused_while;
+mod virtual_execution;
 
 pub use call_parens::*;
 pub use compute_expression::*;
@@ -31,6 +32,7 @@ pub use rename_variables::*;
 pub use rule_property::*;
 pub use unused_if_branch::*;
 pub use unused_while::*;
+pub use virtual_execution::*;
 
 use crate::nodes::Block;
 
@@ -105,6 +107,7 @@ impl FromStr for Box<dyn Rule> {
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
         let rule: Box<dyn Rule> = match string {
+            VIRTUAL_EXECUTION_RULE_NAME => Box::new(VirtualExecution::default()),
             COMPUTE_EXPRESSIONS_RULE_NAME => Box::new(ComputeExpression::default()),
             CONVERT_INDEX_TO_FIELD_RULE_NAME => Box::new(ConvertIndexToField::default()),
             CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => {
