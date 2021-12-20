@@ -50,6 +50,34 @@ test_rule!(
         => "local abs = math.abs return 0.5",
 );
 
+test_rule!(
+    virtual_execution_with_tonumber,
+    json5::from_str::<Box<dyn Rule>>(
+        "{ rule: 'virtual_execution', includes: ['tonumber'] }"
+    ).unwrap(),
+    on_true("return tonumber(true)") => "return nil",
+    on_negative_number("return tonumber(-12)") => "return -12",
+    on_string_number("return tonumber('100.5')") => "return 100.5",
+);
+
+test_rule!(
+    virtual_execution_with_tostring,
+    json5::from_str::<Box<dyn Rule>>(
+        "{ rule: 'virtual_execution', includes: ['tostring'] }"
+    ).unwrap(),
+    on_true("return tostring(true)") => "return 'true'",
+    on_number("return tostring(13)") => "return '13'",
+);
+
+test_rule!(
+    virtual_execution_with_type,
+    json5::from_str::<Box<dyn Rule>>(
+        "{ rule: 'virtual_execution', includes: ['type'] }"
+    ).unwrap(),
+    on_true("return type(true)") => "return 'boolean'",
+    on_negative_number("return type(-12)") => "return 'number'",
+);
+
 test_rule_wihout_effects!(
     VirtualExecution::default(),
     potential_table_mutation("local t = { prop = 7 } callback(t) return t.prop"),

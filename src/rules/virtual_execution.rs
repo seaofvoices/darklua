@@ -1,5 +1,7 @@
 use crate::nodes::Block;
-use crate::process::engine_impl::create_roblox_math_library;
+use crate::process::engine_impl::{
+    create_roblox_math_library, create_tonumber, create_tostring, create_type,
+};
 use crate::process::{LuaValue, VirtualLuaExecution};
 use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
@@ -33,9 +35,30 @@ impl VirtualExecution {
                         property_name: "roblox-math",
                     });
                 }
+                "tonumber" => {
+                    self.globals.push(EngineGlobal {
+                        identifier: "tonumber",
+                        create_value: create_tonumber,
+                        property_name: "tonumber",
+                    });
+                }
+                "tostring" => {
+                    self.globals.push(EngineGlobal {
+                        identifier: "tostring",
+                        create_value: create_tostring,
+                        property_name: "tostring",
+                    });
+                }
+                "type" => {
+                    self.globals.push(EngineGlobal {
+                        identifier: "type",
+                        create_value: create_type,
+                        property_name: "type",
+                    });
+                }
                 _ => {
                     return Err(RuleConfigurationError::StringExpected(format!(
-                        "invalid engine function set `{}`",
+                        "invalid engine globals set `{}`",
                         value
                     )))
                 }
