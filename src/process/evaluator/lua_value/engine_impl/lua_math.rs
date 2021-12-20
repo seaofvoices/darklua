@@ -2,13 +2,51 @@ use std::num::FpCategory;
 
 use crate::process::{LuaValue, TupleValue};
 
-fn operate_on_number<F: Fn(f64) -> f64>(parameters: TupleValue, function: F) -> TupleValue {
+fn operate_on_number<R: Into<LuaValue>, F: Fn(f64) -> R>(
+    parameters: TupleValue,
+    function: F,
+) -> TupleValue {
     if let Some(value) = parameters.into_iter().next() {
         if let LuaValue::Number(value) = value.number_coercion() {
-            return TupleValue::singleton(function(value));
+            return function(value).into().into();
         }
     }
     LuaValue::Unknown.into()
+}
+
+fn operate_on_two_numbers<F: Fn(f64, f64) -> f64>(
+    parameters: TupleValue,
+    function: F,
+) -> TupleValue {
+    let mut iter = parameters.into_iter();
+    match (
+        iter.next().map(LuaValue::number_coercion),
+        iter.next().map(LuaValue::number_coercion),
+    ) {
+        (Some(LuaValue::Number(first)), Some(LuaValue::Number(second))) => {
+            TupleValue::singleton(function(first, second))
+        }
+        _ => LuaValue::Unknown.into(),
+    }
+}
+
+fn operate_on_three_numbers<R: Into<LuaValue>, F: Fn(f64, f64, f64) -> R>(
+    parameters: TupleValue,
+    function: F,
+) -> TupleValue {
+    let mut iter = parameters.into_iter();
+    match (
+        iter.next().map(LuaValue::number_coercion),
+        iter.next().map(LuaValue::number_coercion),
+        iter.next().map(LuaValue::number_coercion),
+    ) {
+        (
+            Some(LuaValue::Number(first)),
+            Some(LuaValue::Number(second)),
+            Some(LuaValue::Number(third)),
+        ) => TupleValue::singleton(function(first, second, third)),
+        _ => LuaValue::Unknown.into(),
+    }
 }
 
 pub fn abs(parameters: TupleValue) -> TupleValue {
@@ -27,18 +65,26 @@ pub fn atan(parameters: TupleValue) -> TupleValue {
     operate_on_number(parameters, |value| value.atan())
 }
 
-pub fn atan2(_parameters: TupleValue) -> TupleValue {
-    // TODO
-    LuaValue::Unknown.into()
+pub fn atan2(parameters: TupleValue) -> TupleValue {
+    operate_on_two_numbers(parameters, |y, x| y.atan2(x))
 }
 
 pub fn ceil(parameters: TupleValue) -> TupleValue {
     operate_on_number(parameters, |value| value.ceil())
 }
 
-pub fn clamp(_parameters: TupleValue) -> TupleValue {
-    // TODO
-    LuaValue::Unknown.into()
+pub fn clamp(parameters: TupleValue) -> TupleValue {
+    operate_on_three_numbers(parameters, |value, min, max| {
+        if max < min {
+            LuaValue::Unknown
+        } else if value < min {
+            min.into()
+        } else if value > max {
+            max.into()
+        } else {
+            value.into()
+        }
+    })
 }
 
 pub fn cos(parameters: TupleValue) -> TupleValue {
@@ -61,45 +107,95 @@ pub fn floor(parameters: TupleValue) -> TupleValue {
     operate_on_number(parameters, |value| value.floor())
 }
 
-pub fn fmod(_parameters: TupleValue) -> TupleValue {
-    // TODO
-    LuaValue::Unknown.into()
+pub fn fmod(parameters: TupleValue) -> TupleValue {
+    operate_on_two_numbers(parameters, |x, y| x - (x / y).trunc() * y)
 }
 
-pub fn frexp(_parameters: TupleValue) -> TupleValue {
-    // TODO
-    // vec![LuaValue::Unknown, LuaValue::Unknown].into()
-
-    LuaValue::Unknown.into()
+pub fn frexp(parameters: TupleValue) -> TupleValue {
+    operate_on_number(parameters, |value| {
+        if 0.0 == value {
+            TupleValue::from((value.into(), 0.0.into()))
+        } else {
+            let lg = value.abs().log2();
+            let x = (lg - lg.floor() - 1.0).exp2();
+            let exp = lg.floor() + 1.0;
+            TupleValue::from(((value.signum() * x).into(), exp.into()))
+        }
+    })
 }
 
-pub fn log(_parameters: TupleValue) -> TupleValue {
-    // TODO
-    LuaValue::Unknown.into()
+pub fn ldexp(parameters: TupleValue) -> TupleValue {
+    operate_on_two_numbers(parameters, |value, exp| value * 2.0_f64.powf(exp))
+}
+
+pub fn log(parameters: TupleValue) -> TupleValue {
+    if parameters.len() == 1 {
+        operate_on_number(parameters, |value| value.log(std::f64::consts::E))
+    } else {
+        operate_on_two_numbers(parameters, |value, base| value.log(base))
+    }
 }
 
 pub fn log10(parameters: TupleValue) -> TupleValue {
     operate_on_number(parameters, |value| value.log10())
 }
 
-pub fn max(_parameters: TupleValue) -> TupleValue {
-    // TODO
-    LuaValue::Unknown.into()
+pub fn max(parameters: TupleValue) -> TupleValue {
+    if parameters.is_empty() {
+        return LuaValue::Unknown.into();
+    }
+
+    let mut iter = parameters
+        .into_iter()
+        .map(|value| match value.number_coercion() {
+            LuaValue::Number(number) => Some(number),
+            _ => None,
+        });
+
+    if let Some(initial) = iter.next().flatten() {
+        iter.try_fold(initial, |max, value| {
+            value.map(|current| if current >= max { current } else { max })
+        })
+        .map(LuaValue::Number)
+        .unwrap_or(LuaValue::Unknown)
+    } else {
+        LuaValue::Unknown
+    }
+    .into()
 }
 
-pub fn min(_parameters: TupleValue) -> TupleValue {
-    // TODO
-    LuaValue::Unknown.into()
+pub fn min(parameters: TupleValue) -> TupleValue {
+    if parameters.is_empty() {
+        return LuaValue::Unknown.into();
+    }
+
+    let mut iter = parameters
+        .into_iter()
+        .map(|value| match value.number_coercion() {
+            LuaValue::Number(number) => Some(number),
+            _ => None,
+        });
+
+    if let Some(initial) = iter.next().flatten() {
+        iter.try_fold(initial, |max, value| {
+            value.map(|current| if current <= max { current } else { max })
+        })
+        .map(LuaValue::Number)
+        .unwrap_or(LuaValue::Unknown)
+    } else {
+        LuaValue::Unknown
+    }
+    .into()
 }
 
-pub fn modf(_parameters: TupleValue) -> TupleValue {
-    // TODO
-    LuaValue::Unknown.into()
+pub fn modf(parameters: TupleValue) -> TupleValue {
+    operate_on_number(parameters, |value| {
+        TupleValue::from((value.trunc().into(), value.fract().into()))
+    })
 }
 
-pub fn pow(_parameters: TupleValue) -> TupleValue {
-    // TODO
-    LuaValue::Unknown.into()
+pub fn pow(parameters: TupleValue) -> TupleValue {
+    operate_on_two_numbers(parameters, |num, power| num.powf(power))
 }
 
 pub fn rad(parameters: TupleValue) -> TupleValue {
