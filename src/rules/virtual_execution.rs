@@ -1,6 +1,6 @@
 use crate::nodes::Block;
 use crate::process::engine_impl::{
-    create_roblox_math_library, create_tonumber, create_tostring, create_type,
+    create_roblox_math_library, create_tonumber, create_tostring, create_type, create_roblox_string_library,
 };
 use crate::process::{LuaValue, VirtualLuaExecution};
 use crate::rules::{
@@ -33,6 +33,13 @@ impl VirtualExecution {
                         identifier: "math",
                         create_value: create_roblox_math_library,
                         property_name: "roblox-math",
+                    });
+                }
+                "roblox-string" => {
+                    self.globals.push(EngineGlobal {
+                        identifier: "string",
+                        create_value: create_roblox_string_library,
+                        property_name: "roblox-string",
                     });
                 }
                 "tonumber" => {

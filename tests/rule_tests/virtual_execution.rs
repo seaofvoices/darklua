@@ -51,6 +51,16 @@ test_rule!(
 );
 
 test_rule!(
+    virtual_execution_with_roblox_string,
+    json5::from_str::<Box<dyn Rule>>(
+        "{ rule: 'virtual_execution', includes: ['roblox-string'] }"
+    ).unwrap(),
+    string_len("return string.len('value')") => "return 5",
+    string_lower("return string.lower('HEY')") => "return 'hey'",
+    string_upper("return string.upper('click')") => "return 'CLICK'",
+);
+
+test_rule!(
     virtual_execution_with_tonumber,
     json5::from_str::<Box<dyn Rule>>(
         "{ rule: 'virtual_execution', includes: ['tonumber'] }"
