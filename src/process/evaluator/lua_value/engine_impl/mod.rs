@@ -1,5 +1,6 @@
 use super::{EngineFunction, LuaValue, TupleValue};
 
+mod lua_globals;
 mod lua_math;
 
 fn unimplemented_callback(_parameters: TupleValue) -> TupleValue {
@@ -16,6 +17,18 @@ macro_rules! create_library {
                 )
             )*
     };
+}
+
+pub fn create_tonumber() -> LuaValue {
+    EngineFunction::new(lua_globals::tonumber).into()
+}
+
+pub fn create_tostring() -> LuaValue {
+    EngineFunction::new(lua_globals::tostring).into()
+}
+
+pub fn create_type() -> LuaValue {
+    EngineFunction::new(lua_globals::lua_type).into()
 }
 
 pub fn create_roblox_math_library() -> LuaValue {
@@ -41,6 +54,18 @@ mod test {
         ($library_name:ident, $library:expr,
             $($name:ident ($code:literal) => [$( $result:expr ),*] ),* $(,)?) => {
 
+            test_libraries!(
+                stringify!($library_name),
+                $library_name,
+                $library,
+                $(
+                    $name ($code) => [$( $result ),*] ,
+                )*
+            );
+        };
+        ( $global_name:expr, $library_name:ident, $library:expr,
+            $($name:ident ($code:literal) => [$( $result:expr ),*] ),* $(,)?) => {
+
             mod $library_name {
                 use super::*;
                 $(
@@ -51,7 +76,7 @@ mod test {
                             .expect("code should parse");
 
                         let mut state = crate::process::VirtualLuaExecution::default()
-                            .with_global_value(stringify!($library_name), $library);
+                            .with_global_value($global_name, $library);
 
                         pretty_assertions::assert_eq!(
                             state.evaluate_chunk(&mut block),
@@ -62,6 +87,51 @@ mod test {
             }
         };
     }
+
+    test_libraries!(
+        tonumber,
+        create_tonumber(),
+        one("return tonumber(1)") => [1.0],
+        string_one("return tonumber('1')") => [1.0],
+        nil("return tonumber(nil)") => [LuaValue::Nil],
+        function("return tonumber(function() end)") => [LuaValue::Nil],
+        bool_true("return tonumber(true)") => [LuaValue::Nil],
+        bool_false("return tonumber(false)") => [LuaValue::Nil],
+        empty_table("return tonumber({})") => [LuaValue::Nil],
+        nothing("return tonumber()") => [LuaValue::Unknown],
+        unknown_value("return tonumber(variable)") => [LuaValue::Unknown],
+    );
+
+    test_libraries!(
+        tostring,
+        create_tostring(),
+        one("return tostring(1)") => ["1"],
+        string_one("return tostring('1')") => ["1"],
+        string_hello("return tostring('hello')") => ["hello"],
+        nil("return tostring(nil)") => ["nil"],
+        bool_true("return tostring(true)") => ["true"],
+        bool_false("return tostring(false)") => ["false"],
+        function("return tostring(function() end)") => [LuaValue::Unknown],
+        empty_table("return tostring({})") => [LuaValue::Unknown],
+        nothing("return tostring()") => [LuaValue::Unknown],
+        unknown_value("return tostring(variable)") => [LuaValue::Unknown],
+    );
+
+    test_libraries!(
+        "type",
+        lua_type,
+        create_type(),
+        one("return type(1)") => ["number"],
+        string_one("return type('1')") => ["string"],
+        string_hello("return type('hello')") => ["string"],
+        nil("return type(nil)") => ["nil"],
+        bool_true("return type(true)") => ["boolean"],
+        bool_false("return type(false)") => ["boolean"],
+        function("return type(function() end)") => ["function"],
+        empty_table("return type({})") => ["table"],
+        nothing("return type()") => [LuaValue::Unknown],
+        unknown_value("return type(variable)") => [LuaValue::Unknown],
+    );
 
     test_libraries!(
         math,
