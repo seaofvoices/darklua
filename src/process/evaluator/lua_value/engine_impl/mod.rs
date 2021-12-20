@@ -2,6 +2,7 @@ use super::{EngineFunction, LuaValue, TupleValue};
 
 mod lua_globals;
 mod lua_math;
+mod lua_string;
 
 fn unimplemented_callback(_parameters: TupleValue) -> TupleValue {
     LuaValue::Unknown.into()
@@ -44,6 +45,10 @@ pub fn create_roblox_math_library() -> LuaValue {
     .with_entry("random", EngineFunction::new(unimplemented_callback))
     .with_entry("randomseed", EngineFunction::new(unimplemented_callback))
     .into()
+}
+
+pub fn create_roblox_string_library() -> LuaValue {
+    create_library!(lua_string, len, lower, rep, reverse, upper,).into()
 }
 
 #[cfg(test)]
@@ -205,5 +210,20 @@ mod test {
         sqrt_16("return math.sqrt(16)") => [4.0],
         tan("return math.tan(0)") => [0.0],
         tanh("return math.tanh(0)") => [0.0],
+    );
+
+    test_libraries!(
+        string,
+        create_roblox_string_library(),
+        len_empty_string("return string.len('')") => [0.0],
+        len_abc("return string.len('abc')") => [3.0],
+        lower_abc("return string.lower('ABC')") => ["abc"],
+        rep_abc_twice("return string.rep('abc', 2)") => ["abcabc"],
+        rep_zero("return string.rep('abc', 0)") => [""],
+        rep_negative_count("return string.rep('abc', -12)") => [""],
+        rep_nan("return string.rep('abc', 0/0)") => [""],
+        rep_infinity("return string.rep('abc', 1/0)") => [LuaValue::Unknown],
+        reverse_abc("return string.reverse('abc')") => ["cba"],
+        upper_abc("return string.upper('abc')") => ["ABC"],
     );
 }
