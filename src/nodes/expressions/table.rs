@@ -257,11 +257,13 @@ impl TableExpression {
     }
 
     #[inline]
+    /// Returns the number of entries in the table.
     pub fn len(&self) -> usize {
         self.entries.len()
     }
 
     #[inline]
+    /// Returns true if the table does not contain any entries.
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }

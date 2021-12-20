@@ -48,7 +48,12 @@ impl VirtualExecution {
 
 impl FlawlessRule for VirtualExecution {
     fn flawless_process(&self, block: &mut Block, _: &mut Context) {
-        let mut virtual_execution = VirtualLuaExecution::default().perform_mutations();
+        let mut virtual_execution = self.globals.iter().fold(
+            VirtualLuaExecution::default().perform_mutations(),
+            |execution, global| {
+                execution.with_global_value(global.identifier, (global.create_value)())
+            },
+        );
 
         virtual_execution.evaluate_chunk(block);
     }

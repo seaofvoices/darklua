@@ -40,9 +40,20 @@ test_rule!(
     missing_entry_in_table("local a = {} return a.var") => "local a = {} return nil",
 );
 
+test_rule!(
+    virtual_execution_with_roblox_math,
+    json5::from_str::<Box<dyn Rule>>(
+        "{ rule: 'virtual_execution', includes: ['roblox-math'] }"
+    ).unwrap(),
+    call_math_library_abs("return math.abs(-12)") => "return 12",
+    call_math_library_abs_by_reference("local abs = math.abs return abs(-0.5)")
+        => "local abs = math.abs return 0.5",
+);
+
 test_rule_wihout_effects!(
     VirtualExecution::default(),
     potential_table_mutation("local t = { prop = 7 } callback(t) return t.prop"),
+    assign_to_unknown_key_blurs_table_value("local a = {} a[unknown] = true return a.var"),
 );
 
 #[test]

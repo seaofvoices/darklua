@@ -41,14 +41,22 @@ pub struct LuaFunction {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EngineFunction {
     implementation: EngineFunctionImpl,
+    side_effects: bool,
 }
 
 impl EngineFunction {
     pub fn new(implementation: EngineFunctionImpl) -> Self {
-        Self { implementation }
+        Self {
+            implementation,
+            side_effects: false,
+        }
     }
 
     pub fn execute(&self, arguments: TupleValue) -> TupleValue {
         (self.implementation)(arguments)
+    }
+
+    pub fn has_side_effects(&self) -> bool {
+        self.side_effects
     }
 }

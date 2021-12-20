@@ -1,5 +1,7 @@
 use std::mem;
 
+use crate::process::TableId;
+
 use super::LuaValue;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -7,12 +9,12 @@ pub struct TableValue {
     array: Vec<LuaValue>,
     pairs: Vec<(LuaValue, LuaValue)>,
     unknown_mutations: bool,
-    // metatable: Option<TableValue>
+    metatable: Option<TableId>,
 }
 
 impl TableValue {
     pub fn with_array_element(mut self, value: LuaValue) -> Self {
-        self.array.push(value);
+        self.push_element(value);
         self
     }
 
@@ -25,18 +27,37 @@ impl TableValue {
         self.unknown_mutations = true;
     }
 
+    /// Removes all the elements in the array part and the dictionary part of the table.
     pub fn clear(&mut self) {
         self.array.clear();
         self.pairs.clear();
     }
 
     #[inline]
+    /// Adds an element into the array part of the table.
     pub fn push_element(&mut self, value: LuaValue) {
-        self.array.push(value);
+        match value {
+            LuaValue::Nil => {}
+            LuaValue::Tuple(tuple) => self.push_element(tuple.coerce_to_single_value()),
+            LuaValue::Unknown => {
+                self.clear();
+                self.set_unknown_mutations();
+            }
+            _ => {
+                self.array.push(value);
+            }
+        }
     }
 
+    /// Inserts into the array part if the key is equal to the next index of the array part, or
+    /// adds an entry to the dictionary part.
     pub fn insert<T: Into<LuaValue>, U: Into<LuaValue>>(&mut self, new_key: T, new_value: U) {
         let new_key = new_key.into();
+        if matches!(new_key, LuaValue::Unknown) {
+            self.clear();
+            self.unknown_mutations = true;
+            return;
+        }
 
         if let Some(index) = self.get_array_index(&new_key) {
             if index < self.array.len() {
@@ -63,11 +84,14 @@ impl TableValue {
         }
     }
 
-    pub fn get(&self, key: &LuaValue) -> Option<&LuaValue> {
+    pub fn get(&self, key: &LuaValue) -> &LuaValue {
+        if matches!(key, LuaValue::Unknown) {
+            return &LuaValue::Unknown;
+        }
         if let Some(index) = self.get_array_index(key) {
             if index < self.array.len() {
                 if let Some(element) = self.array.get(index) {
-                    return Some(element);
+                    return element;
                 }
             }
         }
@@ -75,11 +99,11 @@ impl TableValue {
             .iter()
             .find(|(existing_key, _)| existing_key == key)
             .map(|(_, value)| value)
-            .or_else(|| {
+            .unwrap_or_else(|| {
                 if self.unknown_mutations {
-                    Some(&LuaValue::Unknown)
+                    &LuaValue::Unknown
                 } else {
-                    None
+                    &LuaValue::Nil
                 }
             })
     }
@@ -91,7 +115,7 @@ impl TableValue {
     fn get_array_index(&self, key: &LuaValue) -> Option<usize> {
         if let LuaValue::Number(index) = *key {
             if index >= 1.0 && index.trunc() == index {
-                Some(index as usize)
+                Some(index as usize - 1)
             } else {
                 None
             }
@@ -104,9 +128,41 @@ impl TableValue {
 #[cfg(test)]
 mod test {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
-    fn unknown_lua_value_is_truthy_returns_none() {
-        assert!(LuaValue::Unknown.is_truthy().is_none());
+    fn clear_removes_all_elements() {
+        let mut table = TableValue::default();
+        table.push_element(LuaValue::True);
+        table.clear();
+        assert_eq!(table, TableValue::default());
+    }
+
+    #[test]
+    fn push_nil_does_not_add_an_element() {
+        let mut table = TableValue::default();
+        table.push_element(LuaValue::Nil);
+        assert_eq!(table, TableValue::default());
+    }
+
+    #[test]
+    fn get_first_item_in_array() {
+        let mut table = TableValue::default();
+        table.push_element(LuaValue::True);
+        assert_eq!(table.get(&LuaValue::from(1.0)), &LuaValue::True);
+    }
+
+    #[test]
+    fn get_known_key_without_value_returns_nil() {
+        let mut table = TableValue::default();
+        table.push_element(LuaValue::True);
+        assert_eq!(table.get(&LuaValue::False), &LuaValue::Nil);
+    }
+
+    #[test]
+    fn get_unknown_key_returns_unknown() {
+        let mut table = TableValue::default();
+        table.push_element(LuaValue::True);
+        assert_eq!(table.get(&LuaValue::Unknown), &LuaValue::Unknown);
     }
 }

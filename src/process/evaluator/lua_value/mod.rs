@@ -95,6 +95,13 @@ impl LuaValue {
             Self::Nil => Some(Expression::nil()),
             Self::String(value) => Some(StringExpression::from_value(value).into()),
             Self::Number(value) => Some(Expression::from(*value)),
+            Self::Tuple(tuple) => {
+                if tuple.len() == 1 {
+                    tuple.iter().next().and_then(|value| value.to_expression())
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }

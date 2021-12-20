@@ -549,7 +549,10 @@ impl VirtualLuaExecution {
                 let value = self.evaluate_index(index);
                 self.replace_expression(expression, value)
             }
-            Expression::Call(call) => self.evaluate_call(call).into(),
+            Expression::Call(call) => {
+                let value = self.evaluate_call(call).into();
+                self.replace_expression(expression, value)
+            }
             Expression::VariableArguments(_) => LuaValue::Unknown,
         }
     }
@@ -842,9 +845,10 @@ impl VirtualLuaExecution {
     }
 
     fn evaluate_table(&mut self, table: &mut TableExpression) -> LuaValue {
-        let table_value = table.iter_mut_entries().fold(
+        let last_index = table.len().saturating_sub(1);
+        let table_value = table.iter_mut_entries().enumerate().fold(
             TableValue::default(),
-            |table_value, entry| match entry {
+            |mut table_value, (i, entry)| match entry {
                 TableEntry::Field(field) => table_value.with_entry(
                     LuaValue::from(field.get_field().get_name().as_str()),
                     self.evaluate_expression(field.mutate_value()),
@@ -854,7 +858,19 @@ impl VirtualLuaExecution {
                     self.evaluate_expression(index.mutate_value()),
                 ),
                 TableEntry::Value(value) => {
-                    table_value.with_array_element(self.evaluate_expression(value))
+                    if last_index == i && matches!(value, Expression::VariableArguments(_)) {
+                        match self.evaluate_expression(value) {
+                            LuaValue::Tuple(tuple) => {
+                                for lua_value in tuple.into_iter() {
+                                    table_value.push_element(lua_value);
+                                }
+                                table_value
+                            }
+                            lua_value => table_value.with_array_element(lua_value),
+                        }
+                    } else {
+                        table_value.with_array_element(self.evaluate_expression(value))
+                    }
                 }
             },
         );
