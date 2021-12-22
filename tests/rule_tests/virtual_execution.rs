@@ -38,6 +38,16 @@ test_rule!(
     mutated_table_by_reference("local a = {} local b = a b.prop = true return a.prop")
         => "local a = {} local b = a b.prop = true return true",
     missing_entry_in_table("local a = {} return a.var") => "local a = {} return nil",
+    // functions
+    immediate_function_call("return (function() return true end)()") => "return true",
+    call_function_identifier("local function getValue() return 'value' end return getValue()")
+        => "local function getValue() return 'value' end return 'value'",
+    sum_function("local function sum(a, b) return a + b end return sum(3, 4)")
+        => "local function sum(a, b) return a + b end return 7",
+    assign_function_in_table("local a = {} a.foo = function() return false end return a.foo()")
+        => "local a = {} a.foo = function() return false end return false",
+    missing_param_coerce_to_nil("local function getFirst(a) return a end return getFirst()")
+        => "local function getFirst(a) return a end return nil",
 );
 
 test_rule!(

@@ -15,8 +15,7 @@ pub use tuple_value::*;
 #[derive(Debug, Clone, PartialEq)]
 pub enum LuaValue {
     False,
-    Function,
-    Function2(FunctionValue),
+    Function(FunctionValue),
     Nil,
     Number(f64),
     String(String),
@@ -196,13 +195,19 @@ impl From<TableValue> for LuaValue {
 
 impl From<FunctionValue> for LuaValue {
     fn from(function: FunctionValue) -> Self {
-        Self::Function2(function)
+        Self::Function(function)
+    }
+}
+
+impl From<LuaFunction> for LuaValue {
+    fn from(function: LuaFunction) -> Self {
+        Self::Function(FunctionValue::Lua(function))
     }
 }
 
 impl From<EngineFunction> for LuaValue {
     fn from(function: EngineFunction) -> Self {
-        Self::Function2(FunctionValue::Engine(function))
+        Self::Function(FunctionValue::Engine(function))
     }
 }
 

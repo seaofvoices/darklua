@@ -10,8 +10,7 @@ pub fn tonumber(parameters: TupleValue) -> TupleValue {
         LuaValue::String(_)
         | LuaValue::Table(_)
         | LuaValue::TableRef(_)
-        | LuaValue::Function
-        | LuaValue::Function2(_)
+        | LuaValue::Function(_)
         | LuaValue::Nil
         | LuaValue::False
         | LuaValue::True => LuaValue::Nil,
@@ -30,8 +29,7 @@ pub fn tostring(parameters: TupleValue) -> TupleValue {
         LuaValue::False => LuaValue::from("false"),
         LuaValue::Nil => LuaValue::from("nil"),
         LuaValue::True => LuaValue::from("true"),
-        LuaValue::Function
-        | LuaValue::Function2(_)
+        LuaValue::Function(_)
         | LuaValue::Table(_)
         | LuaValue::TableRef(_)
         | LuaValue::Number(_)
@@ -48,7 +46,7 @@ pub fn lua_type(parameters: TupleValue) -> TupleValue {
 
     LuaValue::from(match parameters.coerce_to_single_value() {
         LuaValue::True | LuaValue::False => "boolean",
-        LuaValue::Function | LuaValue::Function2(_) => "function",
+        LuaValue::Function(_) => "function",
         LuaValue::Nil => "nil",
         LuaValue::Number(_) => "number",
         LuaValue::String(_) => "string",

@@ -11,7 +11,7 @@ use execution_effect::ExecutionEffect;
 use state::State;
 pub use table_storage::{TableId, TableStorage};
 
-use super::{LuaValue, TableValue, TupleValue};
+use super::{LuaFunction, LuaValue, TableValue, TupleValue};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EvaluationResult {
@@ -25,6 +25,13 @@ impl EvaluationResult {
     #[inline]
     fn is_none(&self) -> bool {
         *self == Self::None
+    }
+
+    fn into_tuple(self) -> TupleValue {
+        match self {
+            Self::Return(tuple) => tuple,
+            Self::None | Self::Break | Self::Continue => TupleValue::empty(),
+        }
     }
 }
 
@@ -148,27 +155,34 @@ impl VirtualLuaExecution {
                 let name = function.get_name();
                 // TODO: build function name into a field expression and apply the function value
 
+                let current_state = self.current;
                 let root_identifier = name.get_name().get_name();
                 if let Some(state) = self
                     .find_ancestor_with_identifier(root_identifier)
                     .and_then(|id| self.mut_state(id))
                 {
-                    state.assign_identifier(root_identifier, LuaValue::Function);
+                    state.assign_identifier(
+                        root_identifier,
+                        LuaFunction::from(&*function)
+                            .with_parent_state(current_state)
+                            .into(),
+                    );
                     self.effects.add(root_identifier);
                 }
 
-                let parent_id = self.fork_state();
-                let function_state_id = self.current_state().id();
+                // TODO: do not run function yet and blur variables
+                // let parent_id = self.fork_state();
+                // let function_state_id = self.current_state().id();
 
-                for parameter in function.iter_parameters() {
-                    self.mut_state(function_state_id)
-                        .expect("function state should exist")
-                        .insert_local(parameter.get_name(), LuaValue::Unknown);
-                }
+                // for parameter in function.iter_parameters() {
+                //     self.mut_state(function_state_id)
+                //         .expect("function state should exist")
+                //         .insert_local(parameter.get_name(), LuaValue::Unknown);
+                // }
 
-                self.process_conditional_block(function.mutate_block());
+                // self.process_conditional_block(function.mutate_block());
 
-                self.current = parent_id;
+                // self.current = parent_id;
 
                 EvaluationResult::None
             }
@@ -231,21 +245,27 @@ impl VirtualLuaExecution {
             }
             Statement::LocalFunction(function) => {
                 let name = function.get_name();
-                self.current_state_mut()
-                    .insert_local(name, LuaValue::Function);
+                let current_state = self.current;
+                self.current_state_mut().insert_local(
+                    name,
+                    LuaFunction::from(&*function)
+                        .with_parent_state(current_state)
+                        .into(),
+                );
 
-                let parent_id = self.fork_state();
-                let function_state_id = self.current_state().id();
+                // TODO: do not blur variables yet
+                // let parent_id = self.fork_state();
+                // let function_state_id = self.current_state().id();
 
-                for parameter in function.iter_parameters() {
-                    self.mut_state(function_state_id)
-                        .expect("local function state should exist")
-                        .insert_local(parameter.get_name(), LuaValue::Unknown);
-                }
+                // for parameter in function.iter_parameters() {
+                //     self.mut_state(function_state_id)
+                //         .expect("local function state should exist")
+                //         .insert_local(parameter.get_name(), LuaValue::Unknown);
+                // }
 
-                self.process_conditional_block(function.mutate_block());
+                // self.process_conditional_block(function.mutate_block());
 
-                self.current = parent_id;
+                // self.current = parent_id;
 
                 EvaluationResult::None
             }
@@ -504,7 +524,9 @@ impl VirtualLuaExecution {
     pub fn evaluate_expression(&mut self, expression: &mut Expression) -> LuaValue {
         match expression {
             Expression::False(_) => LuaValue::False,
-            Expression::Function(_) => LuaValue::Function,
+            Expression::Function(function) => LuaFunction::from(&*function)
+                .with_parent_state(self.current)
+                .into(),
             Expression::Nil(_) => LuaValue::Nil,
             Expression::Number(number) => LuaValue::from(number.compute_value()),
             Expression::String(string) => LuaValue::from(string.get_value()),
@@ -603,23 +625,39 @@ impl VirtualLuaExecution {
             .coerce_to_single_value();
         let arguments = self.evaluate_arguments(call.mutate_arguments());
         match prefix {
-            LuaValue::Function2(function) => {
+            LuaValue::Function(function) => {
                 match function {
-                    FunctionValue::Lua(_) => {
-                        self.pass_argument_to_unknown_function(arguments);
-                        // TODO: run the function with the parameters
-                        LuaValue::Unknown.into()
+                    FunctionValue::Lua(mut lua_function) => {
+                        let parent_id = self.fork_state();
+                        let function_state_id = self.current_state().id();
+
+                        let mut arguments_iter = arguments.into_iter();
+
+                        for parameter in lua_function.iter_parameters() {
+                            let parameter_value = arguments_iter.next()
+                                .unwrap_or_else(|| LuaValue::Nil);
+
+                            self.mut_state(function_state_id)
+                                .expect("function state should exist")
+                                .insert_local(parameter, parameter_value);
+                        }
+
+                        // TODO: put remaining arguments into `...`
+                        let result = self.process_block_without_mutations(lua_function.mutate_block());
+
+                        self.current = parent_id;
+
+                        result.into_tuple()
                     },
                     FunctionValue::Engine(engine) => {
-                        let arguments = self.evaluate_arguments(call.mutate_arguments());
                         engine.execute(arguments)
-                    }
+                    },
+                    FunctionValue::Unknown => LuaValue::Unknown.into(),
                 }
             }
             LuaValue::Nil
             | LuaValue::Table(_) // TODO: table can be called
             | LuaValue::TableRef(_)
-            | LuaValue::Function
             | LuaValue::Number(_)
             | LuaValue::String(_)
             | LuaValue::True
@@ -902,8 +940,7 @@ impl VirtualLuaExecution {
                     .clone()
             }
             LuaValue::Nil
-            | LuaValue::Function
-            | LuaValue::Function2(_)
+            | LuaValue::Function(_)
             | LuaValue::Number(_)
             | LuaValue::String(_) // TODO: strings can be indexed
             | LuaValue::True
@@ -928,8 +965,7 @@ impl VirtualLuaExecution {
                     .get(&key).clone()
             }
             LuaValue::Nil
-            | LuaValue::Function
-            | LuaValue::Function2(_)
+            | LuaValue::Function(_)
             | LuaValue::Number(_)
             | LuaValue::String(_) // TODO: strings can be indexed
             | LuaValue::True

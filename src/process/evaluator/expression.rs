@@ -1,6 +1,6 @@
 use crate::nodes::*;
 
-use super::{LuaValue, TableValue, VirtualLuaExecution};
+use super::{FunctionValue, LuaValue, TableValue, VirtualLuaExecution};
 
 /// A struct to convert an Expression node into a LuaValue object.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -29,7 +29,7 @@ impl<'a> Evaluator<'a> {
     pub fn evaluate(&self, expression: &Expression) -> LuaValue {
         match expression {
             Expression::False(_) => LuaValue::False,
-            Expression::Function(_) => LuaValue::Function,
+            Expression::Function(_) => FunctionValue::Unknown.into(),
             Expression::Nil(_) => LuaValue::Nil,
             Expression::Number(number) => LuaValue::from(number.compute_value()),
             Expression::String(string) => LuaValue::from(string.get_value()),
@@ -157,8 +157,7 @@ impl<'a> Evaluator<'a> {
     fn maybe_metatable(&self, value: &LuaValue) -> bool {
         match value {
             LuaValue::False
-            | LuaValue::Function
-            | LuaValue::Function2(_)
+            | LuaValue::Function(_)
             | LuaValue::Nil
             | LuaValue::Number(_)
             | LuaValue::String(_)
@@ -338,8 +337,7 @@ impl<'a> Evaluator<'a> {
                 LuaValue::Unknown
             }
             LuaValue::Nil
-            | LuaValue::Function
-            | LuaValue::Function2(_)
+            | LuaValue::Function(_)
             | LuaValue::Number(_)
             | LuaValue::String(_) // TODO: strings can be indexed
             | LuaValue::True
@@ -355,26 +353,8 @@ impl<'a> Evaluator<'a> {
         LuaValue::Unknown
     }
 
-    fn evaluate_call(&self, call: &FunctionCall) -> LuaValue {
-        match self.evaluate_prefix(call.get_prefix()).coerce_to_single_value() {
-            LuaValue::Function2(function) => {
-                let arguments = self.evaluate_arguments(call.get_arguments());
-                let results = function.execute(arguments.into());
-                // TODO return all results
-                results.into_iter().next().unwrap_or(LuaValue::Nil)
-            }
-            LuaValue::Nil
-            | LuaValue::Table(_) // TODO: table can be called
-            | LuaValue::TableRef(_)
-            | LuaValue::Function
-            | LuaValue::Number(_)
-            | LuaValue::String(_)
-            | LuaValue::True
-            | LuaValue::False
-            | LuaValue::Unknown => LuaValue::Unknown,
-            // unreachable because of the call to `coerce_to_single_value`
-            LuaValue::Tuple(_) => LuaValue::Unknown,
-        }
+    fn evaluate_call(&self, _call: &FunctionCall) -> LuaValue {
+        LuaValue::Unknown
     }
 
     fn evaluate_prefix(&self, prefix: &Prefix) -> LuaValue {
@@ -384,17 +364,6 @@ impl<'a> Evaluator<'a> {
             Prefix::Index(index) => self.evaluate_index(index),
             Prefix::Parenthese(parenthese) => self.evaluate_parenthese(parenthese),
             Prefix::Call(call) => self.evaluate_call(call),
-        }
-    }
-
-    fn evaluate_arguments(&self, arguments: &Arguments) -> LuaValue {
-        match arguments {
-            Arguments::Tuple(tuple) => tuple
-                .iter_values()
-                .map(|value| self.evaluate(value))
-                .collect(),
-            Arguments::String(string) => LuaValue::from(string.get_value()),
-            Arguments::Table(table) => self.evaluate_table(table),
         }
     }
 
