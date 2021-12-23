@@ -1,5 +1,6 @@
 use super::{EngineFunction, LuaValue, TupleValue};
 
+mod lua_bit32;
 mod lua_globals;
 mod lua_math;
 mod lua_string;
@@ -30,6 +31,10 @@ pub fn create_tostring() -> LuaValue {
 
 pub fn create_type() -> LuaValue {
     EngineFunction::new(lua_globals::lua_type).into()
+}
+
+pub fn create_roblox_bit32_library() -> LuaValue {
+    create_library!(lua_bit32, band).into()
 }
 
 pub fn create_roblox_math_library() -> LuaValue {
@@ -225,5 +230,19 @@ mod test {
         rep_infinity("return string.rep('abc', 1/0)") => [LuaValue::Unknown],
         reverse_abc("return string.reverse('abc')") => ["cba"],
         upper_abc("return string.upper('abc')") => ["ABC"],
+    );
+
+    test_libraries!(
+        bit32,
+        create_roblox_bit32_library(),
+        band_1("return bit32.band(1)") => [1.0],
+        band_1_3("return bit32.band(1, 3)") => [1.0],
+        band_1_4("return bit32.band(1, 4)") => [0.0],
+        band_nothing("return bit32.band()") => [4294967295.0],
+        band_minus_1("return bit32.band(-1)") => [4294967295.0],
+        band_2_32("return bit32.band(4294967296)") => [0.0],
+        band_2_over_2_32("return bit32.band(4294967298)") => [2.0],
+        band_with_string_12_15_13("return bit32.band(12, '15', 13)") => [12.0],
+        band_cannot_coerce_string("return bit32.band(12, '', 13)") => [LuaValue::Unknown],
     );
 }
