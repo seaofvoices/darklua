@@ -7,7 +7,7 @@ use std::iter;
 
 use crate::{nodes::*, process::FunctionValue};
 
-use execution_effect::ExecutionEffect;
+use execution_effect::{ArgumentEffect, ExecutionEffect};
 use state::State;
 pub use table_storage::{TableId, TableStorage};
 
@@ -652,7 +652,10 @@ impl VirtualLuaExecution {
                     FunctionValue::Engine(engine) => {
                         engine.execute(arguments)
                     },
-                    FunctionValue::Unknown => LuaValue::Unknown.into(),
+                    FunctionValue::Unknown => {
+                        self.pass_argument_to_unknown_function(arguments);
+                        LuaValue::Unknown.into()
+                    }
                 }
             }
             LuaValue::Nil
@@ -672,13 +675,42 @@ impl VirtualLuaExecution {
     }
 
     fn pass_argument_to_unknown_function(&mut self, arguments: TupleValue) {
-        for value in arguments.iter() {
-            if let LuaValue::TableRef(id) = &value {
-                if let Some(table) = self.table_storage.mutate(*id) {
-                    table.clear();
-                    table.set_unknown_mutations();
-                }
+        let mut effect = ArgumentEffect::default();
+        for value in arguments {
+            effect.insert(value);
+        }
+        while !effect.is_empty() {
+            let (table_ids, functions) = effect.drain();
+
+            for id in table_ids {
+                self.pass_table_to_unknown_function(id, &mut effect)
             }
+            for function in functions {
+                self.pass_function_to_unknown_function(function);
+            }
+        }
+    }
+
+    fn pass_table_to_unknown_function(&mut self, table_id: TableId, effect: &mut ArgumentEffect) {
+        if let Some(table) = self.table_storage.mutate(table_id) {
+            for element in table.drain_array() {
+                effect.insert(element);
+            }
+            for (key, value) in table.drain_entries() {
+                effect.insert(key);
+                effect.insert(value);
+            }
+            table.clear();
+            table.set_unknown_mutations();
+        }
+    }
+
+    fn pass_function_to_unknown_function(&mut self, function: FunctionValue) {
+        match function {
+            FunctionValue::Lua(mut lua_function) => {
+                self.process_conditional_block(lua_function.mutate_block());
+            }
+            FunctionValue::Engine(_) | FunctionValue::Unknown => {}
         }
     }
 

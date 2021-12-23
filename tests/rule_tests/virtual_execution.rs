@@ -18,8 +18,8 @@ test_rule!(
     division_test("return 3 * 0.3333333333333333") => "return 1",
     multiply_small_number("return 2 * 1e-50") => "return 2E-50",
     unary_minus_number("return -1") => "return -1",
+    unary_not_true("return not true") => "return false",
     unary_on_parenthese("return -(20-10)") => "return -10",
-
     // cases with identifiers
     local_constant_boolean("local a = true return a") => "local a = true return true",
     local_mutated_boolean("local a = true a = false return a") => "local a = true a = false return false",
@@ -38,6 +38,8 @@ test_rule!(
     mutated_table_by_reference("local a = {} local b = a b.prop = true return a.prop")
         => "local a = {} local b = a b.prop = true return true",
     missing_entry_in_table("local a = {} return a.var") => "local a = {} return nil",
+    inline_field_entry("local flag = true local a = { var = flag }") => "local flag = true local a = { var = true }",
+    inline_key_entry("local name = 'prop' local a = { [name] = true }") => "local name = 'prop' local a = { ['prop'] = true }",
     // functions
     immediate_function_call("return (function() return true end)()") => "return true",
     call_function_identifier("local function getValue() return 'value' end return getValue()")
@@ -48,6 +50,13 @@ test_rule!(
         => "local a = {} a.foo = function() return false end return false",
     missing_param_coerce_to_nil("local function getFirst(a) return a end return getFirst()")
         => "local function getFirst(a) return a end return nil",
+    function_mutates_state("local var = 1 local function increment(a) var = var + a end increment(2) return var")
+        => "local var = 1 local function increment(a) var = var + a end increment(2) return 3",
+    // immediate_function_call_returning_multiple_value("return (function() return true, false end)()") => "return true, false",
+    immediate_function_call_returning_multiple_value_keeps_first(
+        "return ((function() return true, false end)())"
+    ) => "return true",
+
 );
 
 test_rule!(
@@ -102,6 +111,10 @@ test_rule_wihout_effects!(
     VirtualExecution::default(),
     potential_table_mutation("local t = { prop = 7 } callback(t) return t.prop"),
     assign_to_unknown_key_blurs_table_value("local a = {} a[unknown] = true return a.var"),
+    table_passed_to_unknown_function("local a = { prop = true } callback(a) return a.prop"),
+    function_passed_to_function_that_mutates_state(
+        "local var = true local function mutateVar() var = not var end callback(mutateVar) return var"
+    ),
 );
 
 #[test]

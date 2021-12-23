@@ -34,6 +34,16 @@ impl TableValue {
     }
 
     #[inline]
+    pub fn drain_array(&mut self) -> Vec<LuaValue> {
+        self.array.drain(..).collect()
+    }
+
+    #[inline]
+    pub fn drain_entries(&mut self) -> Vec<(LuaValue, LuaValue)> {
+        self.pairs.drain(..).collect()
+    }
+
+    #[inline]
     /// Adds an element into the array part of the table.
     pub fn push_element(&mut self, value: LuaValue) {
         match value {
