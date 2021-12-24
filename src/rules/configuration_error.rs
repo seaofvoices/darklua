@@ -20,6 +20,27 @@ pub enum RuleConfigurationError {
     /// When the value type is invalid. The string is the property name that was given the wrong
     /// value type.
     UnexpectedValueType(String),
+    /// When the value is invalid.
+    UnexpectedValue { property: String, message: String },
+    /// When a rule cannot have multiple properties defined at the same time.
+    PropertyCollision(Vec<String>),
+}
+
+fn enumerate_properties(properties: &[String]) -> String {
+    let last_index = properties.len().saturating_sub(1);
+    properties
+        .iter()
+        .enumerate()
+        .map(|(i, name)| {
+            if i == 0 {
+                format!("`{}`", name)
+            } else if i == last_index {
+                format!(" and `{}`", name)
+            } else {
+                format!(", `{}`", name)
+            }
+        })
+        .collect()
 }
 
 impl fmt::Display for RuleConfigurationError {
@@ -37,6 +58,40 @@ impl fmt::Display for RuleConfigurationError {
                 write!(f, "list of string expected for field '{}'", property)
             }
             UnexpectedValueType(property) => write!(f, "unexpected type for field '{}'", property),
+            UnexpectedValue { property, message } => {
+                write!(f, "unexpected value for field '{}': {}", property, message)
+            }
+            PropertyCollision(properties) => write!(
+                f,
+                "the properties {} cannot be defined together",
+                enumerate_properties(properties)
+            ),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn enumerate_one_property() {
+        assert_eq!(enumerate_properties(&["prop".to_owned()]), "`prop`")
+    }
+
+    #[test]
+    fn enumerate_two_properties() {
+        assert_eq!(
+            enumerate_properties(&["prop".to_owned(), "prop2".to_owned()]),
+            "`prop` and `prop2`"
+        )
+    }
+
+    #[test]
+    fn enumerate_three_properties() {
+        assert_eq!(
+            enumerate_properties(&["prop".to_owned(), "prop2".to_owned(), "prop3".to_owned()]),
+            "`prop`, `prop2` and `prop3`"
+        )
     }
 }

@@ -196,7 +196,7 @@ local baz = 0
 
 `inject_global_value`
 
-This rule will find a global variable and replace it with a given value.
+This rule will find a global variable and replace it with a given value. The value can be defined in the rule configuration or taken from an environment variable.
 
 ### Examples
 
@@ -246,14 +246,25 @@ if 11 > 10
 end
 ```
 
+If `value` is not specified, the `env` property can be defined to read an environment variable that will be read into a string.
+
+```json5
+{
+  rule: "inject_global_value",
+  identifier: "GLOBAL",
+  env: "SOME_VARIABLE",
+}
+```
+
 This rule can be used in combination with the `remove_unused_if_branch`, `compute_expression`, and other rules, to eliminate dead branches. In addition to making your code smaller, it should make it faster (depending on how hot the code path is) since it is eliminating branch condition evaluations at client-side runtime.
 
 ### Property
 
-| name       | type                              | description                                               |
-| ---------- | --------------------------------- | --------------------------------------------------------- |
-| identifier | string                            | the identifier that will be replaced with the given value |
-| value      | `null`, boolean, number or string | the inlined value, if not provided                        |
+| name       | type                              | description                                                     |
+| ---------- | --------------------------------- | --------------------------------------------------------------- |
+| identifier | string                            | the identifier that will be replaced with the given value       |
+| value      | `null`, boolean, number or string | the inlined value, `nil` if not provided                        |
+| env        | string                            | an environment variable name, to read and use as a string value |
 
 ---
 
