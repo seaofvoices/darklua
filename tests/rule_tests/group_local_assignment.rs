@@ -10,7 +10,7 @@ test_rule!(
     local_with_no_values_are_set_to_nil("local a local b = true local c") => "local a, b, c = nil, true, nil"
 );
 
-test_rule_wihout_effects!(
+test_rule_without_effects!(
     GroupLocalAssignment::default(),
     two_local_using_the_other("local foo = 1 local bar = foo"),
     multiple_return_values("local a, b = call() local c = 0")

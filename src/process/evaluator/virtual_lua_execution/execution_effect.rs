@@ -30,6 +30,33 @@ impl ExecutionEffect {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ExecutionSideEffect {
+    has_side_effects: Vec<bool>,
+}
+
+impl ExecutionSideEffect {
+    pub fn add(&mut self) {
+        if let Some(value) = self.has_side_effects.last_mut() {
+            if !*value {
+                *value = true;
+            }
+        }
+    }
+
+    pub fn enable(&mut self) {
+        self.has_side_effects.push(false);
+    }
+
+    pub fn disable(&mut self) -> bool {
+        if let Some(value) = self.has_side_effects.pop() {
+            value
+        } else {
+            false
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ArgumentEffect {
     visited: HashSet<TableId>,
     functions: Vec<FunctionValue>,

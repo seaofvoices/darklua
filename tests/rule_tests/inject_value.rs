@@ -46,7 +46,7 @@ test_rule!(
     inject_negative_integer_from_global_table("return _G.foo + 1") => "return -1 + 1",
 );
 
-test_rule_wihout_effects!(
+test_rule_without_effects!(
     InjectGlobalValue::nil("foo"),
     does_not_override_local_variable("local foo return foo"),
     does_not_inline_if_global_table_is_redefined("local _G return _G.foo"),

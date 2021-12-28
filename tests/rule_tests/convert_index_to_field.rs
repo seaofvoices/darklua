@@ -11,7 +11,7 @@ test_rule!(
     call_method("object['sub']:method(...)") => "object.sub:method(...)",
 );
 
-test_rule_wihout_effects!(
+test_rule_without_effects!(
     ConvertIndexToField::default(),
     key_is_empty_string("return var[\"\"]"),
     key_starts_with_space("return var[' bar']"),

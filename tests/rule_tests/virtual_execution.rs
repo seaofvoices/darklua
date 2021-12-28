@@ -107,7 +107,7 @@ test_rule!(
     on_negative_number("return type(-12)") => "return 'number'",
 );
 
-test_rule_wihout_effects!(
+test_rule_without_effects!(
     VirtualExecution::default(),
     potential_table_mutation("local t = { prop = 7 } callback(t) return t.prop"),
     assign_to_unknown_key_blurs_table_value("local a = {} a[unknown] = true return a.var"),
@@ -115,6 +115,7 @@ test_rule_wihout_effects!(
     function_passed_to_function_that_mutates_state(
         "local var = true local function mutateVar() var = not var end callback(mutateVar) return var"
     ),
+    keeps_call_with_side_effect("local function call() trigger() return true end return call()")
 );
 
 #[test]

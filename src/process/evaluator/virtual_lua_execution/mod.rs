@@ -7,7 +7,7 @@ use std::iter;
 
 use crate::{nodes::*, process::FunctionValue};
 
-use execution_effect::{ArgumentEffect, ExecutionEffect};
+use execution_effect::{ArgumentEffect, ExecutionEffect, ExecutionSideEffect};
 use state::State;
 pub use table_storage::{TableId, TableStorage};
 
@@ -53,6 +53,7 @@ pub struct VirtualLuaExecution {
     states: Vec<State>,
     current: usize,
     effects: ExecutionEffect,
+    side_effects: ExecutionSideEffect,
     max_loop_iteration: usize,
     table_storage: TableStorage,
     perform_mutations: bool,
@@ -64,6 +65,7 @@ impl Default for VirtualLuaExecution {
             states: vec![State::new_root(0)],
             current: 0,
             effects: ExecutionEffect::default(),
+            side_effects: ExecutionSideEffect::default(),
             max_loop_iteration: 500,
             table_storage: TableStorage::default(),
             perform_mutations: false,
@@ -627,32 +629,17 @@ impl VirtualLuaExecution {
         match prefix {
             LuaValue::Function(function) => {
                 match function {
-                    FunctionValue::Lua(mut lua_function) => {
-                        let parent_id = self.fork_state();
-                        let function_state_id = self.current_state().id();
-
-                        let mut arguments_iter = arguments.into_iter();
-
-                        for parameter in lua_function.iter_parameters() {
-                            let parameter_value = arguments_iter.next()
-                                .unwrap_or_else(|| LuaValue::Nil);
-
-                            self.mut_state(function_state_id)
-                                .expect("function state should exist")
-                                .insert_local(parameter, parameter_value);
-                        }
-
-                        // TODO: put remaining arguments into `...`
-                        let result = self.process_block_without_mutations(lua_function.mutate_block());
-
-                        self.current = parent_id;
-
-                        result.into_tuple()
-                    },
+                    FunctionValue::Lua(lua_function) => self.evaluate_lua_call(lua_function, arguments),
                     FunctionValue::Engine(engine) => {
-                        engine.execute(arguments)
+                        if engine.has_side_effects() {
+                            self.side_effects.add();
+                            LuaValue::Unknown.into()
+                        } else {
+                            engine.execute(arguments)
+                        }
                     },
                     FunctionValue::Unknown => {
+                        self.side_effects.add();
                         self.pass_argument_to_unknown_function(arguments);
                         LuaValue::Unknown.into()
                     }
@@ -665,12 +652,42 @@ impl VirtualLuaExecution {
             | LuaValue::String(_)
             | LuaValue::True
             | LuaValue::False
-            | LuaValue::Unknown => {
+            | LuaValue::Unknown
+            // unreachable because of the call to `coerce_to_single_value`
+            | LuaValue::Tuple(_) => {
+                self.side_effects.add();
                 self.pass_argument_to_unknown_function(arguments);
                 LuaValue::Unknown.into()
             }
-            // unreachable because of the call to `coerce_to_single_value`
-            LuaValue::Tuple(_) => LuaValue::Unknown.into(),
+        }
+    }
+
+    fn evaluate_lua_call(
+        &mut self,
+        mut lua_function: LuaFunction,
+        arguments: TupleValue,
+    ) -> TupleValue {
+        let parent_id = self.fork_state();
+        let function_state_id = self.current_state().id();
+        let mut arguments_iter = arguments.into_iter();
+        for parameter in lua_function.iter_parameters() {
+            let parameter_value = arguments_iter.next().unwrap_or_else(|| LuaValue::Nil);
+
+            self.mut_state(function_state_id)
+                .expect("function state should exist")
+                .insert_local(parameter, parameter_value);
+        }
+        self.side_effects.enable();
+
+        let result = self.process_block_without_mutations(lua_function.mutate_block());
+        self.current = parent_id;
+
+        let had_side_effects = self.side_effects.disable();
+
+        if had_side_effects {
+            LuaValue::Unknown.into()
+        } else {
+            result.into_tuple()
         }
     }
 
@@ -960,6 +977,7 @@ impl VirtualLuaExecution {
     }
 
     fn evaluate_field(&mut self, field: &mut FieldExpression) -> LuaValue {
+        // TODO: add side effects if we can't assume that index is a pure method
         match self.evaluate_prefix(field.mutate_prefix()).coerce_to_single_value() {
             LuaValue::Table(table) => {
                 let key = field.get_field().get_name().to_owned().into();
@@ -984,6 +1002,7 @@ impl VirtualLuaExecution {
     }
 
     fn evaluate_index(&mut self, index: &mut IndexExpression) -> LuaValue {
+        // TODO: add side effects if we can't assume that index is a pure method
         let key = self
             .evaluate_expression(index.mutate_index())
             .coerce_to_single_value();
