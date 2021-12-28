@@ -95,8 +95,6 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::new(RemoveEmptyDo::default()),
         Box::new(RemoveMethodDefinition::default()),
         Box::new(ConvertIndexToField::default()),
-        Box::new(ConvertLocalFunctionToAssign::default()),
-        Box::new(GroupLocalAssignment::default()),
         Box::new(RenameVariables::default()),
         Box::new(RemoveFunctionCallParens::default()),
     ]
@@ -228,6 +226,37 @@ impl<'de> Deserialize<'de> for Box<dyn Rule> {
 fn verify_no_rule_properties(properties: &RuleProperties) -> Result<(), RuleConfigurationError> {
     if let Some((key, _value)) = properties.iter().next() {
         return Err(RuleConfigurationError::UnexpectedProperty(key.to_owned()));
+    }
+    Ok(())
+}
+
+fn verify_required_properties(
+    properties: &RuleProperties,
+    names: &[&str],
+) -> Result<(), RuleConfigurationError> {
+    for name in names.iter() {
+        if !properties.contains_key(*name) {
+            return Err(RuleConfigurationError::MissingProperty(name.to_string()));
+        }
+    }
+    Ok(())
+}
+
+fn verify_property_collisions(
+    properties: &RuleProperties,
+    names: &[&str],
+) -> Result<(), RuleConfigurationError> {
+    let mut exists = false;
+    for name in names.iter() {
+        if properties.contains_key(*name) {
+            if exists {
+                return Err(RuleConfigurationError::PropertyCollision(
+                    names.iter().map(ToString::to_string).collect(),
+                ));
+            } else {
+                exists = true;
+            }
+        }
     }
     Ok(())
 }

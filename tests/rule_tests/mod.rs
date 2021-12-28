@@ -3,12 +3,12 @@ macro_rules! test_rule {
         paste::paste! {
 
         mod [<$rule_name _with_readable_generator>] {
+            use super::*;
 
         $(
             #[test]
             fn $name() {
-                use super::*;
-                use darklua_core::{generator::{LuaGenerator, ReadableLuaGenerator}};
+                use darklua_core::generator::{LuaGenerator, ReadableLuaGenerator};
 
                 let mut block = $crate::utils::parse_input($input);
                 let expect_block = $crate::utils::parse_input($output);
@@ -34,12 +34,12 @@ macro_rules! test_rule {
         }
 
         mod [<$rule_name _with_dense_generator>] {
+            use super::*;
 
         $(
             #[test]
             fn $name() {
-                use super::*;
-                use darklua_core::{generator::{LuaGenerator, DenseLuaGenerator}};
+                use darklua_core::generator::{LuaGenerator, DenseLuaGenerator};
 
                 let mut block = $crate::utils::parse_input($input);
                 let expect_block = $crate::utils::parse_input($output);

@@ -34,14 +34,14 @@ test_rule!(
 
 test_rule!(
     inject_global_number,
-    InjectGlobalValue::float("foo", 10.0),
+    InjectGlobalValue::number("foo", 10.0),
     inject_integer("return foo") => "return 10",
     inject_integer_from_global_table("return _G.foo") => "return 10",
 );
 
 test_rule!(
     inject_global_negative_number,
-    InjectGlobalValue::float("foo", -1.0),
+    InjectGlobalValue::number("foo", -1.0),
     inject_negative_integer("return foo") => "return -1",
     inject_negative_integer_from_global_table("return _G.foo + 1") => "return -1 + 1",
 );

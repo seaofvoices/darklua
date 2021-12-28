@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.7.0
+
+* add `include_functions` property to `rename_variables` to prevent function name renaming and remove `group_local_assignment` and `convert_local_function_to_assign` from default rules ([!44](https://gitlab.com/seaofvoices/darklua/-/merge_requests/44))
+* add `env` property to `inject_global_value` to inject an environment variable value ([!43](https://gitlab.com/seaofvoices/darklua/-/merge_requests/43))
 * fix command line tracing logs for planned work ([!42](https://gitlab.com/seaofvoices/darklua/-/merge_requests/42))
 * fix extra space generated with retain-lines generator on field expressions ([!41](https://gitlab.com/seaofvoices/darklua/-/merge_requests/41))
 * enhance the `compute_expression` rule by processing `<`, `<=`, `>` and `>=` operators ([!40](https://gitlab.com/seaofvoices/darklua/-/merge_requests/40))

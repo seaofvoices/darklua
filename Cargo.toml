@@ -1,6 +1,6 @@
 [package]
 name = "darklua"
-version = "0.6.1"
+version = "0.7.0"
 authors = ["jeparlefrancais <jeparlefrancais21@gmail.com>"]
 edition = "2018"
 readme = "README.md"
@@ -26,10 +26,10 @@ path = "src/bin.rs"
 durationfmt = "0.1.1"
 log = "0.4"
 pretty_env_logger = "0.4.0"
-structopt = "0.3.9"
+structopt = "0.3.25"
 full_moon = { version = "0.13.1", features = ["roblox"] }
 serde = { version = "1.0", features = ["derive"] }
-json5 = "0.2"
+json5 = "0.4"
 
 [dev-dependencies]
 insta = "1.7.1"

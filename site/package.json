@@ -51,7 +51,7 @@
     "babel-preset-gatsby": "^2.3.0",
     "prettier": "^2.4.1"
   },
-  "homepage": "https://github.com/gatsbyjs/gatsby-starter-blog#readme",
+  "homepage": "https://gitlab.com/seaofvoices/darklua",
   "keywords": [
     "gatsby"
   ],
@@ -59,7 +59,7 @@
   "main": "n/a",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gatsbyjs/gatsby-starter-blog.git"
+    "url": "git+https://gitlab.com/seaofvoices/darklua.git"
   },
   "scripts": {
     "prebuild": "wasm-pack build darklua-wasm -t bundler",
