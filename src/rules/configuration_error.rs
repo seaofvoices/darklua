@@ -8,12 +8,18 @@ pub enum RuleConfigurationError {
     UnexpectedProperty(String),
     /// When a rule has a required property. The string should be the field name.
     MissingProperty(String),
+    /// When a property is associated with something else than an expected boolean. The string is
+    /// the property name.
+    BooleanExpected(String),
     /// When a property is associated with something else than an expected string. The string is
     /// the property name.
     StringExpected(String),
     /// When a property is associated with something else than an expected unsigned number. The
     /// string is the property name.
     UsizeExpected(String),
+    /// When a property is associated with something else than an expected float. The string is the
+    /// property name.
+    FloatExpected(String),
     /// When a property is associated with something else than an expected list of strings. The
     /// string is the property name.
     StringListExpected(String),
@@ -50,10 +56,14 @@ impl fmt::Display for RuleConfigurationError {
         match self {
             UnexpectedProperty(property) => write!(f, "unexpected field '{}'", property),
             MissingProperty(property) => write!(f, "missing required field '{}'", property),
+            BooleanExpected(property) => {
+                write!(f, "boolean value expected for field '{}'", property)
+            }
             StringExpected(property) => write!(f, "string value expected for field '{}'", property),
             UsizeExpected(property) => {
                 write!(f, "unsigned integer expected for field '{}'", property)
             }
+            FloatExpected(property) => write!(f, "float value expected for field '{}'", property),
             StringListExpected(property) => {
                 write!(f, "list of string expected for field '{}'", property)
             }

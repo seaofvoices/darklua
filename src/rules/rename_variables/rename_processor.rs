@@ -14,10 +14,11 @@ pub struct RenameProcessor {
     permutator: Permutator<std::str::Chars<'static>>,
     avoid_identifier: HashSet<String>,
     reuse_identifiers: Vec<String>,
+    include_functions: bool,
 }
 
 impl RenameProcessor {
-    pub fn new<I: IntoIterator<Item = String>>(iter: I) -> Self {
+    pub fn new<I: IntoIterator<Item = String>>(iter: I, include_functions: bool) -> Self {
         let mut avoid_identifier = HashSet::from_iter(iter);
         avoid_identifier.extend(KEYWORDS.iter().map(|s| (*s).to_owned()));
 
@@ -26,6 +27,7 @@ impl RenameProcessor {
             permutator: Permutator::new(CHAR_SET.chars()),
             avoid_identifier,
             reuse_identifiers: Vec::new(),
+            include_functions,
         }
     }
 
@@ -65,7 +67,7 @@ impl RenameProcessor {
             && !identifier.chars().next().unwrap().is_digit(10)
     }
 
-    fn insert_identifier(&mut self, identifier: &mut String) {
+    fn replace_identifier(&mut self, identifier: &mut String) {
         let original = identifier.drain(..).collect();
         let obfuscated_name = self.generate_identifier();
 
@@ -133,15 +135,17 @@ impl Scope for RenameProcessor {
     }
 
     fn insert(&mut self, identifier: &mut String) {
-        self.insert_identifier(identifier);
+        self.replace_identifier(identifier);
     }
 
     fn insert_local(&mut self, identifier: &mut String, _value: Option<&mut Expression>) {
-        self.insert_identifier(identifier);
+        self.replace_identifier(identifier);
     }
 
     fn insert_local_function(&mut self, function: &mut LocalFunctionStatement) {
-        self.insert_identifier(function.mutate_identifier().mutate_name());
+        if self.include_functions {
+            self.replace_identifier(function.mutate_identifier().mutate_name());
+        }
     }
 }
 
@@ -158,7 +162,7 @@ mod test {
     use super::*;
 
     fn new_scope() -> RenameProcessor {
-        RenameProcessor::new(Vec::new().into_iter())
+        RenameProcessor::new(Vec::new().into_iter(), true)
     }
 
     #[test]

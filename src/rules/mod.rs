@@ -93,8 +93,6 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::new(RemoveEmptyDo::default()),
         Box::new(RemoveMethodDefinition::default()),
         Box::new(ConvertIndexToField::default()),
-        Box::new(ConvertLocalFunctionToAssign::default()),
-        Box::new(GroupLocalAssignment::default()),
         Box::new(RenameVariables::default()),
         Box::new(RemoveFunctionCallParens::default()),
     ]

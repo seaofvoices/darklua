@@ -12,8 +12,6 @@ expression: rules
   "remove_empty_do",
   "remove_method_definition",
   "convert_index_to_field",
-  "convert_local_function_to_assign",
-  "group_local_assignment",
   "rename_variables",
   "remove_function_call_parens"
 ]

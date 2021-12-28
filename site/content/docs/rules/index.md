@@ -7,9 +7,8 @@ order: 3
 
 You can find the available rules and their properties here. The default rule stack is:
 
-- [Remove spaces](#remove-spaces)
-- [Remove comments](#remove-comments)
-- [Compute expressions](#compute-expressions)
+- [Compute expression](#compute-expression)
+- [Convert index to field](#convert-index-to-field)
 - [Convert local functions to assignments](#convert-local-functions-to-assignments)
 - [Group local assignments](#group-local-assignments)
 - [Remove empty do statements](#remove-empty-do-statements)
@@ -17,10 +16,14 @@ You can find the available rules and their properties here. The default rule sta
 - [Remove method definitions](#remove-method-definitions)
 - [Remove unused if branch](#remove-unused-if-branch)
 - [Remove unused while](#remove-unused-while)
+- [Remove comments](#remove-comments)
+- [Remove spaces](#remove-spaces)
 - [Rename variables](#rename-variables)
 
 There are also other rules available for more processing:
 
+- [Convert local functions to assignments](#convert-local-functions-to-assignments)
+- [Group local assignments](#group-local-assignments)
 - [Inject global value](#inject-global-value)
 
 ---
@@ -114,6 +117,32 @@ return 2
 ```json5
 {
   rule: "compute_expression",
+}
+```
+
+---
+
+## Convert index to field
+
+`convert_index_to_field`
+
+When an index expression is using a static string (or an expression that can be statically evaluated into a string), this rule replaces it with a field expression. For example, if you have this code:
+
+```lua
+return var['field']
+```
+
+It will convert into:
+
+```lua
+return var.field
+```
+
+### Examples
+
+```json5
+{
+  rule: "convert_index_to_field",
 }
 ```
 
@@ -455,9 +484,10 @@ A configuration to avoid all identifiers from the default group and the identifi
 
 ### Property
 
-| name    | type         | default        | description                    |
-| ------- | ------------ | -------------- | ------------------------------ |
-| globals | string array | `['$default']` | a list of identifiers to avoid |
+| name              | type         | default        | description                                     |
+| ----------------- | ------------ | -------------- | ----------------------------------------------- |
+| globals           | string array | `['$default']` | a list of identifiers to avoid                  |
+| include_functions | boolean      | false          | whether function names should be renamed or not |
 
 The `globals` property have special values that can be use to group multiple values together. They start with an `$` character.
 

@@ -8,7 +8,7 @@ macro_rules! test_rule {
         $(
             #[test]
             fn $name() {
-                use darklua_core::{generator::{LuaGenerator, ReadableLuaGenerator}, rules::Rule};
+                use darklua_core::generator::{LuaGenerator, ReadableLuaGenerator};
 
                 let mut block = $crate::utils::parse_input($input);
                 let expect_block = $crate::utils::parse_input($output);
@@ -39,7 +39,7 @@ macro_rules! test_rule {
         $(
             #[test]
             fn $name() {
-                use darklua_core::{generator::{LuaGenerator, DenseLuaGenerator}, rules::Rule};
+                use darklua_core::generator::{LuaGenerator, DenseLuaGenerator};
 
                 let mut block = $crate::utils::parse_input($input);
                 let expect_block = $crate::utils::parse_input($output);
@@ -73,7 +73,6 @@ macro_rules! test_rule {
                 use darklua_core::{
                     Parser,
                     generator::{LuaGenerator, TokenBasedLuaGenerator},
-                    rules::Rule,
                 };
 
                 let expect_block = $crate::utils::parse_input($output);

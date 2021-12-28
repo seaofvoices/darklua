@@ -205,6 +205,13 @@ local testSuite = {
             globals = {'$default', '$roblox'},
         }}
     }),
+    DarkluaTest.new('rename-all-retain-lines', 'process $input $output --format retain-lines', {
+        process = {{
+            rule = 'rename_variables',
+            globals = {'$default', '$roblox'},
+            include_functions = true,
+        }}
+    }),
     DarkluaTest.new('process-retain-lines', 'process $input $output --format retain-lines', {
         process = {
             'compute_expression',
@@ -214,6 +221,24 @@ local testSuite = {
             {
                 rule = 'rename_variables',
                 globals = { '$default', '$roblox' },
+            },
+            'remove_function_call_parens',
+        }
+    }),
+    DarkluaTest.new('compress-dense', 'process $input $output --format dense', {
+        process = {
+            'compute_expression',
+            'remove_unused_if_branch',
+            'remove_unused_while',
+            'convert_index_to_field',
+            'remove_method_definition',
+            'convert_local_function_to_assign',
+            'group_local_assignment',
+            'remove_empty_do',
+            {
+                rule = 'rename_variables',
+                globals = {'$default', '$roblox'},
+                include_functions = true,
             },
             'remove_function_call_parens',
         }

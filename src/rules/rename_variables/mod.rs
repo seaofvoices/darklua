@@ -1,3 +1,4 @@
+mod function_names;
 mod globals;
 mod permutator;
 mod rename_processor;
@@ -6,7 +7,7 @@ use permutator::Permutator;
 use rename_processor::RenameProcessor;
 
 use crate::nodes::Block;
-use crate::process::{NodeVisitor, ScopeVisitor};
+use crate::process::{DefaultVisitor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
     RulePropertyValue,
@@ -21,6 +22,7 @@ pub const RENAME_VARIABLES_RULE_NAME: &str = "rename_variables";
 #[derive(Debug, PartialEq, Eq)]
 pub struct RenameVariables {
     globals: Vec<String>,
+    include_functions: bool,
 }
 
 fn is_valid_identifier(identifier: &str) -> bool {
@@ -35,7 +37,13 @@ impl RenameVariables {
     pub fn new<I: IntoIterator<Item = String>>(iter: I) -> Self {
         Self {
             globals: Vec::from_iter(iter),
+            include_functions: false,
         }
+    }
+
+    pub fn with_function_names(mut self) -> Self {
+        self.include_functions = true;
+        self
     }
 
     fn set_globals(&mut self, list: Vec<String>) -> Result<(), RuleConfigurationError> {
@@ -96,7 +104,18 @@ impl Default for RenameVariables {
 
 impl FlawlessRule for RenameVariables {
     fn flawless_process(&self, block: &mut Block, _: &mut Context) {
-        let mut processor = RenameProcessor::new(self.globals.clone().into_iter());
+        let avoid_identifiers = if self.include_functions {
+            Vec::new()
+        } else {
+            let mut collect_functions = function_names::CollectFunctionNames::default();
+            DefaultVisitor::visit_block(block, &mut collect_functions);
+            collect_functions.into()
+        };
+
+        let mut processor = RenameProcessor::new(
+            self.globals.clone().into_iter().chain(avoid_identifiers),
+            self.include_functions,
+        );
         ScopeVisitor::visit_block(block, &mut processor);
     }
 }
@@ -108,6 +127,12 @@ impl RuleConfiguration for RenameVariables {
                 "globals" => match value {
                     RulePropertyValue::StringList(globals) => self.set_globals(globals)?,
                     _ => return Err(RuleConfigurationError::StringListExpected(key)),
+                },
+                "include_functions" => match value {
+                    RulePropertyValue::Boolean(value) => {
+                        self.include_functions = value;
+                    }
+                    _ => return Err(RuleConfigurationError::BooleanExpected(key)),
                 },
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }
@@ -121,18 +146,24 @@ impl RuleConfiguration for RenameVariables {
     }
 
     fn serialize_to_properties(&self) -> RuleProperties {
-        if self == &Self::default() {
-            RuleProperties::new()
-        } else {
-            let mut properties = RuleProperties::new();
+        let mut properties = RuleProperties::new();
 
+        let globals = self.normalize_globals();
+        if !(globals.len() == 1 && globals.contains(&"$default".to_owned())) {
             properties.insert(
                 "globals".to_owned(),
                 RulePropertyValue::StringList(self.normalize_globals()),
             );
-
-            properties
         }
+
+        if self.include_functions {
+            properties.insert(
+                "include_functions".to_owned(),
+                RulePropertyValue::Boolean(self.include_functions),
+            );
+        }
+
+        properties
     }
 }
 
@@ -163,6 +194,28 @@ mod test {
 
     #[test]
     fn serialize_roblox_globals_rule() {
+        let rule = Box::new(RenameVariables::new(
+            globals::ROBLOX.to_vec().into_iter().map(String::from),
+        ));
+
+        assert_json_snapshot!("roblox_globals_rename_variables", rule as Box<dyn Rule>);
+    }
+
+    #[test]
+    fn serialize_with_function_names() {
+        let rule = Box::new(
+            RenameVariables::new(globals::DEFAULT.to_vec().into_iter().map(String::from))
+                .with_function_names(),
+        );
+
+        assert_json_snapshot!(
+            "rename_variables_with_function_names",
+            rule as Box<dyn Rule>
+        );
+    }
+
+    #[test]
+    fn serialize_skip_functions() {
         let rule = Box::new(RenameVariables::new(
             globals::ROBLOX.to_vec().into_iter().map(String::from),
         ));
