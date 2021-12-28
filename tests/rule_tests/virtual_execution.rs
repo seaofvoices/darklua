@@ -60,6 +60,14 @@ test_rule!(
 );
 
 test_rule!(
+    virtual_execution_with_roblox_bit32,
+    json5::from_str::<Box<dyn Rule>>(
+        "{ rule: 'virtual_execution', includes: ['roblox-bit32'] }"
+    ).unwrap(),
+    call_bit32_library_band("return bit32.band(1, 0xff)") => "return 1",
+);
+
+test_rule!(
     virtual_execution_with_roblox_math,
     json5::from_str::<Box<dyn Rule>>(
         "{ rule: 'virtual_execution', includes: ['roblox-math'] }"

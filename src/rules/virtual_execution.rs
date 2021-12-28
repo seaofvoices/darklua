@@ -1,7 +1,7 @@
 use crate::nodes::Block;
 use crate::process::engine_impl::{
-    create_roblox_math_library, create_roblox_string_library, create_tonumber, create_tostring,
-    create_type,
+    create_roblox_bit32_library, create_roblox_math_library, create_roblox_string_library,
+    create_tonumber, create_tostring, create_type,
 };
 use crate::process::{LuaValue, VirtualLuaExecution};
 use crate::rules::{
@@ -29,6 +29,13 @@ impl VirtualExecution {
     fn include_globals(&mut self, list: Vec<String>) -> Result<(), RuleConfigurationError> {
         for value in list {
             match value.as_str() {
+                "roblox-bit32" => {
+                    self.globals.push(EngineGlobal {
+                        identifier: "bit32",
+                        create_value: create_roblox_bit32_library,
+                        property_name: "roblox-bit32",
+                    });
+                }
                 "roblox-math" => {
                     self.globals.push(EngineGlobal {
                         identifier: "math",
