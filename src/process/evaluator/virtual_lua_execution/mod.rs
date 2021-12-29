@@ -145,7 +145,15 @@ impl VirtualLuaExecution {
             }
             Statement::Do(do_statement) => self.process_block(do_statement.mutate_block()),
             Statement::Call(call) => {
-                self.evaluate_call(call);
+                let (value, side_effects) = self.evaluate_call(call);
+                if !side_effects
+                    && value
+                        .iter()
+                        .find(|value| matches!(value, LuaValue::Unknown))
+                        .is_none()
+                {
+                    *statement = DoStatement::default().into();
+                }
                 EvaluationResult::None
             }
             Statement::CompoundAssign(assign) => {
@@ -409,13 +417,38 @@ impl VirtualLuaExecution {
 
     fn assign_identifier(&mut self, identifier: &Identifier, value: LuaValue) {
         let name = identifier.get_name();
-        if let Some(state) = self
+        let identifier_state = self
             .find_ancestor_with_identifier(name)
             .and_then(|id| self.mut_state(id))
-        {
-            state.assign_identifier(name, value);
+            .map(|state| {
+                state.assign_identifier(name, value);
+                state.id()
+            });
+        // TODO: check if state is within the function, if not add a side effect
+        if let Some(state_id) = identifier_state {
             self.effects.add(name);
+            if let Some(function_state) = self.side_effects.current_state() {
+                if !self.is_state_ancestor_of(state_id, function_state) {
+                    self.side_effects.add();
+                }
+            }
         }
+    }
+
+    fn is_state_ancestor_of(&self, state_id: usize, ancestor: usize) -> bool {
+        let mut current = self.get_state(state_id);
+        while let Some(state) = current {
+            if let Some(parent) = state.parent() {
+                if parent == ancestor {
+                    return true;
+                } else {
+                    current = self.get_state(parent);
+                }
+            } else {
+                return false;
+            }
+        }
+        false
     }
 
     fn assign_prefix(&mut self, prefix: &mut Prefix, key: LuaValue, value: LuaValue) {
@@ -574,8 +607,12 @@ impl VirtualLuaExecution {
                 self.replace_expression(expression, value)
             }
             Expression::Call(call) => {
-                let value = self.evaluate_call(call).into();
-                self.replace_expression(expression, value)
+                let (value, side_effects) = self.evaluate_call(call);
+                if side_effects {
+                    LuaValue::Unknown
+                } else {
+                    self.replace_expression(expression, value.into())
+                }
             }
             Expression::VariableArguments(_) => LuaValue::Unknown,
         }
@@ -620,7 +657,7 @@ impl VirtualLuaExecution {
         Some(current.id())
     }
 
-    fn evaluate_call(&mut self, call: &mut FunctionCall) -> TupleValue {
+    fn evaluate_call(&mut self, call: &mut FunctionCall) -> (TupleValue, bool) {
         // TODO: if in conditional mode, there may be more processing to do
         let prefix = self
             .evaluate_prefix(call.mutate_prefix())
@@ -631,17 +668,12 @@ impl VirtualLuaExecution {
                 match function {
                     FunctionValue::Lua(lua_function) => self.evaluate_lua_call(lua_function, arguments),
                     FunctionValue::Engine(engine) => {
-                        if engine.has_side_effects() {
-                            self.side_effects.add();
-                            LuaValue::Unknown.into()
-                        } else {
-                            engine.execute(arguments)
-                        }
+                        (engine.execute(arguments), engine.has_side_effects())
                     },
                     FunctionValue::Unknown => {
                         self.side_effects.add();
                         self.pass_argument_to_unknown_function(arguments);
-                        LuaValue::Unknown.into()
+                        (LuaValue::Unknown.into(), true)
                     }
                 }
             }
@@ -657,7 +689,7 @@ impl VirtualLuaExecution {
             | LuaValue::Tuple(_) => {
                 self.side_effects.add();
                 self.pass_argument_to_unknown_function(arguments);
-                LuaValue::Unknown.into()
+                (LuaValue::Unknown.into(), true)
             }
         }
     }
@@ -666,7 +698,7 @@ impl VirtualLuaExecution {
         &mut self,
         mut lua_function: LuaFunction,
         arguments: TupleValue,
-    ) -> TupleValue {
+    ) -> (TupleValue, bool) {
         let parent_id = self.fork_state();
         let function_state_id = self.current_state().id();
         let mut arguments_iter = arguments.into_iter();
@@ -677,18 +709,14 @@ impl VirtualLuaExecution {
                 .expect("function state should exist")
                 .insert_local(parameter, parameter_value);
         }
-        self.side_effects.enable();
+        self.side_effects.enable(function_state_id);
 
         let result = self.process_block_without_mutations(lua_function.mutate_block());
         self.current = parent_id;
 
         let had_side_effects = self.side_effects.disable();
 
-        if had_side_effects {
-            LuaValue::Unknown.into()
-        } else {
-            result.into_tuple()
-        }
+        (result.into_tuple(), had_side_effects)
     }
 
     fn pass_argument_to_unknown_function(&mut self, arguments: TupleValue) {
@@ -1033,7 +1061,14 @@ impl VirtualLuaExecution {
             Prefix::Identifier(identifier) => self.evaluate_identifier(identifier),
             Prefix::Index(index) => self.evaluate_index(index),
             Prefix::Parenthese(parenthese) => self.evaluate_parenthese(parenthese),
-            Prefix::Call(call) => self.evaluate_call(call).into(),
+            Prefix::Call(call) => {
+                let (value, side_effects) = self.evaluate_call(call);
+                if side_effects {
+                    LuaValue::Unknown
+                } else {
+                    value.into()
+                }
+            }
         }
     }
 

@@ -105,7 +105,6 @@ impl FromStr for Box<dyn Rule> {
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
         let rule: Box<dyn Rule> = match string {
-            VIRTUAL_EXECUTION_RULE_NAME => Box::new(VirtualExecution::default()),
             COMPUTE_EXPRESSIONS_RULE_NAME => Box::new(ComputeExpression::default()),
             CONVERT_INDEX_TO_FIELD_RULE_NAME => Box::new(ConvertIndexToField::default()),
             CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => {
@@ -121,6 +120,7 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_UNUSED_IF_BRANCH_RULE_NAME => Box::new(RemoveUnusedIfBranch::default()),
             REMOVE_UNUSED_WHILE_RULE_NAME => Box::new(RemoveUnusedWhile::default()),
             RENAME_VARIABLES_RULE_NAME => Box::new(RenameVariables::default()),
+            VIRTUAL_EXECUTION_RULE_NAME => Box::new(VirtualExecution::default()),
             _ => return Err(format!("invalid rule name: {}", string)),
         };
 

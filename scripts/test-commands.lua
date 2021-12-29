@@ -243,6 +243,19 @@ local testSuite = {
             'remove_function_call_parens',
         }
     }),
+    DarkluaTest.new('virtual-execution-retain-lines', 'process $input $output --format retain-lines', {
+        process = {{
+            rule = 'virtual_execution',
+            includes = {
+                'roblox-bit32',
+                'roblox-math',
+                'roblox-string',
+                'tostring',
+                'tonumber',
+                'type',
+            }
+        }}
+    }),
 }
 
 local failFast = false

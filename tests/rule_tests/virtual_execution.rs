@@ -52,6 +52,16 @@ test_rule!(
         => "local function getFirst(a) return a end return nil",
     function_mutates_state("local var = 1 local function increment(a) var = var + a end increment(2) return var")
         => "local var = 1 local function increment(a) var = var + a end increment(2) return 3",
+    remove_empty_function_calls("local function doNothing() end doNothing()") => "local function doNothing() end do end",
+    remove_function_calls_without_side_effect(
+        "local function assign(value) local var = value end assign(true)"
+    ) => "local function assign(value) local var = value end do end",
+    remove_function_call_but_keep_arguments_with_side_effects_single_call(
+        "local function assign(value) end assign(call())"
+    ) => "local function assign(value) end call()",
+    remove_function_call_but_keep_arguments_with_side_effects_binary_expression(
+        "local function assign(value) end assign(value and call() or '')"
+    ) => "local function assign(value) end local _ = value and call() or ''", // TODO: should I assume `_` or should it be configurable
     // immediate_function_call_returning_multiple_value("return (function() return true, false end)()") => "return true, false",
     immediate_function_call_returning_multiple_value_keeps_first(
         "return ((function() return true, false end)())"

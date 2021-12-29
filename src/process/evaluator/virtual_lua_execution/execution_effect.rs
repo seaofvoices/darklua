@@ -31,6 +31,7 @@ impl ExecutionEffect {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ExecutionSideEffect {
+    state_parent: Vec<usize>,
     has_side_effects: Vec<bool>,
 }
 
@@ -43,12 +44,18 @@ impl ExecutionSideEffect {
         }
     }
 
-    pub fn enable(&mut self) {
+    pub fn current_state(&self) -> Option<usize> {
+        self.state_parent.last().map(ToOwned::to_owned)
+    }
+
+    pub fn enable(&mut self, parent_id: usize) {
         self.has_side_effects.push(false);
+        self.state_parent.push(parent_id);
     }
 
     pub fn disable(&mut self) -> bool {
         if let Some(value) = self.has_side_effects.pop() {
+            self.state_parent.pop();
             value
         } else {
             false
