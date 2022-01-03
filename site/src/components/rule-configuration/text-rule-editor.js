@@ -7,6 +7,7 @@ import useMonacoEditor from "../../hooks/useMonacoEditor"
 import ThumbUp from "@mui/icons-material/ThumbUp"
 import ThumbDown from "@mui/icons-material/ThumbDown"
 import MonacoContainer from "../monaco-container"
+import useDarkluaConfigSchema from "../../hooks/useDarkluaConfigSchema"
 
 const WORD_PER_MINUTE = 85
 
@@ -66,6 +67,8 @@ const EditorBar = ({ formatCode, isConfigOk }) => {
 const TextRuleEditor = () => {
   const rulesStack = React.useContext(RulesStackContext)
 
+  const configSchema = useDarkluaConfigSchema()
+
   const [isConfigOk, setIsConfigOk] = React.useState(true)
   const [defaultConfig, setDefaultConfig] = React.useState(null)
   const [alertMessage, setAlertMessage] = React.useState(null)
@@ -76,6 +79,8 @@ const TextRuleEditor = () => {
     ref: parentRef,
   } = useMonacoEditor({
     language: "",
+    tabSize: 2,
+    insertSpaces: true,
     minimap: false,
   })
 
@@ -105,17 +110,18 @@ const TextRuleEditor = () => {
       }
 
       if (!!config) {
-        try {
-          rulesStack.replaceWithDarkluaConfig(config)
-          setIsConfigOk(true)
-        } catch (error) {
+        const { value, error } = configSchema.validate(config)
+        if (error) {
           setIsConfigOk(false)
           setAlertMessage(`invalid darklua configuration: ${error.message}`)
+        } else {
+          rulesStack.replaceWithDarkluaConfig(value)
+          setIsConfigOk(true)
         }
       }
     })
     return () => connection.dispose()
-  }, [model, rulesStack])
+  }, [model, rulesStack, configSchema])
 
   const formatCode = () => {
     if (!model) {

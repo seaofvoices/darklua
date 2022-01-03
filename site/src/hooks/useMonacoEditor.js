@@ -8,6 +8,8 @@ const useMonacoEditor = ({
   language = "lua",
   minimap = true,
   readOnly = false,
+  tabSize = 4,
+  insertSpaces = false,
 }) => {
   const monaco = React.useContext(MonacoContext)
 
@@ -20,9 +22,14 @@ const useMonacoEditor = ({
         return
       }
       const newModel = monaco.editor.createModel(defaultText, language)
+      newModel.updateOptions({
+        tabSize,
+        insertSpaces,
+      })
 
       const newEditor = monaco.editor.create(element, {
         model: newModel,
+        detectIndentation: true,
         language,
         readOnly,
         minimap: { enabled: minimap },

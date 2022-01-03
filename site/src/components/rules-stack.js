@@ -1,29 +1,5 @@
 import * as React from "react"
 
-import * as Joi from "joi"
-
-const RULE_NAMES = [
-  "remove_comments",
-  "remove_spaces",
-  "inject_global_value",
-  "compute_expression",
-  "remove_unused_if_branch",
-  "remove_unused_while",
-  "remove_empty_do",
-  "remove_method_definition",
-  "remove_function_call_parens",
-]
-
-const ruleSchema = Joi.alternatives().try(
-  Joi.string().valid(...RULE_NAMES),
-  Joi.object({
-    rule: Joi.string().valid(...RULE_NAMES),
-  }).unknown()
-)
-const configSchema = Joi.object({
-  rules: Joi.array().items(ruleSchema),
-})
-
 class RulesStack {
   constructor(rules, updateRules) {
     this.rules = rules
@@ -56,30 +32,25 @@ class RulesStack {
   }
 
   replaceWithDarkluaConfig(config) {
-    const { value, error } = configSchema.validate(config)
-    if (!error) {
-      this._updateRules(
-        value.rules.map(rule => {
-          if (typeof rule == "string") {
-            return { name: rule }
+    this._updateRules(
+      config.rules.map(rule => {
+        if (typeof rule == "string") {
+          return { name: rule }
+        }
+        if (Object.keys(rule).length === 1) {
+          return {
+            name: rule.rule,
           }
-          if (Object.keys(rule).length === 1) {
-            return {
-              name: rule.rule,
-            }
-          } else {
-            const properties = { ...rule }
-            delete properties.rule
-            return {
-              name: rule.rule,
-              properties,
-            }
+        } else {
+          const properties = { ...rule }
+          delete properties.rule
+          return {
+            name: rule.rule,
+            properties,
           }
-        })
-      )
-    } else {
-      throw error
-    }
+        }
+      })
+    )
   }
 
   getDarkluaConfig() {

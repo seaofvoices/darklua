@@ -3,7 +3,7 @@ mod utils;
 use darklua_core::{
     generator::{LuaGenerator, TokenBasedLuaGenerator},
     nodes::Block,
-    rules::{get_default_rules, Context, Rule},
+    rules::{self, get_default_rules, Context, Rule},
     Parser,
 };
 use serde::{Deserialize, Serialize};
@@ -71,4 +71,13 @@ pub fn process_code(code: &str, opt_config: JsValue) -> Result<String, JsValue> 
     let lua_code = generate_code(&code, &block);
 
     Ok(lua_code)
+}
+
+#[wasm_bindgen]
+pub fn get_all_rule_names() -> Box<[JsValue]> {
+    rules::get_all_rule_names()
+        .into_iter()
+        .map(JsValue::from_str)
+        .collect::<Vec<_>>()
+        .into_boxed_slice()
 }
