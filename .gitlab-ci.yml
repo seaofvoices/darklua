@@ -3,7 +3,6 @@ image: "rust:latest"
 cache:
   paths:
     - cargo/
-    - site/node_modules/
 
 stages:
   - install
@@ -159,10 +158,9 @@ build:
     - cargo --version
     - cargo build --verbose
   artifacts:
-    expire_in: 1 hour
+    expire_in: 7 day
     paths:
-      - cargo/
-      - target/
+      - target/debug/darklua
   needs: []
 
 build-release:
@@ -173,10 +171,31 @@ build-release:
     - cargo --version
     - cargo build --release --verbose
   artifacts:
-    expire_in: 1 hour
+    expire_in: 30 day
     paths:
-      - cargo/
-      - target/
+      - target/release/darklua
+  needs:
+    - clippy
+    - style-check
+
+build-release-windows:
+  stage: build
+  only:
+    - main
+  tags:
+    - windows
+  script:
+    - Invoke-WebRequest -URI https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-msvc/rustup-init.exe -OutFile rustup-init.exe
+    - ./rustup-init.exe -y
+    # refresh PATH
+    - $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    - rustc --version
+    - cargo --version
+    - cargo build --release --verbose
+  artifacts:
+    expire_in: 30 day
+    paths:
+      - target/release/darklua.exe
   needs:
     - clippy
     - style-check
