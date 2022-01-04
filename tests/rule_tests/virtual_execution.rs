@@ -66,7 +66,9 @@ test_rule!(
     immediate_function_call_returning_multiple_value_keeps_first(
         "return ((function() return true, false end)())"
     ) => "return true",
-
+    optimize_within_function_scope(
+        "local function getConstant() return 4 * 100 end"
+    ) => "local function getConstant() return 400 end",
 );
 
 test_rule!(

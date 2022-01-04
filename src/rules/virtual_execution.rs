@@ -1,14 +1,46 @@
-use crate::nodes::{Block, Identifier};
+use crate::nodes::{
+    Block, FunctionExpression, FunctionStatement, Identifier, LocalFunctionStatement,
+};
 use crate::process::engine_impl::{
     create_roblox_bit32_library, create_roblox_math_library, create_roblox_string_library,
     create_tonumber, create_tostring, create_type,
 };
-use crate::process::{LuaValue, VirtualLuaExecution};
+use crate::process::{DefaultVisitor, LuaValue, NodeProcessor, NodeVisitor, VirtualLuaExecution};
 use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
 };
 
 use super::RulePropertyValue;
+
+#[derive(Debug, Clone, Default)]
+struct VirtualExecutionProcessor<F: Fn() -> VirtualLuaExecution> {
+    build_executor: F,
+}
+
+impl<F: Fn() -> VirtualLuaExecution> VirtualExecutionProcessor<F> {
+    fn new(build_executor: F) -> Self {
+        Self { build_executor }
+    }
+
+    fn evaluate_block(&self, block: &mut Block) {
+        let mut virtual_execution = (self.build_executor)();
+        virtual_execution.evaluate_chunk(block);
+    }
+}
+
+impl<F: Fn() -> VirtualLuaExecution> NodeProcessor for VirtualExecutionProcessor<F> {
+    fn process_function_statement(&mut self, function: &mut FunctionStatement) {
+        self.evaluate_block(function.mutate_block());
+    }
+
+    fn process_local_function_statement(&mut self, function: &mut LocalFunctionStatement) {
+        self.evaluate_block(function.mutate_block());
+    }
+
+    fn process_function_expression(&mut self, function: &mut FunctionExpression) {
+        self.evaluate_block(function.mutate_block());
+    }
+}
 
 pub const VIRTUAL_EXECUTION_RULE_NAME: &str = "virtual_execution";
 
@@ -38,6 +70,17 @@ impl Default for VirtualExecution {
 }
 
 impl VirtualExecution {
+    fn build_virtual_lua_executor(&self) -> VirtualLuaExecution {
+        self.globals.iter().fold(
+            VirtualLuaExecution::default()
+                .perform_mutations()
+                .use_throwaway_variable(self.throwaway_variable.clone()),
+            |execution, global| {
+                execution.with_global_value(global.identifier, (global.create_value)())
+            },
+        )
+    }
+
     fn include_globals(&mut self, list: Vec<String>) -> Result<(), RuleConfigurationError> {
         for value in list {
             match value.as_str() {
@@ -98,16 +141,11 @@ impl VirtualExecution {
 
 impl FlawlessRule for VirtualExecution {
     fn flawless_process(&self, block: &mut Block, _: &mut Context) {
-        let mut virtual_execution = self.globals.iter().fold(
-            VirtualLuaExecution::default()
-                .perform_mutations()
-                .use_throwaway_variable(self.throwaway_variable.clone()),
-            |execution, global| {
-                execution.with_global_value(global.identifier, (global.create_value)())
-            },
-        );
-
+        let mut virtual_execution = self.build_virtual_lua_executor();
         virtual_execution.evaluate_chunk(block);
+
+        let mut processor = VirtualExecutionProcessor::new(|| self.build_virtual_lua_executor());
+        DefaultVisitor::visit_block(block, &mut processor);
     }
 }
 
