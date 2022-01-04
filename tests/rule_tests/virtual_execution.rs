@@ -61,13 +61,24 @@ test_rule!(
     ) => "local function assign(value) end call()",
     remove_function_call_but_keep_arguments_with_side_effects_binary_expression(
         "local function assign(value) end assign(value and call() or '')"
-    ) => "local function assign(value) end local _ = value and call() or ''", // TODO: should I assume `_` or should it be configurable
+    ) => "local function assign(value) end local _DARKLUA_THROWAWAY_VAR = value and call() or ''",
     // immediate_function_call_returning_multiple_value("return (function() return true, false end)()") => "return true, false",
     immediate_function_call_returning_multiple_value_keeps_first(
         "return ((function() return true, false end)())"
     ) => "return true",
 
 );
+
+test_rule!(
+    virtual_execution_with_other_throwaway_variable,
+    json5::from_str::<Box<dyn Rule>>(
+        "{ rule: 'virtual_execution', throwaway_variable: '_' }"
+    ).unwrap(),
+    remove_function_call_but_keep_arguments_with_side_effects_binary_expression(
+        "local function assign(value) end assign(value and call() or '')"
+    ) => "local function assign(value) end local _ = value and call() or ''",
+);
+
 
 test_rule!(
     virtual_execution_with_roblox_bit32,

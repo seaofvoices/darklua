@@ -61,6 +61,14 @@ impl ExecutionSideEffect {
             false
         }
     }
+
+    pub fn enable_within_state(&mut self) {
+        self.has_side_effects.push(false);
+    }
+
+    pub fn disable_within_state(&mut self) -> bool {
+        self.has_side_effects.pop().unwrap_or_default()
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

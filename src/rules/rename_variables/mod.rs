@@ -6,7 +6,7 @@ mod rename_processor;
 use permutator::Permutator;
 use rename_processor::RenameProcessor;
 
-use crate::nodes::Block;
+use crate::nodes::{Block, Identifier};
 use crate::process::{DefaultVisitor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
@@ -23,14 +23,6 @@ pub const RENAME_VARIABLES_RULE_NAME: &str = "rename_variables";
 pub struct RenameVariables {
     globals: Vec<String>,
     include_functions: bool,
-}
-
-fn is_valid_identifier(identifier: &str) -> bool {
-    !identifier.is_empty()
-        && identifier.is_ascii()
-        && identifier
-            .char_indices()
-            .all(|(i, c)| c.is_alphabetic() || c == '_' || (c.is_ascii_digit() && i > 0))
 }
 
 impl RenameVariables {
@@ -55,7 +47,7 @@ impl RenameVariables {
                 "$roblox" => self
                     .globals
                     .extend(globals::ROBLOX.to_vec().into_iter().map(String::from)),
-                identifier if is_valid_identifier(identifier) => {
+                identifier if Identifier::is_valid_identifier(identifier) => {
                     self.globals.push(value);
                 }
                 _ => {
@@ -226,21 +218,5 @@ mod test {
         ));
 
         assert_json_snapshot!("roblox_globals_rename_variables", rule as Box<dyn Rule>);
-    }
-
-    #[test]
-    fn is_valid_identifier_is_true() {
-        assert!(is_valid_identifier("hello"));
-        assert!(is_valid_identifier("foo"));
-        assert!(is_valid_identifier("bar"));
-    }
-
-    #[test]
-    fn is_valid_identifier_is_false() {
-        assert!(!is_valid_identifier(""));
-        assert!(!is_valid_identifier("$hello"));
-        assert!(!is_valid_identifier(" "));
-        assert!(!is_valid_identifier("5"));
-        assert!(!is_valid_identifier("1bar"));
     }
 }

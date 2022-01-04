@@ -48,6 +48,62 @@ impl From<LuaValue> for BinaryEvaluationResult {
     }
 }
 
+struct CallEvaluationResult {
+    output: TupleValue,
+    side_effects: bool,
+    arguments_side_effects: Vec<bool>,
+}
+
+impl CallEvaluationResult {
+    fn new<T: Into<TupleValue>>(value: T) -> Self {
+        Self {
+            output: value.into(),
+            side_effects: false,
+            arguments_side_effects: Vec::new(),
+        }
+    }
+
+    fn with_side_effects(mut self, has_side_effects: bool) -> Self {
+        self.side_effects = has_side_effects;
+        self
+    }
+
+    fn with_argument_side_effects(mut self, side_effects: Vec<bool>) -> Self {
+        self.arguments_side_effects = side_effects;
+        self
+    }
+
+    #[inline]
+    fn has_side_effects(&self) -> bool {
+        self.side_effects || self.arguments_have_side_effects()
+    }
+
+    #[inline]
+    fn call_has_side_effects(&self) -> bool {
+        self.side_effects
+    }
+
+    #[inline]
+    fn arguments_have_side_effects(&self) -> bool {
+        self.arguments_side_effects.iter().any(|effect| *effect)
+    }
+
+    fn argument_has_side_effects(&self, argument_index: usize) -> bool {
+        self.arguments_side_effects
+            .get(argument_index)
+            .map(|value| *value)
+            .unwrap_or(true)
+    }
+
+    fn into_value(self) -> TupleValue {
+        self.output
+    }
+
+    fn value(&self) -> &TupleValue {
+        &self.output
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VirtualLuaExecution {
     states: Vec<State>,
@@ -57,6 +113,7 @@ pub struct VirtualLuaExecution {
     max_loop_iteration: usize,
     table_storage: TableStorage,
     perform_mutations: bool,
+    throwaway_variable: String,
 }
 
 impl Default for VirtualLuaExecution {
@@ -69,6 +126,7 @@ impl Default for VirtualLuaExecution {
             max_loop_iteration: 500,
             table_storage: TableStorage::default(),
             perform_mutations: false,
+            throwaway_variable: "_DARKLUA_THROWAWAY".to_owned(),
         }
     }
 }
@@ -76,6 +134,11 @@ impl Default for VirtualLuaExecution {
 impl VirtualLuaExecution {
     pub fn perform_mutations(mut self) -> Self {
         self.perform_mutations = true;
+        self
+    }
+
+    pub fn use_throwaway_variable<S: Into<String>>(mut self, variable: S) -> Self {
+        self.throwaway_variable = variable.into();
         self
     }
 
@@ -145,14 +208,62 @@ impl VirtualLuaExecution {
             }
             Statement::Do(do_statement) => self.process_block(do_statement.mutate_block()),
             Statement::Call(call) => {
-                let (value, side_effects) = self.evaluate_call(call);
-                if !side_effects
-                    && value
+                let call_result = self.evaluate_call(call);
+                if !call_result.call_has_side_effects()
+                    && call_result
+                        .value()
                         .iter()
                         .find(|value| matches!(value, LuaValue::Unknown))
                         .is_none()
                 {
-                    *statement = DoStatement::default().into();
+                    if call_result.arguments_have_side_effects() {
+                        let keep_expressions = match call.get_arguments() {
+                            Arguments::Tuple(tuple) => tuple
+                                .iter_values()
+                                .enumerate()
+                                .filter_map(|(i, expression)| {
+                                    if call_result.argument_has_side_effects(i) {
+                                        Some(expression.clone())
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect(),
+                            Arguments::Table(table) => {
+                                vec![table.clone().into()]
+                            }
+                            Arguments::String(_string) => {
+                                // technically unreachable because a string literal does not have
+                                // any side effects
+                                vec![]
+                            }
+                        };
+
+                        let replace_with = if keep_expressions.is_empty() {
+                            Some(DoStatement::default().into())
+                        } else if keep_expressions.len() == 1 {
+                            match keep_expressions.last() {
+                                Some(Expression::Call(call)) => {
+                                    Some(Statement::from(*call.clone()))
+                                }
+                                _ => None,
+                            }
+                        } else {
+                            None
+                        };
+
+                        if let Some(new_statement) = replace_with {
+                            *statement = new_statement;
+                        } else {
+                            let mut assignment = LocalAssignStatement::from_variable(
+                                self.throwaway_variable.clone(),
+                            );
+                            assignment.extend_values(keep_expressions);
+                            *statement = assignment.into();
+                        }
+                    } else {
+                        *statement = DoStatement::default().into();
+                    };
                 }
                 EvaluationResult::None
             }
@@ -424,7 +535,7 @@ impl VirtualLuaExecution {
                 state.assign_identifier(name, value);
                 state.id()
             });
-        // TODO: check if state is within the function, if not add a side effect
+
         if let Some(state_id) = identifier_state {
             self.effects.add(name);
             if let Some(function_state) = self.side_effects.current_state() {
@@ -607,10 +718,11 @@ impl VirtualLuaExecution {
                 self.replace_expression(expression, value)
             }
             Expression::Call(call) => {
-                let (value, side_effects) = self.evaluate_call(call);
-                if side_effects {
+                let call_result = self.evaluate_call(call);
+                if call_result.has_side_effects() {
                     LuaValue::Unknown
                 } else {
+                    let value = call_result.into_value();
                     self.replace_expression(expression, value.into())
                 }
             }
@@ -657,23 +769,32 @@ impl VirtualLuaExecution {
         Some(current.id())
     }
 
-    fn evaluate_call(&mut self, call: &mut FunctionCall) -> (TupleValue, bool) {
+    fn evaluate_call(&mut self, call: &mut FunctionCall) -> CallEvaluationResult {
         // TODO: if in conditional mode, there may be more processing to do
         let prefix = self
             .evaluate_prefix(call.mutate_prefix())
             .coerce_to_single_value();
-        let arguments = self.evaluate_arguments(call.mutate_arguments());
+        let (arguments, arguments_side_effects) = self.evaluate_arguments(call.mutate_arguments());
         match prefix {
             LuaValue::Function(function) => {
                 match function {
-                    FunctionValue::Lua(lua_function) => self.evaluate_lua_call(lua_function, arguments),
+                    FunctionValue::Lua(lua_function) => {
+                        let (value, side_effects) = self.evaluate_lua_call(lua_function, arguments);
+                        CallEvaluationResult::new(value)
+                            .with_side_effects(side_effects)
+                            .with_argument_side_effects(arguments_side_effects)
+                    }
                     FunctionValue::Engine(engine) => {
-                        (engine.execute(arguments), engine.has_side_effects())
+                        CallEvaluationResult::new(engine.execute(arguments))
+                            .with_side_effects(engine.has_side_effects())
+                            .with_argument_side_effects(arguments_side_effects)
                     },
                     FunctionValue::Unknown => {
                         self.side_effects.add();
                         self.pass_argument_to_unknown_function(arguments);
-                        (LuaValue::Unknown.into(), true)
+                        CallEvaluationResult::new(LuaValue::Unknown)
+                            .with_side_effects(true)
+                            .with_argument_side_effects(arguments_side_effects)
                     }
                 }
             }
@@ -689,7 +810,9 @@ impl VirtualLuaExecution {
             | LuaValue::Tuple(_) => {
                 self.side_effects.add();
                 self.pass_argument_to_unknown_function(arguments);
-                (LuaValue::Unknown.into(), true)
+                CallEvaluationResult::new(LuaValue::Unknown)
+                    .with_side_effects(true)
+                    .with_argument_side_effects(arguments_side_effects)
             }
         }
     }
@@ -759,15 +882,25 @@ impl VirtualLuaExecution {
         }
     }
 
-    fn evaluate_arguments(&mut self, arguments: &mut Arguments) -> TupleValue {
+    fn evaluate_arguments(&mut self, arguments: &mut Arguments) -> (TupleValue, Vec<bool>) {
         match arguments {
-            Arguments::Tuple(tuple) => tuple
-                .iter_mut_values()
-                .map(|value| self.evaluate_expression(value))
-                .collect::<TupleValue>()
-                .flatten(),
-            Arguments::String(string) => TupleValue::singleton(string.get_value()),
-            Arguments::Table(table) => TupleValue::singleton(self.evaluate_table(table)),
+            Arguments::Tuple(tuple) => {
+                let mut result = TupleValue::empty();
+                let mut side_effects = Vec::new();
+                for value in tuple.iter_mut_values() {
+                    self.side_effects.enable_within_state();
+                    result.push(self.evaluate_expression(value));
+                    side_effects.push(self.side_effects.disable_within_state());
+                }
+                (result.flatten(), side_effects)
+            }
+            Arguments::String(string) => (TupleValue::singleton(string.get_value()), vec![false]),
+            Arguments::Table(table) => {
+                self.side_effects.enable_within_state();
+                let value = TupleValue::singleton(self.evaluate_table(table));
+                let side_effects = self.side_effects.disable_within_state();
+                (value, vec![side_effects])
+            }
         }
     }
 
@@ -1062,11 +1195,12 @@ impl VirtualLuaExecution {
             Prefix::Index(index) => self.evaluate_index(index),
             Prefix::Parenthese(parenthese) => self.evaluate_parenthese(parenthese),
             Prefix::Call(call) => {
-                let (value, side_effects) = self.evaluate_call(call);
-                if side_effects {
+                let call_result = self.evaluate_call(call);
+                // TODO: maybe it's safe to return the value even if there are side-effects
+                if call_result.has_side_effects() {
                     LuaValue::Unknown
                 } else {
-                    value.into()
+                    call_result.into_value().into()
                 }
             }
         }

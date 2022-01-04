@@ -1,4 +1,4 @@
-use crate::nodes::Block;
+use crate::nodes::{Block, Identifier};
 use crate::process::engine_impl::{
     create_roblox_bit32_library, create_roblox_math_library, create_roblox_string_library,
     create_tonumber, create_tostring, create_type,
@@ -20,9 +20,21 @@ struct EngineGlobal {
 }
 
 /// A rule that runs Lua code as much as possible statically.
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct VirtualExecution {
     globals: Vec<EngineGlobal>,
+    throwaway_variable: String,
+}
+
+const DEFAULT_THROWAWAY_VARIABLE: &str = "_DARKLUA_THROWAWAY_VAR";
+
+impl Default for VirtualExecution {
+    fn default() -> Self {
+        Self {
+            globals: Default::default(),
+            throwaway_variable: DEFAULT_THROWAWAY_VARIABLE.to_owned(),
+        }
+    }
 }
 
 impl VirtualExecution {
@@ -87,7 +99,9 @@ impl VirtualExecution {
 impl FlawlessRule for VirtualExecution {
     fn flawless_process(&self, block: &mut Block, _: &mut Context) {
         let mut virtual_execution = self.globals.iter().fold(
-            VirtualLuaExecution::default().perform_mutations(),
+            VirtualLuaExecution::default()
+                .perform_mutations()
+                .use_throwaway_variable(self.throwaway_variable.clone()),
             |execution, global| {
                 execution.with_global_value(global.identifier, (global.create_value)())
             },
@@ -105,6 +119,21 @@ impl RuleConfiguration for VirtualExecution {
                     RulePropertyValue::StringList(includes) => self.include_globals(includes)?,
                     _ => return Err(RuleConfigurationError::StringListExpected(key)),
                 },
+                "throwaway_variable" => {
+                    match value {
+                        RulePropertyValue::String(throwaway_variable) => {
+                            if Identifier::is_valid_identifier(&throwaway_variable) {
+                                self.throwaway_variable = throwaway_variable;
+                            } else {
+                                return Err(RuleConfigurationError::UnexpectedValue {
+                                property: key,
+                                message: format!("variable `{}` is not valid, it must be a valid Lua identifier", throwaway_variable),
+                            });
+                            }
+                        }
+                        _ => return Err(RuleConfigurationError::StringExpected(key)),
+                    }
+                }
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }
         }
@@ -126,6 +155,12 @@ impl RuleConfiguration for VirtualExecution {
                     .iter()
                     .map(|global| global.property_name.to_owned())
                     .collect(),
+            );
+        }
+        if self.throwaway_variable != DEFAULT_THROWAWAY_VARIABLE {
+            properties.insert(
+                "throwaway_variable".to_owned(),
+                self.throwaway_variable.as_str().into(),
             );
         }
 

@@ -22,6 +22,10 @@ impl TupleValue {
         }
     }
 
+    pub fn push<IntoLuaValue: Into<LuaValue>>(&mut self, value: IntoLuaValue) {
+        self.values.push(value.into());
+    }
+
     #[inline]
     pub fn len(&self) -> usize {
         self.values.len()

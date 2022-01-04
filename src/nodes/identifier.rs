@@ -7,6 +7,14 @@ pub struct Identifier {
 }
 
 impl Identifier {
+    pub fn is_valid_identifier(identifier: &str) -> bool {
+        !identifier.is_empty()
+            && identifier.is_ascii()
+            && identifier
+                .char_indices()
+                .all(|(i, c)| c.is_alphabetic() || c == '_' || (c.is_ascii_digit() && i > 0))
+    }
+
     pub fn new<S: Into<String>>(name: S) -> Self {
         Self {
             name: name.into(),
@@ -95,5 +103,22 @@ mod test {
                 content: "newVar".into(),
             })
         );
+    }
+
+
+    #[test]
+    fn is_valid_identifier_is_true() {
+        assert!(Identifier::is_valid_identifier("hello"));
+        assert!(Identifier::is_valid_identifier("foo"));
+        assert!(Identifier::is_valid_identifier("bar"));
+    }
+
+    #[test]
+    fn is_valid_identifier_is_false() {
+        assert!(!Identifier::is_valid_identifier(""));
+        assert!(!Identifier::is_valid_identifier("$hello"));
+        assert!(!Identifier::is_valid_identifier(" "));
+        assert!(!Identifier::is_valid_identifier("5"));
+        assert!(!Identifier::is_valid_identifier("1bar"));
     }
 }
