@@ -1,4 +1,7 @@
-const { process_code } = require("darklua-wasm/darklua_wasm")
+const {
+  process_code,
+  get_all_rule_names,
+} = require("darklua-wasm/darklua_wasm")
 
 test("process empty string", () => {
   expect(process_code("")).toEqual("")
@@ -23,4 +26,10 @@ test("process and inject global", () => {
     ],
   }
   expect(process_code("return CONSTANT", options)).toEqual("return true")
+})
+
+test("`get_all_rule_names` returns an array", () => {
+  const names = get_all_rule_names()
+  expect(names).toEqual(expect.any(Array))
+  expect(names.length).toBeGreaterThan(10)
 })

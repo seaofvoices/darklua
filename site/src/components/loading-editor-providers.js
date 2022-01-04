@@ -3,7 +3,8 @@ import * as React from "react"
 import { CircularProgress } from "@mui/material"
 import { Box } from "@mui/system"
 
-import { DarkluaContext, MonacoContext } from "../components/editor-providers"
+import { MonacoContext } from "../components/editor-providers"
+import { DarkluaContext } from "./darklua-provider"
 
 const APPEARANCE_DELAY = 0.5
 

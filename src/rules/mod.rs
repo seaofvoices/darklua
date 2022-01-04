@@ -100,6 +100,24 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
     ]
 }
 
+pub fn get_all_rule_names() -> Vec<&'static str> {
+    vec![
+        COMPUTE_EXPRESSIONS_RULE_NAME,
+        CONVERT_INDEX_TO_FIELD_RULE_NAME,
+        CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME,
+        GROUP_LOCAL_ASSIGNMENT,
+        INJECT_GLOBAL_VALUE_RULE_NAME,
+        REMOVE_COMMENTS_RULE_NAME,
+        REMOVE_EMPTY_DO_RULE_NAME,
+        REMOVE_FUNCTION_CALL_PARENS,
+        REMOVE_METHOD_DEFINITION_RULE_NAME,
+        REMOVE_SPACES_RULE_NAME,
+        REMOVE_UNUSED_IF_BRANCH_RULE_NAME,
+        REMOVE_UNUSED_WHILE_RULE_NAME,
+        RENAME_VARIABLES_RULE_NAME,
+    ]
+}
+
 impl FromStr for Box<dyn Rule> {
     type Err = String;
 
@@ -293,5 +311,23 @@ mod test {
                 some_rule_name.to_owned()
             ))
         );
+    }
+
+    #[test]
+    fn get_all_rule_names_are_deserializable() {
+        for name in get_all_rule_names() {
+            let rule: Result<Box<dyn Rule>, _> = name.parse();
+            assert!(rule.is_ok(), "unable to deserialize `{}`", name);
+        }
+    }
+
+    #[test]
+    fn get_all_rule_names_are_serializable() {
+        for name in get_all_rule_names() {
+            let rule: Box<dyn Rule> = name
+                .parse()
+                .unwrap_or_else(|_| panic!("unable to deserialize `{}`", name));
+            assert!(json5::to_string(&rule).is_ok());
+        }
     }
 }

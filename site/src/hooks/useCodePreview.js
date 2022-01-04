@@ -2,7 +2,7 @@ import * as React from "react"
 
 import * as json5 from "json5"
 import useMonacoEditor from "./useMonacoEditor"
-import { DarkluaContext } from "../components/editor-providers"
+import { DarkluaContext } from "../components/darklua-provider"
 import { RulesStackContext } from "../components/rules-stack"
 import { useLocation } from "../components/location-context"
 

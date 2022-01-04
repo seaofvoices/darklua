@@ -21,6 +21,7 @@ import MonacoContainer from "../components/monaco-container"
 import ThemeProvider from "../components/theme-provider"
 import LoadingEditorProviders from "../components/loading-editor-providers"
 import { LocationContext } from "../components/location-context"
+import DarkluaProvider from "../components/darklua-provider"
 
 const drawerWidth = 500
 
@@ -130,11 +131,13 @@ const TryIt = ({ location }) => {
   return (
     <LocationContext.Provider value={location}>
       <ThemeProvider>
-        <RulesStackProvider>
-          <EditorProviders>
-            <TryItLayout />
-          </EditorProviders>
-        </RulesStackProvider>
+        <DarkluaProvider>
+          <RulesStackProvider>
+            <EditorProviders>
+              <TryItLayout />
+            </EditorProviders>
+          </RulesStackProvider>
+        </DarkluaProvider>
       </ThemeProvider>
     </LocationContext.Provider>
   )

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* add function to get all valid rule names ([!46](https://gitlab.com/seaofvoices/darklua/-/merge_requests/46))
+
 ## 0.7.0
 
 * add `include_functions` property to `rename_variables` to prevent function name renaming and remove `group_local_assignment` and `convert_local_function_to_assign` from default rules ([!44](https://gitlab.com/seaofvoices/darklua/-/merge_requests/44))
