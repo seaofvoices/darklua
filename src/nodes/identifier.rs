@@ -105,7 +105,6 @@ mod test {
         );
     }
 
-
     #[test]
     fn is_valid_identifier_is_true() {
         assert!(Identifier::is_valid_identifier("hello"));

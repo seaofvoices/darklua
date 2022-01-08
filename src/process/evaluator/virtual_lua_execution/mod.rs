@@ -63,6 +63,14 @@ impl CallEvaluationResult {
         }
     }
 
+    fn unknown() -> Self {
+        Self {
+            output: LuaValue::Unknown.into(),
+            side_effects: true,
+            arguments_side_effects: Vec::new(),
+        }
+    }
+
     fn with_side_effects(mut self, has_side_effects: bool) -> Self {
         self.side_effects = has_side_effects;
         self
@@ -91,7 +99,7 @@ impl CallEvaluationResult {
     fn argument_has_side_effects(&self, argument_index: usize) -> bool {
         self.arguments_side_effects
             .get(argument_index)
-            .map(|value| *value)
+            .copied()
             .unwrap_or(true)
     }
 
@@ -210,11 +218,10 @@ impl VirtualLuaExecution {
             Statement::Call(call) => {
                 let call_result = self.evaluate_call(call);
                 if !call_result.call_has_side_effects()
-                    && call_result
+                    && !call_result
                         .value()
                         .iter()
-                        .find(|value| matches!(value, LuaValue::Unknown))
-                        .is_none()
+                        .any(|value| matches!(value, LuaValue::Unknown))
                 {
                     if call_result.arguments_have_side_effects() {
                         let keep_expressions = match call.get_arguments() {
@@ -274,22 +281,60 @@ impl VirtualLuaExecution {
             }
             Statement::Function(function) => {
                 let name = function.get_name();
-                // TODO: build function name into a field expression and apply the function value
+
+                let mut variable = {
+                    let field = name.iter_field_names().fold(None, |current, field| {
+                        if let Some(current) = current {
+                            Some(FieldExpression::new(
+                                Prefix::from(current),
+                                field.get_name(),
+                            ))
+                        } else {
+                            Some(FieldExpression::new(
+                                Prefix::from_name(name.get_name().get_name()),
+                                field.get_name(),
+                            ))
+                        }
+                    });
+
+                    if let Some(field) = field {
+                        if let Some(method) = name.get_method() {
+                            FieldExpression::new(Prefix::from(field), method.get_name()).into()
+                        } else {
+                            field.into()
+                        }
+                    } else if let Some(method) = name.get_method() {
+                        FieldExpression::new(
+                            Prefix::from_name(name.get_name().get_name()),
+                            method.get_name(),
+                        )
+                        .into()
+                    } else {
+                        Variable::new(name.get_name().get_name())
+                    }
+                };
 
                 let current_state = self.current;
-                let root_identifier = name.get_name().get_name();
-                if let Some(state) = self
-                    .find_ancestor_with_identifier(root_identifier)
-                    .and_then(|id| self.mut_state(id))
-                {
-                    state.assign_identifier(
-                        root_identifier,
-                        LuaFunction::from(&*function)
-                            .with_parent_state(current_state)
-                            .into(),
-                    );
-                    self.effects.add(root_identifier);
-                }
+                self.assign_variable(
+                    &mut variable,
+                    LuaFunction::from(&*function)
+                        .with_parent_state(current_state)
+                        .into(),
+                );
+
+                // let root_identifier = name.get_name().get_name();
+                // if let Some(state) = self
+                //     .find_ancestor_with_identifier(root_identifier)
+                //     .and_then(|id| self.mut_state(id))
+                // {
+                //     state.assign_identifier(
+                //         root_identifier,
+                //         LuaFunction::from(&*function)
+                //             .with_parent_state(current_state)
+                //             .into(),
+                //     );
+                //     self.effects.add(root_identifier);
+                // }
 
                 // TODO: do not run function yet and blur variables
                 // let parent_id = self.fork_state();
@@ -374,20 +419,6 @@ impl VirtualLuaExecution {
                         .into(),
                 );
 
-                // TODO: do not blur variables yet
-                // let parent_id = self.fork_state();
-                // let function_state_id = self.current_state().id();
-
-                // for parameter in function.iter_parameters() {
-                //     self.mut_state(function_state_id)
-                //         .expect("local function state should exist")
-                //         .insert_local(parameter.get_name(), LuaValue::Unknown);
-                // }
-
-                // self.process_conditional_block(function.mutate_block());
-
-                // self.current = parent_id;
-
                 EvaluationResult::None
             }
             Statement::NumericFor(for_statement) => {
@@ -462,7 +493,7 @@ impl VirtualLuaExecution {
                         EvaluationResult::None | EvaluationResult::Continue => {}
                     }
                     match self
-                        .evaluate_expression(repeat.mutate_condition())
+                        .process_expression_without_mutations(repeat.mutate_condition())
                         .is_truthy()
                     {
                         Some(false) => {}
@@ -483,8 +514,9 @@ impl VirtualLuaExecution {
                         self.process_conditional_block(while_statement.mutate_block());
                         break EvaluationResult::None;
                     }
+
                     match self
-                        .evaluate_expression(while_statement.mutate_condition())
+                        .process_expression_without_mutations(while_statement.mutate_condition())
                         .is_truthy()
                     {
                         Some(true) => {
@@ -543,6 +575,9 @@ impl VirtualLuaExecution {
                     self.side_effects.add();
                 }
             }
+        } else {
+            // TODO: write test for that thing
+            // self.side_effects.add();
         }
     }
 
@@ -563,13 +598,37 @@ impl VirtualLuaExecution {
     }
 
     fn assign_prefix(&mut self, prefix: &mut Prefix, key: LuaValue, value: LuaValue) {
-        match self.evaluate_prefix(prefix) {
+        match self.evaluate_prefix(prefix).coerce_to_single_value() {
             LuaValue::TableRef(table_id) => {
                 if let Some(table) = self.table_storage.mutate(table_id) {
                     table.insert(key, value);
                 }
             }
-            _ => {}
+            LuaValue::False
+            | LuaValue::Function(_)
+            | LuaValue::Nil
+            | LuaValue::Number(_)
+            | LuaValue::String(_)
+            | LuaValue::Table(_)
+            | LuaValue::True
+            | LuaValue::Tuple(_)
+            | LuaValue::Unknown => match value {
+                LuaValue::Function(function) => match function {
+                    FunctionValue::Lua(mut lua_function) => {
+                        self.process_conditional_block(lua_function.mutate_block());
+                    }
+                    FunctionValue::Engine(_) | FunctionValue::Unknown => {}
+                },
+                LuaValue::False
+                | LuaValue::Nil
+                | LuaValue::Number(_)
+                | LuaValue::String(_)
+                | LuaValue::Table(_)
+                | LuaValue::TableRef(_)
+                | LuaValue::True
+                | LuaValue::Tuple(_)
+                | LuaValue::Unknown => {}
+            },
         };
     }
 
@@ -770,11 +829,50 @@ impl VirtualLuaExecution {
     }
 
     fn evaluate_call(&mut self, call: &mut FunctionCall) -> CallEvaluationResult {
-        // TODO: if in conditional mode, there may be more processing to do
-        let prefix = self
+        self.side_effects.enable_within_state();
+        let mut prefix = self
             .evaluate_prefix(call.mutate_prefix())
             .coerce_to_single_value();
-        let (arguments, arguments_side_effects) = self.evaluate_arguments(call.mutate_arguments());
+        let prefix_had_side_effects = self.side_effects.disable_within_state();
+
+        let method = call
+            .get_method()
+            .map(Identifier::get_name)
+            .map(ToOwned::to_owned);
+        let (arguments, arguments_side_effects) = if let Some(method) = method {
+            let (arguments, mut arguments_side_effects) =
+                self.evaluate_arguments(call.mutate_arguments());
+
+            let mut arguments_with_self = TupleValue::singleton(prefix.clone());
+            arguments_with_self.push(arguments);
+            arguments_side_effects.insert(0, prefix_had_side_effects);
+
+            match prefix {
+                LuaValue::TableRef(table_id) => {
+                    if let Some(table) = self.table_storage.get(table_id) {
+                        prefix = table.get(&LuaValue::from(method)).clone();
+                    } else {
+                        self.side_effects.add();
+                        self.pass_argument_to_unknown_function(arguments_with_self);
+                        return CallEvaluationResult::unknown()
+                            .with_argument_side_effects(arguments_side_effects);
+                    }
+                }
+                LuaValue::False
+                | LuaValue::Function(_)
+                | LuaValue::Nil
+                | LuaValue::Number(_)
+                | LuaValue::String(_)
+                | LuaValue::Table(_)
+                | LuaValue::True
+                | LuaValue::Tuple(_)
+                | LuaValue::Unknown => {}
+            }
+            (arguments_with_self, arguments_side_effects)
+        } else {
+            self.evaluate_arguments(call.mutate_arguments())
+        };
+
         match prefix {
             LuaValue::Function(function) => {
                 match function {
@@ -810,8 +908,7 @@ impl VirtualLuaExecution {
             | LuaValue::Tuple(_) => {
                 self.side_effects.add();
                 self.pass_argument_to_unknown_function(arguments);
-                CallEvaluationResult::new(LuaValue::Unknown)
-                    .with_side_effects(true)
+                CallEvaluationResult::unknown()
                     .with_argument_side_effects(arguments_side_effects)
             }
         }
@@ -826,7 +923,7 @@ impl VirtualLuaExecution {
         let function_state_id = self.current_state().id();
         let mut arguments_iter = arguments.into_iter();
         for parameter in lua_function.iter_parameters() {
-            let parameter_value = arguments_iter.next().unwrap_or_else(|| LuaValue::Nil);
+            let parameter_value = arguments_iter.next().unwrap_or(LuaValue::Nil);
 
             self.mut_state(function_state_id)
                 .expect("function state should exist")
@@ -933,13 +1030,21 @@ impl VirtualLuaExecution {
                 }
             }
             BinaryOperator::Equal => {
-                let left = self.evaluate_expression(binary.mutate_left());
-                let right = self.evaluate_expression(binary.mutate_right());
+                let left = self
+                    .evaluate_expression(binary.mutate_left())
+                    .coerce_to_single_value();
+                let right = self
+                    .evaluate_expression(binary.mutate_right())
+                    .coerce_to_single_value();
                 self.evaluate_equal(&left, &right).into()
             }
             BinaryOperator::NotEqual => {
-                let left = self.evaluate_expression(binary.mutate_left());
-                let right = self.evaluate_expression(binary.mutate_right());
+                let left = self
+                    .evaluate_expression(binary.mutate_left())
+                    .coerce_to_single_value();
+                let right = self
+                    .evaluate_expression(binary.mutate_right())
+                    .coerce_to_single_value();
                 let result = self.evaluate_equal(&left, &right);
 
                 match result {
@@ -958,8 +1063,12 @@ impl VirtualLuaExecution {
                 .evaluate_math(binary, |a, b| a - b * (a / b).floor())
                 .into(),
             BinaryOperator::Concat => {
-                let left = self.evaluate_expression(binary.mutate_left());
-                let right = self.evaluate_expression(binary.mutate_right());
+                let left = self
+                    .evaluate_expression(binary.mutate_left())
+                    .coerce_to_single_value();
+                let right = self
+                    .evaluate_expression(binary.mutate_right())
+                    .coerce_to_single_value();
 
                 self.evaluate_concat(left, right).into()
             }
@@ -1047,8 +1156,12 @@ impl VirtualLuaExecution {
     where
         F: Fn(f64, f64) -> bool,
     {
-        let left = self.evaluate_expression(expression.mutate_left());
-        let right = self.evaluate_expression(expression.mutate_right());
+        let left = self
+            .evaluate_expression(expression.mutate_left())
+            .coerce_to_single_value();
+        let right = self
+            .evaluate_expression(expression.mutate_right())
+            .coerce_to_single_value();
 
         match (left, right) {
             (LuaValue::Number(left), LuaValue::Number(right)) => {
@@ -1078,7 +1191,9 @@ impl VirtualLuaExecution {
     }
 
     fn evaluate_unary(&mut self, unary: &mut UnaryExpression) -> LuaValue {
-        let inner = self.evaluate_expression(unary.mutate_expression());
+        let inner = self
+            .evaluate_expression(unary.mutate_expression())
+            .coerce_to_single_value();
         match unary.operator() {
             UnaryOperator::Not => inner
                 .is_truthy()
@@ -1099,11 +1214,14 @@ impl VirtualLuaExecution {
             |mut table_value, (i, entry)| match entry {
                 TableEntry::Field(field) => table_value.with_entry(
                     LuaValue::from(field.get_field().get_name().as_str()),
-                    self.evaluate_expression(field.mutate_value()),
+                    self.evaluate_expression(field.mutate_value())
+                        .coerce_to_single_value(),
                 ),
                 TableEntry::Index(index) => table_value.with_entry(
-                    self.evaluate_expression(index.mutate_key()),
-                    self.evaluate_expression(index.mutate_value()),
+                    self.evaluate_expression(index.mutate_key())
+                        .coerce_to_single_value(),
+                    self.evaluate_expression(index.mutate_value())
+                        .coerce_to_single_value(),
                 ),
                 TableEntry::Value(value) => {
                     if last_index == i && matches!(value, Expression::VariableArguments(_)) {
@@ -1117,7 +1235,9 @@ impl VirtualLuaExecution {
                             lua_value => table_value.with_array_element(lua_value),
                         }
                     } else {
-                        table_value.with_array_element(self.evaluate_expression(value))
+                        table_value.with_array_element(
+                            self.evaluate_expression(value).coerce_to_single_value(),
+                        )
                     }
                 }
             },
@@ -1314,5 +1434,10 @@ mod test {
             "local n = 0 for i = 1, 10 do n = n + i if i == 3 then return 'ok' end end return n"
         ) => ["ok"],
         define_table_and_return_field("local a = { b = 'ok' } return a.b") => ["ok"],
+        call_local_function("local function getValue() return 'ok' end return getValue()") => ["ok"],
+        call_anonymous_function("local getValue = function() return 'ok' end return getValue()") => ["ok"],
+        call_local_function_use_parameter("local function double(a) return 2 * a end return double(4)") => [8.0],
+        call_function_in_table("local obj = {} function obj.double(a) return 2 * a end return obj.double(1)") => [2.0],
+        call_method_function("local obj = {} function obj:method(a) return a end return obj:method(true)") => [true],
     );
 }

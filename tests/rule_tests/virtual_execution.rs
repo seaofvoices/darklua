@@ -69,6 +69,13 @@ test_rule!(
     optimize_within_function_scope(
         "local function getConstant() return 4 * 100 end"
     ) => "local function getConstant() return 400 end",
+    // loops
+    // while_condition_inlines_constant(
+    //     "local i = 1 local last = 9 while i < last do print(i) i = i + 1 end"
+    // ) => "local i = 1 local last = 9 while i < 9 do print(i) i = i + 1 end",
+    // repeat_condition_inlines_constant(
+    //     "local i = 1 local last = 9 repeat print(i) i = i + 1 until i == last"
+    // ) => "local i = 1 local last = 9 repeat print(i) i = i + 1 until i == 9"
 );
 
 test_rule!(
@@ -80,7 +87,6 @@ test_rule!(
         "local function assign(value) end assign(value and call() or '')"
     ) => "local function assign(value) end local _ = value and call() or ''",
 );
-
 
 test_rule!(
     virtual_execution_with_roblox_bit32,
@@ -146,7 +152,43 @@ test_rule_without_effects!(
     function_passed_to_function_that_mutates_state(
         "local var = true local function mutateVar() var = not var end callback(mutateVar) return var"
     ),
-    keeps_call_with_side_effect("local function call() trigger() return true end return call()")
+    keeps_call_with_side_effect("local function call() trigger() return true end return call()"),
+    while_with_mutated_variable_in_condition(
+        "local i = 1 while i < limit() do print(i) i = i + 1 end"
+    ),
+    repeat_with_mutated_variable_in_condition(
+        "local i = 1 repeat print(i) i = i + 1 until i == limit()"
+    ),
+    roact_rodux_consumed_store_does_not_computes_to_nil("
+        local consumedStore = nil
+
+		local StoreConsumer = Roact.Component:extend('StoreConsumer')
+
+		function StoreConsumer:init()
+			consumedStore = getStore(self)
+		end
+
+		local tree = Roact.createElement(StoreProvider, {
+			store = store,
+		}, {
+			Consumer = Roact.createElement(StoreConsumer),
+		})
+
+		expect(consumedStore).to.equal(store)
+        "
+    ),
+);
+
+test_rule_without_effects!(
+    json5::from_str::<Box<dyn Rule>>("{ rule: 'virtual_execution', includes: ['type'] }").unwrap(),
+    optimize_within_function_scope_parameter_is_unknown(
+        "
+        local Symbol = {}
+        function Symbol.named(name)
+            assert(type(name) == 'string', 'Symbols must be created using a string name!')
+        end
+        "
+    ),
 );
 
 #[test]

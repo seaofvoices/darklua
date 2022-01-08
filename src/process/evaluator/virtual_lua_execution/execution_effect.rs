@@ -102,8 +102,8 @@ impl ArgumentEffect {
     }
 
     pub fn drain(&mut self) -> (Vec<TableId>, Vec<FunctionValue>) {
-        let table_ids = mem::replace(&mut self.table_ids, Vec::new());
-        let functions = mem::replace(&mut self.functions, Vec::new());
+        let table_ids = mem::take(&mut self.table_ids);
+        let functions = mem::take(&mut self.functions);
         (table_ids, functions)
     }
 

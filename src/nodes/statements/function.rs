@@ -94,6 +94,11 @@ impl FunctionName {
     }
 
     #[inline]
+    pub fn has_method(&self) -> bool {
+        self.method.is_some()
+    }
+
+    #[inline]
     pub fn get_name(&self) -> &Identifier {
         &self.name
     }
@@ -106,6 +111,16 @@ impl FunctionName {
     #[inline]
     pub fn get_field_names(&self) -> &Vec<Identifier> {
         &self.field_names
+    }
+
+    #[inline]
+    pub fn iter_field_names(&self) -> impl Iterator<Item = &Identifier> {
+        self.field_names.iter()
+    }
+
+    #[inline]
+    pub fn has_field_names(&self) -> bool {
+        !self.field_names.is_empty()
     }
 
     #[inline]

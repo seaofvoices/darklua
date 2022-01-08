@@ -1,4 +1,4 @@
-use std::mem;
+use std::{cmp::Ordering, mem};
 
 use crate::process::TableId;
 
@@ -70,12 +70,16 @@ impl TableValue {
         }
 
         if let Some(index) = self.get_array_index(&new_key) {
-            if index < self.array.len() {
-                self.array[index] = new_value.into();
-                return;
-            } else if index == self.array.len() {
-                self.array.push(new_value.into());
-                return;
+            match index.cmp(&self.array.len()) {
+                Ordering::Less => {
+                    self.array[index] = new_value.into();
+                    return;
+                }
+                Ordering::Equal => {
+                    self.array.push(new_value.into());
+                    return;
+                }
+                Ordering::Greater => {}
             }
         }
 

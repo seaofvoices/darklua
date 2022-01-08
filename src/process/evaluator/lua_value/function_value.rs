@@ -87,13 +87,20 @@ impl From<&FunctionExpression> for LuaFunction {
 
 impl From<&FunctionStatement> for LuaFunction {
     fn from(function: &FunctionStatement) -> Self {
-        Self::new(
-            function.get_block().clone(),
+        let mut parameters = if function.get_name().has_method() {
+            vec!["self".to_owned()]
+        } else {
+            Vec::new()
+        };
+        parameters.extend(
             function
                 .iter_parameters()
                 .map(Identifier::get_name)
-                .map(ToOwned::to_owned)
-                .collect(),
+                .map(ToOwned::to_owned),
+        );
+        Self::new(
+            function.get_block().clone(),
+            parameters,
             function.is_variadic(),
         )
     }

@@ -23,7 +23,23 @@ impl TupleValue {
     }
 
     pub fn push<IntoLuaValue: Into<LuaValue>>(&mut self, value: IntoLuaValue) {
-        self.values.push(value.into());
+        let value = value.into();
+        match value {
+            LuaValue::Tuple(tuple) => {
+                self.values.extend(tuple);
+            }
+            LuaValue::False
+            | LuaValue::Function(_)
+            | LuaValue::Nil
+            | LuaValue::Number(_)
+            | LuaValue::String(_)
+            | LuaValue::Table(_)
+            | LuaValue::TableRef(_)
+            | LuaValue::True
+            | LuaValue::Unknown => {
+                self.values.push(value);
+            }
+        }
     }
 
     #[inline]
