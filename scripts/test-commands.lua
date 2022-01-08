@@ -285,13 +285,18 @@ for _, project in ipairs(projects) do
         project.RepositoryName:len()
     )
 
+    local hasFailure = false
+
     for _, test in ipairs(testSuite) do
         local success, message, cleanCallback = test:execute(project)
         allSuccess = allSuccess and success
 
-        if not success and failFast then
-            print(message)
-            os.exit(1)
+        if not success then
+            hasFailure = true
+            if failFast then
+                print(message)
+                os.exit(1)
+            end
         end
 
         if cleanCallback then
@@ -301,7 +306,9 @@ for _, project in ipairs(projects) do
         results[test.Name][project.RepositoryName] = success
     end
 
-    project:clean()
+    if not hasFailure then
+        project:clean()
+    end
 end
 
 print('')
