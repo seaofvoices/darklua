@@ -38,15 +38,26 @@ impl State {
         }
     }
 
-    pub fn read(&self, identifier: &str, root_state: &VirtualLuaExecution) -> Option<LuaValue> {
-        self.locals
-            .get(identifier)
-            .map(LocalVariable::get_value)
-            .or_else(|| {
-                self.parent
-                    .and_then(|parent_id| root_state.get_state(parent_id))
-                    .and_then(|state| state.read(identifier, root_state))
-            })
+    pub fn read(&self, identifier: &str, executor: &VirtualLuaExecution) -> Option<LuaValue> {
+        let mut current_state = self;
+
+        loop {
+            if let Some(value) = current_state
+                .locals
+                .get(identifier)
+                .map(LocalVariable::get_value)
+            {
+                break Some(value);
+            } else if let Some(parent_id) = current_state.parent {
+                if let Some(parent_state) = executor.get_state(parent_id) {
+                    current_state = parent_state;
+                } else {
+                    break None;
+                }
+            } else {
+                break None;
+            }
+        }
     }
 
     pub fn has_identifier(&self, identifier: &str) -> bool {
