@@ -45,7 +45,7 @@ impl FileProcessing {
 fn walk_dir(path: &Path, output: &Path, files: &mut Vec<FileProcessing>, global: &GlobalOptions) {
     let entries = fs::read_dir(path).expect("error while reading directory");
 
-    for entry in entries.into_iter() {
+    for entry in entries {
         let entry = entry.unwrap_or_else(|io_error| {
             panic!(
                 "error with entry (under {}): {}",

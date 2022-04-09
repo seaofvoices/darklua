@@ -65,6 +65,7 @@ pub trait LuaGenerator {
 
     fn write_identifier(&mut self, identifier: &nodes::Identifier);
     fn write_binary_expression(&mut self, binary: &nodes::BinaryExpression);
+    fn write_if_expression(&mut self, if_expression: &nodes::IfExpression);
     fn write_unary_expression(&mut self, unary: &nodes::UnaryExpression);
     fn write_function(&mut self, function: &nodes::FunctionExpression);
     fn write_function_call(&mut self, call: &nodes::FunctionCall);
@@ -232,7 +233,7 @@ mod test {
                         _ => panic!("return statement expected"),
                     };
 
-                    assert_eq!(parsed, expected);
+                    pretty_assertions::assert_eq!(parsed, expected);
                 }
             )*
         };
@@ -373,6 +374,49 @@ mod $mod_name {
                     ),
                 )
             ) => "3 .. 9 + 3",
+            if_does_not_wrap_else(
+                IfExpression::new(
+                    Expression::identifier("condition"),
+                    10.0,
+                    BinaryExpression::new(
+                        BinaryOperator::Percent,
+                        9.0,
+                        2.0,
+                    ),
+                )
+
+            ) => "if condition then 10 else 9 % 2",
+            binary_expression_wraps_if(
+                BinaryExpression::new(
+                    BinaryOperator::Percent,
+                    IfExpression::new(Expression::identifier("condition"), 10.0, 9.0),
+                    2.0,
+                )
+            ) => "(if condition then 10 else 9) % 2",
+            unary_does_not_wrap_if_with_binary_in_else_result(
+                UnaryExpression::new(
+                    UnaryOperator::Not,
+                    IfExpression::new(
+                        Expression::identifier("condition"),
+                        true,
+                        BinaryExpression::new(
+                            BinaryOperator::And,
+                            false,
+                            StringExpression::from_value("ok"),
+                        )
+                    ),
+                )
+            ) => "not if condition then true else false and 'ok'",
+            binary_wraps_unary_containing_an_if_expression(
+                BinaryExpression::new(
+                    BinaryOperator::And,
+                    UnaryExpression::new(
+                        UnaryOperator::Not,
+                        IfExpression::new(Expression::identifier("condition"), true, false),
+                    ),
+                    StringExpression::from_value("ok"),
+                )
+            ) => "(not if condition then true else false) and 'ok'",
         ));
     }
 

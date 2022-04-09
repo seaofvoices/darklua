@@ -57,6 +57,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Expression::Field(field) => Self::visit_field_expression(field, processor),
             Expression::Function(function) => Self::visit_function_expression(function, processor),
             Expression::Identifier(identifier) => processor.process_variable_expression(identifier),
+            Expression::If(if_expression) => Self::visit_if_expression(if_expression, processor),
             Expression::Index(index) => Self::visit_index_expression(index, processor),
             Expression::Number(number) => processor.process_number_expression(number),
             Expression::Parenthese(expression) => {
@@ -183,6 +184,20 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Variable::Field(field) => Self::visit_field_expression(field, processor),
             Variable::Index(index) => Self::visit_index_expression(index, processor),
         }
+    }
+
+    fn visit_if_expression(if_expression: &mut IfExpression, processor: &mut T) {
+        processor.process_if_expression(if_expression);
+
+        Self::visit_expression(if_expression.mutate_condition(), processor);
+        Self::visit_expression(if_expression.mutate_result(), processor);
+
+        for branch in if_expression.iter_mut_branches() {
+            Self::visit_expression(branch.mutate_condition(), processor);
+            Self::visit_expression(branch.mutate_result(), processor);
+        }
+
+        Self::visit_expression(if_expression.mutate_else_result(), processor);
     }
 
     fn visit_field_expression(field: &mut FieldExpression, processor: &mut T) {

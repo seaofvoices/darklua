@@ -89,6 +89,7 @@ impl NodeProcessor for RemoveCommentProcessor {
             | Expression::Field(_)
             | Expression::Function(_)
             | Expression::Identifier(_)
+            | Expression::If(_)
             | Expression::Index(_)
             | Expression::Number(_)
             | Expression::Parenthese(_)
@@ -108,6 +109,10 @@ impl NodeProcessor for RemoveCommentProcessor {
 
     fn process_function_expression(&mut self, function: &mut FunctionExpression) {
         function.clear_comments();
+    }
+
+    fn process_if_expression(&mut self, if_expression: &mut IfExpression) {
+        if_expression.clear_comments();
     }
 
     fn process_variable_expression(&mut self, identifier: &mut Identifier) {

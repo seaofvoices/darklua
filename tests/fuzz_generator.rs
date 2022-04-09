@@ -236,12 +236,14 @@ fn fuzz_small_block<T: LuaGenerator + Clone>(generator: T) {
     });
 }
 
+#[cfg(not(debug_assertions))]
 fn fuzz_medium_block<T: LuaGenerator + Clone>(generator: T) {
     run_for_minimum_time(|| {
         fuzz_test_block!(FuzzContext::new(100, 200), generator.clone());
     });
 }
 
+#[cfg(not(debug_assertions))]
 fn fuzz_large_block<T: LuaGenerator + Clone>(generator: T) {
     run_for_minimum_time(|| {
         fuzz_test_block!(FuzzContext::new(200, 500), generator.clone());
@@ -286,11 +288,13 @@ macro_rules! generate_fuzz_tests {
                     super::fuzz_small_block(generator());
                 }
 
+                #[cfg(not(debug_assertions))]
                 #[test]
                 fn fuzz_medium_block() {
                     super::fuzz_medium_block(generator());
                 }
 
+                #[cfg(not(debug_assertions))]
                 #[test]
                 fn fuzz_large_block() {
                     super::fuzz_large_block(generator());

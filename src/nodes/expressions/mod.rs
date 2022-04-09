@@ -1,6 +1,7 @@
 mod binary;
 mod field;
 mod function;
+mod if_expression;
 mod index;
 mod number;
 mod parenthese;
@@ -12,6 +13,7 @@ mod unary;
 pub use binary::*;
 pub use field::*;
 pub use function::*;
+pub use if_expression::*;
 pub use index::*;
 pub use number::*;
 pub use parenthese::*;
@@ -32,6 +34,7 @@ pub enum Expression {
     Field(Box<FieldExpression>),
     Function(FunctionExpression),
     Identifier(Identifier),
+    If(Box<IfExpression>),
     Index(Box<IndexExpression>),
     Nil(Option<Token>),
     Number(NumberExpression),
@@ -146,6 +149,12 @@ impl From<FunctionExpression> for Expression {
 impl From<Identifier> for Expression {
     fn from(identifier: Identifier) -> Self {
         Expression::Identifier(identifier)
+    }
+}
+
+impl From<IfExpression> for Expression {
+    fn from(if_expression: IfExpression) -> Expression {
+        Expression::If(Box::new(if_expression))
     }
 }
 

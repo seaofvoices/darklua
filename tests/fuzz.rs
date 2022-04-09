@@ -402,7 +402,7 @@ impl Fuzz<Expression> for Expression {
         context.take_expression();
 
         if context.can_have_expression(2) {
-            match thread_rng().gen_range(0, 15) {
+            match thread_rng().gen_range(0, 16) {
                 0 => true.into(),
                 1 => false.into(),
                 2 => Expression::nil(),
@@ -417,6 +417,7 @@ impl Fuzz<Expression> for Expression {
                 11 => NumberExpression::fuzz(context).into(),
                 12 => StringExpression::fuzz(context).into(),
                 13 => TableExpression::fuzz(&mut context.share_budget()).into(),
+                14 => IfExpression::fuzz(context).into(),
                 _ => UnaryExpression::fuzz(context).into(),
             }
         } else {
@@ -529,6 +530,27 @@ impl Fuzz<FunctionExpression> for FunctionExpression {
 impl Fuzz<IndexExpression> for IndexExpression {
     fn fuzz(context: &mut FuzzContext) -> Self {
         Self::new(Prefix::fuzz(context), Expression::fuzz(context))
+    }
+}
+
+impl Fuzz<IfExpression> for IfExpression {
+    fn fuzz(context: &mut FuzzContext) -> Self {
+        let mut if_expression = Self::new(
+            Expression::fuzz(context),
+            Expression::fuzz(context),
+            Expression::fuzz(context),
+        );
+        let mut generate_branch = if_branch_count();
+
+        while generate_branch > 0 && context.can_have_expression(2) {
+            if_expression.push_branch(ElseIfExpressionBranch::new(
+                Expression::fuzz(context),
+                Expression::fuzz(context),
+            ));
+            generate_branch -= 1;
+        }
+
+        if_expression
     }
 }
 

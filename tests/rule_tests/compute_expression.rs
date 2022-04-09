@@ -18,7 +18,21 @@ test_rule!(
     division_test("return 3 * 0.3333333333333333") => "return 1",
     multiply_small_number("return 2 * 1e-50") => "return 2E-50",
     unary_minus_number("return -1") => "return -1",
+    if_expression_always_true("return if true then 'is true' else 'is false'") => "return 'is true'",
+    if_expression_always_true_with_dead_branch_has_side_effects("return if true then 'is true' else call()")
+        => "return 'is true'",
+    if_expression_always_false("return if false then 'is true' else 'is false'") => "return 'is false'",
+    if_expression_always_false_with_dead_branch_has_side_effects("return if false then call() else 'is false'")
+        => "return 'is false'",
+    if_expression_elseif_always_true("return if false then 'is true' elseif 1 == 1 then 'is equal' else nil")
+        => "return 'is equal'",
+    if_expression_elseif_always_false("return if false then 'is true' elseif 1 == 2 then 'is equal' else nil")
+        => "return nil",
 );
+
+test_rule_wihout_effects!(if_expression_unknown_condition(
+    "return if condition then func() else func2()"
+),);
 
 #[test]
 fn deserialize_from_object_notation() {

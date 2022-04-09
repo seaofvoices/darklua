@@ -769,6 +769,39 @@ impl Parser {
                         })
                     }
                 },
+                ast::Value::IfExpression(if_expression) => {
+                    let mut expression = IfExpression::new(
+                        self.convert_expression(if_expression.condition())?,
+                        self.convert_expression(if_expression.if_expression())?,
+                        self.convert_expression(if_expression.else_expression())?,
+                    );
+
+                    if let Some(elseif_expressions) = if_expression.else_if_expressions() {
+                        for elseif in elseif_expressions {
+                            let mut branch = ElseIfExpressionBranch::new(
+                                self.convert_expression(elseif.condition())?,
+                                self.convert_expression(elseif.expression())?,
+                            );
+                            if self.hold_token_data {
+                                branch.set_tokens(ElseIfExpressionBranchTokens {
+                                    elseif: self.convert_token(elseif.else_if_token()),
+                                    then: self.convert_token(elseif.then_token()),
+                                });
+                            }
+                            expression.push_branch(branch);
+                        }
+                    }
+
+                    if self.hold_token_data {
+                        expression.set_tokens(IfExpressionTokens {
+                            r#if: self.convert_token(if_expression.if_token()),
+                            then: self.convert_token(if_expression.then_token()),
+                            r#else: self.convert_token(if_expression.else_token()),
+                        });
+                    }
+
+                    expression.into()
+                }
                 _ => {
                     return Err(ConvertError::Expression {
                         expression: expression.to_string(),

@@ -251,6 +251,42 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         self.write_token(&tokens.closing_bracket);
     }
 
+    fn write_if_expression_with_token(
+        &mut self,
+        if_expression: &IfExpression,
+        tokens: &IfExpressionTokens,
+    ) {
+        self.write_token(&tokens.r#if);
+        self.write_expression(if_expression.get_condition());
+        self.write_token(&tokens.then);
+        self.write_expression(if_expression.get_result());
+
+        for branch in if_expression.iter_branches() {
+            if let Some(tokens) = branch.get_tokens() {
+                self.write_if_expression_branch_with_tokens(branch, tokens);
+            } else {
+                self.write_if_expression_branch_with_tokens(
+                    branch,
+                    &self.generate_if_expression_branch_tokens(branch),
+                );
+            }
+        }
+
+        self.write_token(&tokens.r#else);
+        self.write_expression(if_expression.get_else_result());
+    }
+
+    fn write_if_expression_branch_with_tokens(
+        &mut self,
+        branch: &ElseIfExpressionBranch,
+        tokens: &ElseIfExpressionBranchTokens,
+    ) {
+        self.write_token(&tokens.elseif);
+        self.write_expression(branch.get_condition());
+        self.write_token(&tokens.then);
+        self.write_expression(branch.get_result());
+    }
+
     fn write_compound_assign_with_tokens(
         &mut self,
         assign: &CompoundAssignStatement,
@@ -795,6 +831,24 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         }
     }
 
+    fn generate_if_tokens(&self, _if_expression: &IfExpression) -> IfExpressionTokens {
+        IfExpressionTokens {
+            r#if: Token::from_content("if"),
+            then: Token::from_content("then"),
+            r#else: Token::from_content("else"),
+        }
+    }
+
+    fn generate_if_expression_branch_tokens(
+        &self,
+        _branch: &ElseIfExpressionBranch,
+    ) -> ElseIfExpressionBranchTokens {
+        ElseIfExpressionBranchTokens {
+            elseif: Token::from_content("elseif"),
+            then: Token::from_content("then"),
+        }
+    }
+
     fn generate_table_tokens(&self, table: &TableExpression) -> TableTokens {
         TableTokens {
             opening_brace: Token::from_content("{"),
@@ -1065,6 +1119,7 @@ impl<'a> LuaGenerator for TokenBasedLuaGenerator<'a> {
             Field(field) => self.write_field(field),
             Function(function) => self.write_function(function),
             Identifier(identifier) => self.write_identifier(identifier),
+            If(if_expression) => self.write_if_expression(if_expression),
             Index(index) => self.write_index(index),
             Nil(token) => {
                 if let Some(token) = token {
@@ -1170,6 +1225,17 @@ impl<'a> LuaGenerator for TokenBasedLuaGenerator<'a> {
             self.write_index_with_tokens(index, tokens);
         } else {
             self.write_index_with_tokens(index, &self.generate_index_tokens(index));
+        }
+    }
+
+    fn write_if_expression(&mut self, if_expression: &IfExpression) {
+        if let Some(token) = if_expression.get_tokens() {
+            self.write_if_expression_with_token(if_expression, token);
+        } else {
+            self.write_if_expression_with_token(
+                if_expression,
+                &self.generate_if_tokens(if_expression),
+            );
         }
     }
 

@@ -19,6 +19,32 @@ pub enum BinaryOperator {
     Concat,
 }
 
+#[inline]
+fn ends_with_if_expression(expression: &Expression) -> bool {
+    let mut current = expression;
+
+    loop {
+        match current {
+            Expression::If(_) => break true,
+            Expression::Binary(binary) => current = binary.right(),
+            Expression::Unary(unary) => current = unary.get_expression(),
+            Expression::Call(_)
+            | Expression::False(_)
+            | Expression::Field(_)
+            | Expression::Function(_)
+            | Expression::Identifier(_)
+            | Expression::Index(_)
+            | Expression::Nil(_)
+            | Expression::Number(_)
+            | Expression::Parenthese(_)
+            | Expression::String(_)
+            | Expression::Table(_)
+            | Expression::True(_)
+            | Expression::VariableArguments(_) => break false,
+        }
+    }
+}
+
 impl BinaryOperator {
     #[inline]
     pub fn precedes(&self, other: Self) -> bool {
@@ -41,7 +67,7 @@ impl BinaryOperator {
     }
 
     pub fn left_needs_parentheses(&self, left: &Expression) -> bool {
-        match left {
+        let needs_parentheses = match left {
             Expression::Binary(left) => {
                 if self.is_left_associative() {
                     self.precedes(left.operator())
@@ -50,8 +76,10 @@ impl BinaryOperator {
                 }
             }
             Expression::Unary(_) => self.precedes_unary_expression(),
+            Expression::If(_) => true,
             _ => false,
-        }
+        };
+        needs_parentheses || ends_with_if_expression(left)
     }
 
     pub fn right_needs_parentheses(&self, right: &Expression) -> bool {

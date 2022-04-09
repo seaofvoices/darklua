@@ -30,6 +30,7 @@ pub trait NodeProcessor {
     fn process_function_expression(&mut self, _: &mut FunctionExpression) {}
     fn process_variable_expression(&mut self, _: &mut Identifier) {}
     fn process_index_expression(&mut self, _: &mut IndexExpression) {}
+    fn process_if_expression(&mut self, _: &mut IfExpression) {}
     fn process_number_expression(&mut self, _: &mut NumberExpression) {}
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}
     fn process_parenthese_expression(&mut self, _: &mut ParentheseExpression) {}

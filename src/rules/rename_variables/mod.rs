@@ -51,10 +51,10 @@ impl RenameVariables {
             match value.as_str() {
                 "$default" => self
                     .globals
-                    .extend(globals::DEFAULT.to_vec().into_iter().map(String::from)),
+                    .extend(globals::DEFAULT.iter().map(ToString::to_string)),
                 "$roblox" => self
                     .globals
-                    .extend(globals::ROBLOX.to_vec().into_iter().map(String::from)),
+                    .extend(globals::ROBLOX.iter().map(ToString::to_string)),
                 identifier if !is_valid_identifier(identifier) => {
                     return Err(RuleConfigurationError::StringExpected("".to_owned()))
                 }
@@ -195,7 +195,7 @@ mod test {
     #[test]
     fn serialize_roblox_globals_rule() {
         let rule = Box::new(RenameVariables::new(
-            globals::ROBLOX.to_vec().into_iter().map(String::from),
+            globals::ROBLOX.iter().map(ToString::to_string),
         ));
 
         assert_json_snapshot!("roblox_globals_rename_variables", rule as Box<dyn Rule>);
@@ -204,7 +204,7 @@ mod test {
     #[test]
     fn serialize_with_function_names() {
         let rule = Box::new(
-            RenameVariables::new(globals::DEFAULT.to_vec().into_iter().map(String::from))
+            RenameVariables::new(globals::DEFAULT.iter().map(ToString::to_string))
                 .with_function_names(),
         );
 
@@ -217,7 +217,7 @@ mod test {
     #[test]
     fn serialize_skip_functions() {
         let rule = Box::new(RenameVariables::new(
-            globals::ROBLOX.to_vec().into_iter().map(String::from),
+            globals::ROBLOX.iter().map(ToString::to_string),
         ));
 
         assert_json_snapshot!("roblox_globals_rename_variables", rule as Box<dyn Rule>);

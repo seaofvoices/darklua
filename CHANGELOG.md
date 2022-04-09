@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* add support for if expressions ([!51](https://gitlab.com/seaofvoices/darklua/-/merge_requests/51))
 * add function to get all valid rule names ([!46](https://gitlab.com/seaofvoices/darklua/-/merge_requests/46))
 
 ## 0.7.0

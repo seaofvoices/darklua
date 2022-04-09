@@ -36,6 +36,7 @@ impl Evaluator {
                 // of the tuple here (or coerce the tuple to `nil` if it is empty)
                 self.evaluate(parenthese.inner_expression())
             }
+            Expression::If(if_expression) => self.evaluate_if(if_expression),
             Expression::Call(_)
             | Expression::Field(_)
             | Expression::Identifier(_)
@@ -54,6 +55,7 @@ impl Evaluator {
             | Expression::String(_)
             | Expression::True(_)
             | Expression::VariableArguments(_) => false,
+            Expression::If(if_expression) => self.if_expression_has_side_effects(if_expression),
             Expression::Binary(binary) => {
                 let left = binary.left();
                 let right = binary.right();
@@ -108,6 +110,52 @@ impl Evaluator {
                 .iter()
                 .any(|entry| self.table_entry_has_side_effects(entry)),
             Expression::Call(call) => self.call_has_side_effects(call),
+        }
+    }
+
+    fn if_expression_has_side_effects(&self, if_expression: &IfExpression) -> bool {
+        if self.has_side_effects(if_expression.get_condition()) {
+            return true;
+        }
+
+        let condition = self.evaluate(if_expression.get_condition());
+
+        if let Some(truthy) = condition.is_truthy() {
+            if truthy {
+                self.has_side_effects(if_expression.get_result())
+            } else {
+                for branch in if_expression.iter_branches() {
+                    if self.has_side_effects(branch.get_condition()) {
+                        return true;
+                    }
+
+                    let branch_condition = self.evaluate(branch.get_condition());
+
+                    if let Some(truthy) = branch_condition.is_truthy() {
+                        if truthy {
+                            return self.has_side_effects(branch.get_result());
+                        }
+                    } else if self.has_side_effects(branch.get_result()) {
+                        return true;
+                    }
+                }
+
+                self.has_side_effects(if_expression.get_else_result())
+            }
+        } else {
+            if self.has_side_effects(if_expression.get_result()) {
+                return true;
+            }
+
+            for branch in if_expression.iter_branches() {
+                if self.has_side_effects(branch.get_condition())
+                    || self.has_side_effects(branch.get_result())
+                {
+                    return true;
+                }
+            }
+
+            self.has_side_effects(if_expression.get_else_result())
         }
     }
 
@@ -312,6 +360,31 @@ impl Evaluator {
             _ => LuaValue::Unknown,
         }
     }
+
+    fn evaluate_if(&self, expression: &IfExpression) -> LuaValue {
+        let condition = self.evaluate(expression.get_condition());
+
+        if let Some(truthy) = condition.is_truthy() {
+            if truthy {
+                self.evaluate(expression.get_result())
+            } else {
+                for branch in expression.iter_branches() {
+                    let branch_condition = self.evaluate(branch.get_condition());
+                    if let Some(truthy) = branch_condition.is_truthy() {
+                        if truthy {
+                            return self.evaluate(branch.get_result());
+                        }
+                    } else {
+                        return LuaValue::Unknown;
+                    }
+                }
+
+                self.evaluate(expression.get_else_result())
+            }
+        } else {
+            LuaValue::Unknown
+        }
+    }
 }
 
 #[cfg(test)]
@@ -319,7 +392,7 @@ mod test {
     use super::*;
 
     macro_rules! evaluate_expressions {
-        ($($name:ident ($expression:expr) => $value:expr),*) => {
+        ($($name:ident ($expression:expr) => $value:expr),* $(,)?) => {
             $(
                 #[test]
                 fn $name() {
@@ -341,8 +414,16 @@ mod test {
         number_wrapped_in_parens(ParentheseExpression::new(DecimalNumber::new(0.0)))
             => LuaValue::Number(0.0),
         string_wrapped_in_parens(ParentheseExpression::new(StringExpression::from_value("foo")))
-            => LuaValue::String("foo".to_owned()),
-        table_expression(TableExpression::default()) => LuaValue::Table
+            => LuaValue::from("foo"),
+        table_expression(TableExpression::default()) => LuaValue::Table,
+        if_expression_always_true(IfExpression::new(true, 1.0, 0.0)) => LuaValue::from(1.0),
+        if_expression_always_false(IfExpression::new(false, 1.0, 0.0)) => LuaValue::from(0.0),
+        if_expression_unknown_condition(IfExpression::new(Expression::identifier("test"), 1.0, 0.0))
+            => LuaValue::Unknown,
+        if_expression_elseif_always_true(IfExpression::new(false, 1.0, 0.0).with_branch(true, 2.0))
+            => LuaValue::from(2.0),
+        if_expression_elseif_always_false(IfExpression::new(false, 1.0, 0.0).with_branch(false, 2.0))
+            => LuaValue::from(0.0),
     );
 
     mod binary_expressions {

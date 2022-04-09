@@ -61,6 +61,13 @@ impl Computer {
                     None
                 }
             }
+            Expression::If(_) => {
+                if !self.evaluator.has_side_effects(expression) {
+                    self.evaluator.evaluate(expression).to_expression()
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }

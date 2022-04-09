@@ -471,6 +471,7 @@ impl LuaGenerator for DenseLuaGenerator {
             Field(field) => self.write_field(field),
             Function(function) => self.write_function(function),
             Identifier(identifier) => self.write_identifier(identifier),
+            If(if_expression) => self.write_if_expression(if_expression),
             Index(index) => self.write_index(index),
             Nil(_) => self.push_str("nil"),
             Number(number) => self.write_number(number),
@@ -575,6 +576,23 @@ impl LuaGenerator for DenseLuaGenerator {
         self.push_char('[');
         self.write_expression(index.get_index());
         self.push_char(']');
+    }
+
+    fn write_if_expression(&mut self, if_expression: &nodes::IfExpression) {
+        self.push_str("if");
+        self.write_expression(if_expression.get_condition());
+        self.push_str("then");
+        self.write_expression(if_expression.get_result());
+
+        for branch in if_expression.iter_branches() {
+            self.push_str("elseif");
+            self.write_expression(branch.get_condition());
+            self.push_str("then");
+            self.write_expression(branch.get_result());
+        }
+
+        self.push_str("else");
+        self.write_expression(if_expression.get_else_result());
     }
 
     fn write_table(&mut self, table: &nodes::TableExpression) {

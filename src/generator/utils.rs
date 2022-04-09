@@ -54,17 +54,17 @@ pub fn ends_with_prefix(statement: &Statement) -> bool {
     match statement {
         Statement::Assign(assign) => {
             if let Some(value) = assign.get_values().last() {
-                expression_ends_with_call(value)
+                expression_ends_with_prefix(value)
             } else {
                 false
             }
         }
-        Statement::CompoundAssign(assign) => expression_ends_with_call(assign.get_value()),
+        Statement::CompoundAssign(assign) => expression_ends_with_prefix(assign.get_value()),
         Statement::Call(_) => true,
-        Statement::Repeat(repeat) => expression_ends_with_call(repeat.get_condition()),
+        Statement::Repeat(repeat) => expression_ends_with_prefix(repeat.get_condition()),
         Statement::LocalAssign(assign) => {
             if let Some(value) = assign.get_values().last() {
-                expression_ends_with_call(value)
+                expression_ends_with_prefix(value)
             } else {
                 false
             }
@@ -96,16 +96,26 @@ pub fn starts_with_parenthese(statement: &Statement) -> bool {
     }
 }
 
-fn expression_ends_with_call(expression: &Expression) -> bool {
+fn expression_ends_with_prefix(expression: &Expression) -> bool {
     match expression {
-        Expression::Binary(binary) => expression_ends_with_call(binary.right()),
+        Expression::Binary(binary) => expression_ends_with_prefix(binary.right()),
         Expression::Call(_)
         | Expression::Parenthese(_)
         | Expression::Identifier(_)
         | Expression::Field(_)
         | Expression::Index(_) => true,
-        Expression::Unary(unary) => expression_ends_with_call(unary.get_expression()),
-        _ => false,
+        Expression::Unary(unary) => expression_ends_with_prefix(unary.get_expression()),
+        Expression::If(if_expression) => {
+            expression_ends_with_prefix(if_expression.get_else_result())
+        }
+        Expression::False(_)
+        | Expression::Function(_)
+        | Expression::Nil(_)
+        | Expression::Number(_)
+        | Expression::String(_)
+        | Expression::Table(_)
+        | Expression::True(_)
+        | Expression::VariableArguments(_) => false,
     }
 }
 

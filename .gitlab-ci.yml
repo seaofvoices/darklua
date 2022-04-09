@@ -240,6 +240,14 @@ test:
   needs:
     - build
 
+test-release:
+  stage: test
+  extends: .only-mr-and-main
+  script:
+    - cargo test --locked --verbose --release
+  needs:
+    - build-release
+
 .lua-setup:
   before_script:
     - apt-get -qq update
