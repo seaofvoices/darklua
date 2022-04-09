@@ -58,7 +58,39 @@ impl Computer {
                             })
                         })
                 } else {
-                    None
+                    match binary.operator() {
+                        BinaryOperator::And => {
+                            if !self.evaluator.has_side_effects(binary.left()) {
+                                self.evaluator.evaluate(binary.left()).is_truthy().map(
+                                    |is_truthy| {
+                                        if is_truthy {
+                                            binary.right().clone()
+                                        } else {
+                                            binary.left().clone()
+                                        }
+                                    },
+                                )
+                            } else {
+                                None
+                            }
+                        }
+                        BinaryOperator::Or => {
+                            if !self.evaluator.has_side_effects(binary.left()) {
+                                self.evaluator.evaluate(binary.left()).is_truthy().map(
+                                    |is_truthy| {
+                                        if is_truthy {
+                                            binary.left().clone()
+                                        } else {
+                                            binary.right().clone()
+                                        }
+                                    },
+                                )
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    }
                 }
             }
             Expression::If(_) => {
