@@ -14,6 +14,7 @@ You can find the available rules and their properties here. The default rule sta
 - [Remove empty do statements](#remove-empty-do-statements)
 - [Remove function call parens](#remove-function-call-parens)
 - [Remove method definitions](#remove-method-definitions)
+- [Remove nil in declaration](#remove-nil-in-declaration)
 - [Remove unused if branch](#remove-unused-if-branch)
 - [Remove unused while](#remove-unused-while)
 - [Remove comments](#remove-comments)
@@ -360,6 +361,32 @@ This can be useful when obfuscating code, since it, along with the `rename_varia
 ```json5
 {
   rule: "remove_method_definition",
+}
+```
+
+---
+
+## Remove nil in declaration
+
+`remove_nil_declaration`
+
+This rule removes trailing `nil` values in local assignments. It will change this code:
+
+```lua
+local var = nil
+```
+
+into this code:
+
+```lua
+local var
+```
+
+### Examples
+
+```json5
+{
+  rule: "remove_nil_declaration",
 }
 ```
 

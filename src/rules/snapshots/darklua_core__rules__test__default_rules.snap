@@ -1,5 +1,6 @@
 ---
 source: src/rules/mod.rs
+assertion_line: 294
 expression: rules
 
 ---
@@ -12,6 +13,7 @@ expression: rules
   "remove_empty_do",
   "remove_method_definition",
   "convert_index_to_field",
+  "remove_nil_declaration",
   "rename_variables",
   "remove_function_call_parens"
 ]

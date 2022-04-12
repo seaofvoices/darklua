@@ -53,7 +53,7 @@ pub fn break_concat(last_string: &str) -> bool {
 pub fn ends_with_prefix(statement: &Statement) -> bool {
     match statement {
         Statement::Assign(assign) => {
-            if let Some(value) = assign.get_values().last() {
+            if let Some(value) = assign.last_value() {
                 expression_ends_with_prefix(value)
             } else {
                 false
@@ -63,7 +63,7 @@ pub fn ends_with_prefix(statement: &Statement) -> bool {
         Statement::Call(_) => true,
         Statement::Repeat(repeat) => expression_ends_with_prefix(repeat.get_condition()),
         Statement::LocalAssign(assign) => {
-            if let Some(value) = assign.get_values().last() {
+            if let Some(value) = assign.last_value() {
                 expression_ends_with_prefix(value)
             } else {
                 false

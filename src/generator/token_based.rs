@@ -470,7 +470,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         tokens: &LocalAssignTokens,
     ) {
         self.write_token(&tokens.local);
-        let last_variable_index = assign.variable_count().saturating_sub(1);
+        let last_variable_index = assign.variables_len().saturating_sub(1);
         assign
             .iter_variables()
             .enumerate()
@@ -489,7 +489,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             } else {
                 self.write_symbol("=");
             }
-            let last_value_index = assign.value_count().saturating_sub(1);
+            let last_value_index = assign.values_len().saturating_sub(1);
             assign.iter_values().enumerate().for_each(|(i, value)| {
                 self.write_expression(value);
                 if let Some(comma) = tokens.value_commas.get(i) {
@@ -743,8 +743,8 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             } else {
                 None
             },
-            variable_commas: intersect_with_token(comma_token(), assign.variable_count()),
-            value_commas: intersect_with_token(comma_token(), assign.value_count()),
+            variable_commas: intersect_with_token(comma_token(), assign.variables_len()),
+            value_commas: intersect_with_token(comma_token(), assign.values_len()),
         }
     }
 

@@ -1,0 +1,22 @@
+---
+source: src/rules/mod.rs
+assertion_line: 301
+expression: rule_names
+
+---
+[
+  "compute_expression",
+  "convert_index_to_field",
+  "convert_local_function_to_assign",
+  "group_local_assignment",
+  "inject_global_value",
+  "remove_comments",
+  "remove_empty_do",
+  "remove_function_call_parens",
+  "remove_method_definition",
+  "remove_nil_declaration",
+  "remove_spaces",
+  "remove_unused_if_branch",
+  "remove_unused_while",
+  "rename_variables"
+]

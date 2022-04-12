@@ -118,16 +118,6 @@ impl LocalAssignStatement {
     }
 
     #[inline]
-    pub fn get_values(&self) -> &Vec<Expression> {
-        &self.values
-    }
-
-    #[inline]
-    pub fn mutate_values(&mut self) -> &mut Vec<Expression> {
-        &mut self.values
-    }
-
-    #[inline]
     pub fn extend_values<T: IntoIterator<Item = Expression>>(&mut self, iter: T) {
         self.values.extend(iter);
     }
@@ -148,12 +138,34 @@ impl LocalAssignStatement {
     }
 
     #[inline]
-    pub fn value_count(&self) -> usize {
+    pub fn last_value(&self) -> Option<&Expression> {
+        self.values.last()
+    }
+
+    pub fn pop_value(&mut self) {
+        self.values.pop();
+        if let Some(tokens) = &mut self.tokens {
+            let length = self.values.len();
+            if length == 0 {
+                if !tokens.value_commas.is_empty() {
+                    tokens.value_commas.clear();
+                }
+                if tokens.equal.is_some() {
+                    tokens.equal = None;
+                }
+            } else if tokens.value_commas.len() == length.saturating_sub(1) {
+                tokens.value_commas.pop();
+            }
+        }
+    }
+
+    #[inline]
+    pub fn values_len(&self) -> usize {
         self.values.len()
     }
 
     #[inline]
-    pub fn variable_count(&self) -> usize {
+    pub fn variables_len(&self) -> usize {
         self.variables.len()
     }
 

@@ -40,7 +40,7 @@ impl NodeProcessor for Processor {
     }
 }
 
-pub const REMOVE_FUNCTION_CALL_PARENS: &str = "remove_function_call_parens";
+pub const REMOVE_FUNCTION_CALL_PARENS_RULE_NAME: &str = "remove_function_call_parens";
 
 /// A rule that removes parentheses when calling functions with a string or a table.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -61,7 +61,7 @@ impl RuleConfiguration for RemoveFunctionCallParens {
     }
 
     fn get_name(&self) -> &'static str {
-        REMOVE_FUNCTION_CALL_PARENS
+        REMOVE_FUNCTION_CALL_PARENS_RULE_NAME
     }
 
     fn serialize_to_properties(&self) -> RuleProperties {

@@ -10,6 +10,7 @@ mod inject_value;
 mod method_def;
 mod no_local_function;
 mod remove_comments;
+mod remove_nil_declarations;
 mod remove_spaces;
 mod rename_variables;
 mod rule_property;
@@ -26,6 +27,7 @@ pub use inject_value::*;
 pub use method_def::*;
 pub use no_local_function::*;
 pub use remove_comments::*;
+pub use remove_nil_declarations::*;
 pub use remove_spaces::*;
 pub use rename_variables::*;
 pub use rule_property::*;
@@ -93,6 +95,7 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::new(RemoveEmptyDo::default()),
         Box::new(RemoveMethodDefinition::default()),
         Box::new(ConvertIndexToField::default()),
+        Box::new(RemoveNilDeclaration::default()),
         Box::new(RenameVariables::default()),
         Box::new(RemoveFunctionCallParens::default()),
     ]
@@ -103,12 +106,13 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         COMPUTE_EXPRESSIONS_RULE_NAME,
         CONVERT_INDEX_TO_FIELD_RULE_NAME,
         CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME,
-        GROUP_LOCAL_ASSIGNMENT,
+        GROUP_LOCAL_ASSIGNMENT_RULE_NAME,
         INJECT_GLOBAL_VALUE_RULE_NAME,
         REMOVE_COMMENTS_RULE_NAME,
         REMOVE_EMPTY_DO_RULE_NAME,
-        REMOVE_FUNCTION_CALL_PARENS,
+        REMOVE_FUNCTION_CALL_PARENS_RULE_NAME,
         REMOVE_METHOD_DEFINITION_RULE_NAME,
+        REMOVE_NIL_DECLARATION_RULE_NAME,
         REMOVE_SPACES_RULE_NAME,
         REMOVE_UNUSED_IF_BRANCH_RULE_NAME,
         REMOVE_UNUSED_WHILE_RULE_NAME,
@@ -126,12 +130,13 @@ impl FromStr for Box<dyn Rule> {
             CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => {
                 Box::new(ConvertLocalFunctionToAssign::default())
             }
-            GROUP_LOCAL_ASSIGNMENT => Box::new(GroupLocalAssignment::default()),
+            GROUP_LOCAL_ASSIGNMENT_RULE_NAME => Box::new(GroupLocalAssignment::default()),
             INJECT_GLOBAL_VALUE_RULE_NAME => Box::new(InjectGlobalValue::default()),
             REMOVE_COMMENTS_RULE_NAME => Box::new(RemoveComments::default()),
             REMOVE_EMPTY_DO_RULE_NAME => Box::new(RemoveEmptyDo::default()),
-            REMOVE_FUNCTION_CALL_PARENS => Box::new(RemoveFunctionCallParens::default()),
+            REMOVE_FUNCTION_CALL_PARENS_RULE_NAME => Box::new(RemoveFunctionCallParens::default()),
             REMOVE_METHOD_DEFINITION_RULE_NAME => Box::new(RemoveMethodDefinition::default()),
+            REMOVE_NIL_DECLARATION_RULE_NAME => Box::new(RemoveNilDeclaration::default()),
             REMOVE_SPACES_RULE_NAME => Box::new(RemoveSpaces::default()),
             REMOVE_UNUSED_IF_BRANCH_RULE_NAME => Box::new(RemoveUnusedIfBranch::default()),
             REMOVE_UNUSED_WHILE_RULE_NAME => Box::new(RemoveUnusedWhile::default()),
@@ -287,6 +292,13 @@ mod test {
         let rules = get_default_rules();
 
         assert_json_snapshot!("default_rules", rules);
+    }
+
+    #[test]
+    fn snapshot_all_rules() {
+        let rule_names = get_all_rule_names();
+
+        assert_json_snapshot!("all_rule_names", rule_names);
     }
 
     #[test]

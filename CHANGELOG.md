@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* add rule to remove unnecessary `nil` values in local assignments ([!54](https://gitlab.com/seaofvoices/darklua/-/merge_requests/54))
 * enhance the `compute_expression` rule to remove left side of binary `and` or `or` expressions when they always return the right side and they don't have side effects ([!53](https://gitlab.com/seaofvoices/darklua/-/merge_requests/53))
 * add support for if expressions ([!51](https://gitlab.com/seaofvoices/darklua/-/merge_requests/51))
 * add function to get all valid rule names ([!46](https://gitlab.com/seaofvoices/darklua/-/merge_requests/46))

@@ -226,10 +226,9 @@ impl LuaGenerator for DenseLuaGenerator {
 
         self.push_char('=');
 
-        let values = assign.get_values();
-        let last_value_index = values.len() - 1;
+        let last_value_index = assign.values_len() - 1;
 
-        values.iter().enumerate().for_each(|(index, value)| {
+        assign.iter_values().enumerate().for_each(|(index, value)| {
             self.write_expression(value);
 
             if index != last_value_index {
@@ -367,14 +366,12 @@ impl LuaGenerator for DenseLuaGenerator {
             }
         });
 
-        let values = assign.get_values();
-
-        if !values.is_empty() {
+        if assign.has_values() {
             self.push_char('=');
 
-            let last_value_index = values.len() - 1;
+            let last_value_index = assign.values_len() - 1;
 
-            values.iter().enumerate().for_each(|(index, value)| {
+            assign.iter_values().enumerate().for_each(|(index, value)| {
                 self.write_expression(value);
 
                 if index != last_value_index {

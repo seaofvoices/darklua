@@ -92,8 +92,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
             .for_each(|variable| Self::visit_variable(variable, processor));
 
         statement
-            .mutate_values()
-            .iter_mut()
+            .iter_mut_values()
             .for_each(|expression| Self::visit_expression(expression, processor));
     }
 

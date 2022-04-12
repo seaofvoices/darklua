@@ -72,8 +72,8 @@ impl AssignStatement {
     }
 
     #[inline]
-    pub fn get_values(&self) -> &Vec<Expression> {
-        &self.values
+    pub fn last_value(&self) -> Option<&Expression> {
+        self.values.last()
     }
 
     #[inline]
@@ -82,13 +82,13 @@ impl AssignStatement {
     }
 
     #[inline]
-    pub fn mutate_variables(&mut self) -> &mut Vec<Variable> {
-        &mut self.variables
+    pub fn iter_mut_values(&mut self) -> impl Iterator<Item = &mut Expression> {
+        self.values.iter_mut()
     }
 
     #[inline]
-    pub fn mutate_values(&mut self) -> &mut Vec<Expression> {
-        &mut self.values
+    pub fn mutate_variables(&mut self) -> &mut Vec<Variable> {
+        &mut self.variables
     }
 
     pub fn append_assignment<V: Into<Variable>, E: Into<Expression>>(
