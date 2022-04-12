@@ -34,7 +34,7 @@ class RulesStack {
   replaceWithDarkluaConfig(config) {
     this._updateRules(
       config.rules.map(rule => {
-        if (typeof rule == "string") {
+        if (typeof rule === "string") {
           return { name: rule }
         }
         if (Object.keys(rule).length === 1) {

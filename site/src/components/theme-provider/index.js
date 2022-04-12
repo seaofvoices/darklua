@@ -4,6 +4,7 @@ import {
   ThemeProvider as MuiThemeProvider,
   useMediaQuery,
   createTheme,
+  responsiveFontSizes,
 } from "@mui/material"
 
 import LightThemeOptions from "./light"
@@ -12,8 +13,22 @@ import { useLocation } from "../location-context"
 import { useThemeLocalStorage } from "../../hooks/useLocalStorage"
 import { usePrism } from "../../hooks/usePrism"
 
-const LIGHT_THEME = createTheme(LightThemeOptions)
-const DARK_THEME = createTheme(DarkThemeOptions)
+const COMMON_OPTIONS = {
+  typography: {
+    h1: { fontSize: "3.8rem", marginTop: "3rem" },
+    h2: { fontSize: "2.7rem", marginTop: "2.3rem" },
+    h3: { fontSize: "2rem", marginTop: "1.8rem" },
+    h4: { fontSize: "1.5rem", marginTop: "1.5rem" },
+    h5: { fontSize: "1.2rem", marginTop: "1.3rem" },
+    h6: { fontSize: "1.1rem", marginTop: "1.2rem" },
+  },
+}
+const LIGHT_THEME = responsiveFontSizes(
+  createTheme({ ...COMMON_OPTIONS, ...LightThemeOptions })
+)
+const DARK_THEME = responsiveFontSizes(
+  createTheme({ ...COMMON_OPTIONS, ...DarkThemeOptions })
+)
 
 export const ThemeContext = React.createContext(() => {})
 

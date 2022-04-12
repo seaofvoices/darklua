@@ -19,6 +19,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight"
 import { Box } from "@mui/system"
 import { LocationContext, useLocation } from "../components/location-context"
 import ThemeProvider from "../components/theme-provider"
+import { MarkdownRenderer } from "../components/markdown-renderer"
 
 const drawerWidth = 240
 const MARGIN = 4
@@ -156,7 +157,7 @@ const DocsTemplate = ({ data }) => {
   )
 
   const title = data.markdownRemark.frontmatter.title
-  const html = data.markdownRemark.html
+  const htmlAst = data.markdownRemark.htmlAst
 
   return (
     <Layout title={title} margin={MARGIN}>
@@ -193,19 +194,17 @@ const DocsTemplate = ({ data }) => {
         >
           <header>
             <Typography
-              variant="h2"
-              component="h1"
+              variant="h1"
               itemProp="headline"
               sx={{
                 marginTop: 3,
-                fontSize: fullWidth ? theme.typography.h3.fontSize : null,
               }}
             >
               {title}
             </Typography>
           </header>
           <hr />
-          <Box dangerouslySetInnerHTML={{ __html: html }} />
+          <MarkdownRenderer htmlAst={htmlAst} />
           <hr />
         </Side>
       </Paper>
@@ -247,7 +246,7 @@ export const pageQuery = graphql`
     markdownRemark(id: { eq: $id }) {
       id
       excerpt(pruneLength: 160)
-      html
+      htmlAst
       frontmatter {
         title
         description

@@ -31,21 +31,16 @@ const NavBar = () => {
   }
   return (
     <Toolbar>
-      <>
-        <Box sx={{ flexGrow: 1 }}>
-          <NavigationLink label="darklua" link="/" />
-        </Box>
-        <NavigationLink label="Documentation" link="/docs" />
-        <NavigationLink label="Try it" link="/try-it" />
-        <NavigationLink
-          label="Gitlab"
-          link="https://gitlab.com/seaofvoices/darklua"
-        />
-        <ThemeSwitch
-          checked={theme.current === "dark"}
-          onChange={handleChange}
-        />
-      </>
+      <Box sx={{ flexGrow: 1 }}>
+        <NavigationLink label="darklua" link="/" />
+      </Box>
+      <NavigationLink label="Documentation" link="/docs" />
+      <NavigationLink label="Try it" link="/try-it" />
+      <NavigationLink
+        label="Gitlab"
+        link="https://gitlab.com/seaofvoices/darklua"
+      />
+      <ThemeSwitch checked={theme.current === "dark"} onChange={handleChange} />
     </Toolbar>
   )
 }

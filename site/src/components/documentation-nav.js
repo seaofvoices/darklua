@@ -101,7 +101,7 @@ export const DocumentationNavigation = ({ drawerOpened, openDrawer }) => {
 
   const groupNameToIndex = new Map()
   const groups = data.site.siteMetadata.groupsOrder.map((groupName, index) => {
-    groupNameToIndex[groupName] = index
+    groupNameToIndex.set(groupName, index)
     return { name: groupName, content: [] }
   })
 
@@ -113,8 +113,9 @@ export const DocumentationNavigation = ({ drawerOpened, openDrawer }) => {
 
   documents.forEach(document => {
     const { group: groupName } = document
-    const groupIndex = groupNameToIndex[groupName]
-    if (groupIndex == null) {
+    const groupIndex = groupNameToIndex.get(groupName)
+
+    if (typeof groupIndex !== "number") {
       const { title, slug } = document
       throw new Error(
         `Unknown group '${groupName}' associated with '${title}' (at ${slug})`

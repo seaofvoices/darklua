@@ -41,7 +41,7 @@ exports.createPages = async ({ graphql, actions, reporter }) => {
 
   const documentionPages = result.data.allMarkdownRemark.nodes
 
-  if (documentionPages.length == 0) {
+  if (documentionPages.length === 0) {
     reporter.panicOnBuild(`No documentation page was found`)
     return
   }
