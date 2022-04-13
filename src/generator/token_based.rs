@@ -117,10 +117,12 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             .enumerate()
             .for_each(|(i, expression)| {
                 self.write_expression(expression);
-                if let Some(comma) = tokens.commas.get(i) {
-                    self.write_token(comma);
-                } else if i < last_index {
-                    self.write_symbol(",");
+                if i < last_index {
+                    if let Some(comma) = tokens.commas.get(i) {
+                        self.write_token(comma);
+                    } else {
+                        self.write_symbol(",");
+                    }
                 }
             });
     }
@@ -132,10 +134,12 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             .enumerate()
             .for_each(|(i, variable)| {
                 self.write_variable(variable);
-                if let Some(comma) = tokens.variable_commas.get(i) {
-                    self.write_token(comma);
-                } else if i < last_variable_index {
-                    self.write_symbol(",");
+                if i < last_variable_index {
+                    if let Some(comma) = tokens.variable_commas.get(i) {
+                        self.write_token(comma);
+                    } else {
+                        self.write_symbol(",");
+                    }
                 }
             });
 
@@ -143,10 +147,12 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         let last_value_index = assign.values_len().saturating_sub(1);
         assign.iter_values().enumerate().for_each(|(i, value)| {
             self.write_expression(value);
-            if let Some(comma) = tokens.value_commas.get(i) {
-                self.write_token(comma);
-            } else if i < last_value_index {
-                self.write_symbol(",");
+            if i < last_value_index {
+                if let Some(comma) = tokens.value_commas.get(i) {
+                    self.write_token(comma);
+                } else {
+                    self.write_symbol(",");
+                }
             }
         });
     }
@@ -194,10 +200,12 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         let last_value_index = arguments.len().saturating_sub(1);
         arguments.iter_values().enumerate().for_each(|(i, value)| {
             self.write_expression(value);
-            if let Some(comma) = tokens.commas.get(i) {
-                self.write_token(comma);
-            } else if i < last_value_index {
-                self.write_symbol(",");
+            if i < last_value_index {
+                if let Some(comma) = tokens.commas.get(i) {
+                    self.write_token(comma);
+                } else {
+                    self.write_symbol(",");
+                }
             }
         });
 
@@ -394,10 +402,12 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             .enumerate()
             .for_each(|(i, identifier)| {
                 self.write_identifier(identifier);
-                if let Some(comma) = tokens.identifier_commas.get(i) {
-                    self.write_token(comma);
-                } else if i < last_identifier_index {
-                    self.write_symbol(",");
+                if i < last_identifier_index {
+                    if let Some(comma) = tokens.identifier_commas.get(i) {
+                        self.write_token(comma);
+                    } else {
+                        self.write_symbol(",");
+                    }
                 }
             });
 
@@ -409,10 +419,12 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             .enumerate()
             .for_each(|(i, expression)| {
                 self.write_expression(expression);
-                if let Some(comma) = tokens.value_commas.get(i) {
-                    self.write_token(comma);
-                } else if i < last_expression_index {
-                    self.write_symbol(",");
+                if i < last_expression_index {
+                    if let Some(comma) = tokens.value_commas.get(i) {
+                        self.write_token(comma);
+                    } else {
+                        self.write_symbol(",");
+                    }
                 }
             });
 
@@ -476,10 +488,12 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             .enumerate()
             .for_each(|(i, identifier)| {
                 self.write_identifier(identifier);
-                if let Some(comma) = tokens.variable_commas.get(i) {
-                    self.write_token(comma);
-                } else if i < last_variable_index {
-                    self.write_symbol(",");
+                if i < last_variable_index {
+                    if let Some(comma) = tokens.variable_commas.get(i) {
+                        self.write_token(comma);
+                    } else {
+                        self.write_symbol(",");
+                    }
                 }
             });
 
@@ -492,10 +506,12 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             let last_value_index = assign.values_len().saturating_sub(1);
             assign.iter_values().enumerate().for_each(|(i, value)| {
                 self.write_expression(value);
-                if let Some(comma) = tokens.value_commas.get(i) {
-                    self.write_token(comma);
-                } else if i < last_value_index {
-                    self.write_symbol(",");
+                if i < last_value_index {
+                    if let Some(comma) = tokens.value_commas.get(i) {
+                        self.write_token(comma);
+                    } else {
+                        self.write_symbol(",");
+                    }
                 }
             });
         }

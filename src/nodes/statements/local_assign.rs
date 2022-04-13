@@ -153,8 +153,8 @@ impl LocalAssignStatement {
                 if tokens.equal.is_some() {
                     tokens.equal = None;
                 }
-            } else if tokens.value_commas.len() == length.saturating_sub(1) {
-                tokens.value_commas.pop();
+            } else {
+                tokens.value_commas.truncate(length.saturating_sub(1));
             }
         }
     }
@@ -190,5 +190,90 @@ impl LocalAssignStatement {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn pop_value_removes_the_equal_sign() {
+        let mut assign = LocalAssignStatement::from_variable("var")
+            .with_value(true)
+            .with_tokens(LocalAssignTokens {
+                local: Token::from_content("local"),
+                equal: Some(Token::from_content("=")),
+                variable_commas: Vec::new(),
+                value_commas: Vec::new(),
+            });
+
+        assign.pop_value();
+
+        pretty_assertions::assert_eq!(
+            assign,
+            LocalAssignStatement::from_variable("var").with_tokens(LocalAssignTokens {
+                local: Token::from_content("local"),
+                equal: None,
+                variable_commas: Vec::new(),
+                value_commas: Vec::new(),
+            })
+        );
+    }
+
+    #[test]
+    fn pop_value_removes_the_last_comma_token() {
+        let mut assign = LocalAssignStatement::from_variable("var")
+            .with_value(true)
+            .with_value(false)
+            .with_tokens(LocalAssignTokens {
+                local: Token::from_content("local"),
+                equal: Some(Token::from_content("=")),
+                variable_commas: Vec::new(),
+                value_commas: vec![Token::from_content(",")],
+            });
+
+        assign.pop_value();
+
+        pretty_assertions::assert_eq!(
+            assign,
+            LocalAssignStatement::from_variable("var")
+                .with_value(true)
+                .with_tokens(LocalAssignTokens {
+                    local: Token::from_content("local"),
+                    equal: Some(Token::from_content("=")),
+                    variable_commas: Vec::new(),
+                    value_commas: Vec::new(),
+                })
+        );
+    }
+
+    #[test]
+    fn pop_value_removes_one_comma_token() {
+        let mut assign = LocalAssignStatement::from_variable("var")
+            .with_value(true)
+            .with_value(false)
+            .with_value(true)
+            .with_tokens(LocalAssignTokens {
+                local: Token::from_content("local"),
+                equal: Some(Token::from_content("=")),
+                variable_commas: Vec::new(),
+                value_commas: vec![Token::from_content(","), Token::from_content(",")],
+            });
+
+        assign.pop_value();
+
+        pretty_assertions::assert_eq!(
+            assign,
+            LocalAssignStatement::from_variable("var")
+                .with_value(true)
+                .with_value(false)
+                .with_tokens(LocalAssignTokens {
+                    local: Token::from_content("local"),
+                    equal: Some(Token::from_content("=")),
+                    variable_commas: Vec::new(),
+                    value_commas: vec![Token::from_content(",")],
+                })
+        );
     }
 }
