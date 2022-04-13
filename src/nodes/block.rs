@@ -88,20 +88,41 @@ impl Block {
 
     pub fn filter_statements<F>(&mut self, mut f: F)
     where
+        F: FnMut(&Statement) -> bool,
+    {
+        let mut i = 0;
+
+        while i != self.statements.len() {
+            if f(&self.statements[i]) {
+                i += 1;
+            } else {
+                self.statements.remove(i);
+
+                if let Some(tokens) = &mut self.tokens {
+                    if i < tokens.semicolons.len() {
+                        tokens.semicolons.remove(i);
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn filter_mut_statements<F>(&mut self, mut f: F)
+    where
         F: FnMut(&mut Statement) -> bool,
     {
         let mut i = 0;
-        let mut to_remove = Vec::new();
 
         while i != self.statements.len() {
             if f(&mut self.statements[i]) {
                 i += 1;
             } else {
                 self.statements.remove(i);
-                to_remove.push(i);
 
                 if let Some(tokens) = &mut self.tokens {
-                    tokens.semicolons.remove(i);
+                    if i < tokens.semicolons.len() {
+                        tokens.semicolons.remove(i);
+                    }
                 }
             }
         }
@@ -289,5 +310,47 @@ mod test {
         );
 
         assert!(block.get_tokens().unwrap().last_semicolon.is_none());
+    }
+
+    #[test]
+    fn filter_statements_does_not_panic_when_semicolons_do_not_match() {
+        let mut block = Block::default()
+            .with_statement(DoStatement::default())
+            .with_statement(DoStatement::default())
+            .with_tokens(BlockTokens {
+                semicolons: vec![Some(Token::from_content(";"))],
+                last_semicolon: None,
+            });
+
+        block.filter_statements(|_statement| false);
+
+        pretty_assertions::assert_eq!(
+            block,
+            Block::default().with_tokens(BlockTokens {
+                semicolons: Vec::new(),
+                last_semicolon: None,
+            })
+        );
+    }
+
+    #[test]
+    fn filter_mut_statements_does_not_panic_when_semicolons_do_not_match() {
+        let mut block = Block::default()
+            .with_statement(DoStatement::default())
+            .with_statement(DoStatement::default())
+            .with_tokens(BlockTokens {
+                semicolons: vec![Some(Token::from_content(";"))],
+                last_semicolon: None,
+            });
+
+        block.filter_mut_statements(|_statement| false);
+
+        pretty_assertions::assert_eq!(
+            block,
+            Block::default().with_tokens(BlockTokens {
+                semicolons: Vec::new(),
+                last_semicolon: None,
+            })
+        );
     }
 }

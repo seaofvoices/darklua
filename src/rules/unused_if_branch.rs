@@ -96,7 +96,7 @@ impl IfFilter {
 
 impl NodeProcessor for IfFilter {
     fn process_block(&mut self, block: &mut Block) {
-        block.filter_statements(|statement| {
+        block.filter_mut_statements(|statement| {
             let result = match statement {
                 Statement::If(if_statement) => self.filter(if_statement),
                 _ => FilterResult::Keep,
