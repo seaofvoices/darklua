@@ -5,6 +5,7 @@ mod compute_expression;
 mod configuration_error;
 mod convert_index_to_field;
 mod empty_do;
+mod filter_early_return;
 mod group_local;
 mod inject_value;
 mod method_def;
@@ -22,6 +23,7 @@ pub use compute_expression::*;
 pub use configuration_error::RuleConfigurationError;
 pub use convert_index_to_field::*;
 pub use empty_do::*;
+pub use filter_early_return::*;
 pub use group_local::*;
 pub use inject_value::*;
 pub use method_def::*;
@@ -92,6 +94,7 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::new(ComputeExpression::default()),
         Box::new(RemoveUnusedIfBranch::default()),
         Box::new(RemoveUnusedWhile::default()),
+        Box::new(FilterAfterEarlyReturn::default()),
         Box::new(RemoveEmptyDo::default()),
         Box::new(RemoveMethodDefinition::default()),
         Box::new(ConvertIndexToField::default()),
@@ -106,6 +109,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         COMPUTE_EXPRESSIONS_RULE_NAME,
         CONVERT_INDEX_TO_FIELD_RULE_NAME,
         CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME,
+        FILTER_AFTER_EARLY_RETURN_RULE_NAME,
         GROUP_LOCAL_ASSIGNMENT_RULE_NAME,
         INJECT_GLOBAL_VALUE_RULE_NAME,
         REMOVE_COMMENTS_RULE_NAME,
@@ -130,6 +134,7 @@ impl FromStr for Box<dyn Rule> {
             CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => {
                 Box::new(ConvertLocalFunctionToAssign::default())
             }
+            FILTER_AFTER_EARLY_RETURN_RULE_NAME => Box::new(FilterAfterEarlyReturn::default()),
             GROUP_LOCAL_ASSIGNMENT_RULE_NAME => Box::new(GroupLocalAssignment::default()),
             INJECT_GLOBAL_VALUE_RULE_NAME => Box::new(InjectGlobalValue::default()),
             REMOVE_COMMENTS_RULE_NAME => Box::new(RemoveComments::default()),

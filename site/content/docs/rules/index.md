@@ -11,6 +11,7 @@ You can find the available rules and their properties here. The default rule sta
 - [Convert index to field](#convert-index-to-field)
 - [Convert local functions to assignments](#convert-local-functions-to-assignments)
 - [Group local assignments](#group-local-assignments)
+- [Filter after early return](#filter-after-early-return)
 - [Remove empty do statements](#remove-empty-do-statements)
 - [Remove function call parens](#remove-function-call-parens)
 - [Remove method definitions](#remove-method-definitions)
@@ -176,6 +177,52 @@ Note that, depending on your Lua runtime implementation, you may no longer be ab
 ```json5
 {
   rule: "convert_local_function_to_assign",
+}
+```
+
+---
+
+## Filter after early return
+
+`filter_after_early_return`
+
+When this rule encounters a `return` statement at the end of a `do` statement block, it will clear out the next statements of the outer block.
+
+This rule is effective when applied after [`remove_unused_if_branch`](#remove-unused-if-branch) because it may produces `do` blocks with return statements.
+
+```lua
+do
+    local function process()
+        -- ...
+    end
+
+    return process
+end
+
+local function otherImplementation()
+    -- ...
+end
+
+return otherImplementation
+```
+
+The rule will clear the `otherImplementation` since `process` will always be returned first. It will produce the following code:
+
+```lua
+do
+    local function process()
+        -- ...
+    end
+
+    return process
+end
+```
+
+### Examples
+
+```json5
+{
+  rule: "filter_after_early_return",
 }
 ```
 

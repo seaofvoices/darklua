@@ -128,6 +128,13 @@ impl Block {
         }
     }
 
+    pub fn truncate(&mut self, length: usize) {
+        self.statements.truncate(length);
+        if let Some(tokens) = &mut self.tokens {
+            tokens.semicolons.truncate(length);
+        }
+    }
+
     #[inline]
     pub fn iter_mut_statements(&mut self) -> impl Iterator<Item = &mut Statement> {
         self.statements.iter_mut()
@@ -158,6 +165,14 @@ impl Block {
     #[inline]
     pub fn mutate_last_statement(&mut self) -> Option<&mut LastStatement> {
         self.last_statement.as_mut()
+    }
+
+    #[inline]
+    pub fn replace_last_statement<S: Into<LastStatement>>(
+        &mut self,
+        statement: S,
+    ) -> Option<LastStatement> {
+        self.last_statement.replace(statement.into())
     }
 
     pub fn clear(&mut self) {

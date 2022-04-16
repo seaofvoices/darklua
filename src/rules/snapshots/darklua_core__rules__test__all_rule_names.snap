@@ -1,6 +1,6 @@
 ---
 source: src/rules/mod.rs
-assertion_line: 301
+assertion_line: 306
 expression: rule_names
 
 ---
@@ -8,6 +8,7 @@ expression: rule_names
   "compute_expression",
   "convert_index_to_field",
   "convert_local_function_to_assign",
+  "filter_after_early_return",
   "group_local_assignment",
   "inject_global_value",
   "remove_comments",
