@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* fix readable formatter to put a space after `return` keywords ([!58](https://gitlab.com/seaofvoices/darklua/-/merge_requests/58))
 * fix the `remove_nil_declaration` to also pop commas correctly ([!57](https://gitlab.com/seaofvoices/darklua/-/merge_requests/57))
 * fix bug where filtering statements of a block would panic when there were missing semicolons ([!56](https://gitlab.com/seaofvoices/darklua/-/merge_requests/56))
 * add rule to remove unnecessary `nil` values in local assignments ([!54](https://gitlab.com/seaofvoices/darklua/-/merge_requests/54))

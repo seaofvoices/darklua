@@ -553,6 +553,7 @@ mod $mod_name {
             return_one_expression => ReturnStatement::one(Expression::from(true)),
             return_two_expressions => ReturnStatement::one(Expression::from(true))
                 .with_expression(Expression::nil()),
+            return_parentheses => ReturnStatement::one(Expression::from(true).in_parentheses()),
         ));
 
         snapshot_node!($mod_name, $generator, binary, write_expression => (

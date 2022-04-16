@@ -1,0 +1,7 @@
+---
+source: src/generator/mod.rs
+assertion_line: 689
+expression: generator.into_string()
+
+---
+return(true)

@@ -383,6 +383,10 @@ impl LuaGenerator for ReadableLuaGenerator {
                 self.push_can_add_new_line(false);
                 let last_index = expressions.len().saturating_sub(1);
 
+                if !expressions.is_empty() {
+                    self.raw_push_char(' ');
+                }
+
                 expressions
                     .iter_expressions()
                     .enumerate()
