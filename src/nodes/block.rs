@@ -1,4 +1,6 @@
-use crate::nodes::{LastStatement, ReturnStatement, Statement, Token};
+use std::cmp::Ordering;
+
+use crate::nodes::{AnyStatementRef, LastStatement, ReturnStatement, Statement, Token};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlockTokens {
@@ -66,14 +68,19 @@ impl Block {
         self
     }
 
-    pub fn with_last_statement(mut self, last_statement: LastStatement) -> Self {
-        self.last_statement = Some(last_statement);
+    pub fn with_last_statement<T: Into<LastStatement>>(mut self, last_statement: T) -> Self {
+        self.last_statement = Some(last_statement.into());
         self
     }
 
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.last_statement.is_none() && self.statements.is_empty()
+    }
+
+    #[inline]
+    pub fn total_len(&self) -> usize {
+        self.statements.len() + if self.last_statement.is_some() { 1 } else { 0 }
     }
 
     #[inline]
@@ -173,6 +180,14 @@ impl Block {
         statement: S,
     ) -> Option<LastStatement> {
         self.last_statement.replace(statement.into())
+    }
+
+    pub fn get_statement(&self, index: usize) -> Option<AnyStatementRef> {
+        match index.cmp(&self.statements.len()) {
+            Ordering::Less => self.statements.get(index).map(AnyStatementRef::from),
+            Ordering::Equal => self.last_statement.as_ref().map(AnyStatementRef::from),
+            Ordering::Greater => None,
+        }
     }
 
     pub fn clear(&mut self) {
@@ -366,6 +381,50 @@ mod test {
                 semicolons: Vec::new(),
                 last_semicolon: None,
             })
+        );
+    }
+
+    #[test]
+    fn get_statement_of_empty_block_is_none() {
+        let block = Block::default();
+
+        assert_eq!(block.get_statement(0), None);
+        assert_eq!(block.get_statement(2), None);
+    }
+
+    #[test]
+    fn get_statement_outside_of_boundary() {
+        let block = Block::default().with_statement(DoStatement::default());
+
+        assert_eq!(block.get_statement(1), None);
+    }
+
+    #[test]
+    fn get_statement_outside_of_boundary_with_last_statement() {
+        let block = Block::default()
+            .with_statement(DoStatement::default())
+            .with_last_statement(LastStatement::new_break());
+
+        assert_eq!(block.get_statement(2), None);
+    }
+
+    #[test]
+    fn get_statement_returns_first_statement() {
+        let block = Block::default().with_statement(DoStatement::default());
+
+        assert_eq!(
+            block.get_statement(0).unwrap(),
+            AnyStatementRef::from(&Statement::Do(DoStatement::default().into()))
+        );
+    }
+
+    #[test]
+    fn get_statement_returns_first_when_it_is_the_last_statement() {
+        let block = Block::default().with_last_statement(ReturnStatement::default());
+
+        assert_eq!(
+            block.get_statement(0).unwrap(),
+            AnyStatementRef::from(&LastStatement::Return(ReturnStatement::default()))
         );
     }
 }

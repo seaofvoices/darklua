@@ -1,4 +1,4 @@
-use crate::nodes::{Block, Expression, Token};
+use crate::nodes::{AnyStatementRef, Block, Expression, Token};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct IfBranchTokens {
@@ -239,6 +239,25 @@ impl IfStatement {
     #[inline]
     pub fn take_else_block(&mut self) -> Option<Block> {
         self.else_block.take()
+    }
+
+    pub fn get_statement(&self, index: usize) -> Option<AnyStatementRef> {
+        let mut remaining = index;
+
+        for branch in self.branches.iter() {
+            let branch_block = branch.get_block();
+            if let Some(any) = branch_block.get_statement(remaining) {
+                return Some(any);
+            } else {
+                if remaining < branch_block.total_len() {
+                    remaining -= branch_block.total_len();
+                } else {
+                    return None;
+                }
+            }
+        }
+
+        self.else_block.as_ref()?.get_statement(remaining)
     }
 
     pub fn clear_comments(&mut self) {
