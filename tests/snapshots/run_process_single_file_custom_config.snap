@@ -1,0 +1,6 @@
+---
+source: tests/cli.rs
+expression: content
+---
+Successfully processed 1 file (in {{DURATION}})
+

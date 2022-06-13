@@ -1,0 +1,25 @@
+---
+source: tests/cli.rs
+expression: content
+---
+darklua-minify 0.7.0
+Minify lua files
+
+USAGE:
+    darklua minify [FLAGS] [OPTIONS] <input-path> <output-path>
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+    -v, --verbose    Sets verbosity level (can be specified multiple times)
+
+OPTIONS:
+        --column-span <column-span>    The maximum number of characters that should be written on a line
+    -c, --config-path <config-path>    DEPRECATED - Reads the column span value from the given configuration file.
+                                       Instead use `--column-span <number>` to pass the value directly. darklua will
+                                       stop reading configuration files for the minify command in a future version
+
+ARGS:
+    <input-path>     Path to the lua file to minify
+    <output-path>    Where to output the result
+

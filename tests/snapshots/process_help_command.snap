@@ -1,0 +1,24 @@
+---
+source: tests/cli.rs
+expression: content
+---
+darklua-process 0.7.0
+Process lua files with rules
+
+USAGE:
+    darklua process [FLAGS] [OPTIONS] <input-path> <output-path>
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+    -v, --verbose    Sets verbosity level (can be specified multiple times)
+
+OPTIONS:
+    -c, --config <config>    Choose a specific configuration file
+        --format <format>    Choose how Lua code is formatted ('dense', 'readable' or 'retain-lines'). This will
+                             override the format given by the configuration file
+
+ARGS:
+    <input-path>     Path to the lua file to process
+    <output-path>    Where to output the result
+

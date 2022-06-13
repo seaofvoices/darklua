@@ -66,8 +66,7 @@ darklua-wasm-build-nodejs:
   extends: .only-mr-and-main
   script:
     - $CARGO_HOME/bin/wasm-pack -V
-    - $CARGO_HOME/bin/wasm-pack build site/darklua-wasm -t nodejs
-    - mv site/darklua-wasm/pkg site/darklua-wasm/pkg-nodejs
+    - $CARGO_HOME/bin/wasm-pack build site/darklua-wasm -t nodejs -d node-pkg
   cache:
     key: wasm-pack-install
     paths:
@@ -76,7 +75,7 @@ darklua-wasm-build-nodejs:
   artifacts:
     expire_in: 1 hour
     paths:
-      - site/darklua-wasm/pkg-nodejs
+      - site/darklua-wasm/node-pkg
   needs:
     - install-wasm-pack
 
@@ -103,7 +102,7 @@ wasm-javascript-tests:
   stage: test
   extends: .only-mr-and-main
   script:
-    - mv site/darklua-wasm/pkg-nodejs site/darklua-wasm/pkg
+    - mv site/darklua-wasm/node-pkg site/darklua-wasm/pkg
     - cd site/darklua-wasm/javascript-tests
     - npm run test
   cache:
@@ -219,6 +218,7 @@ build-site:
   needs:
     - npm-install-site
     - darklua-wasm-build-release
+    - darklua-wasm-build-nodejs
 
 pages:
   stage: deploy

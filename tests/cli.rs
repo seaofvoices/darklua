@@ -1,0 +1,305 @@
+use std::{
+    ffi::OsStr,
+    fs,
+    path::{Path, PathBuf},
+};
+
+use assert_cmd::Command;
+use insta::assert_snapshot;
+use regex::Regex;
+use tempfile::{tempdir_in, TempDir};
+
+struct Context {
+    command: Command,
+    working_directory: TempDir,
+    snapshot_replace: Vec<(Regex, String)>,
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        let working_directory =
+            tempdir_in(env!("CARGO_TARGET_TMPDIR")).expect("unable to create temporary directory");
+
+        let mut command = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+        command.current_dir(working_directory.path());
+
+        Self::new(command, working_directory)
+    }
+}
+
+impl Context {
+    pub fn new(command: Command, working_directory: TempDir) -> Self {
+        Self {
+            command,
+            working_directory,
+            snapshot_replace: Vec::new(),
+        }
+    }
+
+    pub fn arg<S: AsRef<OsStr>>(mut self, arg: S) -> Self {
+        self.command.arg(arg);
+        self
+    }
+
+    pub fn expect_file<P: AsRef<Path>>(&self, file_path: P) -> &Self {
+        let file_path = file_path.as_ref();
+        if !file_path.exists() || !file_path.is_file() {
+            self.debug_working_directory(self.working_directory.path());
+        }
+        assert!(
+            file_path.exists(),
+            "file `{}` does not exist",
+            file_path.display()
+        );
+        assert!(
+            file_path.is_file(),
+            "path `{}` is not a file",
+            file_path.display()
+        );
+        self
+    }
+
+    pub fn snapshot_file<P: AsRef<Path>>(
+        &self,
+        snapshot_name: &'static str,
+        file_path: P,
+    ) -> &Self {
+        let file_path = self.path_from_working_directory(file_path.as_ref());
+        self.expect_file(&file_path);
+        let content = fs::read_to_string(file_path).expect("unable to read file");
+        self.snapshot_string(snapshot_name, content);
+        self
+    }
+
+    pub fn snapshot_command(mut self, snapshot_name: &'static str) -> Self {
+        let output = self.full_output();
+        self.snapshot_string(snapshot_name, output);
+        self
+    }
+
+    fn snapshot_string(&self, snapshot_name: &'static str, content: String) {
+        let working_directory_display = format!(
+            "{}{}",
+            self.working_directory.path().display(),
+            std::path::MAIN_SEPARATOR
+        );
+        let mut content = content
+            .replace(&working_directory_display, "{{CWD}}")
+            .replace("darklua.exe", "darklua");
+
+        for (replace_regex, replace_with) in self.snapshot_replace.iter() {
+            let mut ranges: Vec<_> = replace_regex
+                .find_iter(&content)
+                .map(|occurence| occurence.range())
+                .collect();
+            ranges.reverse();
+
+            for range in ranges {
+                content.replace_range(range, replace_with);
+            }
+        }
+
+        insta::with_settings!({prepend_module_to_snapshot => false}, {
+            assert_snapshot!(snapshot_name, content);
+        });
+    }
+
+    pub fn write_file<P: AsRef<Path>>(self, relative_path: P, content: &str) -> Self {
+        let file_path = self.path_from_working_directory(relative_path);
+
+        if let Some(parent) = file_path
+            .parent()
+            .filter(|parent| *parent != self.working_directory.as_ref())
+        {
+            fs::create_dir_all(parent).expect("unable to create directory");
+        }
+
+        fs::write(file_path, content).expect("unable to write file");
+        self
+    }
+
+    fn path_from_working_directory<P: AsRef<Path>>(&self, path: P) -> PathBuf {
+        self.working_directory.path().join(path)
+    }
+
+    fn full_output(&mut self) -> String {
+        let output = self.command.output().expect("unable to run command");
+
+        let mut string = std::str::from_utf8(&output.stdout)
+            .expect("unable to read output")
+            .to_owned();
+        let err_output = std::str::from_utf8(&output.stderr).expect("unable to read output");
+
+        if !string.is_empty() && !err_output.is_empty() {
+            string.push('\n');
+        }
+
+        string.push_str(err_output);
+        string
+    }
+
+    fn debug_working_directory(&self, root: &Path) {
+        eprintln!("{}", root.display());
+        for entry in root.read_dir().unwrap() {
+            let entry = entry.unwrap().path();
+            if entry.is_dir() {
+                self.debug_working_directory(&entry);
+            } else {
+                eprintln!("{}", entry.display());
+            }
+        }
+    }
+
+    pub fn expect_success(mut self) -> Self {
+        self.command.assert().code(0);
+        self
+    }
+
+    pub fn replace_snapshot_content<S: Into<String>>(
+        mut self,
+        matcher: impl AsRef<str>,
+        replace_with: S,
+    ) -> Self {
+        self.snapshot_replace.push((
+            Regex::new(matcher.as_ref()).expect("regex should be valid"),
+            replace_with.into(),
+        ));
+        self
+    }
+}
+
+#[test]
+fn snapshot_help_command() {
+    Context::default()
+        .arg("help")
+        .snapshot_command("help_command");
+}
+
+#[test]
+fn snapshot_process_help_command() {
+    Context::default()
+        .arg("process")
+        .arg("--help")
+        .snapshot_command("process_help_command");
+}
+
+#[test]
+fn snapshot_minify_help_command() {
+    Context::default()
+        .arg("minify")
+        .arg("--help")
+        .snapshot_command("minify_help_command");
+}
+
+#[test]
+fn run_minify_command() {
+    Context::default()
+        .write_file("src/init.lua", "return 1 + 1\n")
+        .arg("minify")
+        .arg("src")
+        .arg("out")
+        .snapshot_command("run_minify_command")
+        .snapshot_file("run_minify_command_init_out", "out/init.lua");
+}
+
+#[test]
+fn run_minify_with_column_span_command() {
+    Context::default()
+        .write_file("src/init.lua", "return 1 + 1\n")
+        .arg("minify")
+        .arg("--column-span")
+        .arg("2")
+        .arg("src")
+        .arg("out")
+        .expect_success()
+        .snapshot_file(
+            "run_minify_with_column_span_command_init_out",
+            "out/init.lua",
+        );
+}
+
+#[test]
+fn run_minify_with_column_span_in_config_command() {
+    Context::default()
+        .write_file("src/init.lua", "return 1 + 1\n")
+        .write_file(".darklua.json", "{ column_span: 2 }")
+        .arg("minify")
+        .arg("src")
+        .arg("out")
+        .expect_success()
+        .snapshot_file(
+            "run_minify_with_column_span_in_config_command_init_out",
+            "out/init.lua",
+        );
+}
+
+#[test]
+fn run_minify_verbose_command() {
+    Context::default()
+        .write_file("src/init.lua", "return 1 + 1\n")
+        .arg("minify")
+        .arg("-v")
+        .arg("src")
+        .arg("out")
+        .snapshot_command("run_minify_verbose_command");
+}
+
+#[test]
+fn run_process_command() {
+    Context::default()
+        .write_file("src/init.lua", "return 1 + 1\n")
+        .arg("process")
+        .arg("src")
+        .arg("out")
+        .replace_snapshot_content("\\d+.\\d+[mµ]s", "{{DURATION}}")
+        .snapshot_command("run_process_command")
+        .snapshot_file("run_process_command_init_out", "out/init.lua");
+}
+
+#[test]
+fn run_process_verbose_command() {
+    Context::default()
+        .write_file("src/init.lua", "return 1 + 1\n")
+        .arg("process")
+        .arg("-v")
+        .arg("src")
+        .arg("out")
+        .replace_snapshot_content("\\d+.\\d+[µm]s", "{{DURATION}}")
+        .snapshot_command("run_process_verbose_command");
+}
+
+#[test]
+fn run_process_single_file_custom_config_command() {
+    Context::default()
+        .write_file("test.lua", "return _G.CONSTANT\n")
+        .write_file(
+            "custom.json5",
+            "{ rules: [{ rule: 'inject_global_value', identifier: 'CONSTANT', value: true }] }",
+        )
+        .arg("process")
+        .arg("--config")
+        .arg("custom.json5")
+        .arg("test.lua")
+        .arg("out.lua")
+        .replace_snapshot_content("\\d+.\\d+[mµ]s", "{{DURATION}}")
+        .snapshot_command("run_process_single_file_custom_config")
+        .snapshot_file("run_process_custom_config_command_out", "out.lua");
+}
+
+#[test]
+fn run_process_single_file_custom_config_command_deprecated_config_path() {
+    Context::default()
+        .write_file("test.lua", "return _G.CONSTANT\n")
+        .write_file(
+            "custom.json5",
+            "{ rules: [{ rule: 'inject_global_value', identifier: 'CONSTANT', value: true }] }",
+        )
+        .arg("process")
+        .arg("--config-path")
+        .arg("custom.json5")
+        .arg("test.lua")
+        .arg("out.lua")
+        .replace_snapshot_content("\\d+.\\d+[mµ]s", "{{DURATION}}")
+        .snapshot_command("run_process_single_file_custom_config")
+        .snapshot_file("run_process_custom_config_command_out", "out.lua");
+}

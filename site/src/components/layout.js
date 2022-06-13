@@ -7,9 +7,6 @@ import { AppBar, Paper } from "@mui/material"
 import NavBar, { NavBarFiller } from "./nav-bar"
 
 const Layout = ({ title, children }) => {
-  // const rootPath = `${__PATH_PREFIX__}/`
-  // const isRootPath = location.pathname === rootPath
-
   const onTopOfDrawer = theme => theme.zIndex.drawer + 1
 
   return (
@@ -29,7 +26,10 @@ const Layout = ({ title, children }) => {
         }}
       >
         <NavBarFiller />
-        <Box sx={{ flexGrow: 1 }}>{children}</Box>
+        <Box sx={{ flexGrow: 1 }}>
+          {children}
+          <br />
+        </Box>
         <FooterFiller />
       </Box>
       <AppBar

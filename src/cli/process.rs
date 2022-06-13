@@ -1,6 +1,6 @@
 use crate::cli::error::CliError;
 use crate::cli::utils::{log_array, maybe_plural, write_file, Config, FileProcessing, Timer};
-use crate::cli::GlobalOptions;
+use crate::cli::{CommandResult, GlobalOptions};
 
 use darklua_core::generator::TokenBasedLuaGenerator;
 use darklua_core::{
@@ -14,6 +14,8 @@ use std::path::PathBuf;
 use std::process;
 use std::str::FromStr;
 use structopt::StructOpt;
+
+use super::utils::DEFAULT_COLUMN_SPAN;
 
 #[derive(Debug, Copy, Clone)]
 pub enum LuaFormat {
@@ -33,12 +35,14 @@ impl LuaFormat {
     pub fn generate(&self, config: &Config, block: &Block, code: &str) -> String {
         match self {
             Self::Dense => {
-                let mut generator = DenseLuaGenerator::new(config.column_span);
+                let mut generator =
+                    DenseLuaGenerator::new(config.column_span.unwrap_or(DEFAULT_COLUMN_SPAN));
                 generator.write_block(block);
                 generator.into_string()
             }
             Self::Readable => {
-                let mut generator = ReadableLuaGenerator::new(config.column_span);
+                let mut generator =
+                    ReadableLuaGenerator::new(config.column_span.unwrap_or(DEFAULT_COLUMN_SPAN));
                 generator.write_block(block);
                 generator.into_string()
             }
@@ -76,14 +80,15 @@ pub struct Options {
     #[structopt(parse(from_os_str))]
     pub output_path: PathBuf,
     /// Choose a specific configuration file.
-    #[structopt(long, short)]
-    pub config_path: Option<PathBuf>,
+    #[structopt(long, short, alias = "config-path")]
+    pub config: Option<PathBuf>,
     /// Choose how Lua code is formatted ('dense', 'readable' or 'retain-lines').
-    #[structopt(long, default_value = "retain-lines")]
-    pub format: LuaFormat,
+    /// This will override the format given by the configuration file.
+    #[structopt(long)]
+    pub format: Option<LuaFormat>,
 }
 
-fn process(file: &FileProcessing, config: &Config, options: &Options) -> Result<(), CliError> {
+fn process(file: &FileProcessing, config: &Config, options: &Options) -> CommandResult {
     let source = &file.source;
     let output = &file.output;
 
@@ -94,7 +99,11 @@ fn process(file: &FileProcessing, config: &Config, options: &Options) -> Result<
     let input = fs::read_to_string(source)
         .map_err(|io_error| CliError::InputFile(format!("{}", io_error)))?;
 
-    let parser = options.format.build_parser();
+    let parser = options
+        .format
+        .as_ref()
+        .map(LuaFormat::build_parser)
+        .unwrap_or_else(|| config.build_parser());
 
     let parser_timer = Timer::now();
 
@@ -103,11 +112,11 @@ fn process(file: &FileProcessing, config: &Config, options: &Options) -> Result<
         .map_err(|parser_error| CliError::Parser(source.clone(), parser_error))?;
 
     let parser_time = parser_timer.duration_label();
-    log::debug!("parsed `{}` in {}", source.display(), parser_time,);
+    log::debug!("parsed `{}` in {}", source.display(), parser_time);
 
     let rule_timer = Timer::now();
 
-    for (index, rule) in config.process.iter().enumerate() {
+    for (index, rule) in config.rules.iter().enumerate() {
         let mut context = Context::default();
         log::trace!(
             "[{}] apply rule `{}`{}",
@@ -141,7 +150,13 @@ fn process(file: &FileProcessing, config: &Config, options: &Options) -> Result<
     log::debug!("rules applied for `{}` in {}", source.display(), rule_time,);
 
     let generator_timer = Timer::now();
-    let lua_code = options.format.generate(config, &block, &input);
+
+    let lua_code = options
+        .format
+        .as_ref()
+        .map(|format| format.generate(config, &block, &input))
+        .unwrap_or_else(|| config.generate_lua(&block, &input));
+
     let generator_time = generator_timer.duration_label();
     log::debug!(
         "generated code for `{}` in {}",
@@ -157,7 +172,7 @@ fn process(file: &FileProcessing, config: &Config, options: &Options) -> Result<
     Ok(())
 }
 
-pub fn run(options: &Options, global: &GlobalOptions) {
+pub fn run(options: &Options, global: &GlobalOptions) -> CommandResult {
     log::debug!("running `process`: {:?}", options);
 
     let files = FileProcessing::find(&options.input_path, &options.output_path, global);
@@ -171,11 +186,11 @@ pub fn run(options: &Options, global: &GlobalOptions) {
         }))
     );
 
-    let config = match Config::new(&options.config_path) {
+    let config = match Config::new(&options.config) {
         Ok(config) => config,
         Err(error) => {
             eprintln!("{}", error);
-            return;
+            process::exit(1);
         }
     };
 
@@ -201,12 +216,14 @@ pub fn run(options: &Options, global: &GlobalOptions) {
     let error_count = errors.len();
 
     if error_count == 0 {
-        log::info!(
+        println!(
             "Successfully processed {} file{} (in {})",
             total_files,
             maybe_plural(total_files),
             process_duration,
         );
+
+        Ok(())
     } else {
         let success_count = total_files - error_count;
 

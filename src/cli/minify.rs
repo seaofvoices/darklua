@@ -1,6 +1,8 @@
 use crate::cli::error::CliError;
-use crate::cli::utils::{log_array, maybe_plural, write_file, Config, FileProcessing};
-use crate::cli::GlobalOptions;
+use crate::cli::utils::{
+    log_array, maybe_plural, write_file, Config, FileProcessing, DEFAULT_COLUMN_SPAN,
+};
+use crate::cli::{CommandResult, GlobalOptions};
 
 use darklua_core::{
     generator::{DenseLuaGenerator, LuaGenerator},
@@ -19,14 +21,17 @@ pub struct Options {
     /// Where to output the result.
     #[structopt(parse(from_os_str))]
     pub output_path: PathBuf,
-    /// Choose a specific configuration file.
+    /// DEPRECATED - Reads the column span value from the given configuration file.
+    /// Instead use `--column-span <number>` to pass the value directly. darklua
+    /// will stop reading configuration files for the minify command in a future version
     #[structopt(long, short)]
     pub config_path: Option<PathBuf>,
+    /// The maximum number of characters that should be written on a line.
+    #[structopt(long)]
+    pub column_span: Option<usize>,
 }
 
-type MinifyResult = Result<(), CliError>;
-
-fn minify(file: &FileProcessing, config: &Config) -> MinifyResult {
+fn minify(file: &FileProcessing, column_span: usize) -> CommandResult {
     let source = &file.source;
     let output = &file.output;
 
@@ -43,7 +48,7 @@ fn minify(file: &FileProcessing, config: &Config) -> MinifyResult {
         .parse(&input)
         .map_err(|parser_error| CliError::Parser(source.clone(), parser_error))?;
 
-    let mut generator = DenseLuaGenerator::new(config.column_span);
+    let mut generator = DenseLuaGenerator::new(column_span);
     generator.write_block(&block);
     let minified = generator.into_string();
 
@@ -55,7 +60,7 @@ fn minify(file: &FileProcessing, config: &Config) -> MinifyResult {
     Ok(())
 }
 
-pub fn run(options: &Options, global: &GlobalOptions) {
+pub fn run(options: &Options, global: &GlobalOptions) -> CommandResult {
     log::debug!("running `minify`: {:?}", options);
 
     let files = FileProcessing::find(&options.input_path, &options.output_path, global);
@@ -69,17 +74,33 @@ pub fn run(options: &Options, global: &GlobalOptions) {
         }))
     );
 
+    if options.config_path.is_some() {
+        log::warn!(concat!(
+            "Providing a configuration file for the minify command is now deprecated. ",
+            "\nThe only part that was used was for the column width. Instead, pass ",
+            "`--column-span <number>` directly in the command line"
+        ))
+    }
+
     let config = match Config::new(&options.config_path) {
         Ok(config) => config,
         Err(error) => {
             eprintln!("{}", error);
-            return;
+            process::exit(1);
         }
     };
 
-    let results: Vec<MinifyResult> = files
+    let results: Vec<CommandResult> = files
         .iter()
-        .map(|file_processing| minify(file_processing, &config))
+        .map(|file_processing| {
+            minify(
+                file_processing,
+                options
+                    .column_span
+                    .or(config.column_span)
+                    .unwrap_or(DEFAULT_COLUMN_SPAN),
+            )
+        })
         .collect();
 
     let total_files = results.len();
@@ -95,11 +116,13 @@ pub fn run(options: &Options, global: &GlobalOptions) {
     let error_count = errors.len();
 
     if error_count == 0 {
-        log::info!(
+        println!(
             "Successfully minified {} file{}",
             total_files,
             maybe_plural(total_files)
         );
+
+        Ok(())
     } else {
         let success_count = total_files - error_count;
 

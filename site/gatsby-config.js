@@ -6,7 +6,8 @@ module.exports = {
     social: {
       twitter: `jeparleRBX`,
     },
-    groupsOrder: ["Guides"],
+    groupsOrder: ["Guides", "Configuration", "Rules"],
+    rulesGroup: "Rules",
   },
   plugins: [
     `gatsby-plugin-material-ui`,
@@ -17,6 +18,13 @@ module.exports = {
       options: {
         path: `${__dirname}/content/docs`,
         name: `docs`,
+      },
+    },
+    {
+      resolve: `gatsby-source-filesystem`,
+      options: {
+        path: `${__dirname}/content/rules`,
+        name: `rules`,
       },
     },
     {

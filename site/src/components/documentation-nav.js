@@ -11,6 +11,8 @@ import {
 import ExpandLess from "@mui/icons-material/ExpandLess"
 import ExpandMore from "@mui/icons-material/ExpandMore"
 import MenuBook from "@mui/icons-material/MenuBook"
+import Settings from "@mui/icons-material/Settings"
+import Rule from "@mui/icons-material/Rule"
 import ViewStateLink from "./ViewStateLink"
 import { useLocation } from "./location-context"
 
@@ -20,9 +22,10 @@ const query = graphql`
       siteMetadata {
         title
         groupsOrder
+        rulesGroup
       }
     }
-    allMarkdownRemark {
+    allMarkdownRemark(filter: { frontmatter: { group: { ne: null } } }) {
       nodes {
         fields {
           slug
@@ -31,6 +34,14 @@ const query = graphql`
           title
           group
           order
+        }
+      }
+    }
+    rules: allMarkdownRemark(filter: { frontmatter: { group: { eq: null } } }) {
+      nodes {
+        fields {
+          slug
+          ruleName
         }
       }
     }
@@ -46,9 +57,29 @@ const DocumentationLink = ({ title, slug, isSelected, drawerOpened }) => {
       to={slug}
       state={{ drawerOpened }}
     >
-      <ListItemText primary={title} />
+      <ListItemText
+        primary={title}
+        primaryTypographyProps={{
+          textOverflow: "ellipsis",
+          overflow: "hidden",
+        }}
+      />
     </ListItemButton>
   )
+}
+
+const groupIconMap = {
+  Guides: MenuBook,
+  Configuration: Settings,
+  Rules: Rule,
+}
+
+const GroupIcon = ({ groupName }) => {
+  const IconComponent = groupIconMap[groupName]
+  if (IconComponent) {
+    return <IconComponent />
+  }
+  return <MenuBook />
 }
 
 const DocumentationGroup = ({ name, content, drawerOpened, openDrawer }) => {
@@ -67,7 +98,7 @@ const DocumentationGroup = ({ name, content, drawerOpened, openDrawer }) => {
         }}
       >
         <ListItemIcon>
-          <MenuBook />
+          <GroupIcon groupName={name} />
         </ListItemIcon>
         {drawerOpened && (
           <>
@@ -98,33 +129,58 @@ const sortGroupContent = (a, b) => a.order - b.order
 export const DocumentationNavigation = ({ drawerOpened, openDrawer }) => {
   const data = useStaticQuery(query)
   const location = useLocation()
+  const { pathname } = location
 
-  const groupNameToIndex = new Map()
-  const groups = data.site.siteMetadata.groupsOrder.map((groupName, index) => {
-    groupNameToIndex.set(groupName, index)
-    return { name: groupName, content: [] }
-  })
+  const groups = React.useMemo(() => {
+    const groupNameToIndex = new Map()
+    const groups = data.site.siteMetadata.groupsOrder.map(
+      (groupName, index) => {
+        groupNameToIndex.set(groupName, index)
+        return { name: groupName, content: [] }
+      }
+    )
 
-  const documents = data.allMarkdownRemark.nodes.map(node => ({
-    ...node.frontmatter,
-    slug: `/docs${node.fields.slug}`,
-    isSelected: location.pathname === `/docs${node.fields.slug}`,
-  }))
+    const documents = data.allMarkdownRemark.nodes.map(node => {
+      const slug = `/docs${node.fields.slug}`
+      return {
+        ...node.frontmatter,
+        slug,
+        isSelected: pathname === slug,
+      }
+    })
 
-  documents.forEach(document => {
-    const { group: groupName } = document
-    const groupIndex = groupNameToIndex.get(groupName)
+    documents.forEach(document => {
+      const { group: groupName } = document
+      const groupIndex = groupNameToIndex.get(groupName)
 
-    if (typeof groupIndex !== "number") {
-      const { title, slug } = document
-      throw new Error(
-        `Unknown group '${groupName}' associated with '${title}' (at ${slug})`
-      )
-    }
-    groups[groupIndex].content.push(document)
-  })
+      if (typeof groupIndex !== "number") {
+        const { title, slug } = document
+        throw new Error(
+          `Unknown group '${groupName}' associated with '${title}' (at ${slug})`
+        )
+      }
+      groups[groupIndex].content.push(document)
+    })
 
-  groups.forEach(group => group.content.sort(sortGroupContent))
+    groups.forEach(group => group.content.sort(sortGroupContent))
+
+    // Append generate rules documentation in the correct group
+    const rulesGroupName = data.site.siteMetadata.rulesGroup
+    const rulesGroup = groups.find(({ name }) => name === rulesGroupName)
+
+    const rulesDocument = data.rules.nodes.map(({ fields }) => {
+      const { slug: ruleSlug, ruleName } = fields
+      const slug = `/docs/rules${ruleSlug}`
+      return {
+        title: ruleName,
+        slug,
+        isSelected: pathname === slug,
+      }
+    })
+    rulesGroup.content.push(...rulesDocument)
+
+    return groups
+  }, [data, pathname])
 
   return (
     <List>

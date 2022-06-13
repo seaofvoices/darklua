@@ -2,8 +2,12 @@ import * as React from "react"
 import { Link } from "gatsby"
 import rehypeReact from "rehype-react"
 
-import { styled } from "@mui/system"
-import { Paper, Typography, Link as MuiLink } from "@mui/material"
+import { styled, useTheme } from "@mui/system"
+import { Typography, Link as MuiLink } from "@mui/material"
+import { RuleReference } from "./rule-reference"
+import { toHast } from "mdast-util-to-hast"
+import { fromMarkdown } from "mdast-util-from-markdown"
+import ViewStateLink from "./ViewStateLink"
 
 const AnchorOffsetByToolbar = styled("div")(({ theme }) => {
   const newStyle = {
@@ -61,10 +65,21 @@ const visitNodes = (node, callback) => {
   }
 }
 
-const generateId = ({ children }) => {
+const generateId = ({ children, ...node }) => {
   const text = children[0].value
   return text.toLowerCase().replaceAll(" ", "-")
 }
+
+const TextLink = React.forwardRef((props, ref) => {
+  const theme = useTheme()
+
+  const linkColor =
+    theme.palette.mode === "dark"
+      ? theme.palette.primary.light
+      : theme.palette.primary.dark
+
+  return <ViewStateLink ref={ref} style={{ color: linkColor }} {...props} />
+})
 
 const renderAst = new rehypeReact({
   createElement: React.createElement,
@@ -75,6 +90,8 @@ const renderAst = new rehypeReact({
     h4: createHeaderComponent(4),
     h5: createHeaderComponent(5),
     h6: createHeaderComponent(6),
+    a: TextLink,
+    "rule-reference": RuleReference,
   },
 }).Compiler
 
@@ -109,9 +126,13 @@ export const MarkdownRenderer = ({ htmlAst, ...props }) => {
     })
   }, [htmlAst])
 
-  return (
-    <Paper elevation={0} {...props}>
-      {renderAst(htmlAst)}
-    </Paper>
+  return renderAst(htmlAst)
+}
+
+export const RenderMarkdown = ({ markdown }) => {
+  const htmlAst = React.useMemo(
+    () => toHast(fromMarkdown(markdown)),
+    [markdown]
   )
+  return <MarkdownRenderer htmlAst={htmlAst} />
 }

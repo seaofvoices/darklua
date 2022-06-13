@@ -5,20 +5,6 @@ group: Guides
 order: 1
 ---
 
-## Installation
-
-darklua is a command line tool that can be installed using [cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html).
-
-```
-cargo install darklua
-```
-
-If you want to use the lastest darklua available, install it using the git url:
-
-```
-cargo install --git https://gitlab.com/seaofvoices/darklua.git
-```
-
 ## Usage
 
 The following section will detail the different commands of darklua. You can also get a list of the available commands and options using the command line tool itself, simply run:
@@ -41,7 +27,7 @@ The process command is similar to the minify command: it takes an input path and
 darklua process <input-path> <output-path>
 
 optional arguments:
-  -c, --config-path <path>
+  -c, --config <path>
   Path to a configuration file
 ```
 
@@ -53,10 +39,10 @@ If you have a `src` folder that contains a bunch of Lua scripts (files ending wi
 darklua process src processed-src
 ```
 
-If a configuration file is found in the folder where the command is run, darklua will automatically use it. If your configuration file is not named `.darklua.json` or `.darklua.json5`, or not located in the folder where you are running the command, you must specify it with the `--config-path` argument:
+If a configuration file is found in the folder where the command is run, darklua will automatically use it. If your configuration file is not named `.darklua.json` or `.darklua.json5`, or not located in the folder where you are running the command, you must specify it with the `--config` argument:
 
 ```
-darklua process src processed-src --config-path ./path/config.json
+darklua process src processed-src --config ./path/config.json
 # or the shorter version:
 darklua process src processed-src -c ./path/config.json
 ```
@@ -69,8 +55,8 @@ This command reads Lua code and reformats it to reduce the size of the code, mea
 darklua minify <input-path> <output-path>
 
 optional arguments:
-  -c, --config-path <path>
-  Path to a configuration file
+  --column-span <number>
+  The maximum number of characters that should be written on a line
 ```
 
 #### Example
@@ -79,12 +65,4 @@ If you have a `src` folder that contains a bunch of Lua scripts (files ending wi
 
 ```
 darklua minify src minified-src
-```
-
-To specify the configuration file location, simply run:
-
-```
-darklua minify src minified-src --config-path ./path/config.json
-# or the shorter version:
-darklua minify src minified-src -c ./path/config.json
 ```
