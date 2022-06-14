@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.8.0
+
 * update configuration file ([!60](https://gitlab.com/seaofvoices/darklua/-/merge_requests/60))
 * add rule to remove statements after a do blocks returns early ([!59](https://gitlab.com/seaofvoices/darklua/-/merge_requests/59))
 * fix readable formatter to put a space after `return` keywords ([!58](https://gitlab.com/seaofvoices/darklua/-/merge_requests/58))

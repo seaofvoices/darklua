@@ -2,7 +2,7 @@
 source: tests/cli.rs
 expression: content
 ---
-darklua-process 0.7.0
+darklua-process 0.8.0
 Process lua files with rules
 
 USAGE:

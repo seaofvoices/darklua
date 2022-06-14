@@ -2,7 +2,7 @@
 source: tests/cli.rs
 expression: content
 ---
-darklua-minify 0.7.0
+darklua-minify 0.8.0
 Minify lua files
 
 USAGE:

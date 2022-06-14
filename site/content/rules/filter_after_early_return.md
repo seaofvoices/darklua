@@ -1,6 +1,6 @@
 ---
 description: Removes unreachable statements following return statements
-added_in: "unreleased"
+added_in: "0.8.0"
 parameters: []
 ---
 

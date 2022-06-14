@@ -10,7 +10,7 @@ order: 1
 If you are already using [Foreman](https://github.com/Roblox/foreman), then installing darklua as simple as adding this line in the `foreman.toml` file:
 
 ```toml
-darklua = { gitlab = "seaofvoices/darklua", version = "=0.7.0" }
+darklua = { gitlab = "seaofvoices/darklua", version = "=0.8.0" }
 ```
 
 GitLab support has been added in Foreman version 1.0.3, so make sure you are using a version greater or equal to 1.0.3.

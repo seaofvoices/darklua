@@ -2,7 +2,7 @@
 source: tests/cli.rs
 expression: content
 ---
-darklua 0.7.0
+darklua 0.8.0
 Transform Lua scripts
 
 USAGE:
