@@ -21,7 +21,7 @@ pub use variable::*;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AnyNodeRef<'a> {
     AnyStatement(AnyStatementRef<'a>),
-    Expression(&'a Expression),
+    AnyExpression(AnyExpressionRef<'a>),
 }
 
 impl<'a> AnyNodeRef<'a> {
@@ -47,12 +47,43 @@ impl<'a> From<&'a LastStatement> for AnyNodeRef<'a> {
 
 impl<'a> From<&'a Expression> for AnyNodeRef<'a> {
     fn from(expression: &'a Expression) -> Self {
-        Self::Expression(expression)
+        Self::AnyExpression(AnyExpressionRef::from(expression))
     }
 }
 
 impl<'a> From<AnyStatementRef<'a>> for AnyNodeRef<'a> {
     fn from(any_statement: AnyStatementRef<'a>) -> Self {
         Self::AnyStatement(any_statement)
+    }
+}
+
+impl<'a> From<AnyExpressionRef<'a>> for AnyNodeRef<'a> {
+    fn from(any_expression: AnyExpressionRef<'a>) -> Self {
+        Self::AnyExpression(any_expression)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AnyExpressionRef<'a> {
+    Expression(&'a Expression),
+    Prefix(&'a Prefix),
+    Arguments(&'a Arguments),
+}
+
+impl<'a> From<&'a Expression> for AnyExpressionRef<'a> {
+    fn from(expression: &'a Expression) -> Self {
+        Self::Expression(expression)
+    }
+}
+
+impl<'a> From<&'a Prefix> for AnyExpressionRef<'a> {
+    fn from(prefix: &'a Prefix) -> Self {
+        Self::Prefix(prefix)
+    }
+}
+
+impl<'a> From<&'a Arguments> for AnyExpressionRef<'a> {
+    fn from(arguments: &'a Arguments) -> Self {
+        Self::Arguments(arguments)
     }
 }

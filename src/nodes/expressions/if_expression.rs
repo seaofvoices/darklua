@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use crate::nodes::Token;
 
 use super::Expression;
@@ -94,6 +96,29 @@ impl IfExpression {
     #[inline]
     pub fn iter_branches(&self) -> impl Iterator<Item = &ElseIfExpressionBranch> {
         self.branches.iter()
+    }
+
+    pub fn get_expression(&self, index: usize) -> Option<&Expression> {
+        let result = match index {
+            0 => self.get_condition(),
+            1 => self.get_result(),
+            _ => {
+                let branch_index = (index / 2).saturating_sub(1);
+                match branch_index.cmp(&self.branches.len()) {
+                    Ordering::Less => {
+                        let branch = self.branches.get(branch_index)?;
+                        if index % 2 == 0 {
+                            branch.get_condition()
+                        } else {
+                            branch.get_result()
+                        }
+                    }
+                    Ordering::Equal => self.get_else_result(),
+                    Ordering::Greater => return None,
+                }
+            }
+        };
+        Some(result)
     }
 
     #[inline]
