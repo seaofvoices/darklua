@@ -1,7 +1,7 @@
 //! Defines how rules can process and mutate Lua nodes.
 
 mod evaluator;
-pub(crate) mod mutations;
+pub(crate) mod path;
 pub(crate) mod new_processor;
 #[cfg(test)]
 mod node_counter;
