@@ -20,17 +20,15 @@ pub use variable::*;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AnyNodeRef<'a> {
-    AnyStatement(AnyStatementRef<'a>),
+    AnyBlock(&'a Block),
     AnyExpression(AnyExpressionRef<'a>),
+    AnyStatement(AnyStatementRef<'a>),
 }
 
-impl<'a> AnyNodeRef<'a> {
-    // pub fn statement(self) -> Option<AnyStatementRef<'a>> {
-    //     match self {
-    //         Self::AnyStatement(any_statement) => Some(any_statement),
-    //         Self::Expression(_) => None,
-    //     }
-    // }
+impl<'a> From<&'a Block> for AnyNodeRef<'a> {
+    fn from(block: &'a Block) -> Self {
+        Self::AnyBlock(block)
+    }
 }
 
 impl<'a> From<&'a Statement> for AnyNodeRef<'a> {
@@ -64,6 +62,24 @@ impl<'a> From<AnyExpressionRef<'a>> for AnyNodeRef<'a> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AnyStatementRef<'a> {
+    Statement(&'a Statement),
+    LastStatement(&'a LastStatement),
+}
+
+impl<'a> From<&'a Statement> for AnyStatementRef<'a> {
+    fn from(statement: &'a Statement) -> Self {
+        Self::Statement(statement)
+    }
+}
+
+impl<'a> From<&'a LastStatement> for AnyStatementRef<'a> {
+    fn from(statement: &'a LastStatement) -> Self {
+        Self::LastStatement(statement)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AnyExpressionRef<'a> {
     Expression(&'a Expression),
     Prefix(&'a Prefix),
@@ -84,6 +100,92 @@ impl<'a> From<&'a Prefix> for AnyExpressionRef<'a> {
 
 impl<'a> From<&'a Arguments> for AnyExpressionRef<'a> {
     fn from(arguments: &'a Arguments) -> Self {
+        Self::Arguments(arguments)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum AnyNodeRefMut<'a> {
+    AnyBlock(&'a mut Block),
+    AnyExpression(AnyExpressionRefMut<'a>),
+    AnyStatement(AnyStatementRefMut<'a>),
+}
+
+impl<'a> From<&'a mut Block> for AnyNodeRefMut<'a> {
+    fn from(block: &'a mut Block) -> Self {
+        Self::AnyBlock(block)
+    }
+}
+
+impl<'a> From<&'a mut Statement> for AnyNodeRefMut<'a> {
+    fn from(statement: &'a mut Statement) -> Self {
+        Self::AnyStatement(AnyStatementRefMut::from(statement))
+    }
+}
+
+impl<'a> From<&'a mut LastStatement> for AnyNodeRefMut<'a> {
+    fn from(statement: &'a mut LastStatement) -> Self {
+        Self::AnyStatement(AnyStatementRefMut::from(statement))
+    }
+}
+
+impl<'a> From<&'a mut Expression> for AnyNodeRefMut<'a> {
+    fn from(expression: &'a mut Expression) -> Self {
+        Self::AnyExpression(AnyExpressionRefMut::from(expression))
+    }
+}
+
+impl<'a> From<AnyStatementRefMut<'a>> for AnyNodeRefMut<'a> {
+    fn from(any_statement: AnyStatementRefMut<'a>) -> Self {
+        Self::AnyStatement(any_statement)
+    }
+}
+
+impl<'a> From<AnyExpressionRefMut<'a>> for AnyNodeRefMut<'a> {
+    fn from(any_expression: AnyExpressionRefMut<'a>) -> Self {
+        Self::AnyExpression(any_expression)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum AnyStatementRefMut<'a> {
+    Statement(&'a mut Statement),
+    LastStatement(&'a mut LastStatement),
+}
+
+impl<'a> From<&'a mut Statement> for AnyStatementRefMut<'a> {
+    fn from(statement: &'a mut Statement) -> Self {
+        Self::Statement(statement)
+    }
+}
+
+impl<'a> From<&'a mut LastStatement> for AnyStatementRefMut<'a> {
+    fn from(statement: &'a mut LastStatement) -> Self {
+        Self::LastStatement(statement)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum AnyExpressionRefMut<'a> {
+    Expression(&'a mut Expression),
+    Prefix(&'a mut Prefix),
+    Arguments(&'a mut Arguments),
+}
+
+impl<'a> From<&'a mut Expression> for AnyExpressionRefMut<'a> {
+    fn from(expression: &'a mut Expression) -> Self {
+        Self::Expression(expression)
+    }
+}
+
+impl<'a> From<&'a mut Prefix> for AnyExpressionRefMut<'a> {
+    fn from(prefix: &'a mut Prefix) -> Self {
+        Self::Prefix(prefix)
+    }
+}
+
+impl<'a> From<&'a mut Arguments> for AnyExpressionRefMut<'a> {
+    fn from(arguments: &'a mut Arguments) -> Self {
         Self::Arguments(arguments)
     }
 }

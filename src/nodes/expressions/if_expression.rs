@@ -121,6 +121,29 @@ impl IfExpression {
         Some(result)
     }
 
+    pub fn mutate_expression(&mut self, index: usize) -> Option<&mut Expression> {
+        let result = match index {
+            0 => self.mutate_condition(),
+            1 => self.mutate_result(),
+            _ => {
+                let branch_index = (index / 2).saturating_sub(1);
+                match branch_index.cmp(&self.branches.len()) {
+                    Ordering::Less => {
+                        let branch = self.branches.get_mut(branch_index)?;
+                        if index % 2 == 0 {
+                            branch.mutate_condition()
+                        } else {
+                            branch.mutate_result()
+                        }
+                    }
+                    Ordering::Equal => self.mutate_else_result(),
+                    Ordering::Greater => return None,
+                }
+            }
+        };
+        Some(result)
+    }
+
     #[inline]
     pub fn iter_mut_branches(&mut self) -> impl Iterator<Item = &mut ElseIfExpressionBranch> {
         self.branches.iter_mut()

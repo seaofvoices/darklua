@@ -1,4 +1,4 @@
-use crate::nodes::{AnyStatementRef, Block, Expression, Token};
+use crate::nodes::{AnyStatementRef, AnyStatementRefMut, Block, Expression, Token};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct IfBranchTokens {
@@ -201,6 +201,11 @@ impl IfStatement {
     }
 
     #[inline]
+    pub fn iter_mut_branches(&mut self) -> impl Iterator<Item = &mut IfBranch> {
+        self.branches.iter_mut()
+    }
+
+    #[inline]
     pub fn branch_count(&self) -> usize {
         self.branches.len()
     }
@@ -246,11 +251,13 @@ impl IfStatement {
 
         for branch in self.branches.iter() {
             let branch_block = branch.get_block();
+            let length = branch_block.total_len();
+
             if let Some(any) = branch_block.get_statement(remaining) {
                 return Some(any);
             } else {
-                if remaining < branch_block.total_len() {
-                    remaining -= branch_block.total_len();
+                if remaining < length {
+                    remaining -= length;
                 } else {
                     return None;
                 }
@@ -258,6 +265,43 @@ impl IfStatement {
         }
 
         self.else_block.as_ref()?.get_statement(remaining)
+    }
+
+    pub fn mutate_statement(&mut self, index: usize) -> Option<AnyStatementRefMut> {
+        let mut remaining = index;
+
+        for branch in self.branches.iter_mut() {
+            let branch_block = branch.mutate_block();
+            let length = branch_block.total_len();
+
+            if let Some(any) = branch_block.mutate_statement(remaining) {
+                return Some(any);
+            } else {
+                if remaining < length {
+                    remaining -= length;
+                } else {
+                    return None;
+                }
+            }
+        }
+
+        self.else_block.as_mut()?.mutate_statement(remaining)
+    }
+
+    pub fn get_block(&self, index: usize) -> Option<&Block> {
+        if let Some(branch) = self.branches.get(index) {
+            return Some(branch.get_block());
+        }
+
+        self.else_block.as_ref()
+    }
+
+    pub fn mutate_block(&mut self, index: usize) -> Option<&mut Block> {
+        if let Some(branch) = self.branches.get_mut(index) {
+            return Some(branch.mutate_block());
+        }
+
+        self.else_block.as_mut()
     }
 
     pub fn clear_comments(&mut self) {

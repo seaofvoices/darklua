@@ -1,6 +1,8 @@
 use std::cmp::Ordering;
 
-use crate::nodes::{AnyStatementRef, LastStatement, ReturnStatement, Statement, Token};
+use crate::nodes::{
+    AnyStatementRef, AnyStatementRefMut, LastStatement, ReturnStatement, Statement, Token,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlockTokens {
@@ -91,6 +93,11 @@ impl Block {
     #[inline]
     pub fn get_last_statement(&self) -> Option<&LastStatement> {
         self.last_statement.as_ref()
+    }
+
+    #[inline]
+    pub fn has_last_statement(&self) -> bool {
+        self.last_statement.is_some()
     }
 
     pub fn filter_statements<F>(&mut self, mut f: F)
@@ -187,6 +194,22 @@ impl Block {
             Ordering::Less => self.statements.get(index).map(AnyStatementRef::from),
             Ordering::Equal => self.last_statement.as_ref().map(AnyStatementRef::from),
             Ordering::Greater => None,
+        }
+    }
+
+    pub fn mutate_statement(&mut self, index: usize) -> Option<AnyStatementRefMut> {
+        match index.cmp(&self.statements.len()) {
+            Ordering::Less => self.statements.get_mut(index).map(AnyStatementRefMut::from),
+            Ordering::Equal => self.last_statement.as_mut().map(AnyStatementRefMut::from),
+            Ordering::Greater => None,
+        }
+    }
+
+    pub fn remove_statement(&mut self, index: usize) -> Option<Statement> {
+        if index < self.statements.len() {
+            Some(self.statements.remove(index))
+        } else {
+            None
         }
     }
 

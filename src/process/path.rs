@@ -1,23 +1,38 @@
 use std::str::FromStr;
 
 use crate::nodes::{
-    AnyExpressionRef, AnyNodeRef, AnyStatementRef, Arguments, Block, Expression, FieldExpression,
-    FunctionCall, IndexExpression, LastStatement, ParentheseExpression, Prefix, Statement,
-    TableExpression,
+    AnyExpressionRef, AnyExpressionRefMut, AnyNodeRef, AnyNodeRefMut, AnyStatementRef,
+    AnyStatementRefMut, Arguments, Block, Expression, FieldExpression, FunctionCall,
+    IndexExpression, LastStatement, ParentheseExpression, Prefix, Statement, TableExpression,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Component {
-    Statement(usize),
+    Block(usize),
     Expression(usize),
+    Statement(usize),
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-struct NodePath {
+pub struct NodePath {
     components: Vec<Component>,
 }
 
 impl NodePath {
+    pub fn parent(&self) -> Option<Self> {
+        let mut clone = self.clone();
+        clone.components.pop().map(|_| clone)
+    }
+
+    pub fn statement_index(&self) -> Option<usize> {
+        self.components
+            .last()
+            .and_then(|component| match component {
+                Component::Statement(index) => Some(*index),
+                Component::Block(_) | Component::Expression(_) => None,
+            })
+    }
+
     #[inline]
     fn push_statement(&mut self, index: usize) {
         self.components.push(Component::Statement(index));
@@ -28,210 +43,715 @@ impl NodePath {
         self.components.push(Component::Expression(index));
     }
 
-    fn with_statement(mut self, index: usize) -> Self {
+    #[inline]
+    fn push_block(&mut self, index: usize) {
+        self.components.push(Component::Block(index));
+    }
+
+    pub fn with_statement(mut self, index: usize) -> Self {
         self.push_statement(index);
         self
     }
 
-    fn with_expression(mut self, index: usize) -> Self {
+    pub fn with_expression(mut self, index: usize) -> Self {
         self.push_expression(index);
         self
     }
 
-    fn resolve<'a>(&self, block: &'a Block) -> Option<AnyNodeRef<'a>> {
-        let mut components = self.components.iter();
+    pub fn with_block(mut self, index: usize) -> Self {
+        self.push_block(index);
+        self
+    }
 
-        let mut current = match components.next()? {
-            Component::Statement(index) => AnyNodeRef::from(block.get_statement(*index)?),
-            Component::Expression(_) => return None,
-        };
+    pub fn resolve<'a>(&self, block: &'a Block) -> Option<AnyNodeRef<'a>> {
+        let mut current = AnyNodeRef::AnyBlock(&block);
 
-        while let Some(current_component) = components.next() {
+        for current_component in self.components.iter() {
             current = match current_component {
-                Component::Statement(index) => {
-                    let next_statement = match current {
-                        AnyNodeRef::AnyStatement(statement) => match statement {
-                            AnyStatementRef::Statement(statement) => match statement {
-                                Statement::Do(do_statement) => {
-                                    do_statement.get_block().get_statement(*index)?
-                                }
-                                Statement::Function(function) => {
-                                    function.get_block().get_statement(*index)?
-                                }
-                                Statement::GenericFor(generic_for) => {
-                                    generic_for.get_block().get_statement(*index)?
-                                }
-                                Statement::If(if_statement) => {
-                                    if_statement.get_statement(*index)?
-                                }
-                                Statement::LocalFunction(function) => {
-                                    function.get_block().get_statement(*index)?
-                                }
-                                Statement::NumericFor(numeric_for) => {
-                                    numeric_for.get_block().get_statement(*index)?
-                                }
-                                Statement::Repeat(repeat) => {
-                                    repeat.get_block().get_statement(*index)?
-                                }
-                                Statement::While(while_statement) => {
-                                    while_statement.get_block().get_statement(*index)?
-                                }
-                                Statement::Assign(_)
-                                | Statement::Call(_)
-                                | Statement::CompoundAssign(_)
-                                | Statement::LocalAssign(_) => return None,
-                            },
-                            AnyStatementRef::LastStatement(_) => return None,
-                        },
-                        AnyNodeRef::AnyExpression(any_expression) => match any_expression {
-                            AnyExpressionRef::Expression(expression) => match expression {
-                                Expression::Function(function) => {
-                                    function.get_block().get_statement(*index)?
-                                }
-                                Expression::Binary(_)
-                                | Expression::Call(_)
-                                | Expression::False(_)
-                                | Expression::Field(_)
-                                | Expression::Identifier(_)
-                                | Expression::If(_)
-                                | Expression::Index(_)
-                                | Expression::Nil(_)
-                                | Expression::Number(_)
-                                | Expression::Parenthese(_)
-                                | Expression::String(_)
-                                | Expression::Table(_)
-                                | Expression::True(_)
-                                | Expression::Unary(_)
-                                | Expression::VariableArguments(_) => return None,
-                            },
-                            AnyExpressionRef::Prefix(prefix) => match prefix {
-                                Prefix::Call(_)
-                                | Prefix::Field(_)
-                                | Prefix::Identifier(_)
-                                | Prefix::Index(_)
-                                | Prefix::Parenthese(_) => return None,
-                            },
-                            AnyExpressionRef::Arguments(arguments) => match arguments {
-                                Arguments::Tuple(_)
-                                | Arguments::String(_)
-                                | Arguments::Table(_) => todo!(),
-                            },
-                        },
-                    };
-                    AnyNodeRef::from(next_statement)
-                }
+                Component::Block(index) => resolve_block(current, *index)?.into(),
                 Component::Expression(index) => {
-                    let next_expression = match current {
-                        AnyNodeRef::AnyStatement(any_statement) => match any_statement {
-                            AnyStatementRef::Statement(statement) => match statement {
-                                Statement::Assign(_) => todo!(),
-                                Statement::Do(_) => todo!(),
-                                Statement::Call(call) => {
-                                    resolve_call_expression(*index, call)?.into()
-                                }
-                                Statement::CompoundAssign(_) => todo!(),
-                                Statement::Function(_) => todo!(),
-                                Statement::GenericFor(_) => todo!(),
-                                Statement::If(_) => todo!(),
-                                Statement::LocalAssign(assign) => {
-                                    assign.iter_values().skip(*index).next()?.into()
-                                }
-                                Statement::LocalFunction(_) => todo!(),
-                                Statement::NumericFor(_) => todo!(),
-                                Statement::Repeat(repeat) => match index {
-                                    0 => repeat.get_condition().into(),
-                                    _ => return None,
-                                },
-                                Statement::While(while_statement) => match index {
-                                    0 => while_statement.get_condition().into(),
-                                    _ => return None,
-                                },
-                            },
-                            AnyStatementRef::LastStatement(last_statement) => {
-                                match last_statement {
-                                    LastStatement::Break(_) => return None,
-                                    LastStatement::Continue(_) => return None,
-                                    LastStatement::Return(return_statement) => {
-                                        AnyExpressionRef::from(
-                                            return_statement
-                                                .iter_expressions()
-                                                .skip(*index)
-                                                .next()?,
-                                        )
-                                    }
-                                }
-                            }
-                        },
-                        AnyNodeRef::AnyExpression(any_expression) => match any_expression {
-                            AnyExpressionRef::Expression(expression) => match expression {
-                                Expression::Binary(binary) => match index {
-                                    0 => binary.left().into(),
-                                    1 => binary.right().into(),
-                                    _ => return None,
-                                },
-                                Expression::Call(call) => resolve_call_expression(*index, call)?,
-                                Expression::Field(field) => {
-                                    resolve_field_expression(*index, field)?
-                                }
-                                Expression::If(if_statement) => {
-                                    if_statement.get_expression(*index)?.into()
-                                }
-                                Expression::Index(index_expression) => {
-                                    resolve_index_expression(*index, index_expression)?
-                                }
-                                Expression::Parenthese(parentheses) => {
-                                    resolve_parentheses_expression(*index, parentheses)?
-                                }
-                                Expression::Table(table) => {
-                                    resolve_table_expression(*index, table)?
-                                }
-                                Expression::Unary(unary) => match index {
-                                    0 => unary.get_expression().into(),
-                                    _ => return None,
-                                },
-                                Expression::False(_)
-                                | Expression::Function(_)
-                                | Expression::Identifier(_)
-                                | Expression::Nil(_)
-                                | Expression::Number(_)
-                                | Expression::String(_)
-                                | Expression::True(_)
-                                | Expression::VariableArguments(_) => return None,
-                            },
-                            AnyExpressionRef::Prefix(prefix) => match prefix {
-                                Prefix::Call(call) => resolve_call_expression(*index, call)?,
-                                Prefix::Field(field) => resolve_field_expression(*index, field)?,
-                                Prefix::Index(index_expression) => {
-                                    resolve_index_expression(*index, index_expression)?
-                                }
-                                Prefix::Parenthese(parentheses) => {
-                                    resolve_parentheses_expression(*index, parentheses)?
-                                }
-                                Prefix::Identifier(_) => return None,
-                            },
-                            AnyExpressionRef::Arguments(arguments) => match arguments {
-                                Arguments::Tuple(tuple) => {
-                                    tuple.iter_values().skip(*index).next()?.into()
-                                }
-                                Arguments::String(_) => todo!(),
-                                Arguments::Table(table) => resolve_table_expression(*index, table)?,
-                            },
-                        },
-                    };
-
+                    let next_expression = resolve_expression(current, *index)?;
                     AnyNodeRef::from(next_expression)
+                }
+                Component::Statement(index) => {
+                    let next_statement = resolve_statement(current, *index)?;
+                    AnyNodeRef::from(next_statement)
                 }
             }
         }
 
         Some(current)
     }
+
+    pub fn resolve_mut<'a>(&self, block: &'a mut Block) -> Option<AnyNodeRefMut<'a>> {
+        let mut current = AnyNodeRefMut::AnyBlock(block);
+
+        for current_component in self.components.iter() {
+            current = match current_component {
+                Component::Block(index) => resolve_block_mut(current, *index)?.into(),
+                Component::Expression(index) => {
+                    let next_expression = resolve_expression_mut(current, *index)?;
+                    AnyNodeRefMut::from(next_expression)
+                }
+                Component::Statement(index) => {
+                    let next_statement = resolve_statement_mut(current, *index)?;
+                    AnyNodeRefMut::from(next_statement)
+                }
+            }
+        }
+
+        Some(current)
+    }
+
+    pub fn resolve_statement<'a>(&self, block: &'a Block) -> Option<AnyStatementRef<'a>> {
+        match self.resolve(block)? {
+            AnyNodeRef::AnyStatement(statement) => Some(statement),
+            AnyNodeRef::AnyBlock(_) | AnyNodeRef::AnyExpression(_) => None,
+        }
+    }
+
+    pub fn resolve_statement_mut<'a>(
+        &self,
+        block: &'a mut Block,
+    ) -> Option<AnyStatementRefMut<'a>> {
+        match self.resolve_mut(block)? {
+            AnyNodeRefMut::AnyStatement(statement) => Some(statement),
+            AnyNodeRefMut::AnyBlock(_) | AnyNodeRefMut::AnyExpression(_) => None,
+        }
+    }
+
+    pub fn resolve_expression<'a>(&self, block: &'a Block) -> Option<AnyExpressionRef<'a>> {
+        match self.resolve(block)? {
+            AnyNodeRef::AnyBlock(_) | AnyNodeRef::AnyStatement(_) => None,
+            AnyNodeRef::AnyExpression(expression) => Some(expression),
+        }
+    }
+
+    pub fn resolve_expression_mut<'a>(
+        &self,
+        block: &'a mut Block,
+    ) -> Option<AnyExpressionRefMut<'a>> {
+        match self.resolve_mut(block)? {
+            AnyNodeRefMut::AnyBlock(_) | AnyNodeRefMut::AnyStatement(_) => None,
+            AnyNodeRefMut::AnyExpression(expression) => Some(expression),
+        }
+    }
+
+    pub fn resolve_block<'a>(&self, block: &'a Block) -> Option<&'a Block> {
+        match self.resolve(block)? {
+            AnyNodeRef::AnyBlock(block) => Some(block),
+            AnyNodeRef::AnyStatement(any_statement) => match any_statement {
+                AnyStatementRef::Statement(statement) => Some(match statement {
+                    Statement::Do(do_statement) => do_statement.get_block(),
+                    Statement::Function(function) => function.get_block(),
+                    Statement::GenericFor(generic_for) => generic_for.get_block(),
+                    Statement::LocalFunction(function) => function.get_block(),
+                    Statement::NumericFor(numeric_for) => numeric_for.get_block(),
+                    Statement::Repeat(repeat) => repeat.get_block(),
+                    Statement::While(while_statement) => while_statement.get_block(),
+                    Statement::Assign(_)
+                    | Statement::Call(_)
+                    | Statement::CompoundAssign(_)
+                    | Statement::If(_)
+                    | Statement::LocalAssign(_) => return None,
+                }),
+                AnyStatementRef::LastStatement(_) => None,
+            },
+            AnyNodeRef::AnyExpression(_) => None,
+        }
+    }
+
+    pub fn resolve_block_mut<'a>(&self, block: &'a mut Block) -> Option<&'a mut Block> {
+        match self.resolve_mut(block)? {
+            AnyNodeRefMut::AnyBlock(block) => Some(block),
+            AnyNodeRefMut::AnyStatement(any_statement) => match any_statement {
+                AnyStatementRefMut::Statement(statement) => Some(match statement {
+                    Statement::Do(do_statement) => do_statement.mutate_block(),
+                    Statement::Function(function) => function.mutate_block(),
+                    Statement::GenericFor(generic_for) => generic_for.mutate_block(),
+                    Statement::LocalFunction(function) => function.mutate_block(),
+                    Statement::NumericFor(numeric_for) => numeric_for.mutate_block(),
+                    Statement::Repeat(repeat) => repeat.mutate_block(),
+                    Statement::While(while_statement) => while_statement.mutate_block(),
+                    Statement::Assign(_)
+                    | Statement::Call(_)
+                    | Statement::CompoundAssign(_)
+                    | Statement::If(_)
+                    | Statement::LocalAssign(_) => return None,
+                }),
+                AnyStatementRefMut::LastStatement(_) => None,
+            },
+            AnyNodeRefMut::AnyExpression(_) => None,
+        }
+    }
+}
+
+fn resolve_block<'a>(node: AnyNodeRef<'a>, index: usize) -> Option<&'a Block> {
+    if index == 0 {
+        let block = match node {
+            AnyNodeRef::AnyStatement(any_statement) => match any_statement {
+                AnyStatementRef::Statement(statement) => match statement {
+                    Statement::Do(do_statement) => do_statement.get_block(),
+                    Statement::Function(function) => function.get_block(),
+                    Statement::GenericFor(generic_for) => generic_for.get_block(),
+                    Statement::If(if_statement) => if_statement.get_block(0)?,
+                    Statement::LocalFunction(function) => function.get_block(),
+                    Statement::NumericFor(numeric_for) => numeric_for.get_block(),
+                    Statement::Repeat(repeat) => repeat.get_block(),
+                    Statement::While(while_statement) => while_statement.get_block(),
+                    Statement::Assign(_)
+                    | Statement::Call(_)
+                    | Statement::CompoundAssign(_)
+                    | Statement::LocalAssign(_) => return None,
+                },
+                AnyStatementRef::LastStatement(_) => return None,
+            },
+            AnyNodeRef::AnyExpression(_) => return None,
+            AnyNodeRef::AnyBlock(_) => return None,
+        };
+        Some(block)
+    } else {
+        match node {
+            AnyNodeRef::AnyStatement(any_statement) => match any_statement {
+                AnyStatementRef::Statement(statement) => match statement {
+                    Statement::If(if_statement) => if_statement.get_block(index),
+                    Statement::Do(_)
+                    | Statement::Function(_)
+                    | Statement::GenericFor(_)
+                    | Statement::LocalFunction(_)
+                    | Statement::NumericFor(_)
+                    | Statement::Repeat(_)
+                    | Statement::While(_)
+                    | Statement::Assign(_)
+                    | Statement::Call(_)
+                    | Statement::CompoundAssign(_)
+                    | Statement::LocalAssign(_) => None,
+                },
+                AnyStatementRef::LastStatement(_) => None,
+            },
+            AnyNodeRef::AnyExpression(_) => None,
+            AnyNodeRef::AnyBlock(_) => None,
+        }
+    }
+}
+
+fn resolve_block_mut<'a>(node: AnyNodeRefMut<'a>, index: usize) -> Option<&'a mut Block> {
+    if index == 0 {
+        let block = match node {
+            AnyNodeRefMut::AnyStatement(any_statement) => match any_statement {
+                AnyStatementRefMut::Statement(statement) => match statement {
+                    Statement::Do(do_statement) => do_statement.mutate_block(),
+                    Statement::Function(function) => function.mutate_block(),
+                    Statement::GenericFor(generic_for) => generic_for.mutate_block(),
+                    Statement::If(if_statement) => if_statement.mutate_block(0)?,
+                    Statement::LocalFunction(function) => function.mutate_block(),
+                    Statement::NumericFor(numeric_for) => numeric_for.mutate_block(),
+                    Statement::Repeat(repeat) => repeat.mutate_block(),
+                    Statement::While(while_statement) => while_statement.mutate_block(),
+                    Statement::Assign(_)
+                    | Statement::Call(_)
+                    | Statement::CompoundAssign(_)
+                    | Statement::LocalAssign(_) => return None,
+                },
+                AnyStatementRefMut::LastStatement(_) => return None,
+            },
+            AnyNodeRefMut::AnyExpression(_) => return None,
+            AnyNodeRefMut::AnyBlock(_) => return None,
+        };
+        Some(block)
+    } else {
+        match node {
+            AnyNodeRefMut::AnyStatement(any_statement) => match any_statement {
+                AnyStatementRefMut::Statement(statement) => match statement {
+                    Statement::If(if_statement) => if_statement.mutate_block(index),
+                    Statement::Do(_)
+                    | Statement::Function(_)
+                    | Statement::GenericFor(_)
+                    | Statement::LocalFunction(_)
+                    | Statement::NumericFor(_)
+                    | Statement::Repeat(_)
+                    | Statement::While(_)
+                    | Statement::Assign(_)
+                    | Statement::Call(_)
+                    | Statement::CompoundAssign(_)
+                    | Statement::LocalAssign(_) => None,
+                },
+                AnyStatementRefMut::LastStatement(_) => None,
+            },
+            AnyNodeRefMut::AnyExpression(_) => None,
+            AnyNodeRefMut::AnyBlock(_) => None,
+        }
+    }
+}
+
+fn resolve_statement<'a>(node: AnyNodeRef<'a>, index: usize) -> Option<AnyStatementRef<'a>> {
+    match node {
+        AnyNodeRef::AnyStatement(any_statement) => {
+            resolve_statement_from_statement(any_statement, index)
+        }
+        AnyNodeRef::AnyExpression(any_expression) => {
+            resolve_statement_from_expression(any_expression, index)
+        }
+        AnyNodeRef::AnyBlock(block) => block.get_statement(index),
+    }
+}
+
+fn resolve_statement_mut<'a>(
+    node: AnyNodeRefMut<'a>,
+    index: usize,
+) -> Option<AnyStatementRefMut<'a>> {
+    match node {
+        AnyNodeRefMut::AnyStatement(any_statement) => {
+            resolve_statement_from_statement_mut(any_statement, index)
+        }
+        AnyNodeRefMut::AnyExpression(any_expression) => {
+            resolve_statement_from_expression_mut(any_expression, index)
+        }
+        AnyNodeRefMut::AnyBlock(block) => block.mutate_statement(index),
+    }
+}
+
+fn resolve_statement_from_statement<'a>(
+    any_statement: AnyStatementRef<'a>,
+    index: usize,
+) -> Option<AnyStatementRef<'a>> {
+    match any_statement {
+        AnyStatementRef::Statement(statement) => match statement {
+            Statement::Do(do_statement) => do_statement.get_block().get_statement(index),
+            Statement::Function(function) => function.get_block().get_statement(index),
+            Statement::GenericFor(generic_for) => generic_for.get_block().get_statement(index),
+            Statement::If(if_statement) => if_statement.get_statement(index),
+            Statement::LocalFunction(function) => function.get_block().get_statement(index),
+            Statement::NumericFor(numeric_for) => numeric_for.get_block().get_statement(index),
+            Statement::Repeat(repeat) => repeat.get_block().get_statement(index),
+            Statement::While(while_statement) => while_statement.get_block().get_statement(index),
+            Statement::Assign(_)
+            | Statement::Call(_)
+            | Statement::CompoundAssign(_)
+            | Statement::LocalAssign(_) => None,
+        },
+        AnyStatementRef::LastStatement(_) => None,
+    }
+}
+
+fn resolve_statement_from_statement_mut<'a>(
+    any_statement: AnyStatementRefMut<'a>,
+    index: usize,
+) -> Option<AnyStatementRefMut<'a>> {
+    match any_statement {
+        AnyStatementRefMut::Statement(statement) => match statement {
+            Statement::Do(do_statement) => do_statement.mutate_block().mutate_statement(index),
+            Statement::Function(function) => function.mutate_block().mutate_statement(index),
+            Statement::GenericFor(generic_for) => {
+                generic_for.mutate_block().mutate_statement(index)
+            }
+            Statement::If(if_statement) => if_statement.mutate_statement(index),
+            Statement::LocalFunction(function) => function.mutate_block().mutate_statement(index),
+            Statement::NumericFor(numeric_for) => {
+                numeric_for.mutate_block().mutate_statement(index)
+            }
+            Statement::Repeat(repeat) => repeat.mutate_block().mutate_statement(index),
+            Statement::While(while_statement) => {
+                while_statement.mutate_block().mutate_statement(index)
+            }
+            Statement::Assign(_)
+            | Statement::Call(_)
+            | Statement::CompoundAssign(_)
+            | Statement::LocalAssign(_) => None,
+        },
+        AnyStatementRefMut::LastStatement(_) => None,
+    }
+}
+
+fn resolve_statement_from_expression<'a>(
+    any_expression: AnyExpressionRef<'a>,
+    index: usize,
+) -> Option<AnyStatementRef<'a>> {
+    match any_expression {
+        AnyExpressionRef::Expression(expression) => match expression {
+            Expression::Function(function) => function.get_block().get_statement(index),
+            Expression::Binary(_)
+            | Expression::Call(_)
+            | Expression::False(_)
+            | Expression::Field(_)
+            | Expression::Identifier(_)
+            | Expression::If(_)
+            | Expression::Index(_)
+            | Expression::Nil(_)
+            | Expression::Number(_)
+            | Expression::Parenthese(_)
+            | Expression::String(_)
+            | Expression::Table(_)
+            | Expression::True(_)
+            | Expression::Unary(_)
+            | Expression::VariableArguments(_) => None,
+        },
+        AnyExpressionRef::Prefix(prefix) => match prefix {
+            Prefix::Call(_)
+            | Prefix::Field(_)
+            | Prefix::Identifier(_)
+            | Prefix::Index(_)
+            | Prefix::Parenthese(_) => None,
+        },
+        AnyExpressionRef::Arguments(arguments) => match arguments {
+            Arguments::Tuple(_) | Arguments::String(_) | Arguments::Table(_) => todo!(),
+        },
+    }
+}
+
+fn resolve_statement_from_expression_mut<'a>(
+    any_expression: AnyExpressionRefMut<'a>,
+    index: usize,
+) -> Option<AnyStatementRefMut<'a>> {
+    match any_expression {
+        AnyExpressionRefMut::Expression(expression) => match expression {
+            Expression::Function(function) => function.mutate_block().mutate_statement(index),
+            Expression::Binary(_)
+            | Expression::Call(_)
+            | Expression::False(_)
+            | Expression::Field(_)
+            | Expression::Identifier(_)
+            | Expression::If(_)
+            | Expression::Index(_)
+            | Expression::Nil(_)
+            | Expression::Number(_)
+            | Expression::Parenthese(_)
+            | Expression::String(_)
+            | Expression::Table(_)
+            | Expression::True(_)
+            | Expression::Unary(_)
+            | Expression::VariableArguments(_) => None,
+        },
+        AnyExpressionRefMut::Prefix(prefix) => match prefix {
+            Prefix::Call(_)
+            | Prefix::Field(_)
+            | Prefix::Identifier(_)
+            | Prefix::Index(_)
+            | Prefix::Parenthese(_) => None,
+        },
+        AnyExpressionRefMut::Arguments(arguments) => match arguments {
+            Arguments::Tuple(_) | Arguments::String(_) | Arguments::Table(_) => todo!(),
+        },
+    }
+}
+
+fn resolve_expression<'a>(node: AnyNodeRef<'a>, index: usize) -> Option<AnyExpressionRef<'a>> {
+    match node {
+        AnyNodeRef::AnyStatement(any_statement) => {
+            resolve_expression_from_statement(any_statement, index)
+        }
+        AnyNodeRef::AnyExpression(any_expression) => {
+            resolve_expression_from_expression(any_expression, index)
+        }
+        AnyNodeRef::AnyBlock(_) => None,
+    }
+}
+
+fn resolve_expression_mut<'a>(
+    node: AnyNodeRefMut<'a>,
+    index: usize,
+) -> Option<AnyExpressionRefMut<'a>> {
+    match node {
+        AnyNodeRefMut::AnyStatement(any_statement) => {
+            resolve_expression_from_statement_mut(any_statement, index)
+        }
+        AnyNodeRefMut::AnyExpression(any_expression) => {
+            resolve_expression_from_expression_mut(any_expression, index)
+        }
+        AnyNodeRefMut::AnyBlock(_) => None,
+    }
+}
+
+fn resolve_expression_from_statement<'a>(
+    any_statement: AnyStatementRef<'a>,
+    index: usize,
+) -> Option<AnyExpressionRef<'a>> {
+    let next_statement = match any_statement {
+        AnyStatementRef::Statement(statement) => match statement {
+            Statement::Assign(_) => todo!(),
+            Statement::Do(_) => todo!(),
+            Statement::Call(call) => resolve_call_expression(index, call)?.into(),
+            Statement::CompoundAssign(_) => todo!(),
+            Statement::Function(_) => todo!(),
+            Statement::GenericFor(_) => todo!(),
+            Statement::If(_) => todo!(),
+            Statement::LocalAssign(assign) => assign.iter_values().skip(index).next()?.into(),
+            Statement::LocalFunction(_) => todo!(),
+            Statement::NumericFor(_) => todo!(),
+            Statement::Repeat(repeat) => match index {
+                0 => repeat.get_condition().into(),
+                _ => return None,
+            },
+            Statement::While(while_statement) => match index {
+                0 => while_statement.get_condition().into(),
+                _ => return None,
+            },
+        },
+        AnyStatementRef::LastStatement(last_statement) => match last_statement {
+            LastStatement::Break(_) => return None,
+            LastStatement::Continue(_) => return None,
+            LastStatement::Return(return_statement) => {
+                AnyExpressionRef::from(return_statement.iter_expressions().skip(index).next()?)
+            }
+        },
+    };
+    Some(next_statement)
+}
+
+fn resolve_expression_from_statement_mut<'a>(
+    any_statement: AnyStatementRefMut<'a>,
+    index: usize,
+) -> Option<AnyExpressionRefMut<'a>> {
+    let next_statement = match any_statement {
+        AnyStatementRefMut::Statement(statement) => match statement {
+            Statement::Assign(_) => todo!(),
+            Statement::Do(_) => todo!(),
+            Statement::Call(call) => resolve_call_expression_mut(index, call)?.into(),
+            Statement::CompoundAssign(_) => todo!(),
+            Statement::Function(_) => todo!(),
+            Statement::GenericFor(_) => todo!(),
+            Statement::If(_) => todo!(),
+            Statement::LocalAssign(assign) => assign.iter_mut_values().skip(index).next()?.into(),
+            Statement::LocalFunction(_) => todo!(),
+            Statement::NumericFor(_) => todo!(),
+            Statement::Repeat(repeat) => match index {
+                0 => repeat.mutate_condition().into(),
+                _ => return None,
+            },
+            Statement::While(while_statement) => match index {
+                0 => while_statement.mutate_condition().into(),
+                _ => return None,
+            },
+        },
+        AnyStatementRefMut::LastStatement(last_statement) => match last_statement {
+            LastStatement::Break(_) => return None,
+            LastStatement::Continue(_) => return None,
+            LastStatement::Return(return_statement) => AnyExpressionRefMut::from(
+                return_statement.iter_mut_expressions().skip(index).next()?,
+            ),
+        },
+    };
+    Some(next_statement)
+}
+
+fn resolve_expression_from_expression<'a>(
+    any_expression: AnyExpressionRef<'a>,
+    index: usize,
+) -> Option<AnyExpressionRef<'a>> {
+    let next_expression = match any_expression {
+        AnyExpressionRef::Expression(expression) => match expression {
+            Expression::Binary(binary) => match index {
+                0 => binary.left().into(),
+                1 => binary.right().into(),
+                _ => return None,
+            },
+            Expression::Call(call) => resolve_call_expression(index, call)?,
+            Expression::Field(field) => resolve_field_expression(index, field)?,
+            Expression::If(if_statement) => if_statement.get_expression(index)?.into(),
+            Expression::Index(index_expression) => {
+                resolve_index_expression(index, index_expression)?
+            }
+            Expression::Parenthese(parentheses) => {
+                resolve_parentheses_expression(index, parentheses)?
+            }
+            Expression::Table(table) => resolve_table_expression(index, table)?,
+            Expression::Unary(unary) => match index {
+                0 => unary.get_expression().into(),
+                _ => return None,
+            },
+            Expression::False(_)
+            | Expression::Function(_)
+            | Expression::Identifier(_)
+            | Expression::Nil(_)
+            | Expression::Number(_)
+            | Expression::String(_)
+            | Expression::True(_)
+            | Expression::VariableArguments(_) => return None,
+        },
+        AnyExpressionRef::Prefix(prefix) => match prefix {
+            Prefix::Call(call) => resolve_call_expression(index, call)?,
+            Prefix::Field(field) => resolve_field_expression(index, field)?,
+            Prefix::Index(index_expression) => resolve_index_expression(index, index_expression)?,
+            Prefix::Parenthese(parentheses) => resolve_parentheses_expression(index, parentheses)?,
+            Prefix::Identifier(_) => return None,
+        },
+        AnyExpressionRef::Arguments(arguments) => match arguments {
+            Arguments::Tuple(tuple) => tuple.iter_values().skip(index).next()?.into(),
+            Arguments::String(_) => todo!(),
+            Arguments::Table(table) => resolve_table_expression(index, table)?,
+        },
+    };
+    Some(next_expression)
+}
+
+fn resolve_expression_from_expression_mut<'a>(
+    any_expression: AnyExpressionRefMut<'a>,
+    index: usize,
+) -> Option<AnyExpressionRefMut<'a>> {
+    let next_expression = match any_expression {
+        AnyExpressionRefMut::Expression(expression) => match expression {
+            Expression::Binary(binary) => match index {
+                0 => binary.mutate_left().into(),
+                1 => binary.mutate_right().into(),
+                _ => return None,
+            },
+            Expression::Call(call) => resolve_call_expression_mut(index, call)?,
+            Expression::Field(field) => resolve_field_expression_mut(index, field)?,
+            Expression::If(if_statement) => if_statement.mutate_expression(index)?.into(),
+            Expression::Index(index_expression) => {
+                resolve_index_expression_mut(index, index_expression)?
+            }
+            Expression::Parenthese(parentheses) => {
+                resolve_parentheses_expression_mut(index, parentheses)?
+            }
+            Expression::Table(table) => resolve_table_expression_mut(index, table)?,
+            Expression::Unary(unary) => match index {
+                0 => unary.mutate_expression().into(),
+                _ => return None,
+            },
+            Expression::False(_)
+            | Expression::Function(_)
+            | Expression::Identifier(_)
+            | Expression::Nil(_)
+            | Expression::Number(_)
+            | Expression::String(_)
+            | Expression::True(_)
+            | Expression::VariableArguments(_) => return None,
+        },
+        AnyExpressionRefMut::Prefix(prefix) => match prefix {
+            Prefix::Call(call) => resolve_call_expression_mut(index, call)?,
+            Prefix::Field(field) => resolve_field_expression_mut(index, field)?,
+            Prefix::Index(index_expression) => {
+                resolve_index_expression_mut(index, index_expression)?
+            }
+            Prefix::Parenthese(parentheses) => {
+                resolve_parentheses_expression_mut(index, parentheses)?
+            }
+            Prefix::Identifier(_) => return None,
+        },
+        AnyExpressionRefMut::Arguments(arguments) => match arguments {
+            Arguments::Tuple(tuple) => tuple.iter_mut_values().skip(index).next()?.into(),
+            Arguments::String(_) => todo!(),
+            Arguments::Table(table) => resolve_table_expression_mut(index, table)?,
+        },
+    };
+    Some(next_expression)
+}
+
+#[inline]
+fn resolve_call_expression<'a>(
+    index: usize,
+    call: &'a FunctionCall,
+) -> Option<AnyExpressionRef<'a>> {
+    Some(match index {
+        0 => call.get_prefix().into(),
+        1 => call.get_arguments().into(),
+        _ => return None,
+    })
+}
+
+#[inline]
+fn resolve_call_expression_mut<'a>(
+    index: usize,
+    call: &'a mut FunctionCall,
+) -> Option<AnyExpressionRefMut<'a>> {
+    Some(match index {
+        0 => call.mutate_prefix().into(),
+        1 => call.mutate_arguments().into(),
+        _ => return None,
+    })
+}
+
+#[inline]
+fn resolve_field_expression<'a>(
+    index: usize,
+    field: &'a FieldExpression,
+) -> Option<AnyExpressionRef<'a>> {
+    match index {
+        0 => Some(field.get_prefix().into()),
+        _ => None,
+    }
+}
+
+#[inline]
+fn resolve_field_expression_mut<'a>(
+    index: usize,
+    field: &'a mut FieldExpression,
+) -> Option<AnyExpressionRefMut<'a>> {
+    match index {
+        0 => Some(field.mutate_prefix().into()),
+        _ => None,
+    }
+}
+
+#[inline]
+fn resolve_index_expression<'a>(
+    index: usize,
+    index_expression: &'a IndexExpression,
+) -> Option<AnyExpressionRef<'a>> {
+    Some(match index {
+        0 => index_expression.get_prefix().into(),
+        1 => index_expression.get_index().into(),
+        _ => return None,
+    })
+}
+
+#[inline]
+fn resolve_index_expression_mut<'a>(
+    index: usize,
+    index_expression: &'a mut IndexExpression,
+) -> Option<AnyExpressionRefMut<'a>> {
+    Some(match index {
+        0 => index_expression.mutate_prefix().into(),
+        1 => index_expression.mutate_index().into(),
+        _ => return None,
+    })
+}
+
+#[inline]
+fn resolve_parentheses_expression<'a>(
+    index: usize,
+    parentheses: &'a ParentheseExpression,
+) -> Option<AnyExpressionRef<'a>> {
+    match index {
+        0 => Some(parentheses.inner_expression().into()),
+        _ => None,
+    }
+}
+
+#[inline]
+fn resolve_parentheses_expression_mut<'a>(
+    index: usize,
+    parentheses: &'a mut ParentheseExpression,
+) -> Option<AnyExpressionRefMut<'a>> {
+    match index {
+        0 => Some(parentheses.mutate_inner_expression().into()),
+        _ => None,
+    }
+}
+
+#[inline]
+fn resolve_table_expression<'a>(
+    _index: usize,
+    _table: &'a TableExpression,
+) -> Option<AnyExpressionRef<'a>> {
+    todo!()
+}
+
+#[inline]
+fn resolve_table_expression_mut<'a>(
+    _index: usize,
+    _table: &'a mut TableExpression,
+) -> Option<AnyExpressionRefMut<'a>> {
+    todo!()
 }
 
 const STATEMENT_DELIMITER: &str = "/";
 const STATEMENT_DELIMITER_CHAR: char = '/';
 const EXPRESSION_DELIMITER: &str = ":";
 const EXPRESSION_DELIMITER_CHAR: char = ':';
+const BLOCK_DELIMITER: &str = "#";
+const BLOCK_DELIMITER_CHAR: char = '#';
 
 impl FromStr for NodePath {
     type Err = String;
@@ -246,9 +766,12 @@ impl FromStr for NodePath {
             ));
         }
 
-        for component in string
-            .split_inclusive(|c| matches!(c, STATEMENT_DELIMITER_CHAR | EXPRESSION_DELIMITER_CHAR))
-        {
+        for component in string.split_inclusive(|c| {
+            matches!(
+                c,
+                STATEMENT_DELIMITER_CHAR | EXPRESSION_DELIMITER_CHAR | BLOCK_DELIMITER_CHAR
+            )
+        }) {
             if component.len() == 0 {
                 return Err(format_node_path_parse_error(string, ""));
             }
@@ -261,6 +784,7 @@ impl FromStr for NodePath {
             match delimiter {
                 STATEMENT_DELIMITER => path.push_statement(index),
                 EXPRESSION_DELIMITER => path.push_expression(index),
+                BLOCK_DELIMITER => path.push_block(index),
                 "" => {
                     return Err(format_node_path_parse_error(
                         string,
@@ -293,155 +817,12 @@ impl ToString for NodePath {
         self.components
             .iter()
             .map(|component| match component {
-                Component::Statement(index) => format!("{}/", index),
-                Component::Expression(index) => format!("{}:", index),
+                Component::Block(index) => format!("{}{}", index, BLOCK_DELIMITER),
+                Component::Expression(index) => format!("{}{}", index, EXPRESSION_DELIMITER),
+                Component::Statement(index) => format!("{}{}", index, STATEMENT_DELIMITER),
             })
             .collect()
     }
-}
-
-#[inline]
-fn resolve_call_expression<'a>(
-    index: usize,
-    call: &'a FunctionCall,
-) -> Option<AnyExpressionRef<'a>> {
-    Some(match index {
-        0 => call.get_prefix().into(),
-        1 => call.get_arguments().into(),
-        _ => return None,
-    })
-}
-
-#[inline]
-fn resolve_field_expression<'a>(
-    index: usize,
-    field: &'a FieldExpression,
-) -> Option<AnyExpressionRef<'a>> {
-    match index {
-        0 => Some(field.get_prefix().into()),
-        _ => None,
-    }
-}
-
-#[inline]
-fn resolve_index_expression<'a>(
-    index: usize,
-    index_expression: &'a IndexExpression,
-) -> Option<AnyExpressionRef<'a>> {
-    Some(match index {
-        0 => index_expression.get_prefix().into(),
-        1 => index_expression.get_index().into(),
-        _ => return None,
-    })
-}
-
-#[inline]
-fn resolve_parentheses_expression<'a>(
-    index: usize,
-    parentheses: &'a ParentheseExpression,
-) -> Option<AnyExpressionRef<'a>> {
-    match index {
-        0 => Some(parentheses.inner_expression().into()),
-        _ => None,
-    }
-}
-
-#[inline]
-fn resolve_table_expression<'a>(
-    index: usize,
-    table: &'a TableExpression,
-) -> Option<AnyExpressionRef<'a>> {
-    todo!()
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct StatementPath {
-    path: NodePath,
-}
-
-impl StatementPath {
-    pub fn with_statement(mut self, index: usize) -> Self {
-        self.path.push_statement(index);
-        self
-    }
-
-    pub fn with_expression(mut self, index: usize) -> Self {
-        self.path.push_expression(index);
-        self
-    }
-
-    pub fn resolve<'a>(&self, block: &'a Block) -> Option<AnyStatementRef<'a>> {
-        match self.path.resolve(block)? {
-            AnyNodeRef::AnyStatement(statement) => Some(statement),
-            AnyNodeRef::AnyExpression(_) => None,
-        }
-    }
-}
-
-impl FromStr for StatementPath {
-    type Err = String;
-
-    fn from_str(string: &str) -> Result<Self, Self::Err> {
-        Ok(Self {
-            path: string.parse()?,
-        })
-    }
-}
-
-impl ToString for StatementPath {
-    fn to_string(&self) -> String {
-        self.path.to_string()
-    }
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct ExpressionPath {
-    path: NodePath,
-}
-
-impl ExpressionPath {
-    pub fn with_statement(mut self, index: usize) -> Self {
-        self.path.push_statement(index);
-        self
-    }
-
-    pub fn with_expression(mut self, index: usize) -> Self {
-        self.path.push_expression(index);
-        self
-    }
-
-    pub fn resolve<'a>(&self, block: &'a Block) -> Option<AnyExpressionRef<'a>> {
-        match self.path.resolve(block)? {
-            AnyNodeRef::AnyStatement(_) => None,
-            AnyNodeRef::AnyExpression(expression) => Some(expression),
-        }
-    }
-}
-
-impl FromStr for ExpressionPath {
-    type Err = String;
-
-    fn from_str(string: &str) -> Result<Self, Self::Err> {
-        Ok(Self {
-            path: string.parse()?,
-        })
-    }
-}
-
-impl ToString for ExpressionPath {
-    fn to_string(&self) -> String {
-        self.path.to_string()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct StatementSpan {}
-
-#[derive(Clone, Debug)]
-pub enum StatementMutation {
-    Remove(StatementSpan),
-    Replace(StatementSpan, Vec<Statement>),
-    Insert(StatementPath, Vec<Statement>),
 }
 
 #[cfg(test)]
@@ -468,7 +849,7 @@ mod test {
                     let expected_statement = expected_block.get_statement(0).unwrap();
 
                     pretty_assertions::assert_eq!(
-                        path.resolve(&block).expect("unable to resolve path"),
+                        path.resolve_statement(&block).expect("unable to resolve path"),
                         expected_statement
                     );
                 }
@@ -507,7 +888,7 @@ mod test {
                         _ => panic!("return statement expected")
                     };
 
-                    match path.resolve(&block).expect("unable to resolve path") {
+                    match path.resolve_expression(&block).expect("unable to resolve path") {
                         AnyExpressionRef::Expression(expression) => {
                             pretty_assertions::assert_eq!(expression, expected_expression);
                         }
@@ -558,12 +939,12 @@ mod test {
         }
     }
 
+    fn new() -> NodePath {
+        NodePath::default()
+    }
+
     mod statement_paths {
         use super::*;
-
-        fn new() -> StatementPath {
-            StatementPath::default()
-        }
 
         test_statement_paths!(
             single_statement(
@@ -591,10 +972,6 @@ mod test {
 
     mod expression_paths {
         use super::*;
-
-        fn new() -> ExpressionPath {
-            ExpressionPath::default()
-        }
 
         test_expression_paths!(
             return_statement_first_value(

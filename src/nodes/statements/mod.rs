@@ -113,27 +113,3 @@ impl From<WhileStatement> for Statement {
         Statement::While(while_statement)
     }
 }
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum AnyStatement {
-    Statement(Statement),
-    LastStatement(LastStatement),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum AnyStatementRef<'a> {
-    Statement(&'a Statement),
-    LastStatement(&'a LastStatement),
-}
-
-impl<'a> From<&'a Statement> for AnyStatementRef<'a> {
-    fn from(statement: &'a Statement) -> Self {
-        Self::Statement(statement)
-    }
-}
-
-impl<'a> From<&'a LastStatement> for AnyStatementRef<'a> {
-    fn from(statement: &'a LastStatement) -> Self {
-        Self::LastStatement(statement)
-    }
-}
