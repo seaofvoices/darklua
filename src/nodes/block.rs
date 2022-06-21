@@ -205,8 +205,28 @@ impl Block {
         }
     }
 
+    pub fn insert_statement(&mut self, index: usize, statement: impl Into<Statement>) {
+        if let Some(tokens) = &mut self.tokens {
+            if index < tokens.semicolons.len() {
+                tokens.semicolons.insert(index, None);
+            } else {
+                tokens.semicolons.push(None);
+            }
+        }
+        if index < self.statements.len() {
+            self.statements.insert(index, statement.into());
+        } else {
+            self.statements.push(statement.into());
+        }
+    }
+
     pub fn remove_statement(&mut self, index: usize) -> Option<Statement> {
         if index < self.statements.len() {
+            if let Some(tokens) = &mut self.tokens {
+                if index < tokens.semicolons.len() {
+                    tokens.semicolons.remove(index);
+                }
+            }
             Some(self.statements.remove(index))
         } else {
             None
