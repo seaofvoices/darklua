@@ -147,12 +147,12 @@ mod test {
             StatementInsertion::insert_before(statement_path(0), parse_insertion("local a")),
         ] => "local a local b return a + b",
         insert_before_and_after_first_statement("local b") => [
-            StatementInsertion::insert_before(statement_path(0), parse_insertion("local b")),
+            StatementInsertion::insert_before(statement_path(0), parse_insertion("local a")),
             StatementInsertion::insert_after(statement_path(0), parse_insertion("return a + b")),
         ] => "local a local b return a + b",
         insert_after_and_before_first_statement("local b") => [
             StatementInsertion::insert_after(statement_path(0), parse_insertion("return a + b")),
-            StatementInsertion::insert_before(statement_path(0), parse_insertion("local b")),
+            StatementInsertion::insert_before(statement_path(0), parse_insertion("local a")),
         ] => "local a local b return a + b",
     );
 }

@@ -52,9 +52,8 @@ impl StatementInsertion {
 
         if !self.insertion.is_empty() {
             let length = self.insertion.len();
-            let insert_at_index = index.saturating_sub(1);
-            self.insertion.apply(block, insert_at_index);
-            let path = block_path.join_statement(insert_at_index);
+            self.insertion.apply(block, index);
+            let path = block_path.join_statement(index);
             effects.push(MutationEffect::statement_added(path.clone().span(length)));
         }
 
@@ -102,6 +101,42 @@ pub mod test {
     fn statement_path(index: usize) -> NodePathBuf {
         NodePathBuf::default().with_statement(index)
     }
+
+    macro_rules! test_insertion_before {
+        ($($name:ident ( $path:expr, $code:literal, $insert:literal ) => $expect_code:literal => [ $($expect_effect:expr),* $(,)? ] ),* $(,)?) => {
+            super::super::test::test_mutation!(
+                $(
+                    $name (
+                        StatementInsertion::insert_before(
+                            $path,
+                            $crate::Parser::default()
+                                .parse($insert)
+                                .expect("given test code should parse")
+                        ),
+                    $code ) => $expect_code => [$( $expect_effect, )*],
+                )*
+            );
+        };
+        ($($name:ident ( $path:expr, $code:literal, $insert:literal ) => $expect_code:literal => $expect_effect:expr ),* $(,)?) => {
+            test_replace!(
+                $(
+                    $name ( $path, $code, $insert ) => $expect_code => [$expect_effect],
+                )*
+            );
+        };
+    }
+
+    test_insertion_before!(
+        first_statement(
+            statement_path(0),
+            "return a + a",
+            "local a = 1"
+        )
+            => "local a = 1 return a + a"
+            => [
+                MutationEffect::statement_added(statement_path(0))
+            ],
+    );
 
     mod statement_replace {
         use super::*;

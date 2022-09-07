@@ -36,8 +36,6 @@ impl StatementInsertionContent {
         }
 
         if let Some(statement) = self.last_statement {
-            dbg!(index);
-            dbg!(block.total_len());
             match index.cmp(&block.total_len()) {
                 Ordering::Less => todo!("truncate block"),
                 Ordering::Equal => {
