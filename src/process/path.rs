@@ -23,6 +23,7 @@ pub trait NodePath {
     fn last_statement(&self) -> Option<usize>;
     fn find_first_statement_ancestor(&self) -> Option<&NodePathSlice>;
 
+    fn to_path_buf(&self) -> NodePathBuf;
     fn to_string(&self) -> String;
 
     fn join_statement(&self, index: usize) -> NodePathBuf;
@@ -95,6 +96,11 @@ impl NodePath for NodePathSlice {
                 Component::Statement(index) => format!("{}{}", index, STATEMENT_DELIMITER),
             })
             .collect()
+    }
+
+    #[inline]
+    fn to_path_buf(&self) -> NodePathBuf {
+        NodePathBuf::from(self)
     }
 
     #[inline]
@@ -321,6 +327,14 @@ impl NodePathBuf {
     pub fn with_block(mut self, index: usize) -> Self {
         self.push_block(index);
         self
+    }
+}
+
+impl From<&NodePathSlice> for NodePathBuf {
+    fn from(components: &NodePathSlice) -> Self {
+        Self {
+            components: components.into_iter().map(Clone::clone).collect(),
+        }
     }
 }
 
