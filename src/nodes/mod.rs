@@ -49,6 +49,24 @@ impl<'a> From<&'a Expression> for AnyNodeRef<'a> {
     }
 }
 
+impl<'a> From<&'a Prefix> for AnyNodeRef<'a> {
+    fn from(prefix: &'a Prefix) -> Self {
+        Self::AnyExpression(AnyExpressionRef::from(prefix))
+    }
+}
+
+impl<'a> From<&'a Arguments> for AnyNodeRef<'a> {
+    fn from(arguments: &'a Arguments) -> Self {
+        Self::AnyExpression(AnyExpressionRef::from(arguments))
+    }
+}
+
+impl<'a> From<&'a Variable> for AnyNodeRef<'a> {
+    fn from(variable: &'a Variable) -> Self {
+        Self::AnyExpression(AnyExpressionRef::from(variable))
+    }
+}
+
 impl<'a> From<AnyStatementRef<'a>> for AnyNodeRef<'a> {
     fn from(any_statement: AnyStatementRef<'a>) -> Self {
         Self::AnyStatement(any_statement)
@@ -84,6 +102,7 @@ pub enum AnyExpressionRef<'a> {
     Expression(&'a Expression),
     Prefix(&'a Prefix),
     Arguments(&'a Arguments),
+    Variable(&'a Variable),
 }
 
 impl<'a> From<&'a Expression> for AnyExpressionRef<'a> {
@@ -101,6 +120,12 @@ impl<'a> From<&'a Prefix> for AnyExpressionRef<'a> {
 impl<'a> From<&'a Arguments> for AnyExpressionRef<'a> {
     fn from(arguments: &'a Arguments) -> Self {
         Self::Arguments(arguments)
+    }
+}
+
+impl<'a> From<&'a Variable> for AnyExpressionRef<'a> {
+    fn from(variable: &'a Variable) -> Self {
+        Self::Variable(variable)
     }
 }
 
@@ -170,6 +195,7 @@ pub enum AnyExpressionRefMut<'a> {
     Expression(&'a mut Expression),
     Prefix(&'a mut Prefix),
     Arguments(&'a mut Arguments),
+    Variable(&'a mut Variable),
 }
 
 impl<'a> From<&'a mut Expression> for AnyExpressionRefMut<'a> {
@@ -187,5 +213,11 @@ impl<'a> From<&'a mut Prefix> for AnyExpressionRefMut<'a> {
 impl<'a> From<&'a mut Arguments> for AnyExpressionRefMut<'a> {
     fn from(arguments: &'a mut Arguments) -> Self {
         Self::Arguments(arguments)
+    }
+}
+
+impl<'a> From<&'a mut Variable> for AnyExpressionRefMut<'a> {
+    fn from(variable: &'a mut Variable) -> Self {
+        Self::Variable(variable)
     }
 }

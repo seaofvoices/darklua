@@ -36,6 +36,11 @@ impl MutationResolver {
 
         Ok(())
     }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.mutations.is_empty()
+    }
 }
 
 #[cfg(test)]
