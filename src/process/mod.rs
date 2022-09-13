@@ -2,12 +2,11 @@
 
 mod evaluator;
 pub(crate) mod mutation;
-pub(crate) mod new_processor;
 pub mod new_visitor;
 #[cfg(test)]
 mod node_counter;
 mod node_processor;
-pub(crate) mod path;
+pub mod path;
 pub mod processors;
 mod scope_visitor;
 pub(crate) mod utils;

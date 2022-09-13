@@ -2,15 +2,15 @@ use std::collections::VecDeque;
 
 use crate::nodes::Block;
 
-use super::{MutationError, NewMutation};
+use super::{Mutation, MutationError};
 
 #[derive(Clone, Debug, Default)]
 pub struct MutationResolver {
-    mutations: VecDeque<NewMutation>,
+    mutations: VecDeque<Mutation>,
 }
 
 impl MutationResolver {
-    pub fn add(&mut self, mutation: impl Into<NewMutation>) {
+    pub fn add(&mut self, mutation: impl Into<Mutation>) {
         self.mutations.push_back(mutation.into());
     }
 
@@ -68,7 +68,7 @@ mod test {
 
                     let mut resolver = MutationResolver::default();
 
-                    let mutations: Vec<NewMutation> = vec![$( $mutation.into(), )*];
+                    let mutations: Vec<Mutation> = vec![$( $mutation.into(), )*];
 
                     for mutation in mutations {
                         resolver.add(mutation)

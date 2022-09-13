@@ -131,13 +131,19 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{process::mutation::StatementRemoval, Parser};
+    use crate::{
+        process::{
+            mutation::{Mutation, StatementRemoval},
+            path::NodePathSlice,
+        },
+        Parser,
+    };
 
     use super::*;
 
     #[test]
     fn test_something() {
-        let visitor = |statement: &Statement, path: &NodePathSlice| -> Option<NewMutation> {
+        let visitor = |statement: &Statement, path: &NodePathSlice| -> Option<Mutation> {
             if let Statement::Do(do_statement) = statement {
                 if do_statement.get_block().is_empty() {
                     return Some(StatementRemoval::remove(path.to_path_buf()).into());

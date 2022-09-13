@@ -8,7 +8,7 @@ mod statement_span;
 
 pub use effect::MutationEffect;
 pub use insertion_content::StatementInsertionContent;
-pub use mutation::NewMutation;
+pub use mutation::Mutation;
 pub use resolver::MutationResolver;
 pub use statement_insertion::StatementInsertion;
 pub use statement_removal::StatementRemoval;

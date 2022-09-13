@@ -1,6 +1,6 @@
 use crate::{
     nodes::{LastStatement, Statement},
-    process::{mutation::NewMutation, path::NodePathSlice},
+    process::{mutation::Mutation, path::NodePathSlice},
 };
 
 pub trait StatementVisitor<Arguments, Ret, Context = ()> {
@@ -9,7 +9,7 @@ pub trait StatementVisitor<Arguments, Ret, Context = ()> {
         _node: &Statement,
         _path: &NodePathSlice,
         _context: &mut Context,
-    ) -> Option<NewMutation> {
+    ) -> Option<Mutation> {
         None
     }
 
@@ -18,52 +18,52 @@ pub trait StatementVisitor<Arguments, Ret, Context = ()> {
         _node: &LastStatement,
         _path: &NodePathSlice,
         _context: &mut Context,
-    ) -> Option<NewMutation> {
+    ) -> Option<Mutation> {
         None
     }
 }
 
 macro_rules! implement_statement_visitor {
     ($node_type:ty, $callback_identifier:ident) => {
-        impl<F, C> StatementVisitor<(&$node_type, &NodePathSlice, &mut C), Option<NewMutation>, C>
+        impl<F, C> StatementVisitor<(&$node_type, &NodePathSlice, &mut C), Option<Mutation>, C>
             for F
         where
-            F: Fn(&$node_type, &NodePathSlice, &mut C) -> Option<NewMutation>,
+            F: Fn(&$node_type, &NodePathSlice, &mut C) -> Option<Mutation>,
         {
             fn $callback_identifier(
                 &self,
                 node: &$node_type,
                 path: &NodePathSlice,
                 context: &mut C,
-            ) -> Option<NewMutation> {
+            ) -> Option<Mutation> {
                 (self)(node, path, context)
             }
         }
 
-        impl<F, C> StatementVisitor<(&$node_type, &NodePathSlice), Option<NewMutation>, C> for F
+        impl<F, C> StatementVisitor<(&$node_type, &NodePathSlice), Option<Mutation>, C> for F
         where
-            F: Fn(&$node_type, &NodePathSlice) -> Option<NewMutation>,
+            F: Fn(&$node_type, &NodePathSlice) -> Option<Mutation>,
         {
             fn $callback_identifier(
                 &self,
                 node: &$node_type,
                 path: &NodePathSlice,
                 _context: &mut C,
-            ) -> Option<NewMutation> {
+            ) -> Option<Mutation> {
                 (self)(node, path)
             }
         }
 
-        impl<F, C> StatementVisitor<&$node_type, Option<NewMutation>, C> for F
+        impl<F, C> StatementVisitor<&$node_type, Option<Mutation>, C> for F
         where
-            F: Fn(&$node_type) -> Option<NewMutation>,
+            F: Fn(&$node_type) -> Option<Mutation>,
         {
             fn $callback_identifier(
                 &self,
                 node: &$node_type,
                 _path: &NodePathSlice,
                 _context: &mut C,
-            ) -> Option<NewMutation> {
+            ) -> Option<Mutation> {
                 (self)(node)
             }
         }
@@ -77,7 +77,7 @@ macro_rules! implement_statement_visitor {
                 node: &$node_type,
                 path: &NodePathSlice,
                 context: &mut C,
-            ) -> Option<NewMutation> {
+            ) -> Option<Mutation> {
                 (self)(node, path, context);
                 None
             }
@@ -92,7 +92,7 @@ macro_rules! implement_statement_visitor {
                 node: &$node_type,
                 path: &NodePathSlice,
                 _context: &mut C,
-            ) -> Option<NewMutation> {
+            ) -> Option<Mutation> {
                 (self)(node, path);
                 None
             }
@@ -107,7 +107,7 @@ macro_rules! implement_statement_visitor {
                 node: &$node_type,
                 _path: &NodePathSlice,
                 context: &mut C,
-            ) -> Option<NewMutation> {
+            ) -> Option<Mutation> {
                 (self)(node, context);
                 None
             }
@@ -122,7 +122,7 @@ macro_rules! implement_statement_visitor {
                 node: &$node_type,
                 _path: &NodePathSlice,
                 _context: &mut C,
-            ) -> Option<NewMutation> {
+            ) -> Option<Mutation> {
                 (self)(node);
                 None
             }

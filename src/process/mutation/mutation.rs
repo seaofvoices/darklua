@@ -3,12 +3,12 @@ use crate::nodes::Block;
 use super::{MutationEffect, MutationResult, StatementInsertion, StatementRemoval};
 
 #[derive(Clone, Debug)]
-pub enum NewMutation {
+pub enum Mutation {
     StatementRemoval(StatementRemoval),
     StatementInsertion(StatementInsertion),
 }
 
-impl NewMutation {
+impl Mutation {
     pub fn apply(self, block: &mut Block) -> MutationResult {
         match self {
             Self::StatementRemoval(mutation) => mutation.apply(block),
@@ -26,13 +26,13 @@ impl NewMutation {
     }
 }
 
-impl From<StatementRemoval> for NewMutation {
+impl From<StatementRemoval> for Mutation {
     fn from(mutation: StatementRemoval) -> Self {
         Self::StatementRemoval(mutation)
     }
 }
 
-impl From<StatementInsertion> for NewMutation {
+impl From<StatementInsertion> for Mutation {
     fn from(mutation: StatementInsertion) -> Self {
         Self::StatementInsertion(mutation)
     }
