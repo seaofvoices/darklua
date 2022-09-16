@@ -4,7 +4,7 @@ use darklua_core::{
         BinaryExpression, BinaryOperator, Expression, LastStatement, UnaryExpression, UnaryOperator,
     },
 };
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 mod fuzz;
 mod utils;
@@ -122,15 +122,7 @@ macro_rules! fuzz_test_block {
 
 fn run_for_minimum_time<F: Fn()>(func: F) {
     let duration = get_fuzz_duration();
-    let start = Instant::now();
-
-    loop {
-        func();
-
-        if Instant::now().duration_since(start) > duration {
-            break;
-        }
-    }
+    utils::run_for_minimum_time(func, duration);
 }
 
 fn get_fuzz_duration() -> Duration {

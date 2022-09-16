@@ -3,8 +3,8 @@ use std::{borrow::Borrow, fmt, ops::Deref, str::FromStr};
 use crate::nodes::{
     AnyExpressionRef, AnyExpressionRefMut, AnyNodeRef, AnyNodeRefMut, AnyStatementRef,
     AnyStatementRefMut, Arguments, Block, Expression, FieldExpression, FunctionCall,
-    IndexExpression, LastStatement, ParentheseExpression, Prefix, Statement, TableExpression,
-    Variable,
+    IndexExpression, LastStatement, ParentheseExpression, Prefix, Statement, TableEntry,
+    TableExpression, Variable,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -71,10 +71,10 @@ impl NodePath for NodePathSlice {
     }
 
     fn last_statement(&self) -> Option<usize> {
-        self.last().map(|last| match last {
-            Component::Block(_) => todo!(),
-            Component::Expression(_) => todo!(),
-            Component::Statement(index) => *index,
+        self.last().and_then(|last| match last {
+            Component::Block(_) => None,
+            Component::Expression(_) => None,
+            Component::Statement(index) => Some(*index),
         })
     }
 
@@ -358,7 +358,30 @@ fn resolve_block<'a>(node: AnyNodeRef<'a>, index: usize) -> Option<&'a Block> {
                 },
                 AnyStatementRef::LastStatement(_) => return None,
             },
-            AnyNodeRef::AnyExpression(_) => return None,
+            AnyNodeRef::AnyExpression(expression) => match expression {
+                AnyExpressionRef::Expression(expression) => match expression {
+                    Expression::Function(function) => function.get_block(),
+                    Expression::Binary(_)
+                    | Expression::Call(_)
+                    | Expression::False(_)
+                    | Expression::Field(_)
+                    | Expression::Identifier(_)
+                    | Expression::If(_)
+                    | Expression::Index(_)
+                    | Expression::Nil(_)
+                    | Expression::Number(_)
+                    | Expression::Parenthese(_)
+                    | Expression::String(_)
+                    | Expression::Table(_)
+                    | Expression::True(_)
+                    | Expression::Unary(_)
+                    | Expression::VariableArguments(_) => return None,
+                },
+                AnyExpressionRef::Prefix(_)
+                | AnyExpressionRef::Arguments(_)
+                | AnyExpressionRef::Variable(_)
+                | AnyExpressionRef::TableEntry(_) => return None,
+            },
             AnyNodeRef::AnyBlock(_) => return None,
         };
         Some(block)
@@ -407,7 +430,30 @@ fn resolve_block_mut<'a>(node: AnyNodeRefMut<'a>, index: usize) -> Option<&'a mu
                 },
                 AnyStatementRefMut::LastStatement(_) => return None,
             },
-            AnyNodeRefMut::AnyExpression(_) => return None,
+            AnyNodeRefMut::AnyExpression(expression) => match expression {
+                AnyExpressionRefMut::Expression(expression) => match expression {
+                    Expression::Function(function) => function.mutate_block(),
+                    Expression::Binary(_)
+                    | Expression::Call(_)
+                    | Expression::False(_)
+                    | Expression::Field(_)
+                    | Expression::Identifier(_)
+                    | Expression::If(_)
+                    | Expression::Index(_)
+                    | Expression::Nil(_)
+                    | Expression::Number(_)
+                    | Expression::Parenthese(_)
+                    | Expression::String(_)
+                    | Expression::Table(_)
+                    | Expression::True(_)
+                    | Expression::Unary(_)
+                    | Expression::VariableArguments(_) => return None,
+                },
+                AnyExpressionRefMut::Prefix(_)
+                | AnyExpressionRefMut::Arguments(_)
+                | AnyExpressionRefMut::Variable(_)
+                | AnyExpressionRefMut::TableEntry(_) => return None,
+            },
             AnyNodeRefMut::AnyBlock(_) => return None,
         };
         Some(block)
@@ -551,6 +597,7 @@ fn resolve_statement_from_expression<'a>(
         AnyExpressionRef::Variable(variable) => match variable {
             Variable::Identifier(_) | Variable::Field(_) | Variable::Index(_) => return None,
         },
+        AnyExpressionRef::TableEntry(_) => return None,
     }
 }
 
@@ -590,6 +637,7 @@ fn resolve_statement_from_expression_mut<'a>(
         AnyExpressionRefMut::Variable(variable) => match variable {
             Variable::Identifier(_) | Variable::Field(_) | Variable::Index(_) => return None,
         },
+        AnyExpressionRefMut::TableEntry(_) => return None,
     }
 }
 
@@ -626,7 +674,18 @@ fn resolve_expression_from_statement<'a>(
 ) -> Option<AnyExpressionRef<'a>> {
     let next_statement = match any_statement {
         AnyStatementRef::Statement(statement) => match statement {
-            Statement::Assign(_) => todo!(),
+            Statement::Assign(assign) => {
+                let total_variables = assign.variables_len();
+                if index < total_variables {
+                    assign.iter_variables().skip(index).next()?.into()
+                } else {
+                    assign
+                        .iter_values()
+                        .skip(index - total_variables)
+                        .next()?
+                        .into()
+                }
+            }
             Statement::Do(_) => return None,
             Statement::Call(call) => resolve_call_expression(index, call)?.into(),
             Statement::CompoundAssign(assign) => match index {
@@ -634,12 +693,24 @@ fn resolve_expression_from_statement<'a>(
                 1 => assign.get_value().into(),
                 _ => return None,
             },
-            Statement::Function(_) => todo!(),
-            Statement::GenericFor(_) => todo!(),
-            Statement::If(_) => todo!(),
+            Statement::Function(_) => return None,
+            Statement::GenericFor(generic_for) => {
+                generic_for.iter_expressions().skip(index).next()?.into()
+            }
+            Statement::If(if_statement) => if_statement
+                .iter_branches()
+                .skip(index)
+                .next()?
+                .get_condition()
+                .into(),
             Statement::LocalAssign(assign) => assign.iter_values().skip(index).next()?.into(),
-            Statement::LocalFunction(_) => todo!(),
-            Statement::NumericFor(_) => todo!(),
+            Statement::LocalFunction(_) => return None,
+            Statement::NumericFor(numeric_for) => match index {
+                0 => numeric_for.get_start().into(),
+                1 => numeric_for.get_end().into(),
+                2 => numeric_for.get_step()?.into(),
+                _ => return None,
+            },
             Statement::Repeat(repeat) => match index {
                 0 => repeat.get_condition().into(),
                 _ => return None,
@@ -666,20 +737,45 @@ fn resolve_expression_from_statement_mut<'a>(
 ) -> Option<AnyExpressionRefMut<'a>> {
     let next_statement = match any_statement {
         AnyStatementRefMut::Statement(statement) => match statement {
-            Statement::Assign(_) => todo!(),
-            Statement::Do(_) => todo!(),
+            Statement::Assign(assign) => {
+                let total_variables = assign.variables_len();
+                if index < total_variables {
+                    assign.iter_mut_variables().skip(index).next()?.into()
+                } else {
+                    assign
+                        .iter_mut_values()
+                        .skip(index - total_variables)
+                        .next()?
+                        .into()
+                }
+            }
+            Statement::Do(_) => return None,
             Statement::Call(call) => resolve_call_expression_mut(index, call)?.into(),
             Statement::CompoundAssign(assign) => match index {
                 0 => assign.mutate_variable().into(),
                 1 => assign.mutate_value().into(),
                 _ => return None,
             },
-            Statement::Function(_) => todo!(),
-            Statement::GenericFor(_) => todo!(),
-            Statement::If(_) => todo!(),
+            Statement::Function(_) => return None,
+            Statement::GenericFor(generic_for) => generic_for
+                .iter_mut_expressions()
+                .skip(index)
+                .next()?
+                .into(),
+            Statement::If(if_statement) => if_statement
+                .iter_mut_branches()
+                .skip(index)
+                .next()?
+                .mutate_condition()
+                .into(),
             Statement::LocalAssign(assign) => assign.iter_mut_values().skip(index).next()?.into(),
-            Statement::LocalFunction(_) => todo!(),
-            Statement::NumericFor(_) => todo!(),
+            Statement::LocalFunction(_) => return None,
+            Statement::NumericFor(numeric_for) => match index {
+                0 => numeric_for.mutate_start().into(),
+                1 => numeric_for.mutate_end().into(),
+                2 => numeric_for.mutate_step().as_mut()?.into(),
+                _ => return None,
+            },
             Statement::Repeat(repeat) => match index {
                 0 => repeat.mutate_condition().into(),
                 _ => return None,
@@ -751,6 +847,21 @@ fn resolve_expression_from_expression<'a>(
             Variable::Field(field) => resolve_field_expression(index, field)?,
             Variable::Index(index_expression) => resolve_index_expression(index, index_expression)?,
         },
+        AnyExpressionRef::TableEntry(entry) => match entry {
+            TableEntry::Field(field) => match index {
+                0 => field.get_value().into(),
+                _ => return None,
+            },
+            TableEntry::Index(index_entry) => match index {
+                0 => index_entry.get_key().into(),
+                1 => index_entry.get_value().into(),
+                _ => return None,
+            },
+            TableEntry::Value(value) => match index {
+                0 => value.into(),
+                _ => return None,
+            },
+        },
     };
     Some(next_expression)
 }
@@ -811,6 +922,21 @@ fn resolve_expression_from_expression_mut<'a>(
             Variable::Index(index_expression) => {
                 resolve_index_expression_mut(index, index_expression)?
             }
+        },
+        AnyExpressionRefMut::TableEntry(entry) => match entry {
+            TableEntry::Field(field) => match index {
+                0 => field.mutate_value().into(),
+                _ => return None,
+            },
+            TableEntry::Index(index_entry) => match index {
+                0 => index_entry.mutate_key().into(),
+                1 => index_entry.mutate_value().into(),
+                _ => return None,
+            },
+            TableEntry::Value(value) => match index {
+                0 => value.into(),
+                _ => return None,
+            },
         },
     };
     Some(next_expression)
@@ -910,18 +1036,18 @@ fn resolve_parentheses_expression_mut<'a>(
 
 #[inline]
 fn resolve_table_expression<'a>(
-    _index: usize,
-    _table: &'a TableExpression,
+    index: usize,
+    table: &'a TableExpression,
 ) -> Option<AnyExpressionRef<'a>> {
-    todo!()
+    table.get_entries().get(index).map(Into::into)
 }
 
 #[inline]
 fn resolve_table_expression_mut<'a>(
-    _index: usize,
-    _table: &'a mut TableExpression,
+    index: usize,
+    table: &'a mut TableExpression,
 ) -> Option<AnyExpressionRefMut<'a>> {
-    todo!()
+    table.mutate_entries().get_mut(index).map(Into::into)
 }
 
 const STATEMENT_DELIMITER: &str = "/";
@@ -1068,6 +1194,9 @@ mod test {
                         }
                         AnyExpressionRef::Variable(_) => {
                             panic!("unable to compare variable using this test macro")
+                        }
+                        AnyExpressionRef::TableEntry(_) => {
+                            panic!("unable to compare table entry using this test macro")
                         }
                     };
                 }

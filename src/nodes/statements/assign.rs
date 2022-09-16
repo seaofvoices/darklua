@@ -72,6 +72,11 @@ impl AssignStatement {
     }
 
     #[inline]
+    pub fn iter_mut_variables(&mut self) -> impl Iterator<Item = &mut Variable> {
+        self.variables.iter_mut()
+    }
+
+    #[inline]
     pub fn last_value(&self) -> Option<&Expression> {
         self.values.last()
     }

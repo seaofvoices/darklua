@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use darklua_core::nodes::Block;
 use darklua_core::{Parser, ParserError};
 
@@ -12,4 +14,17 @@ pub fn parse_input(input: &str) -> Block {
 #[allow(dead_code)]
 pub fn try_parse_input(input: &str) -> Result<Block, ParserError> {
     Parser::default().parse(input)
+}
+
+#[allow(dead_code)]
+pub fn run_for_minimum_time<F: Fn()>(func: F, duration: Duration) {
+    let start = Instant::now();
+
+    loop {
+        func();
+
+        if Instant::now().duration_since(start) > duration {
+            break;
+        }
+    }
 }
