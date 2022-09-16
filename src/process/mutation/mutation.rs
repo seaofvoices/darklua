@@ -1,17 +1,17 @@
 use crate::nodes::Block;
 
-use super::{MutationEffect, MutationResult, StatementInsertion, StatementRemoval};
+use super::{MutationEffect, MutationResult, StatementInsertion, StatementReplacement};
 
 #[derive(Clone, Debug)]
 pub enum Mutation {
-    StatementRemoval(StatementRemoval),
+    StatementReplacement(StatementReplacement),
     StatementInsertion(StatementInsertion),
 }
 
 impl Mutation {
     pub fn apply(self, block: &mut Block) -> MutationResult {
         match self {
-            Self::StatementRemoval(mutation) => mutation.apply(block),
+            Self::StatementReplacement(mutation) => mutation.apply(block),
             Self::StatementInsertion(mutation) => mutation.apply(block),
         }
     }
@@ -20,15 +20,15 @@ impl Mutation {
     /// should be kept or false if it should be discarded.
     pub fn mutate(&mut self, effect: &MutationEffect) -> bool {
         match self {
-            Self::StatementRemoval(mutation) => mutation.mutate(effect),
+            Self::StatementReplacement(mutation) => mutation.mutate(effect),
             Self::StatementInsertion(mutation) => mutation.mutate(effect),
         }
     }
 }
 
-impl From<StatementRemoval> for Mutation {
-    fn from(mutation: StatementRemoval) -> Self {
-        Self::StatementRemoval(mutation)
+impl From<StatementReplacement> for Mutation {
+    fn from(mutation: StatementReplacement) -> Self {
+        Self::StatementReplacement(mutation)
     }
 }
 

@@ -95,7 +95,7 @@ impl StatementInsertion {
 pub mod test {
     use super::*;
 
-    use crate::process::mutation::StatementRemoval;
+    use crate::process::mutation::StatementReplacement;
     use crate::process::path::NodePathBuf;
 
     fn statement_path(index: usize) -> NodePathBuf {
@@ -146,7 +146,7 @@ pub mod test {
                 super::super::super::test::test_mutation!(
                     $(
                         $name (
-                            StatementRemoval::replace(
+                            StatementReplacement::replace(
                                 $path,
                                 $crate::Parser::default()
                                     .parse($insert)

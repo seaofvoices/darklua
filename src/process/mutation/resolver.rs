@@ -48,7 +48,7 @@ mod test {
     use super::*;
 
     use crate::process::{
-        mutation::{StatementInsertion, StatementInsertionContent, StatementRemoval},
+        mutation::{StatementInsertion, StatementInsertionContent, StatementReplacement},
         path::NodePathBuf,
     };
 
@@ -107,44 +107,44 @@ mod test {
     test_resolver!(
         // removals
         remove_all_two("local a local b") => [
-            StatementRemoval::remove(statement_path(0)),
-            StatementRemoval::remove(statement_path(1)),
+            StatementReplacement::remove(statement_path(0)),
+            StatementReplacement::remove(statement_path(1)),
         ] => "",
         remove_all_two_in_reverse("local a local b") => [
-            StatementRemoval::remove(statement_path(1)),
-            StatementRemoval::remove(statement_path(0)),
+            StatementReplacement::remove(statement_path(1)),
+            StatementReplacement::remove(statement_path(0)),
         ] => "",
         remove_all_three("local a local b local c") => [
-            StatementRemoval::remove(statement_path(0).span(2)),
-            StatementRemoval::remove(statement_path(2)),
+            StatementReplacement::remove(statement_path(0).span(2)),
+            StatementReplacement::remove(statement_path(2)),
         ] => "",
         remove_all_three_in_reverse("local a local b local c") => [
-            StatementRemoval::remove(statement_path(2)),
-            StatementRemoval::remove(statement_path(0).span(2)),
+            StatementReplacement::remove(statement_path(2)),
+            StatementReplacement::remove(statement_path(0).span(2)),
         ] => "",
         remove_all_three_with_duplicated_removal("local a local b local c") => [
-            StatementRemoval::remove(statement_path(0).span(3)),
-            StatementRemoval::remove(statement_path(1)),
+            StatementReplacement::remove(statement_path(0).span(3)),
+            StatementReplacement::remove(statement_path(1)),
         ] => "",
         remove_all_three_with_duplicated_removal_reverse("local a local b local c") => [
-            StatementRemoval::remove(statement_path(1)),
-            StatementRemoval::remove(statement_path(0).span(3)),
+            StatementReplacement::remove(statement_path(1)),
+            StatementReplacement::remove(statement_path(0).span(3)),
         ] => "",
         remove_all_three_with_overlapping_upper_and_lower_bound("local a local b local c") => [
-            StatementRemoval::remove(statement_path(0).span(2)),
-            StatementRemoval::remove(statement_path(1).span(2)),
+            StatementReplacement::remove(statement_path(0).span(2)),
+            StatementReplacement::remove(statement_path(1).span(2)),
         ] => "",
         remove_two_first_with_overlapping_lower_bound("local a local b local c") => [
-            StatementRemoval::remove(statement_path(0)),
-            StatementRemoval::remove(statement_path(0).span(2)),
+            StatementReplacement::remove(statement_path(0)),
+            StatementReplacement::remove(statement_path(0).span(2)),
         ] => "local c",
         remove_two_last_with_overlapping_lower_bound("local a local b local c") => [
-            StatementRemoval::remove(statement_path(1)),
-            StatementRemoval::remove(statement_path(1).span(2)),
+            StatementReplacement::remove(statement_path(1)),
+            StatementReplacement::remove(statement_path(1).span(2)),
         ] => "local a",
         remove_two_last_with_overlapping_upper_bound("local a local b local c") => [
-            StatementRemoval::remove(statement_path(2)),
-            StatementRemoval::remove(statement_path(1).span(2)),
+            StatementReplacement::remove(statement_path(2)),
+            StatementReplacement::remove(statement_path(1).span(2)),
         ] => "local a",
         // add
         insert_twice_before_the_first_statement("return a + b") => [

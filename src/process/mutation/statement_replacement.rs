@@ -3,12 +3,12 @@ use crate::{nodes::Block, process::path::NodePath};
 use super::{MutationEffect, MutationResult, StatementInsertionContent, StatementSpan};
 
 #[derive(Clone, Debug)]
-pub struct StatementRemoval {
+pub struct StatementReplacement {
     span: StatementSpan,
     insertion: StatementInsertionContent,
 }
 
-impl StatementRemoval {
+impl StatementReplacement {
     pub fn remove(statement_span: impl Into<StatementSpan>) -> Self {
         Self {
             span: statement_span.into(),
@@ -191,7 +191,7 @@ mod test {
         ($($name:ident ( $path:expr, $code:literal ) => $expect_code:literal => [ $($expect_effect:expr),* $(,)? ] ),* $(,)?) => {
             super::super::test::test_mutation!(
                 $(
-                    $name ( StatementRemoval::remove($path), $code ) => $expect_code => [$( $expect_effect, )*],
+                    $name ( StatementReplacement::remove($path), $code ) => $expect_code => [$( $expect_effect, )*],
                 )*
             );
         };

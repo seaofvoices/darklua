@@ -250,7 +250,7 @@ fn visit_table<'a, 'b: 'a>(
 mod test {
     use crate::{
         process::{
-            mutation::{Mutation, StatementRemoval},
+            mutation::{Mutation, StatementReplacement},
             path::NodePathSlice,
         },
         Parser,
@@ -263,7 +263,7 @@ mod test {
         let visitor = |statement: &Statement, path: &NodePathSlice| -> Option<Mutation> {
             if let Statement::Do(do_statement) = statement {
                 if do_statement.get_block().is_empty() {
-                    return Some(StatementRemoval::remove(path.to_path_buf()).into());
+                    return Some(StatementReplacement::remove(path.to_path_buf()).into());
                 }
             }
             None
