@@ -36,8 +36,6 @@ impl StatementReplacement {
         {
             let new_path = parent.join_statement(last.saturating_add(statement_count));
             self.span.set_path(new_path);
-        } else {
-            todo!()
         }
     }
 
@@ -47,8 +45,6 @@ impl StatementReplacement {
         {
             let new_path = parent.join_statement(last.saturating_sub(statement_count));
             self.span.set_path(new_path);
-        } else {
-            todo!()
         }
     }
 
