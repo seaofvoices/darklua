@@ -47,10 +47,7 @@ impl MutationResolver {
 mod test {
     use super::*;
 
-    use crate::process::{
-        mutation::{StatementInsertion, StatementInsertionContent, StatementReplacement},
-        path::NodePathBuf,
-    };
+    use crate::process::{mutation::StatementInsertionContent, path::NodePathBuf};
 
     macro_rules! test_resolver {
         ($($name:ident ( $code:literal ) => [ $($mutation:expr),* $(,)? ] => $expect_code:literal),* $(,)?) => {
@@ -107,57 +104,79 @@ mod test {
     test_resolver!(
         // removals
         remove_all_two("local a local b") => [
-            StatementReplacement::remove(statement_path(0)),
-            StatementReplacement::remove(statement_path(1)),
+            Mutation::remove(statement_path(0)),
+            Mutation::remove(statement_path(1)),
         ] => "",
         remove_all_two_in_reverse("local a local b") => [
-            StatementReplacement::remove(statement_path(1)),
-            StatementReplacement::remove(statement_path(0)),
+            Mutation::remove(statement_path(1)),
+            Mutation::remove(statement_path(0)),
         ] => "",
         remove_all_three("local a local b local c") => [
-            StatementReplacement::remove(statement_path(0).span(2)),
-            StatementReplacement::remove(statement_path(2)),
+            Mutation::remove(statement_path(0).span(2)),
+            Mutation::remove(statement_path(2)),
         ] => "",
         remove_all_three_in_reverse("local a local b local c") => [
-            StatementReplacement::remove(statement_path(2)),
-            StatementReplacement::remove(statement_path(0).span(2)),
+            Mutation::remove(statement_path(2)),
+            Mutation::remove(statement_path(0).span(2)),
         ] => "",
         remove_all_three_with_duplicated_removal("local a local b local c") => [
-            StatementReplacement::remove(statement_path(0).span(3)),
-            StatementReplacement::remove(statement_path(1)),
+            Mutation::remove(statement_path(0).span(3)),
+            Mutation::remove(statement_path(1)),
         ] => "",
         remove_all_three_with_duplicated_removal_reverse("local a local b local c") => [
-            StatementReplacement::remove(statement_path(1)),
-            StatementReplacement::remove(statement_path(0).span(3)),
+            Mutation::remove(statement_path(1)),
+            Mutation::remove(statement_path(0).span(3)),
         ] => "",
         remove_all_three_with_overlapping_upper_and_lower_bound("local a local b local c") => [
-            StatementReplacement::remove(statement_path(0).span(2)),
-            StatementReplacement::remove(statement_path(1).span(2)),
+            Mutation::remove(statement_path(0).span(2)),
+            Mutation::remove(statement_path(1).span(2)),
         ] => "",
         remove_two_first_with_overlapping_lower_bound("local a local b local c") => [
-            StatementReplacement::remove(statement_path(0)),
-            StatementReplacement::remove(statement_path(0).span(2)),
+            Mutation::remove(statement_path(0)),
+            Mutation::remove(statement_path(0).span(2)),
         ] => "local c",
         remove_two_last_with_overlapping_lower_bound("local a local b local c") => [
-            StatementReplacement::remove(statement_path(1)),
-            StatementReplacement::remove(statement_path(1).span(2)),
+            Mutation::remove(statement_path(1)),
+            Mutation::remove(statement_path(1).span(2)),
         ] => "local a",
         remove_two_last_with_overlapping_upper_bound("local a local b local c") => [
-            StatementReplacement::remove(statement_path(2)),
-            StatementReplacement::remove(statement_path(1).span(2)),
+            Mutation::remove(statement_path(2)),
+            Mutation::remove(statement_path(1).span(2)),
         ] => "local a",
-        // add
+        // insertions
         insert_twice_before_the_first_statement("return a + b") => [
-            StatementInsertion::insert_before(statement_path(0), parse_insertion("local b")),
-            StatementInsertion::insert_before(statement_path(0), parse_insertion("local a")),
+            Mutation::insert_before(statement_path(0), parse_insertion("local b")),
+            Mutation::insert_before(statement_path(0), parse_insertion("local a")),
         ] => "local a local b return a + b",
         insert_before_and_after_first_statement("local b") => [
-            StatementInsertion::insert_before(statement_path(0), parse_insertion("local a")),
-            StatementInsertion::insert_after(statement_path(0), parse_insertion("return a + b")),
+            Mutation::insert_before(statement_path(0), parse_insertion("local a")),
+            Mutation::insert_after(statement_path(0), parse_insertion("return a + b")),
         ] => "local a local b return a + b",
         insert_after_and_before_first_statement("local b") => [
-            StatementInsertion::insert_after(statement_path(0), parse_insertion("return a + b")),
-            StatementInsertion::insert_before(statement_path(0), parse_insertion("local a")),
+            Mutation::insert_after(statement_path(0), parse_insertion("return a + b")),
+            Mutation::insert_before(statement_path(0), parse_insertion("local a")),
         ] => "local a local b return a + b",
+        // insertion followed by removal
+        insert_after_first_statement_and_remove_all("local a local c") => [
+            Mutation::insert_after(statement_path(0), parse_insertion("local b")),
+            Mutation::remove(statement_path(0).span(2)),
+        ] => "",
+        insert_before_first_statement_and_remove_all_others("local a return a") => [
+            Mutation::insert_before(statement_path(0), parse_insertion("do end")),
+            Mutation::remove(statement_path(0).span(2)),
+        ] => "do end",
+        insert_after_last_statement_and_remove_all_others("local a local b") => [
+            Mutation::insert_after(statement_path(1), parse_insertion("local c")),
+            Mutation::remove(statement_path(0).span(2)),
+        ] => "local c",
+        // insertion followed by replacement
+        insert_before_first_statement_and_replace("local b") => [
+            Mutation::insert_before(statement_path(0), parse_insertion("local a = 1")),
+            Mutation::replace(statement_path(0), parse_insertion("return a")),
+        ] => "local a = 1 return a",
+        insert_after_first_statement_and_replace("local b") => [
+            Mutation::insert_after(statement_path(0), parse_insertion("return a")),
+            Mutation::replace(statement_path(0), parse_insertion("local a = 1")),
+        ] => "local a = 1 return a",
     );
 }

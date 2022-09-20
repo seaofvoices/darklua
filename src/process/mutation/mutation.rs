@@ -1,11 +1,16 @@
-use crate::nodes::Block;
+use std::borrow;
+
+use crate::{
+    nodes::Block,
+    process::path::{NodePathBuf, NodePathSlice},
+};
 
 use super::{
     MutationEffect, MutationResult, StatementInsertion, StatementInsertionContent,
     StatementReplacement, StatementSpan,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Mutation {
     StatementInsertion(StatementInsertion),
     StatementReplacement(StatementReplacement),
@@ -28,6 +33,22 @@ impl Mutation {
         } else {
             Self::StatementReplacement(StatementReplacement::replace(statement_span, insertion))
         }
+    }
+
+    #[inline]
+    pub fn insert_before(
+        statement_path: impl Into<NodePathBuf>,
+        insertion: impl Into<StatementInsertionContent>,
+    ) -> Self {
+        Self::StatementInsertion(StatementInsertion::insert_before(statement_path, insertion))
+    }
+
+    #[inline]
+    pub fn insert_after(
+        statement_path: impl borrow::Borrow<NodePathSlice>,
+        insertion: impl Into<StatementInsertionContent>,
+    ) -> Self {
+        Self::StatementInsertion(StatementInsertion::insert_after(statement_path, insertion))
     }
 
     pub fn apply(self, block: &mut Block) -> MutationResult {

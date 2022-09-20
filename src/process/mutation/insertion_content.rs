@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use crate::nodes::{Block, LastStatement, Statement};
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct StatementInsertionContent {
     statements: Vec<Statement>,
     last_statement: Option<LastStatement>,

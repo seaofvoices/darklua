@@ -1,6 +1,7 @@
 mod effect;
 mod insertion_content;
 mod mutation;
+mod mutation_error;
 mod resolver;
 mod statement_insertion;
 mod statement_replacement;
@@ -9,13 +10,11 @@ mod statement_span;
 pub use effect::MutationEffect;
 pub use insertion_content::StatementInsertionContent;
 pub use mutation::Mutation;
+pub use mutation_error::MutationError;
 pub use resolver::MutationResolver;
 pub use statement_insertion::StatementInsertion;
 pub use statement_replacement::StatementReplacement;
 pub use statement_span::StatementSpan;
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum MutationError {}
 
 pub type MutationResult = Result<Vec<MutationEffect>, MutationError>;
 

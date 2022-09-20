@@ -5,9 +5,9 @@ use crate::{
     process::path::{NodePath, NodePathBuf, NodePathSlice},
 };
 
-use super::{MutationEffect, MutationResult, StatementInsertionContent};
+use super::{MutationEffect, MutationError, MutationResult, StatementInsertionContent};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StatementInsertion {
     before_path: NodePathBuf,
     insertion: StatementInsertionContent,
@@ -43,10 +43,22 @@ impl StatementInsertion {
     }
 
     pub fn apply(self, block: &mut Block) -> MutationResult {
-        let block_path = self.before_path.parent().ok_or_else(|| todo!())?;
-        let index = self.before_path.statement_index().ok_or_else(|| todo!())?;
+        let block_path = self.before_path.parent().ok_or_else(|| {
+            MutationError::new(self.clone())
+                .unexpected_path(self.before_path.to_path_buf())
+                .context("path should have a parent")
+        })?;
+        let index = self.before_path.statement_index().ok_or_else(|| {
+            MutationError::new(self.clone())
+                .statement_path_expected(self.before_path.to_path_buf())
+                .context("insertion path")
+        })?;
 
-        let block = block_path.resolve_block_mut(block).ok_or_else(|| todo!())?;
+        let block = block_path.resolve_block_mut(block).ok_or_else(|| {
+            MutationError::new(self.clone())
+                .block_path_expected(block_path.to_path_buf())
+                .context("mutation path parent")
+        })?;
 
         let mut effects = Vec::new();
 

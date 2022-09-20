@@ -1,8 +1,10 @@
 use crate::{nodes::Block, process::path::NodePath};
 
-use super::{MutationEffect, MutationResult, StatementInsertionContent, StatementSpan};
+use super::{
+    MutationEffect, MutationError, MutationResult, StatementInsertionContent, StatementSpan,
+};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StatementReplacement {
     span: StatementSpan,
     insertion: StatementInsertionContent,
@@ -49,15 +51,29 @@ impl StatementReplacement {
     }
 
     pub fn apply(self, block: &mut Block) -> MutationResult {
-        let span = self.span;
+        let span = &self.span;
         let path = span.path();
-        let block_path = path.parent().ok_or_else(|| todo!())?;
-        let index = path.statement_index().ok_or_else(|| todo!())?;
+        let block_path = path.parent().ok_or_else(|| {
+            MutationError::new(self.clone())
+                .unexpected_path(path.to_path_buf())
+                .context("path should have a parent")
+        })?;
+        let index = path.statement_index().ok_or_else(|| {
+            MutationError::new(self.clone())
+                .statement_path_expected(path.to_path_buf())
+                .context("mutation path")
+        })?;
 
-        let block = block_path.resolve_block_mut(block).ok_or_else(|| todo!())?;
+        let block = block_path.resolve_block_mut(block).ok_or_else(|| {
+            MutationError::new(self.clone())
+                .block_path_expected(block_path.to_path_buf())
+                .context("mutation path parent")
+        })?;
 
         if block.total_len() == 0 {
-            todo!()
+            return Err(MutationError::new(self.clone())
+                .unexpected_path(block_path)
+                .context("block should not be empty"));
         }
 
         let mut effects = Vec::new();
@@ -80,7 +96,12 @@ impl StatementReplacement {
 
                 effects.push(MutationEffect::statement_removed(span.clone()));
             } else {
-                todo!()
+                return Err(MutationError::new(self.clone())
+                    .unexpected_path(path.to_path_buf())
+                    .context(format!(
+                        "statement index ({}) is out of block bound ({})",
+                        index, block_length,
+                    )));
             }
         }
 
@@ -166,7 +187,31 @@ impl StatementReplacement {
                     }
                 }
             }
-            MutationEffect::StatementAdded(_) => todo!(),
+            MutationEffect::StatementAdded(effect_span) => {
+                let self_path = self.span.path();
+                let effect_path = effect_span.path();
+
+                if effect_path.parent() == self_path.parent() {
+                    if let (Some(effect_index), Some(self_index)) =
+                        (effect_path.last_statement(), self_path.last_statement())
+                    {
+                        let effect_end_index = effect_index + effect_span.len().saturating_sub(1);
+                        let self_end_index = self_index + self.span.len().saturating_sub(1);
+
+                        if effect_end_index < self_index {
+                            self.shift_forward(effect_span.len());
+                        } else {
+                            if effect_index <= self_index {
+                                self.span.set_path(effect_span.next_path());
+                            } else {
+                                if effect_index <= self_end_index {
+                                    self.span.resize(self.span.len() + effect_span.len());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         true
