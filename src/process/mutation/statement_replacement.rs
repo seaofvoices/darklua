@@ -107,7 +107,9 @@ impl StatementReplacement {
 
         if !self.insertion.is_empty() {
             let length = self.insertion.len();
-            self.insertion.apply(block, index);
+            self.insertion
+                .apply(block, index)
+                .map_err(|err| err.with_mutation(self.clone()))?;
             effects.push(MutationEffect::statement_added(path.clone().span(length)));
         }
 
