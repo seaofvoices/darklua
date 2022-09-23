@@ -6,20 +6,25 @@ use crate::{
 };
 
 use super::{
-    MutationEffect, MutationResult, StatementInsertion, StatementInsertionContent,
-    StatementReplacement, StatementSpan,
+    statement_insertion::StatementInsertion, statement_replacement::StatementReplacement,
+    MutationEffect, MutationResult, StatementInsertionContent, StatementSpan,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Mutation {
+enum MutationKind {
     StatementInsertion(StatementInsertion),
     StatementReplacement(StatementReplacement),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Mutation {
+    kind: MutationKind,
 }
 
 impl Mutation {
     #[inline]
     pub fn remove(statement_span: impl Into<StatementSpan>) -> Self {
-        Self::StatementReplacement(StatementReplacement::remove(statement_span))
+        MutationKind::StatementReplacement(StatementReplacement::remove(statement_span)).into()
     }
 
     #[inline]
@@ -31,7 +36,11 @@ impl Mutation {
         if insertion.is_empty() {
             Self::remove(statement_span)
         } else {
-            Self::StatementReplacement(StatementReplacement::replace(statement_span, insertion))
+            MutationKind::StatementReplacement(StatementReplacement::replace(
+                statement_span,
+                insertion,
+            ))
+            .into()
         }
     }
 
@@ -40,7 +49,11 @@ impl Mutation {
         statement_path: impl Into<NodePathBuf>,
         insertion: impl Into<StatementInsertionContent>,
     ) -> Self {
-        Self::StatementInsertion(StatementInsertion::insert_before(statement_path, insertion))
+        MutationKind::StatementInsertion(StatementInsertion::insert_before(
+            statement_path,
+            insertion,
+        ))
+        .into()
     }
 
     #[inline]
@@ -48,34 +61,44 @@ impl Mutation {
         statement_path: impl borrow::Borrow<NodePathSlice>,
         insertion: impl Into<StatementInsertionContent>,
     ) -> Self {
-        Self::StatementInsertion(StatementInsertion::insert_after(statement_path, insertion))
+        MutationKind::StatementInsertion(StatementInsertion::insert_after(
+            statement_path,
+            insertion,
+        ))
+        .into()
     }
 
     pub fn apply(self, block: &mut Block) -> MutationResult {
-        match self {
-            Self::StatementInsertion(mutation) => mutation.apply(block),
-            Self::StatementReplacement(mutation) => mutation.apply(block),
+        match self.kind {
+            MutationKind::StatementInsertion(mutation) => mutation.apply(block),
+            MutationKind::StatementReplacement(mutation) => mutation.apply(block),
         }
     }
 
     /// Apply a given effect to the mutation and return true if the mutation
     /// should be kept or false if it should be discarded.
     pub fn mutate(&mut self, effect: &MutationEffect) -> bool {
-        match self {
-            Self::StatementInsertion(mutation) => mutation.mutate(effect),
-            Self::StatementReplacement(mutation) => mutation.mutate(effect),
+        match &mut self.kind {
+            MutationKind::StatementInsertion(mutation) => mutation.mutate(effect),
+            MutationKind::StatementReplacement(mutation) => mutation.mutate(effect),
         }
+    }
+}
+
+impl From<MutationKind> for Mutation {
+    fn from(kind: MutationKind) -> Self {
+        Self { kind }
     }
 }
 
 impl From<StatementInsertion> for Mutation {
     fn from(mutation: StatementInsertion) -> Self {
-        Self::StatementInsertion(mutation)
+        MutationKind::StatementInsertion(mutation).into()
     }
 }
 
 impl From<StatementReplacement> for Mutation {
     fn from(mutation: StatementReplacement) -> Self {
-        Self::StatementReplacement(mutation)
+        MutationKind::StatementReplacement(mutation).into()
     }
 }

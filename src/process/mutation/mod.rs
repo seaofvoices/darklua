@@ -12,8 +12,6 @@ pub use insertion_content::StatementInsertionContent;
 pub use mutation::Mutation;
 pub use mutation_error::MutationError;
 pub use resolver::MutationResolver;
-pub use statement_insertion::StatementInsertion;
-pub use statement_replacement::StatementReplacement;
 pub use statement_span::StatementSpan;
 
 pub type MutationResult = Result<Vec<MutationEffect>, MutationError>;

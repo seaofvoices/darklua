@@ -109,7 +109,7 @@ impl StatementInsertion {
 pub mod test {
     use super::*;
 
-    use crate::process::mutation::StatementReplacement;
+    use crate::process::mutation::statement_replacement::StatementReplacement;
     use crate::process::path::NodePathBuf;
 
     fn statement_path(index: usize) -> NodePathBuf {
