@@ -43,18 +43,44 @@ use serde::ser::SerializeMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 use std::fmt;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
+
+#[derive(Debug, Clone, Default)]
+pub struct ContextBuilder<'a> {
+    blocks: HashMap<PathBuf, &'a Block>,
+}
+
+impl<'a> ContextBuilder<'a> {
+    pub fn build(self) -> Context<'a> {
+        Context {
+            blocks: self.blocks,
+        }
+    }
+
+    pub fn insert_block<'b: 'a>(&mut self, path: impl Into<PathBuf>, block: &'b Block) {
+        self.blocks.insert(path.into(), block);
+    }
+}
 
 /// The intent of this struct is to hold data shared across all rules applied to a file.
 #[derive(Debug, Clone, Default)]
-pub struct Context {}
+pub struct Context<'a> {
+    blocks: HashMap<PathBuf, &'a Block>,
+}
 
-pub type RuleProcessResult = Result<(), Vec<String>>;
+impl<'a> Context<'a> {
+    pub fn block(&self, path: impl AsRef<Path>) -> Option<&Block> {
+        self.blocks.get(path.as_ref()).map(|block| *block)
+    }
+}
+
+pub type RuleProcessResult = Result<(), String>;
 
 /// Defines an interface that will be used to mutate blocks and how to serialize and deserialize
 /// the rule configuration.
 pub trait Rule: RuleConfiguration {
-    /// This method should mutate the given block to apply the rule.
+    /// This method should mutate the given block to apply the rule
     fn process(&self, block: &mut Block, context: &mut Context) -> RuleProcessResult;
 }
 
@@ -70,6 +96,11 @@ pub trait RuleConfiguration {
     /// Returns `true` if the rule has at least one property.
     fn has_properties(&self) -> bool {
         !self.serialize_to_properties().is_empty()
+    }
+    /// Return the list of paths to Lua files that is necessary to apply this rule. This will load
+    /// each AST block from these files into the context object.
+    fn require_content(&self) -> Vec<PathBuf> {
+        Vec::new()
     }
 }
 
@@ -153,7 +184,7 @@ impl FromStr for Box<dyn Rule> {
     }
 }
 
-impl Serialize for Box<dyn Rule> {
+impl Serialize for dyn Rule {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let properties = self.serialize_to_properties();
         let property_count = properties.len();

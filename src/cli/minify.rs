@@ -17,18 +17,18 @@ use structopt::StructOpt;
 pub struct Options {
     /// Path to the lua file to minify.
     #[structopt(parse(from_os_str))]
-    pub input_path: PathBuf,
+    input_path: PathBuf,
     /// Where to output the result.
     #[structopt(parse(from_os_str))]
-    pub output_path: PathBuf,
+    output_path: PathBuf,
     /// DEPRECATED - Reads the column span value from the given configuration file.
     /// Instead use `--column-span <number>` to pass the value directly. darklua
     /// will stop reading configuration files for the minify command in a future version
     #[structopt(long, short)]
-    pub config_path: Option<PathBuf>,
+    config_path: Option<PathBuf>,
     /// The maximum number of characters that should be written on a line.
     #[structopt(long)]
-    pub column_span: Option<usize>,
+    column_span: Option<usize>,
 }
 
 fn minify(file: &FileProcessing, column_span: usize) -> CommandResult {

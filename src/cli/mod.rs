@@ -49,10 +49,10 @@ impl Command {
 #[structopt(name = "darklua", about)]
 pub struct Darklua {
     #[structopt(flatten)]
-    pub global_options: GlobalOptions,
+    global_options: GlobalOptions,
     /// The command to run. For specific help about each command, run `darklua <command> --help`
     #[structopt(subcommand)]
-    pub command: Command,
+    command: Command,
 }
 
 impl Darklua {

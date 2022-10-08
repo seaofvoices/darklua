@@ -75,17 +75,17 @@ impl FromStr for LuaFormat {
 pub struct Options {
     /// Path to the lua file to process.
     #[structopt(parse(from_os_str))]
-    pub input_path: PathBuf,
+    input_path: PathBuf,
     /// Where to output the result.
     #[structopt(parse(from_os_str))]
-    pub output_path: PathBuf,
+    output_path: PathBuf,
     /// Choose a specific configuration file.
     #[structopt(long, short, alias = "config-path")]
-    pub config: Option<PathBuf>,
+    config: Option<PathBuf>,
     /// Choose how Lua code is formatted ('dense', 'readable' or 'retain-lines').
     /// This will override the format given by the configuration file.
     #[structopt(long)]
-    pub format: Option<LuaFormat>,
+    format: Option<LuaFormat>,
 }
 
 fn process(file: &FileProcessing, config: &Config, options: &Options) -> CommandResult {
@@ -106,6 +106,8 @@ fn process(file: &FileProcessing, config: &Config, options: &Options) -> Command
         .unwrap_or_else(|| config.build_parser());
 
     let parser_timer = Timer::now();
+
+    log::debug!("beginning work on `{}`", source.display());
 
     let mut block = parser
         .parse(&input)
@@ -129,12 +131,12 @@ fn process(file: &FileProcessing, config: &Config, options: &Options) -> Command
             }
         );
         rule.process(&mut block, &mut context)
-            .map_err(|rule_errors| {
+            .map_err(|rule_error| {
                 let error = CliError::RuleError {
                     file: source.clone(),
                     rule_name: rule.get_name().to_owned(),
                     rule_number: index,
-                    errors: rule_errors,
+                    errors: vec![rule_error],
                 };
                 log::trace!(
                     "[{}] rule `{}` errored: {}",
@@ -147,7 +149,14 @@ fn process(file: &FileProcessing, config: &Config, options: &Options) -> Command
             })?;
     }
     let rule_time = rule_timer.duration_label();
-    log::debug!("rules applied for `{}` in {}", source.display(), rule_time,);
+    let total_rules = config.rules.len();
+    log::debug!(
+        "{} rule{} applied for `{}` in {}",
+        total_rules,
+        maybe_plural(total_rules),
+        source.display(),
+        rule_time,
+    );
 
     let generator_timer = Timer::now();
 
