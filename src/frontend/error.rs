@@ -42,6 +42,8 @@ enum ErrorKind {
     },
 }
 
+pub type DarkluaResult<T> = Result<T, DarkluaError>;
+
 #[derive(Debug, Clone)]
 pub struct DarkluaError {
     kind: ErrorKind,

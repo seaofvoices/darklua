@@ -8,7 +8,7 @@ use elsa::FrozenMap;
 
 use crate::{nodes::Block, Parser};
 
-use super::{utils::Timer, DarkluaError, Resources};
+use super::{utils::Timer, DarkluaError, Resources, DarkluaResult};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Progress {
@@ -186,7 +186,7 @@ impl<'a> WorkCache<'a> {
         &self,
         source: impl AsRef<Path>,
         parser: &Parser,
-    ) -> Result<&Block, DarkluaError> {
+    ) -> DarkluaResult<&Block> {
         let source = source.as_ref();
         if let Some(block) = self.input_to_block.get(source) {
             log::trace!("found cached block for `{}`", source.display());
@@ -200,7 +200,7 @@ impl<'a> WorkCache<'a> {
         }
     }
 
-    fn read_block(&self, source: &Path, parser: &Parser) -> Result<Block, DarkluaError> {
+    fn read_block(&self, source: &Path, parser: &Parser) -> DarkluaResult<Block> {
         if let Some(output_path) = self.input_to_output.get(source) {
             let content = self.resources.get(output_path)?;
             parser.parse(&content).map_err(|parser_error| {

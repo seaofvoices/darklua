@@ -7,7 +7,7 @@ use super::{
     resources::Resources,
     utils::{self, Timer},
     work_item::{Progress, WorkCache, WorkData, WorkItem, WorkStatus},
-    DarkluaError, Options,
+    DarkluaError, DarkluaResult, Options,
 };
 
 const DEFAULT_CONFIG_PATHS: [&str; 2] = [".darklua.json", ".darklua.json5"];
@@ -152,14 +152,14 @@ impl<'a> Worker<'a> {
         }
     }
 
-    fn read_configuration(&self, config: &Path) -> Result<Configuration, DarkluaError> {
+    fn read_configuration(&self, config: &Path) -> DarkluaResult<Configuration> {
         let config_content = self.resources.get(config)?;
         json5::from_str(&config_content).map_err(|err| {
             DarkluaError::invalid_configuration_file(config).context(err.to_string())
         })
     }
 
-    fn do_work(&mut self, work: WorkItem) -> Result<Option<WorkItem>, DarkluaError> {
+    fn do_work(&mut self, work: WorkItem) -> DarkluaResult<Option<WorkItem>> {
         let (status, data) = work.extract();
         match status {
             WorkStatus::NotStarted => {
@@ -191,7 +191,7 @@ impl<'a> Worker<'a> {
         &mut self,
         data: WorkData,
         mut progress: Progress,
-    ) -> Result<Option<WorkItem>, DarkluaError> {
+    ) -> DarkluaResult<Option<WorkItem>> {
         let source_display = data.source().display();
 
         progress.duration().start();

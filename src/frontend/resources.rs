@@ -4,6 +4,7 @@ use std::{
     ffi::OsStr,
     fs::{self, File},
     io::{self, BufWriter, ErrorKind as IOErrorKind, Write},
+    iter,
     path::{Path, PathBuf},
 };
 
@@ -53,11 +54,8 @@ impl Source {
     pub fn get(&self, location: &Path) -> ResourceResult<String> {
         match self {
             Self::FileSystem => fs::read_to_string(location).map_err(|err| match err.kind() {
-                IOErrorKind::NotFound => ResourceError::NotFound(location.to_path_buf()),
-                _ => ResourceError::IO {
-                    path: location.to_path_buf(),
-                    error: err.to_string(),
-                },
+                IOErrorKind::NotFound => ResourceError::not_found(location),
+                _ => ResourceError::io_error(location, err),
             }),
             Self::Memory(data) => {
                 let data = data.borrow();
@@ -65,7 +63,7 @@ impl Source {
 
                 data.get(&location)
                     .map(String::from)
-                    .ok_or(ResourceError::NotFound(location))
+                    .ok_or(ResourceError::not_found(location))
             }
         }
     }
@@ -95,7 +93,10 @@ impl Source {
 
     pub fn walk(&self, location: &Path) -> impl Iterator<Item = PathBuf> {
         match self {
-            Self::FileSystem => todo!(),
+            Self::FileSystem => {
+                Box::new(walk_file_system(location.to_path_buf()))
+                    as Box<dyn Iterator<Item = PathBuf>>
+            }
             Self::Memory(data) => {
                 let data = data.borrow();
                 let location = normalize_path(location);
@@ -105,10 +106,78 @@ impl Source {
                         Some(normalize_path(path)).filter(|path| path.starts_with(&location))
                     })
                     .collect();
-                paths.into_iter()
+
+                Box::new(paths.into_iter())
             }
         }
     }
+}
+
+fn walk_file_system(location: PathBuf) -> impl Iterator<Item = PathBuf> {
+    let mut unknown_paths = vec![location];
+    let mut file_paths = Vec::new();
+    let mut dir_entries = Vec::new();
+
+    iter::from_fn(move || loop {
+        if let Some(location) = unknown_paths.pop() {
+            match location.metadata() {
+                Ok(metadata) => {
+                    if metadata.is_file() {
+                        file_paths.push(location.to_path_buf());
+                    } else if metadata.is_dir() {
+                        dir_entries.push(location.to_path_buf());
+                    } else if metadata.is_symlink() {
+                        log::warn!("unexpected symlink `{}` not followed", location.display());
+                    } else {
+                        log::warn!(
+                            concat!(
+                                "path `{}` points to an unexpected location that is not a ",
+                                "file, not a directory and not a symlink"
+                            ),
+                            location.display()
+                        );
+                    };
+                }
+                Err(err) => {
+                    log::warn!(
+                        "unable to read metadata from file `{}`: {}",
+                        location.display(),
+                        err
+                    );
+                }
+            }
+        } else if let Some(dir_location) = dir_entries.pop() {
+            match dir_location.read_dir() {
+                Ok(read_dir) => {
+                    for entry in read_dir {
+                        match entry {
+                            Ok(entry) => {
+                                unknown_paths.push(entry.path());
+                            }
+                            Err(err) => {
+                                log::warn!(
+                                    "unable to read directory entry `{}`: {}",
+                                    dir_location.display(),
+                                    err
+                                );
+                            }
+                        }
+                    }
+                }
+                Err(err) => {
+                    log::warn!(
+                        "unable to read directory `{}`: {}",
+                        dir_location.display(),
+                        err
+                    );
+                }
+            }
+        } else if let Some(path) = file_paths.pop() {
+            break Some(path);
+        } else {
+            break None;
+        }
+    })
 }
 
 #[derive(Debug, Clone)]
@@ -166,6 +235,10 @@ pub enum ResourceError {
 }
 
 impl ResourceError {
+    pub(crate) fn not_found(path: impl Into<PathBuf>) -> Self {
+        Self::NotFound(path.into())
+    }
+
     pub(crate) fn io_error(path: impl Into<PathBuf>, error: io::Error) -> Self {
         Self::IO {
             path: path.into(),

@@ -11,7 +11,7 @@ use std::path::Path;
 pub use resources::Resources;
 use work_item::WorkItem;
 
-pub use error::DarkluaError;
+pub use error::{DarkluaError, DarkluaResult};
 pub use options::Options;
 use worker::Worker;
 
