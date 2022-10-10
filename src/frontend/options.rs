@@ -1,9 +1,12 @@
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Clone)]
+use super::configuration::Configuration;
+
+#[derive(Debug)]
 pub struct Options {
     input: PathBuf,
-    config: Option<PathBuf>,
+    config_path: Option<PathBuf>,
+    config: Option<Configuration>,
     output: Option<PathBuf>,
     fail_fast: bool,
 }
@@ -12,6 +15,7 @@ impl Options {
     pub fn new(input: impl Into<PathBuf>) -> Self {
         Self {
             input: input.into(),
+            config_path: None,
             config: None,
             output: None,
             fail_fast: false,
@@ -19,7 +23,12 @@ impl Options {
     }
 
     pub fn with_configuration_at(mut self, config: impl Into<PathBuf>) -> Self {
-        self.config = Some(config.into());
+        self.config_path = Some(config.into());
+        self
+    }
+
+    pub fn with_configuration(mut self, config: Configuration) -> Self {
+        self.config = Some(config);
         self
     }
 
@@ -45,7 +54,11 @@ impl Options {
         self.fail_fast
     }
 
-    pub fn configuration(&self) -> Option<&Path> {
-        self.config.as_ref().map(AsRef::as_ref)
+    pub fn configuration_path(&self) -> Option<&Path> {
+        self.config_path.as_ref().map(AsRef::as_ref)
+    }
+
+    pub fn take_configuration(&mut self) -> Option<Configuration> {
+        self.config.take()
     }
 }

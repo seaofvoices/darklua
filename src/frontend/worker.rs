@@ -30,13 +30,26 @@ impl<'a> Worker<'a> {
 
     pub fn process(
         mut self,
-        work_items: impl Iterator<Item = WorkItem>,
-        options: &Options,
+        work_items: impl Iterator<Item = Result<WorkItem, DarkluaError>>,
+        mut options: Options,
     ) -> Result<(), Vec<DarkluaError>> {
         let configuration_setup_timer = Timer::now();
 
-        if let Some(config) = options.configuration() {
-            if self.resources.exist(config).map_err(element_to_vec)? {
+        if let Some(config) = options.take_configuration() {
+            self.configuration = config;
+            if let Some(config_path) = options.configuration_path() {
+                log::warn!(
+                    concat!(
+                        "the provided options contained both a configuration object and ",
+                        "a path to a configuration file (`{}`). the provided configuration ",
+                        "takes precedence, so it is best to avoid confusion by providing ",
+                        "only the configuration itself or a path to a configuration"
+                    ),
+                    config_path.display()
+                );
+            }
+        } else if let Some(config) = options.configuration_path() {
+            if self.resources.exists(config).map_err(element_to_vec)? {
                 self.configuration = self.read_configuration(config).map_err(element_to_vec)?;
             } else {
                 return Err(vec![DarkluaError::resource_not_found(config).context(
@@ -46,7 +59,7 @@ impl<'a> Worker<'a> {
         } else {
             let mut configuration_files = Vec::new();
             for path in DEFAULT_CONFIG_PATHS.iter().map(Path::new) {
-                if self.resources.exist(path).map_err(element_to_vec)? {
+                if self.resources.exists(path).map_err(element_to_vec)? {
                     configuration_files.push(path);
                 }
             }
@@ -79,7 +92,10 @@ impl<'a> Worker<'a> {
 
         log::trace!("start collecting work");
         let collect_work_timer = Timer::now();
-        let mut work_items: Vec<_> = work_items.collect();
+
+        let collect_work_result: Result<Vec<_>, _> = work_items.collect();
+        let mut work_items = collect_work_result.map_err(element_to_vec)?;
+
         log::trace!("work collected in {}", collect_work_timer.duration_label());
 
         let mut errors = Vec::new();

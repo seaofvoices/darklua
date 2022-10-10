@@ -16,7 +16,7 @@ enum Source {
 }
 
 impl Source {
-    pub fn exist(&self, location: &Path) -> ResourceResult<bool> {
+    pub fn exists(&self, location: &Path) -> ResourceResult<bool> {
         match self {
             Self::FileSystem => Ok(location.exists()),
             Self::Memory(data) => Ok(data.borrow().contains_key(&normalize_path(location))),
@@ -25,7 +25,7 @@ impl Source {
 
     pub fn is_directory(&self, location: &Path) -> ResourceResult<bool> {
         let is_directory = match self {
-            Source::FileSystem => self.exist(location)? && location.is_dir(),
+            Source::FileSystem => self.exists(location)? && location.is_dir(),
             Source::Memory(data) => {
                 let data = data.borrow();
                 let location = normalize_path(location);
@@ -39,7 +39,7 @@ impl Source {
 
     pub fn is_file(&self, location: &Path) -> ResourceResult<bool> {
         let is_file = match self {
-            Source::FileSystem => self.exist(location)? && location.is_file(),
+            Source::FileSystem => self.exists(location)? && location.is_file(),
             Source::Memory(data) => {
                 let data = data.borrow();
                 let location = normalize_path(location);
@@ -54,7 +54,10 @@ impl Source {
         match self {
             Self::FileSystem => fs::read_to_string(location).map_err(|err| match err.kind() {
                 IOErrorKind::NotFound => ResourceError::NotFound(location.to_path_buf()),
-                _ => todo!(),
+                _ => ResourceError::IO {
+                    path: location.to_path_buf(),
+                    error: err.to_string(),
+                },
             }),
             Self::Memory(data) => {
                 let data = data.borrow();
@@ -135,8 +138,8 @@ impl Resources {
         })
     }
 
-    pub fn exist(&self, location: impl AsRef<Path>) -> ResourceResult<bool> {
-        self.source.exist(location.as_ref())
+    pub fn exists(&self, location: impl AsRef<Path>) -> ResourceResult<bool> {
+        self.source.exists(location.as_ref())
     }
 
     pub fn is_directory(&self, location: impl AsRef<Path>) -> ResourceResult<bool> {
@@ -194,7 +197,7 @@ mod test {
 
         #[test]
         fn not_created_file_does_not_exist() {
-            assert_eq!(new().exist(any_path()), Ok(false));
+            assert_eq!(new().exists(any_path()), Ok(false));
         }
 
         #[test]
@@ -202,7 +205,7 @@ mod test {
             let resources = new();
             resources.write(any_path(), ANY_CONTENT).unwrap();
 
-            assert_eq!(resources.exist(any_path()), Ok(true));
+            assert_eq!(resources.exists(any_path()), Ok(true));
         }
 
         #[test]
