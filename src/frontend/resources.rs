@@ -93,10 +93,8 @@ impl Source {
 
     pub fn walk(&self, location: &Path) -> impl Iterator<Item = PathBuf> {
         match self {
-            Self::FileSystem => {
-                Box::new(walk_file_system(location.to_path_buf()))
-                    as Box<dyn Iterator<Item = PathBuf>>
-            }
+            Self::FileSystem => Box::new(walk_file_system(location.to_path_buf()))
+                as Box<dyn Iterator<Item = PathBuf>>,
             Self::Memory(data) => {
                 let data = data.borrow();
                 let location = normalize_path(location);

@@ -6,7 +6,8 @@ use super::{
     configuration::Configuration,
     resources::Resources,
     utils::{self, Timer},
-    work_item::{Progress, WorkCache, WorkData, WorkItem, WorkStatus},
+    work_cache::WorkCache,
+    work_item::{Progress, WorkData, WorkItem, WorkStatus},
     DarkluaError, DarkluaResult, Options,
 };
 

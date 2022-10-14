@@ -3,6 +3,7 @@ mod error;
 mod options;
 mod resources;
 mod utils;
+mod work_cache;
 mod work_item;
 mod worker;
 

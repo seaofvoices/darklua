@@ -179,8 +179,9 @@ impl Display for DarkluaError {
                 )?;
             }
             ErrorKind::CyclicWork => {
-                todo!()
-            },
+                // todo! improve message
+                write!(f, "cyclic work detected")?;
+            }
             ErrorKind::Custom { message } => {
                 write!(f, "{}", message)?;
             }
