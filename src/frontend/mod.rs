@@ -1,6 +1,7 @@
 mod configuration;
 mod error;
 mod options;
+mod process_result;
 mod resources;
 mod utils;
 mod work_cache;
@@ -9,51 +10,51 @@ mod worker;
 
 use std::path::Path;
 
-pub use resources::Resources;
-use work_item::WorkItem;
-
+pub use configuration::{Configuration, GeneratorParameters};
 pub use error::{DarkluaError, DarkluaResult};
 pub use options::Options;
+pub use process_result::ProcessResult;
+pub use resources::Resources;
+use work_item::WorkItem;
 use worker::Worker;
 
 use self::utils::normalize_path;
 
-pub fn process(resources: &Resources, options: Options) -> Result<(), Vec<DarkluaError>> {
+pub fn process(resources: &Resources, options: Options) -> ProcessResult {
+    match private_process(resources, options) {
+        Ok(result) | Err(result) => result,
+    }
+}
+
+fn private_process(
+    resources: &Resources,
+    options: Options,
+) -> Result<ProcessResult, ProcessResult> {
     let worker = Worker::new(resources);
 
     if let Some(output) = options.output().map(Path::to_path_buf) {
-        if resources.is_file(options.input()).map_err(element_to_vec)? {
-            if resources.is_directory(&output).map_err(element_to_vec)? {
-                let file_name = options
-                    .input()
-                    .file_name()
-                    .ok_or_else(|| {
-                        DarkluaError::custom(format!(
-                            "unable to extract file name from `{}`",
-                            options.input().display()
-                        ))
-                    })
-                    .map_err(element_to_vec)?;
+        if resources.is_file(options.input())? {
+            if resources.is_directory(&output)? {
+                let file_name = options.input().file_name().ok_or_else(|| {
+                    DarkluaError::custom(format!(
+                        "unable to extract file name from `{}`",
+                        options.input().display()
+                    ))
+                })?;
 
                 worker.process(
                     once_ok(WorkItem::new(options.input(), output.join(file_name))),
                     options,
                 )
-            } else if resources.is_file(&output).map_err(element_to_vec)?
-                || output.extension().is_some()
-            {
+            } else if resources.is_file(&output)? || output.extension().is_some() {
                 worker.process(once_ok(WorkItem::new(options.input(), output)), options)
             } else {
-                let file_name = options
-                    .input()
-                    .file_name()
-                    .ok_or_else(|| {
-                        DarkluaError::custom(format!(
-                            "unable to extract file name from `{}`",
-                            options.input().display()
-                        ))
-                    })
-                    .map_err(element_to_vec)?;
+                let file_name = options.input().file_name().ok_or_else(|| {
+                    DarkluaError::custom(format!(
+                        "unable to extract file name from `{}`",
+                        options.input().display()
+                    ))
+                })?;
 
                 worker.process(
                     once_ok(WorkItem::new(options.input(), output.join(file_name))),
@@ -89,11 +90,6 @@ pub fn process(resources: &Resources, options: Options) -> Result<(), Vec<Darklu
             options,
         )
     }
-}
-
-#[inline]
-fn element_to_vec<T>(element: impl Into<T>) -> Vec<T> {
-    vec![element.into()]
 }
 
 #[inline]

@@ -28,23 +28,42 @@ pub struct Configuration {
 }
 
 impl Configuration {
+    /// Creates a configuration object without any rules and with the default
+    /// generator
+    pub fn empty() -> Self {
+        Self {
+            rules: Vec::new(),
+            generator: GeneratorParameters::default(),
+        }
+    }
+
+    pub fn with_generator(mut self, generator: GeneratorParameters) -> Self {
+        self.generator = generator;
+        self
+    }
+
     #[inline]
-    pub fn rules<'a, 'b: 'a>(&'b self) -> impl Iterator<Item = &'a dyn Rule> {
+    pub fn push_rule(&mut self, rule: impl Into<Box<dyn Rule>>) {
+        self.rules.push(rule.into());
+    }
+
+    #[inline]
+    pub(crate) fn rules<'a, 'b: 'a>(&'b self) -> impl Iterator<Item = &'a dyn Rule> {
         self.rules.iter().map(AsRef::as_ref)
     }
 
     #[inline]
-    pub fn build_parser(&self) -> Parser {
+    pub(crate) fn build_parser(&self) -> Parser {
         self.generator.build_parser()
     }
 
     #[inline]
-    pub fn generate_lua(&self, block: &Block, code: &str) -> String {
+    pub(crate) fn generate_lua(&self, block: &Block, code: &str) -> String {
         self.generator.generate_lua(block, code)
     }
 
     #[inline]
-    pub fn rules_len(&self) -> usize {
+    pub(crate) fn rules_len(&self) -> usize {
         self.rules.len()
     }
 }
@@ -81,7 +100,7 @@ impl std::fmt::Debug for Configuration {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case", tag = "name")]
-enum GeneratorParameters {
+pub enum GeneratorParameters {
     RetainLines,
     Dense {
         #[serde(default = "get_default_column_span")]
@@ -100,6 +119,18 @@ impl Default for GeneratorParameters {
 }
 
 impl GeneratorParameters {
+    pub fn default_dense() -> Self {
+        Self::Dense {
+            column_span: DEFAULT_COLUMN_SPAN,
+        }
+    }
+
+    pub fn default_readable() -> Self {
+        Self::Readable {
+            column_span: DEFAULT_COLUMN_SPAN,
+        }
+    }
+
     fn generate_lua(&self, block: &Block, code: &str) -> String {
         match self {
             Self::RetainLines => {

@@ -1,12 +1,13 @@
 use std::path::{Path, PathBuf};
 
-use super::configuration::Configuration;
+use super::configuration::{Configuration, GeneratorParameters};
 
 #[derive(Debug)]
 pub struct Options {
     input: PathBuf,
     config_path: Option<PathBuf>,
     config: Option<Configuration>,
+    config_generator_override: Option<GeneratorParameters>,
     output: Option<PathBuf>,
     fail_fast: bool,
 }
@@ -19,6 +20,7 @@ impl Options {
             config: None,
             output: None,
             fail_fast: false,
+            config_generator_override: None,
         }
     }
 
@@ -42,6 +44,11 @@ impl Options {
         self
     }
 
+    pub fn with_generator_override(mut self, generator: impl Into<GeneratorParameters>) -> Self {
+        self.config_generator_override = Some(generator.into());
+        self
+    }
+
     pub fn input(&self) -> &Path {
         &self.input
     }
@@ -56,6 +63,10 @@ impl Options {
 
     pub fn configuration_path(&self) -> Option<&Path> {
         self.config_path.as_ref().map(AsRef::as_ref)
+    }
+
+    pub fn generator_override(&self) -> Option<&GeneratorParameters> {
+        self.config_generator_override.as_ref()
     }
 
     pub fn take_configuration(&mut self) -> Option<Configuration> {

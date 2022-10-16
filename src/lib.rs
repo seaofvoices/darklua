@@ -7,5 +7,5 @@ mod parser;
 pub mod process;
 pub mod rules;
 
-pub use frontend::{process, DarkluaError, Options, Resources};
+pub use frontend::{process, Configuration, DarkluaError, GeneratorParameters, Options, Resources};
 pub use parser::{Parser, ParserError};

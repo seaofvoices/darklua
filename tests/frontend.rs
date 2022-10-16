@@ -21,7 +21,7 @@ fn apply_default_config_in_place() {
         "src/test.lua" => ANY_CODE,
     );
 
-    process(&resources, Options::new("src")).unwrap();
+    process(&resources, Options::new("src")).result().unwrap();
 
     assert_eq!(
         resources.get("src/test.lua").unwrap(),
@@ -35,7 +35,9 @@ fn apply_default_config_to_output() {
         "src/test.lua" => ANY_CODE,
     );
 
-    process(&resources, Options::new("src").with_output("output")).unwrap();
+    process(&resources, Options::new("src").with_output("output"))
+        .result()
+        .unwrap();
 
     assert_eq!(
         resources.get("output/test.lua").unwrap(),
@@ -51,7 +53,9 @@ fn apply_default_config_to_output_with_nested_content() {
         "src/impl/init.lua" => init_lua,
     );
 
-    process(&resources, Options::new("src").with_output("output")).unwrap();
+    process(&resources, Options::new("src").with_output("output"))
+        .result()
+        .unwrap();
 
     assert_eq!(
         resources.get("output/test.lua").unwrap(),
@@ -70,6 +74,7 @@ fn apply_default_config_to_specific_file() {
         &resources,
         Options::new("src/test.lua").with_output("output/test.lua"),
     )
+    .result()
     .unwrap();
 
     assert_eq!(
@@ -88,6 +93,7 @@ fn apply_default_config_to_specific_file_and_output_to_directory() {
         &resources,
         Options::new("src/test.lua").with_output("output"),
     )
+    .result()
     .unwrap();
 
     assert_eq!(
@@ -103,7 +109,7 @@ fn use_provided_config_in_place() {
         "config.json" => "",
     );
 
-    process(&resources, Options::new("src")).unwrap();
+    process(&resources, Options::new("src")).result().unwrap();
 
     assert_eq!(
         resources.get("src/test.lua").unwrap(),
@@ -118,7 +124,7 @@ fn use_default_json_config_in_place() {
         ".darklua.json" => "{ \"rules\": [ { \"rule\": \"inject_global_value\", \"identifier\": \"VALUE\", \"value\": 1 } ] }",
     );
 
-    process(&resources, Options::new("src")).unwrap();
+    process(&resources, Options::new("src")).result().unwrap();
 
     assert_eq!(resources.get("src/test.lua").unwrap(), "return 1");
 }
@@ -130,7 +136,7 @@ fn use_default_json5_config_in_place() {
         ".darklua.json5" => "{ rules: [ { rule: 'inject_global_value', identifier: 'VALUE', value: 'Hello' } ] }",
     );
 
-    process(&resources, Options::new("src")).unwrap();
+    process(&resources, Options::new("src")).result().unwrap();
 
     assert_eq!(resources.get("src/test.lua").unwrap(), "return 'Hello'");
 }

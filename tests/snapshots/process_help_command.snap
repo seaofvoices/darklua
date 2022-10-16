@@ -5,20 +5,36 @@ expression: content
 darklua-process 0.8.0
 Process lua files with rules
 
+Configure the code transformation using a configuration file. If no configuration is passed, darklua will attempt to
+read `.darklua.json` or `darklua.json5` from the working directory.
+
 USAGE:
     darklua process [FLAGS] [OPTIONS] <input-path> <output-path>
 
 FLAGS:
-    -h, --help       Prints help information
-    -V, --version    Prints version information
-    -v, --verbose    Sets verbosity level (can be specified multiple times)
+    -h, --help       
+            Prints help information
+
+    -V, --version    
+            Prints version information
+
+    -v, --verbose    
+            Sets verbosity level (can be specified multiple times)
+
 
 OPTIONS:
-    -c, --config <config>    Choose a specific configuration file
-        --format <format>    Choose how Lua code is formatted ('dense', 'readable' or 'retain-lines'). This will
-                             override the format given by the configuration file
+    -c, --config <config>    
+            Choose a specific configuration file
+
+        --format <format>    
+            Choose how Lua code is formatted ('dense', 'readable' or 'retain-lines'). This will override the format
+            given by the configuration file
 
 ARGS:
-    <input-path>     Path to the lua file to process
-    <output-path>    Where to output the result
+    <input-path>     
+            Path to the lua file to process
+
+    <output-path>    
+            Where to output the result
+
 

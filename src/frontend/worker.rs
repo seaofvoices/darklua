@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::rules::ContextBuilder;
+use crate::{rules::ContextBuilder, GeneratorParameters};
 
 use super::{
     configuration::Configuration,
@@ -8,7 +8,7 @@ use super::{
     utils::{self, Timer},
     work_cache::WorkCache,
     work_item::{Progress, WorkData, WorkItem, WorkStatus},
-    DarkluaError, DarkluaResult, Options,
+    DarkluaError, DarkluaResult, Options, ProcessResult,
 };
 
 const DEFAULT_CONFIG_PATHS: [&str; 2] = [".darklua.json", ".darklua.json5"];
@@ -33,7 +33,7 @@ impl<'a> Worker<'a> {
         mut self,
         work_items: impl Iterator<Item = Result<WorkItem, DarkluaError>>,
         mut options: Options,
-    ) -> Result<(), Vec<DarkluaError>> {
+    ) -> Result<ProcessResult, ProcessResult> {
         let configuration_setup_timer = Timer::now();
 
         if let Some(config) = options.take_configuration() {
@@ -50,44 +50,67 @@ impl<'a> Worker<'a> {
                 );
             }
         } else if let Some(config) = options.configuration_path() {
-            if self.resources.exists(config).map_err(element_to_vec)? {
-                self.configuration = self.read_configuration(config).map_err(element_to_vec)?;
+            if self.resources.exists(config)? {
+                self.configuration = self.read_configuration(config)?;
+                log::info!("using configuration file `{}`", config.display());
             } else {
-                return Err(vec![DarkluaError::resource_not_found(config).context(
-                    "expected to find configuration file as provided by the options",
-                )]);
+                return Err(DarkluaError::resource_not_found(config)
+                    .context("expected to find configuration file as provided by the options")
+                    .into());
             }
         } else {
             let mut configuration_files = Vec::new();
             for path in DEFAULT_CONFIG_PATHS.iter().map(Path::new) {
-                if self.resources.exists(path).map_err(element_to_vec)? {
+                if self.resources.exists(path)? {
                     configuration_files.push(path);
                 }
             }
 
             match configuration_files.len() {
-                0 => {}
+                0 => {
+                    log::info!("using default configuration");
+                }
                 1 => {
+                    let configuration_file_path = configuration_files.first().unwrap();
                     self.configuration = self
-                        .read_configuration(configuration_files.first().unwrap())
+                        .read_configuration(configuration_file_path)
                         .map_err(element_to_vec)?;
+                    log::info!(
+                        "using configuration file `{}`",
+                        configuration_file_path.display()
+                    );
                 }
                 _ => {
-                    return Err(vec![DarkluaError::multiple_configuration_found(
+                    return Err(DarkluaError::multiple_configuration_found(
                         configuration_files.into_iter().map(Path::to_path_buf),
-                    )])
+                    )
+                    .into())
                 }
             }
         };
+
+        if let Some(generator) = options.generator_override() {
+            log::trace!(
+                "override with {} generator",
+                match generator {
+                    GeneratorParameters::RetainLines => "`retain-lines`".to_owned(),
+                    GeneratorParameters::Dense { column_span } =>
+                        format!("dense ({})", column_span),
+                    GeneratorParameters::Readable { column_span } =>
+                        format!("readable ({})", column_span),
+                }
+            );
+            self.configuration = self.configuration.with_generator(generator.clone());
+        }
 
         log::trace!(
             "configuration setup in {}",
             configuration_setup_timer.duration_label()
         );
-        log::info!(
+        log::debug!(
             "using configuration: {}",
             json5::to_string(&self.configuration).unwrap_or_else(|err| {
-                format!("unable to serialize configuration: {}", err.to_string())
+                format!("? (unable to serialize configuration: {})", err.to_string())
             })
         );
 
@@ -100,6 +123,7 @@ impl<'a> Worker<'a> {
         log::trace!("work collected in {}", collect_work_timer.duration_label());
 
         let mut errors = Vec::new();
+        let mut success_count = 0;
 
         let work_timer = Timer::now();
 
@@ -118,6 +142,7 @@ impl<'a> Worker<'a> {
 
                 match self.do_work(work) {
                     Ok(None) => {
+                        success_count += 1;
                         log::info!("successfully processed `{}`", work_source_display);
                     }
                     Ok(Some(next_work)) => {
@@ -125,10 +150,9 @@ impl<'a> Worker<'a> {
                         work_left.push(next_work);
                     }
                     Err(err) => {
-                        log::error!("{}", err);
                         errors.push(err);
                         if options.should_fail_fast() {
-                            log::info!(
+                            log::debug!(
                                 "dropping all work because of the fail-fast option is enabled"
                             );
                             break 'work_loop;
@@ -138,19 +162,16 @@ impl<'a> Worker<'a> {
             }
 
             if work_left.len() >= work_length {
-                return Err(vec![DarkluaError::cyclic_work(work_left)]);
+                errors.push(DarkluaError::cyclic_work(work_left));
+                return ProcessResult::new(success_count, errors).into();
             }
 
             work_items = work_left;
         }
 
-        log::info!("executed all work in {}", work_timer.duration_label());
+        log::info!("executed work in {}", work_timer.duration_label());
 
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(errors)
-        }
+        ProcessResult::new(success_count, errors).into()
     }
 
     fn read_configuration(&self, config: &Path) -> DarkluaResult<Configuration> {
@@ -277,11 +298,11 @@ impl<'a> Worker<'a> {
         let rule_time = progress.duration().duration_label();
         let total_rules = self.configuration.rules_len();
         log::debug!(
-            "{} rule{} applied for `{}` in {}",
+            "{} rule{} applied in {} for `{}`",
             total_rules,
             utils::maybe_plural(total_rules),
-            source_display,
             rule_time,
+            source_display,
         );
 
         let generator_timer = Timer::now();

@@ -166,6 +166,10 @@ impl Context {
         ));
         self
     }
+
+    pub fn replace_duration_labels(self) -> Self {
+        self.replace_snapshot_content("\\d+.\\d+[mµ]s", "{{DURATION}}")
+    }
 }
 
 #[test]
@@ -198,6 +202,7 @@ fn run_minify_command() {
         .arg("minify")
         .arg("src")
         .arg("out")
+        .replace_duration_labels()
         .snapshot_command("run_minify_command")
         .snapshot_file("run_minify_command_init_out", "out/init.lua");
 }
@@ -211,6 +216,7 @@ fn run_minify_with_column_span_command() {
         .arg("2")
         .arg("src")
         .arg("out")
+        .replace_duration_labels()
         .expect_success()
         .snapshot_file(
             "run_minify_with_column_span_command_init_out",
@@ -222,10 +228,13 @@ fn run_minify_with_column_span_command() {
 fn run_minify_with_column_span_in_config_command() {
     Context::default()
         .write_file("src/init.lua", "return 1 + 1\n")
+        // minify does not read the configuration file anymore, so we should expect
+        // the snapshot to have the default generator used
         .write_file(".darklua.json", "{ column_span: 2 }")
         .arg("minify")
         .arg("src")
         .arg("out")
+        .replace_duration_labels()
         .expect_success()
         .snapshot_file(
             "run_minify_with_column_span_in_config_command_init_out",
@@ -241,6 +250,7 @@ fn run_minify_verbose_command() {
         .arg("-v")
         .arg("src")
         .arg("out")
+        .replace_duration_labels()
         .snapshot_command("run_minify_verbose_command");
 }
 
@@ -251,7 +261,7 @@ fn run_process_command() {
         .arg("process")
         .arg("src")
         .arg("out")
-        .replace_snapshot_content("\\d+.\\d+[mµ]s", "{{DURATION}}")
+        .replace_duration_labels()
         .snapshot_command("run_process_command")
         .snapshot_file("run_process_command_init_out", "out/init.lua");
 }
@@ -264,7 +274,7 @@ fn run_process_verbose_command() {
         .arg("-v")
         .arg("src")
         .arg("out")
-        .replace_snapshot_content("\\d+.\\d+[µm]s", "{{DURATION}}")
+        .replace_duration_labels()
         .snapshot_command("run_process_verbose_command");
 }
 
@@ -281,7 +291,7 @@ fn run_process_single_file_custom_config_command() {
         .arg("custom.json5")
         .arg("test.lua")
         .arg("out.lua")
-        .replace_snapshot_content("\\d+.\\d+[mµ]s", "{{DURATION}}")
+        .replace_duration_labels()
         .snapshot_command("run_process_single_file_custom_config")
         .snapshot_file("run_process_custom_config_command_out", "out.lua");
 }
@@ -299,7 +309,7 @@ fn run_process_single_file_custom_config_command_deprecated_config_path() {
         .arg("custom.json5")
         .arg("test.lua")
         .arg("out.lua")
-        .replace_snapshot_content("\\d+.\\d+[mµ]s", "{{DURATION}}")
+        .replace_duration_labels()
         .snapshot_command("run_process_single_file_custom_config")
         .snapshot_file("run_process_custom_config_command_out", "out.lua");
 }
