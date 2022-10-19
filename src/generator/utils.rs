@@ -11,7 +11,7 @@ const LONG_STRING_MIN_LENGTH: usize = 20;
 const FORCE_LONG_STRING_NEW_LINE_THRESHOLD: usize = 6;
 
 pub fn is_relevant_for_spacing(character: &char) -> bool {
-    character.is_ascii_alphabetic() || character.is_digit(10) || *character == '_'
+    character.is_ascii_alphabetic() || character.is_ascii_digit() || *character == '_'
 }
 
 pub fn break_long_string(last_str: &str) -> bool {
@@ -26,7 +26,7 @@ pub fn break_variable_arguments(last_string: &str) -> bool {
     if let Some('.') = last_string.chars().last() {
         true
     } else if let Some(first_char) = last_string.chars().next() {
-        first_char == '.' || first_char.is_digit(10)
+        first_char == '.' || first_char.is_ascii_digit()
     } else {
         false
     }
@@ -44,7 +44,7 @@ pub fn break_concat(last_string: &str) -> bool {
     if let Some('.') = last_string.chars().last() {
         true
     } else if let Some(first_char) = last_string.chars().next() {
-        first_char == '.' || first_char.is_digit(10)
+        first_char == '.' || first_char.is_ascii_digit()
     } else {
         false
     }
