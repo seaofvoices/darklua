@@ -53,6 +53,10 @@ impl Progress {
     pub fn duration(&mut self) -> &mut Timer {
         &mut self.duration
     }
+
+    pub fn required_content(&self) -> impl Iterator<Item = &Path> {
+        self.required.iter().map(AsRef::as_ref)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -122,10 +126,5 @@ impl WorkItem {
             WorkStatus::NotStarted => 0,
             WorkStatus::InProgress(progress) => progress.required.len(),
         }
-    }
-
-    #[inline]
-    pub fn has_started(&self) -> bool {
-        self.status != WorkStatus::NotStarted
     }
 }

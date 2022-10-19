@@ -140,3 +140,70 @@ fn use_default_json5_config_in_place() {
 
     assert_eq!(resources.get("src/test.lua").unwrap(), "return 'Hello'");
 }
+
+mod errors {
+    use std::path::{Path, PathBuf};
+
+    use darklua_core::{
+        nodes::Block,
+        rules::{
+            Context, Rule, RuleConfiguration, RuleConfigurationError, RuleProcessResult,
+            RuleProperties,
+        },
+        Configuration,
+    };
+
+    use super::*;
+
+    #[test]
+    fn snapshot_cyclic_work_error() {
+        let resources = memory_resources!(
+            "src/a.lua" => "return 'module a'",
+            "src/b.lua" => "return 'module b'",
+        );
+
+        struct CustomRule;
+
+        impl RuleConfiguration for CustomRule {
+            fn configure(
+                &mut self,
+                _properties: RuleProperties,
+            ) -> Result<(), RuleConfigurationError> {
+                Ok(())
+            }
+
+            fn get_name(&self) -> &'static str {
+                "custom-rule"
+            }
+
+            fn serialize_to_properties(&self) -> RuleProperties {
+                Default::default()
+            }
+        }
+
+        impl Rule for CustomRule {
+            fn process(&self, _: &mut Block, _: &mut Context) -> RuleProcessResult {
+                Ok(())
+            }
+
+            fn require_content(&self, _: &Path, _: &Block) -> Vec<PathBuf> {
+                vec!["src/a.lua".into(), "src/b.lua".into()]
+            }
+        }
+
+        let rule: Box<dyn Rule> = Box::new(CustomRule);
+        let errors = process(
+            &resources,
+            Options::new("src").with_configuration(Configuration::empty().with_rule(rule)),
+        )
+        .result()
+        .unwrap_err();
+
+        let errors_display = errors
+            .into_iter()
+            .map(|err| format!("- {}", err))
+            .collect::<Vec<_>>()
+            .join("\n");
+        insta::assert_snapshot!(errors_display);
+    }
+}

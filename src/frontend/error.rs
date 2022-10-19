@@ -1,12 +1,17 @@
 use std::{
     borrow::Cow,
+    cmp::Ordering,
+    collections::HashSet,
     fmt::{self, Display},
     path::PathBuf,
 };
 
 use crate::{rules::Rule, ParserError};
 
-use super::{resources::ResourceError, work_item::WorkItem};
+use super::{
+    resources::ResourceError,
+    work_item::{WorkData, WorkItem, WorkStatus},
+};
 
 #[derive(Debug, Clone)]
 enum ErrorKind {
@@ -36,7 +41,9 @@ enum ErrorKind {
         rule_number: usize,
         error: String,
     },
-    CyclicWork,
+    CyclicWork {
+        work: Vec<(WorkData, Vec<PathBuf>)>,
+    },
     Custom {
         message: Cow<'static, str>,
     },
@@ -111,11 +118,52 @@ impl DarkluaError {
         })
     }
 
-    pub(crate) fn cyclic_work(mut work_left: Vec<WorkItem>) -> Self {
-        work_left.retain(WorkItem::has_started);
-        work_left.sort_by(|a, b| a.total_required_content().cmp(&b.total_required_content()));
-        // todo: provide a nice error message from the work left
-        Self::new(ErrorKind::CyclicWork)
+    pub(crate) fn cyclic_work(work_left: Vec<WorkItem>) -> Self {
+        let source_left: HashSet<PathBuf> = work_left
+            .iter()
+            .map(|work| work.source().to_path_buf())
+            .collect();
+
+        let mut required_work: Vec<_> = work_left
+            .into_iter()
+            .filter_map(|work| {
+                if work.total_required_content() == 0 {
+                    None
+                } else {
+                    let (status, data) = work.extract();
+
+                    match status {
+                        WorkStatus::NotStarted => None,
+                        WorkStatus::InProgress(progress) => {
+                            let mut content: Vec<_> = progress
+                                .required_content()
+                                .filter(|path| source_left.contains(*path))
+                                .map(PathBuf::from)
+                                .collect();
+                            if content.is_empty() {
+                                None
+                            } else {
+                                content.sort();
+                                Some((data, content))
+                            }
+                        }
+                    }
+                }
+            })
+            .collect();
+
+        required_work.sort_by(|(a_data, a_content), (b_data, b_content)| {
+            match a_content.len().cmp(&b_content.len()) {
+                Ordering::Equal => a_data.source().cmp(b_data.source()),
+                other => other,
+            }
+        });
+
+        required_work.sort_by_key(|(_, content)| content.len());
+
+        Self::new(ErrorKind::CyclicWork {
+            work: required_work,
+        })
     }
 
     pub(crate) fn custom(message: impl Into<Cow<'static, str>>) -> Self {
@@ -178,9 +226,39 @@ impl Display for DarkluaError {
                     error,
                 )?;
             }
-            ErrorKind::CyclicWork => {
-                // todo! improve message
-                write!(f, "cyclic work detected")?;
+            ErrorKind::CyclicWork { work } => {
+                const MAX_PRINTED_WORK: usize = 12;
+                const MAX_REQUIRED_PATH: usize = 20;
+
+                let total = work.len();
+                let list: Vec<_> = work
+                    .iter()
+                    .take(MAX_PRINTED_WORK)
+                    .map(|(data, required)| {
+                        let required_list: Vec<_> = required
+                            .iter()
+                            .take(MAX_REQUIRED_PATH)
+                            .map(|path| format!("      - {}", path.display()))
+                            .collect();
+
+                        format!(
+                            "    `{}` needs:\n{}",
+                            data.source().display(),
+                            required_list.join("\n")
+                        )
+                    })
+                    .collect();
+
+                write!(
+                    f,
+                    "cyclic work detected:\n{}{}",
+                    list.join("\n"),
+                    if total <= MAX_PRINTED_WORK {
+                        "".to_owned()
+                    } else {
+                        format!("\n    and {} more", total - MAX_PRINTED_WORK)
+                    }
+                )?;
             }
             ErrorKind::Custom { message } => {
                 write!(f, "{}", message)?;

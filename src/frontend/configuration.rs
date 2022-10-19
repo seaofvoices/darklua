@@ -43,6 +43,12 @@ impl Configuration {
     }
 
     #[inline]
+    pub fn with_rule(mut self, rule: impl Into<Box<dyn Rule>>) -> Self {
+        self.push_rule(rule);
+        self
+    }
+
+    #[inline]
     pub fn push_rule(&mut self, rule: impl Into<Box<dyn Rule>>) {
         self.rules.push(rule.into());
     }

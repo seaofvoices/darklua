@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::{rules::ContextBuilder, GeneratorParameters};
+use crate::{frontend::utils::normalize_path, rules::ContextBuilder, GeneratorParameters};
 
 use super::{
     configuration::Configuration,
@@ -215,6 +215,7 @@ impl<'a> Worker<'a> {
         mut progress: Progress,
     ) -> DarkluaResult<Option<WorkItem>> {
         let source_display = data.source().display();
+        let normalized_source = normalize_path(data.source());
 
         progress.duration().start();
 
@@ -224,7 +225,7 @@ impl<'a> Worker<'a> {
             .enumerate()
             .skip(progress.next_rule())
         {
-            let mut context_builder = ContextBuilder::default();
+            let mut context_builder = ContextBuilder::new(&normalized_source);
             log::trace!(
                 "[{}] apply rule `{}`{}",
                 source_display,
@@ -235,9 +236,21 @@ impl<'a> Worker<'a> {
                     "".to_owned()
                 }
             );
-            let required_content = rule.require_content(
-                // progress.block()
-            );
+            let mut required_content: Vec<_> = rule
+                .require_content(&normalized_source, progress.block())
+                .into_iter()
+                .map(|path| normalize_path(&path))
+                .filter(|path| {
+                    if *path == normalized_source {
+                        log::debug!("filtering out currently processing path");
+                        false
+                    } else {
+                        true
+                    }
+                })
+                .collect();
+            required_content.sort();
+            required_content.dedup();
 
             if !required_content.is_empty() {
                 if required_content
@@ -321,7 +334,7 @@ impl<'a> Worker<'a> {
         self.resources.write(data.output(), &lua_code)?;
 
         self.cache
-            .link_source_to_output(data.source(), data.output());
+            .link_source_to_output(normalized_source, data.output());
 
         Ok(None)
     }
