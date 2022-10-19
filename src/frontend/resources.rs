@@ -196,7 +196,7 @@ impl Resources {
         self.source.walk(location.as_ref()).filter(|path| {
             matches!(
                 path.extension().and_then(OsStr::to_str),
-                Some("lua") | Some("luau") // todo: document that we support .luau files now too
+                Some("lua") | Some("luau")
             )
         })
     }
