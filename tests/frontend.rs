@@ -201,7 +201,7 @@ mod errors {
 
         let errors_display = errors
             .into_iter()
-            .map(|err| format!("- {}", err))
+            .map(|err| format!("- {}", err).replace("\\", "/"))
             .collect::<Vec<_>>()
             .join("\n");
         insta::assert_snapshot!(errors_display);
