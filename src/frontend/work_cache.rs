@@ -19,7 +19,7 @@ pub struct WorkCache<'a> {
 impl<'a> Clone for WorkCache<'a> {
     fn clone(&self) -> Self {
         Self {
-            resources: &self.resources,
+            resources: self.resources,
             input_to_block: Default::default(),
             input_to_output: self.input_to_output.clone(),
         }

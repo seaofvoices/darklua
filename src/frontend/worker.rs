@@ -110,7 +110,7 @@ impl<'a> Worker<'a> {
         log::debug!(
             "using configuration: {}",
             json5::to_string(&self.configuration).unwrap_or_else(|err| {
-                format!("? (unable to serialize configuration: {})", err.to_string())
+                format!("? (unable to serialize configuration: {})", err)
             })
         );
 
@@ -205,7 +205,7 @@ impl<'a> Worker<'a> {
 
                 self.apply_rules(data, Progress::new(content, block))
             }
-            WorkStatus::InProgress(progress) => self.apply_rules(data, progress),
+            WorkStatus::InProgress(progress) => self.apply_rules(data, *progress),
         }
     }
 
@@ -283,11 +283,11 @@ impl<'a> Worker<'a> {
                         }
                     );
                     return Ok(Some(
-                        data.with_status(WorkStatus::InProgress(
+                        data.with_status(
                             progress
                                 .at_rule(index)
                                 .with_required_content(required_content),
-                        )),
+                        ),
                     ));
                 }
             }

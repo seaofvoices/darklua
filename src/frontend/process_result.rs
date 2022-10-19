@@ -56,12 +56,12 @@ impl From<Vec<DarkluaError>> for ProcessResult {
     }
 }
 
-impl Into<Result<ProcessResult, ProcessResult>> for ProcessResult {
-    fn into(self) -> Result<ProcessResult, ProcessResult> {
-        if self.errors.is_empty() {
-            Ok(self)
+impl From<ProcessResult> for Result<ProcessResult, ProcessResult> {
+    fn from(process_result: ProcessResult) -> Self {
+        if process_result.errors.is_empty() {
+            Ok(process_result)
         } else {
-            Err(self)
+            Err(process_result)
         }
     }
 }

@@ -62,12 +62,18 @@ impl Progress {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WorkStatus {
     NotStarted,
-    InProgress(Progress),
+    InProgress(Box<Progress>),
 }
 
 impl Default for WorkStatus {
     fn default() -> Self {
         Self::NotStarted
+    }
+}
+
+impl From<Progress> for WorkStatus {
+    fn from(progress: Progress) -> Self {
+        Self::InProgress(Box::new(progress))
     }
 }
 
@@ -78,8 +84,11 @@ pub struct WorkData {
 }
 
 impl WorkData {
-    pub fn with_status(self, status: WorkStatus) -> WorkItem {
-        WorkItem { data: self, status }
+    pub fn with_status(self, status: impl Into<WorkStatus>) -> WorkItem {
+        WorkItem {
+            data: self,
+            status: status.into(),
+        }
     }
 
     pub fn source(&self) -> &Path {

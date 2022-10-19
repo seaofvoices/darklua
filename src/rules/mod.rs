@@ -81,7 +81,7 @@ pub struct Context<'a> {
 
 impl<'a> Context<'a> {
     pub fn block(&self, path: impl AsRef<Path>) -> Option<&Block> {
-        self.blocks.get(path.as_ref()).map(|block| *block)
+        self.blocks.get(path.as_ref()).copied()
     }
 
     pub fn current_path(&self) -> &Path {

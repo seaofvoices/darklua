@@ -63,7 +63,7 @@ impl Source {
 
                 data.get(&location)
                     .map(String::from)
-                    .ok_or(ResourceError::not_found(location))
+                    .ok_or_else(|| ResourceError::not_found(location))
             }
         }
     }
@@ -98,12 +98,8 @@ impl Source {
             Self::Memory(data) => {
                 let data = data.borrow();
                 let location = normalize_path(location);
-                let paths: Vec<_> = data
-                    .keys()
-                    .filter_map(|path| {
-                        Some(normalize_path(path)).filter(|path| path.starts_with(&location))
-                    })
-                    .collect();
+                let mut paths: Vec<_> = data.keys().map(|path| normalize_path(path)).collect();
+                paths.retain(|path| path.starts_with(&location));
 
                 Box::new(paths.into_iter())
             }
