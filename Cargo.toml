@@ -42,6 +42,10 @@ rand_distr = "0.2.2"
 regex = "1.5.5"
 tempfile = "3.3.0"
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+node-sys = "0.4.2"
+web-sys = { version = "0.3.60", features = ["Window", "Performance"] }
+
 # This is needed because when runnin `cargo test`, the library and its
 # dependencies are build with the `dev` profile. To make sure full_moon
 # does not stack overflow when parsing complex code, it needs to be compiled
