@@ -156,7 +156,7 @@ mod errors {
     use super::*;
 
     #[test]
-    fn snapshot_cyclic_work_error() {
+    fn snapshot_simple_cyclic_work_error() {
         let resources = memory_resources!(
             "src/a.lua" => "return 'module a'",
             "src/b.lua" => "return 'module b'",
@@ -204,6 +204,6 @@ mod errors {
             .map(|err| format!("- {}", err).replace('\\', "/"))
             .collect::<Vec<_>>()
             .join("\n");
-        insta::assert_snapshot!(errors_display);
+        insta::assert_snapshot!("simple_cyclic_work_error", errors_display);
     }
 }
