@@ -170,6 +170,10 @@ impl Context {
     pub fn replace_duration_labels(self) -> Self {
         self.replace_snapshot_content("\\d+.\\d+[mµ]s", "{{DURATION}}")
     }
+
+    pub fn replace_backslashes(self) -> Self {
+        self.replace_snapshot_content("\\\\", "/")
+    }
 }
 
 #[test]
@@ -251,6 +255,7 @@ fn run_minify_verbose_command() {
         .arg("src")
         .arg("out")
         .replace_duration_labels()
+        .replace_backslashes()
         .snapshot_command("run_minify_verbose_command");
 }
 
@@ -275,6 +280,7 @@ fn run_process_verbose_command() {
         .arg("src")
         .arg("out")
         .replace_duration_labels()
+        .replace_backslashes()
         .snapshot_command("run_process_verbose_command");
 }
 
