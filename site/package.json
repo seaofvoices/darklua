@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "author": "jeparlefrancais <jeparlefrancais21@gmail.com>",
   "bugs": {
-    "url": "https://gitlab.com/seaofvoices/darklua/-/issues"
+    "url": "https://github.com/seaofvoices/darklua/issues"
   },
   "dependencies": {
     "@babel/eslint-parser": "^7.16.3",
@@ -54,7 +54,7 @@
     "babel-preset-gatsby": "^2.3.0",
     "prettier": "^2.5.0"
   },
-  "homepage": "https://gitlab.com/seaofvoices/darklua",
+  "homepage": "https://github.com/seaofvoices/darklua",
   "keywords": [
     "gatsby"
   ],
@@ -62,7 +62,7 @@
   "main": "n/a",
   "repository": {
     "type": "git",
-    "url": "git+https://gitlab.com/seaofvoices/darklua.git"
+    "url": "git+https://github.com/seaofvoices/darklua.git"
   },
   "scripts": {
     "prebuild": "wasm-pack build darklua-wasm -t bundler && wasm-pack build darklua-wasm -t nodejs -d node-pkg",

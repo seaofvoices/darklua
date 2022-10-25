@@ -1,4 +1,4 @@
-[![pipeline status](https://gitlab.com/seaofvoices/darklua/badges/main/pipeline.svg)](https://gitlab.com/seaofvoices/darklua/commits/main)
+![pipeline status](https://github.com/seaofvoices/darklua-migration-test/actions/workflows/test.yml/badge.svg)
 [![version](https://img.shields.io/crates/v/darklua)](https://crates.io/crates/darklua)
 [![license](https://img.shields.io/crates/l/darklua)](LICENSE.txt)
 
