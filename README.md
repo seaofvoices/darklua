@@ -1,6 +1,9 @@
-![pipeline status](https://github.com/seaofvoices/darklua-migration-test/actions/workflows/test.yml/badge.svg)
+[![checks](https://github.com/seaofvoices/darklua/actions/workflows/test.yml/badge.svg)](https://github.com/seaofvoices/darklua/actions/workflows/test.yml)
+[![site](https://github.com/seaofvoices/darklua/actions/workflows/site.yml/badge.svg)](https://darklua.com/)
 [![version](https://img.shields.io/crates/v/darklua)](https://crates.io/crates/darklua)
 [![license](https://img.shields.io/crates/l/darklua)](LICENSE.txt)
+[![GitHub all releases](https://img.shields.io/github/downloads/seaofvoices/darklua/total)](https://github.com/seaofvoices/darklua/releases)
+[![GitHub top language](https://img.shields.io/github/languages/top/seaofvoices/darklua)](https://www.rust-lang.org/)
 
 # darklua
 
