@@ -98,6 +98,7 @@ jobs:
           fi
 
       - name: Generate Cargo.lock if needed
+        shell: bash
         run: |
           if [ ! -f "Cargo.lock" ]; then
             cargo generate-lockfile
