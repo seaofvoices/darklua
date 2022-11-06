@@ -97,6 +97,12 @@ jobs:
             echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config.toml
           fi
 
+      - name: Generate Cargo.lock if needed
+        run: |
+          if [ ! -f "Cargo.lock" ]; then
+            cargo generate-lockfile
+          fi
+
       - name: Build darklua binary
         run: cargo build --locked --release --target ${{ matrix.cargo-target }}
         env:
