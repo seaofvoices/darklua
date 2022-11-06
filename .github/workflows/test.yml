@@ -1,0 +1,83 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-release:
+    name: Run integration tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run tests (release)
+        run: cargo test --locked --release
+
+      - name: Build darklua (release)
+        run: cargo build --release
+
+      - name: Setup Lua
+        uses: leafo/gh-actions-lua@v9
+        with:
+          luaVersion: "5.1.5"
+
+      - name: Install Lua package manager
+        uses: leafo/gh-actions-luarocks@v4
+
+      - name: Install Lua dependencies
+        run: |
+          luarocks install luafilesystem
+          luarocks install busted
+          luarocks install luacheck
+
+      - name: Run end-to-end tests
+        run: lua ./scripts/test-commands.lua
+
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Run tests
+        run: cargo test --locked
+
+  code-style:
+    name: Verify code style
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Verify code format
+        run: cargo fmt -- --check
