@@ -26,6 +26,7 @@ jobs:
 
       - name: Create tag
         run: |
+          git fetch --tags --no-recurse-submodules
           if [ ! $(git tag -l ${{ inputs.release_tag }}) ]; then
             git tag ${{ inputs.release_tag }}
             git push origin ${{ inputs.release_tag }}
@@ -94,6 +95,13 @@ jobs:
             mkdir .cargo
             echo "[target.aarch64-unknown-linux-gnu]" > .cargo/config.toml
             echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config.toml
+          fi
+
+      - name: Generate Cargo.lock if needed
+        shell: bash
+        run: |
+          if [ ! -f "Cargo.lock" ]; then
+            cargo generate-lockfile
           fi
 
       - name: Build darklua binary
