@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+* refactor darklua frontend ([#69](https://github.com/seaofvoices/darklua/pull/69)):
+  * the `--config-path` argument of the `minify` command was removed
+  * the configuration file does not accept the `column_span` field anymore (use the [`generator` field](https://darklua.com/docs/generators/) instead)
+  * darklua can now also read `.luau` files
+
 ## 0.8.0
 
 * update configuration file ([!60](https://gitlab.com/seaofvoices/darklua/-/merge_requests/60))
