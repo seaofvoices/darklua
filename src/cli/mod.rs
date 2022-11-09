@@ -30,9 +30,13 @@ impl GlobalOptions {
 
 #[derive(Debug, StructOpt)]
 pub enum Command {
-    /// Minify lua files
+    /// Minify lua files without applying any transformation
     Minify(minify::Options),
     /// Process lua files with rules
+    ///
+    /// Configure the code transformation using a configuration file.
+    /// If no configuration is passed, darklua will attempt to read
+    /// `.darklua.json` or `darklua.json5` from the working directory.
     Process(process::Options),
 }
 
@@ -46,13 +50,17 @@ impl Command {
 }
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "darklua", about)]
+#[structopt(name = "darklua")]
+/// Transform Lua scripts
+///
+/// For specific help about each command, run `darklua <command> --help`
+///
+/// Site: https://darklua.com
 pub struct Darklua {
     #[structopt(flatten)]
-    pub global_options: GlobalOptions,
-    /// The command to run. For specific help about each command, run `darklua <command> --help`
+    global_options: GlobalOptions,
     #[structopt(subcommand)]
-    pub command: Command,
+    command: Command,
 }
 
 impl Darklua {

@@ -20,8 +20,7 @@ fn main() {
     match darklua.run() {
         Ok(()) => {}
         Err(err) => {
-            eprintln!("{}", err);
-            process::exit(1);
+            process::exit(err.exit_code());
         }
     }
 }

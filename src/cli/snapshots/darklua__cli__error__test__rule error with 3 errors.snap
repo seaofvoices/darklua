@@ -1,9 +1,0 @@
----
-source: src/cli/error.rs
-expression: "CliError::RuleError{file: PathBuf::from(\"src/foo.lua\"),\n                    rule_name: \"the-rule-name\".to_owned(),\n                    rule_number: 1,\n                    errors:\n                        vec![\"the first error happened\" . to_owned(),\n                             \"then another one was registered\" . to_owned(),\n                             \"and finally it ended with this one\" .\n                             to_owned()],}"
-
----
-error processing file `the-rule-name` [#1] (src/foo.lua):
-    * the first error happened
-    * then another one was registered
-    * and finally it ended with this one

@@ -2,5 +2,5 @@
 source: tests/cli.rs
 expression: content
 ---
-Successfully minified 1 file
+successfully minified 1 file (in {{DURATION}})
 

@@ -2,7 +2,9 @@
 source: tests/cli.rs
 expression: content
 ---
-Successfully processed 1 file (in {{DURATION}})
+successfully processed 1 file (in {{DURATION}})
 
- INFO > Using default configuration
+ INFO > using default configuration
+ INFO > successfully processed `src/init.lua`
+ INFO > executed work in {{DURATION}}
 
