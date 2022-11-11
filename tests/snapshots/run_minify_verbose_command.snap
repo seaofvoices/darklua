@@ -2,7 +2,8 @@
 source: tests/cli.rs
 expression: content
 ---
-Successfully minified 1 file
+successfully minified 1 file (in {{DURATION}})
 
- INFO > Using default configuration
+ INFO > successfully processed `src/init.lua`
+ INFO > executed work in {{DURATION}}
 

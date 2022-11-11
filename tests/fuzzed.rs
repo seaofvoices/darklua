@@ -6,10 +6,7 @@ macro_rules! generate_tests {
             #[cfg(not(debug_assertions))]
             #[test]
             fn $name() {
-                use darklua_core::{
-                    generator::{LuaGenerator, ReadableLuaGenerator},
-                    Parser,
-                };
+                use darklua_core::Parser;
 
                 if cfg!(debug_assertions) {
                     panic!("running test in debug mode :(")

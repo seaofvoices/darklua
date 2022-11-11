@@ -37,8 +37,8 @@ const NavBar = () => {
       <NavigationLink label="Documentation" link="/docs" />
       <NavigationLink label="Try it" link="/try-it" />
       <NavigationLink
-        label="Gitlab"
-        link="https://gitlab.com/seaofvoices/darklua"
+        label="GitHub"
+        link="https://github.com/seaofvoices/darklua"
       />
       <ThemeSwitch checked={theme.current === "dark"} onChange={handleChange} />
     </Toolbar>

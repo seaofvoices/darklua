@@ -64,7 +64,7 @@ impl RenameProcessor {
 
     fn filter_identifier(&self, identifier: &str) -> bool {
         !self.avoid_identifier.contains(identifier)
-            && !identifier.chars().next().unwrap().is_digit(10)
+            && !identifier.chars().next().unwrap().is_ascii_digit()
     }
 
     fn replace_identifier(&mut self, identifier: &mut String) {

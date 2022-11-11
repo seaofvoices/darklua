@@ -13,7 +13,7 @@ fn generated_name() -> String {
         .map(|i| loop {
             let character = rng.sample(Alphanumeric);
 
-            if i != 0 || !character.is_digit(10) {
+            if i != 0 || !character.is_ascii_digit() {
                 return character;
             }
         })

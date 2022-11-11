@@ -2,6 +2,8 @@ use std::time::{Duration, Instant};
 
 use darklua_core::nodes::Block;
 use darklua_core::{Parser, ParserError};
+use env_logger::fmt::Color;
+use log::Level;
 
 #[allow(dead_code)]
 pub fn parse_input(input: &str) -> Block {
@@ -14,6 +16,27 @@ pub fn parse_input(input: &str) -> Block {
 #[allow(dead_code)]
 pub fn try_parse_input(input: &str) -> Result<Block, ParserError> {
     Parser::default().parse(input)
+}
+
+#[allow(dead_code)]
+pub fn setup_logger(level_filter: log::LevelFilter) {
+    env_logger::Builder::new()
+        .format(|f, record| {
+            use std::io::Write;
+
+            let mut style = f.style();
+            let level = match record.level() {
+                Level::Trace => style.set_color(Color::Magenta).value("TRACE"),
+                Level::Debug => style.set_color(Color::Blue).value("DEBUG"),
+                Level::Info => style.set_color(Color::Green).value("INFO"),
+                Level::Warn => style.set_color(Color::Yellow).value("WARN"),
+                Level::Error => style.set_color(Color::Red).value("ERROR"),
+            };
+
+            writeln!(f, " {} > {}", level, record.args(),)
+        })
+        .filter_module("darklua", level_filter)
+        .init();
 }
 
 #[allow(dead_code)]

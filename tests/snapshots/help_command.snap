@@ -5,6 +5,10 @@ expression: content
 darklua 0.8.0
 Transform Lua scripts
 
+For specific help about each command, run `darklua <command> --help`
+
+Site: https://darklua.com
+
 USAGE:
     darklua [FLAGS] <SUBCOMMAND>
 
@@ -15,6 +19,6 @@ FLAGS:
 
 SUBCOMMANDS:
     help       Prints this message or the help of the given subcommand(s)
-    minify     Minify lua files
+    minify     Minify lua files without applying any transformation
     process    Process lua files with rules
 

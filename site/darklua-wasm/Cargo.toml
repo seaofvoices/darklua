@@ -3,7 +3,7 @@ name = "darklua-wasm"
 version = "0.1.0"
 authors = ["jeparlefrancais <jeparlefrancais21@gmail.com>"]
 edition = "2018"
-repository = "https://gitlab.com/seaofvoices/darklua"
+repository = "https://github.com/seaofvoices/darklua"
 description = "WebAssembly package for darklua"
 license = "MIT"
 
