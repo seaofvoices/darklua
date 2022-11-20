@@ -27,3 +27,4 @@ install_content () {
 
 install_content crosswalk https://gitlab.com/seaofvoices/crosswalk.git 1c558f410d77eec8812172c0910dcca95eb296ad
 install_content roact https://github.com/roblox/roact.git 956891b70fdc5410e44e9664719cd0a9f7e6fabd
+install_content core-packages https://github.com/grilme99/CorePackages.git 9361306914b67d42891f5ef657ce73943d5b070d

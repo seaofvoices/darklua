@@ -37,6 +37,19 @@ pub fn crosswalk_content(path: impl AsRef<Path>) -> Content<'static> {
     }
 }
 
+pub fn count_lua_bytes(file: &include_dir::File<'_>) -> u64 {
+    file.path()
+        .extension()
+        .map(|extension| {
+            if extension.to_str().unwrap() == "lua" {
+                file.contents().len() as u64
+            } else {
+                0
+            }
+        })
+        .unwrap_or(0)
+}
+
 pub fn write_content(resources: &darklua_core::Resources, dir: &include_dir::Dir<'_>) -> u64 {
     dir.entries()
         .into_iter()
@@ -46,16 +59,7 @@ pub fn write_content(resources: &darklua_core::Resources, dir: &include_dir::Dir
                 resources
                     .write(file.path(), file.contents_utf8().unwrap())
                     .unwrap();
-                file.path()
-                    .extension()
-                    .map(|extension| {
-                        if extension.to_str().unwrap() == "lua" {
-                            file.contents().len() as u64
-                        } else {
-                            0
-                        }
-                    })
-                    .unwrap_or(0)
+                count_lua_bytes(file)
             }
         })
         .sum()
@@ -74,43 +78,56 @@ impl From<&'static str> for Content<'_> {
 }
 
 #[allow(unused_macros)]
+macro_rules! generate_resources {
+    ($($path:literal => $content:expr),+$(,)?) => {{
+        let mut bytes = 0_u64;
+        let resources = darklua_core::Resources::from_memory();
+            $(
+            let path = $path;
+            let content = Content::from($content);
+            match content {
+                Content::Root(root) => {
+                    bytes += write_content(&resources, &root);
+                }
+                Content::Literal(value) => {
+                    resources.write(path, value).unwrap();
+                    bytes += value.as_bytes().len() as u64;
+                }
+                Content::Entry(entry) => match entry {
+                    DirEntry::Dir(dir) => {
+                        bytes += write_content(&resources, &dir);
+                    }
+                    DirEntry::File(file) => {
+                        resources.write(path, file.contents_utf8().unwrap()).unwrap();
+                        bytes += count_lua_bytes(file);
+                    }
+                }
+            }
+        )*
+        (resources, bytes)
+    }};
+}
+
+#[allow(unused_macros)]
 macro_rules! generate_bench {
+    ($name:ident, {
+        resources = { $($path:literal => $content:expr),+$(,)? }
+        bench = $callback:expr
+        $(,)?
+    } ) => {
+    };
     ($name:ident, {
         resources = { $($path:literal => $content:expr),+$(,)? },
         options = { $($option_name:ident => $options:expr),+$(,)? }
         $(,)?
     } ) => {
         pub fn $name(c: &mut criterion::Criterion) {
-            use $crate::bench_utils::{Content, write_content};
+            use $crate::bench_utils::{Content, write_content, count_lua_bytes};
             use include_dir::DirEntry;
 
-            let (resources, bytes) = {
-                let mut bytes = 0_u64;
-                let resources = darklua_core::Resources::from_memory();
-                $(
-                    let path = $path;
-                    let content = Content::from($content);
-                    match content {
-                        Content::Root(root) => {
-                            bytes += write_content(&resources, &root);
-                        }
-                        Content::Literal(value) => {
-                            resources.write(path, value).unwrap();
-                            bytes += value.as_bytes().len() as u64;
-                        }
-                        Content::Entry(entry) => match entry {
-                            DirEntry::Dir(dir) => {
-                                bytes += write_content(&resources, &dir);
-                            }
-                            DirEntry::File(file) => {
-                                resources.write(path, file.contents_utf8().unwrap()).unwrap();
-                                bytes += file.contents().len() as u64;
-                            }
-                        }
-                    }
-                )*
-                (resources, bytes)
-            };
+            let (resources, bytes) = $crate::bench_utils::generate_resources!(
+                $( $path => $content, )*
+            );
 
             let mut group = c.benchmark_group(stringify!($name));
             group.throughput(criterion::Throughput::Bytes(bytes));
@@ -135,3 +152,5 @@ macro_rules! generate_bench {
 
 #[allow(unused_imports)]
 pub(crate) use generate_bench;
+#[allow(unused_imports)]
+pub(crate) use generate_resources;
