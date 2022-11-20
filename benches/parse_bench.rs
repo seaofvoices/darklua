@@ -30,7 +30,7 @@ fn parse_code(c: &mut criterion::Criterion) {
         let mut group = c.benchmark_group(name);
         group.throughput(criterion::Throughput::Bytes(content.as_bytes().len() as u64));
 
-        let parser = darklua_core::Parser::default().preserve_tokens();
+        let parser = darklua_core::Parser::default();
         group.bench_function("parse-without-tokens", |b| {
             b.iter(|| {
                 parser.parse(criterion::black_box(content)).unwrap();
