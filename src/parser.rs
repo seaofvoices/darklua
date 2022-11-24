@@ -92,6 +92,7 @@ impl Parser {
         self
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_prefix(&self, prefix: &ast::Prefix) -> Result<Prefix, ConvertError> {
         Ok(match prefix {
             ast::Prefix::Expression(expression) => match self.convert_expression(expression)? {
@@ -111,6 +112,7 @@ impl Parser {
         })
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_prefix_with_suffixes<'a>(
         &self,
         prefix: &ast::Prefix,
@@ -187,6 +189,7 @@ impl Parser {
         Ok(prefix)
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_function_args(&self, args: &ast::FunctionArgs) -> Result<Arguments, ConvertError> {
         Ok(match args {
             ast::FunctionArgs::Parentheses {
@@ -218,6 +221,7 @@ impl Parser {
         })
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_string_expression(&self, string: &tokenizer::TokenReference) -> StringExpression {
         let mut expression = StringExpression::new(&string.token().to_string())
             .expect("unable to convert string expression");
@@ -227,6 +231,7 @@ impl Parser {
         expression
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_statement(&self, statement: &ast::Stmt) -> Result<Statement, ConvertError> {
         Ok(match statement {
             ast::Stmt::Assignment(assignment) => {
@@ -487,6 +492,7 @@ impl Parser {
         })
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_token(&self, token: &tokenizer::TokenReference) -> Token {
         let mut new_token = Token::new_with_line(
             token.start_position().bytes(),
@@ -505,6 +511,7 @@ impl Parser {
         new_token
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_trivia(&self, token: &tokenizer::Token) -> Trivia {
         use tokenizer::TokenKind;
 
@@ -527,6 +534,7 @@ impl Parser {
         )
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_token_to_identifier(&self, token: &tokenizer::TokenReference) -> Identifier {
         let mut identifier = Identifier::new(token.token().to_string());
         if self.hold_token_data {
@@ -535,6 +543,7 @@ impl Parser {
         identifier
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn extract_tokens_from_punctuation<T>(
         &self,
         punctuated: &ast::punctuated::Punctuated<T>,
@@ -548,6 +557,7 @@ impl Parser {
             .collect()
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_last_statement(
         &self,
         statement: &ast::LastStmt,
@@ -591,6 +601,7 @@ impl Parser {
         })
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_variable(&self, variable: &ast::Var) -> Result<Variable, ConvertError> {
         Ok(match variable {
             ast::Var::Expression(var_expression) => {
@@ -617,6 +628,7 @@ impl Parser {
         })
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_function_name(
         &self,
         name: &ast::FunctionName,
@@ -643,6 +655,7 @@ impl Parser {
         Ok(function_name)
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_expression(&self, expression: &ast::Expression) -> Result<Expression, ConvertError> {
         Ok(match expression {
             ast::Expression::BinaryOperator { lhs, binop, rhs } => {
@@ -816,6 +829,7 @@ impl Parser {
         })
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_function_body(
         &self,
         body: &ast::FunctionBody,
@@ -875,6 +889,7 @@ impl Parser {
         ))
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_table(
         &self,
         table: &ast::TableConstructor,
@@ -896,6 +911,7 @@ impl Parser {
         Ok(expression)
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_table_entry(&self, field: &ast::Field) -> Result<TableEntry, ConvertError> {
         Ok(match field {
             ast::Field::ExpressionKey {
@@ -937,6 +953,7 @@ impl Parser {
         })
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_binop(&self, operator: &ast::BinOp) -> Result<BinaryOperator, ConvertError> {
         Ok(match operator {
             ast::BinOp::And(_) => BinaryOperator::And,
@@ -962,6 +979,7 @@ impl Parser {
         })
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_unop(&self, operator: &ast::UnOp) -> Result<UnaryOperator, ConvertError> {
         Ok(match operator {
             ast::UnOp::Minus(_) => UnaryOperator::Minus,
@@ -975,6 +993,7 @@ impl Parser {
         })
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_compound_op(
         &self,
         operator: &ast::types::CompoundOp,
@@ -995,6 +1014,7 @@ impl Parser {
         })
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_block(&self, block: &ast::Block) -> Result<Block, ConvertError> {
         let (statements, semicolon_tokens) = if self.hold_token_data {
             let statements_tokens: Result<Vec<_>, ConvertError> = block
@@ -1042,6 +1062,7 @@ impl Parser {
         Ok(new_block)
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_ast(&self, ast: Ast) -> Result<Block, ConvertError> {
         self.convert_block(ast.nodes())
     }
