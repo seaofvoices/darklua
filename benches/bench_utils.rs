@@ -52,7 +52,7 @@ pub fn count_lua_bytes(file: &include_dir::File<'_>) -> u64 {
 
 pub fn write_content(resources: &darklua_core::Resources, dir: &include_dir::Dir<'_>) -> u64 {
     dir.entries()
-        .into_iter()
+        .iter()
         .map(|entry| match entry {
             include_dir::DirEntry::Dir(next_dir) => write_content(resources, next_dir),
             include_dir::DirEntry::File(file) => {
