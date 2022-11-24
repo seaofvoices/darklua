@@ -26,6 +26,15 @@ fn parse_code(c: &mut criterion::Criterion) {
         ),
     ];
 
+    #[cfg(feature = "tracing")]
+    tracing::subscriber::set_global_default(
+        tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt::with(
+            tracing_subscriber::registry(),
+            tracing_tracy::TracyLayer::new(),
+        ),
+    )
+    .expect("set up the subscriber");
+
     for (name, content) in inputs {
         let mut group = c.benchmark_group(name);
         group.throughput(criterion::Throughput::Bytes(content.as_bytes().len() as u64));
