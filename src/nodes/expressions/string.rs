@@ -246,7 +246,7 @@ fn read_number(
     let mut amount = first_digit
         .map(|char| char.to_digit(radix).unwrap())
         .unwrap_or(0);
-    let mut iteration_count = if first_digit.is_some() { 1 } else { 0 };
+    let mut iteration_count: usize = first_digit.is_some().into();
 
     while let Some(next_digit) = chars.peek().cloned().filter(filter) {
         chars.next();
