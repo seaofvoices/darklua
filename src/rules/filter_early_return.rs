@@ -10,7 +10,7 @@ use super::verify_no_rule_properties;
 struct Processor {}
 
 impl Processor {
-    fn search_remove_after(&self, block: &Block) -> Option<usize> {
+    fn search_remove_after(block: &Block) -> Option<usize> {
         block
             .iter_statements()
             .enumerate()
@@ -24,7 +24,7 @@ impl Processor {
                             LastStatement::Return(_) => Some(i),
                         }
                     } else {
-                        self.search_remove_after(inner_block).map(|_| i)
+                        Self::search_remove_after(inner_block).map(|_| i)
                     }
                 }
                 Statement::Assign(_)
@@ -44,7 +44,7 @@ impl Processor {
 
 impl NodeProcessor for Processor {
     fn process_block(&mut self, block: &mut Block) {
-        if let Some(remove_after) = self.search_remove_after(block) {
+        if let Some(remove_after) = Self::search_remove_after(block) {
             block.take_last_statement();
             block.truncate(remove_after + 1);
         }

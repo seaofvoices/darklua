@@ -724,7 +724,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             end: Token::from_content("end"),
             parameter_commas: intersect_with_token(
                 comma_token(),
-                function.parameters_count() + if function.is_variadic() { 1 } else { 0 },
+                function.parameters_count() + usize::from(function.is_variadic()),
             ),
             variable_arguments: if function.is_variadic() {
                 Some(Token::from_content("..."))
@@ -776,7 +776,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             end: Token::from_content("end"),
             parameter_commas: intersect_with_token(
                 comma_token(),
-                function.parameters_count() + if function.is_variadic() { 1 } else { 0 },
+                function.parameters_count() + usize::from(function.is_variadic()),
             ),
             variable_arguments: if function.is_variadic() {
                 Some(Token::from_content("..."))
@@ -820,7 +820,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             end: Token::from_content("end"),
             parameter_commas: intersect_with_token(
                 comma_token(),
-                function.parameters_count() + if function.is_variadic() { 1 } else { 0 },
+                function.parameters_count() + usize::from(function.is_variadic()),
             ),
             variable_arguments: if function.is_variadic() {
                 Some(Token::from_content("..."))

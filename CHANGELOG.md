@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* refactor ParserError into an opaque struct (instead of an enum) ([#71](https://github.com/seaofvoices/darklua/pull/71))
 * refactor darklua frontend ([#69](https://github.com/seaofvoices/darklua/pull/69)):
   * the `--config-path` argument of the `minify` command was removed
   * the configuration file does not accept the `column_span` field anymore (use the [`generator` field](https://darklua.com/docs/generators/) instead)

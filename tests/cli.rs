@@ -44,7 +44,7 @@ impl Context {
     pub fn expect_file<P: AsRef<Path>>(&self, file_path: P) -> &Self {
         let file_path = file_path.as_ref();
         if !file_path.exists() || !file_path.is_file() {
-            self.debug_working_directory(self.working_directory.path());
+            Self::debug_working_directory(self.working_directory.path());
         }
         assert!(
             file_path.exists(),
@@ -138,12 +138,12 @@ impl Context {
         string
     }
 
-    fn debug_working_directory(&self, root: &Path) {
+    fn debug_working_directory(root: &Path) {
         eprintln!("{}", root.display());
         for entry in root.read_dir().unwrap() {
             let entry = entry.unwrap().path();
             if entry.is_dir() {
-                self.debug_working_directory(&entry);
+                Self::debug_working_directory(&entry);
             } else {
                 eprintln!("{}", entry.display());
             }
