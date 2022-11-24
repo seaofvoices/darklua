@@ -19,6 +19,7 @@ Thank you for your interest in contributing to this tool! There are different wa
     - [End-to-end Tests](#end-to-end-tests)
   - [Code formatter](#code-formatter-1)
   - [Clippy](#clippy)
+  - [Benchmarks](#benchmarks)
   - [Help](#help)
     - [clippy is failing on CI but not locally](#clippy-is-failing-on-ci-but-not-locally)
 
@@ -150,6 +151,36 @@ To get a full report and what needs to be fixed, run:
 
 ```sh
 cargo clippy --all-targets --all-features -- -D warnings
+```
+
+## Benchmarks
+
+Benchmarking is done using [Criterion.rs](https://github.com/bheisler/criterion.rs).
+
+The benchmarks will depend on public Lua sources that are not committed to the repository. To fetch the content, simply run:
+
+```sh
+./bench_content/download_content.sh
+```
+
+To run benchmarks, run:
+
+```sh
+cargo bench
+```
+
+Benchmark reports are generated automatically under `target/criterion/`.
+
+### Benchmark Tracing
+
+Some benchmarks may emit tracing information that can be captured with the [Tracy profiler](https://github.com/wolfpld/tracy). To setup a benchmark to emit information to Tracy, look for other benchmarks that do it (search for `TracyLayer::new()`).
+
+Using Tracy is simple: download the exectuable the release from GitHub, run it and connect.
+
+When running benchmarks, enable the the `tracing` feature:
+
+```sh
+cargo bench --features tracing
 ```
 
 ## Help
