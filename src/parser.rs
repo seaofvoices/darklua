@@ -83,7 +83,7 @@ pub struct Parser {
 impl Parser {
     pub fn parse(&self, code: &str) -> Result<Block, ParserError> {
         full_moon::parse(code)
-            .map_err(|err| ParserError::parsing(err))
+            .map_err(ParserError::parsing)
             .and_then(|ast| self.convert_ast(ast).map_err(ParserError::converting))
     }
 
