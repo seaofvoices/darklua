@@ -83,8 +83,8 @@ pub struct Parser {
 impl Parser {
     pub fn parse(&self, code: &str) -> Result<Block, ParserError> {
         full_moon::parse(code)
-            .map_err(ParserError::Parsing)
-            .and_then(|ast| self.convert_ast(ast).map_err(ParserError::Converting))
+            .map_err(|err| ParserError::parsing(err))
+            .and_then(|ast| self.convert_ast(ast).map_err(ParserError::converting))
     }
 
     pub fn preserve_tokens(mut self) -> Self {
@@ -1048,7 +1048,7 @@ impl Parser {
 }
 
 #[derive(Clone, Debug)]
-pub enum ConvertError {
+enum ConvertError {
     Statement {
         statement: String,
     },
@@ -1134,16 +1134,35 @@ impl fmt::Display for ConvertError {
 }
 
 #[derive(Clone, Debug)]
-pub enum ParserError {
+enum ParserErrorKind {
     Parsing(full_moon::Error),
     Converting(ConvertError),
 }
 
+#[derive(Clone, Debug)]
+pub struct ParserError {
+    kind: Box<ParserErrorKind>,
+}
+
+impl ParserError {
+    fn parsing(err: full_moon::Error) -> Self {
+        Self {
+            kind: ParserErrorKind::Parsing(err).into(),
+        }
+    }
+
+    fn converting(err: ConvertError) -> Self {
+        Self {
+            kind: ParserErrorKind::Converting(err).into(),
+        }
+    }
+}
+
 impl fmt::Display for ParserError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Parsing(err) => write!(f, "{}", err),
-            Self::Converting(err) => write!(f, "{}", err),
+        match &*self.kind {
+            ParserErrorKind::Parsing(err) => write!(f, "{}", err),
+            ParserErrorKind::Converting(err) => write!(f, "{}", err),
         }
     }
 }

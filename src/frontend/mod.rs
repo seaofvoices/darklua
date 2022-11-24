@@ -83,9 +83,10 @@ fn private_process(
             )
         }
     } else {
+        let input = options.input().to_path_buf();
         worker.process(
             resources
-                .collect_work(options.input().to_path_buf())
+                .collect_work(input)
                 .map(|source| Ok(WorkItem::new_in_place(source))),
             options,
         )

@@ -53,14 +53,14 @@ pub type DarkluaResult<T> = Result<T, DarkluaError>;
 
 #[derive(Debug, Clone)]
 pub struct DarkluaError {
-    kind: ErrorKind,
+    kind: Box<ErrorKind>,
     context: Option<Cow<'static, str>>,
 }
 
 impl DarkluaError {
     fn new(kind: ErrorKind) -> Self {
         Self {
-            kind,
+            kind: kind.into(),
             context: None,
         }
     }
@@ -184,7 +184,7 @@ impl From<ResourceError> for DarkluaError {
 
 impl Display for DarkluaError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.kind {
+        match &*self.kind {
             ErrorKind::Parser { path, error } => {
                 write!(f, "unable to parse `{}`: {}", path.display(), error)?;
             }

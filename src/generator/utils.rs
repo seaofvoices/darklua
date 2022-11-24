@@ -266,7 +266,7 @@ pub fn write_string(string: &StringExpression) -> String {
 }
 
 fn write_long_bracket(value: &str) -> String {
-    let mut i = if value.ends_with(']') { 1 } else { 0 };
+    let mut i: usize = value.ends_with(']').into();
     let mut equals = "=".repeat(i);
     loop {
         if !value.contains(&format!("]{}]", equals)) {
