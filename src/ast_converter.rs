@@ -8,7 +8,7 @@ use full_moon::{
 use crate::nodes::*;
 
 #[derive(Debug, Default)]
-pub(crate) struct Converter<'a> {
+pub(crate) struct AstConverter<'a> {
     hold_token_data: bool,
     work_stack: Vec<ConvertWork<'a>>,
     blocks: Vec<Block>,
@@ -20,7 +20,7 @@ pub(crate) struct Converter<'a> {
     variables: Vec<Variable>,
 }
 
-impl<'a> Converter<'a> {
+impl<'a> AstConverter<'a> {
     pub(crate) fn new(hold_token_data: bool) -> Self {
         Self {
             hold_token_data,
@@ -298,7 +298,7 @@ impl<'a> Converter<'a> {
                     }
                     self.statements.push(while_statement.into());
                 }
-                ConvertWork::MakeNumericFor { statement } => {
+                ConvertWork::MakeNumericForStatement { statement } => {
                     let mut numeric_for = NumericForStatement::new(
                         self.convert_token_to_identifier(statement.index_variable()),
                         self.expressions.pop().expect("todo"),
@@ -322,7 +322,7 @@ impl<'a> Converter<'a> {
                     }
                     self.statements.push(numeric_for.into());
                 }
-                ConvertWork::MakeGenericFor { statement } => {
+                ConvertWork::MakeGenericForStatement { statement } => {
                     let mut generic_for = GenericForStatement::new(
                         statement
                             .names()
@@ -599,7 +599,7 @@ impl<'a> Converter<'a> {
                 self.push_work(function.body().block());
             }
             ast::Stmt::GenericFor(generic_for) => {
-                self.work_stack.push(ConvertWork::MakeGenericFor {
+                self.work_stack.push(ConvertWork::MakeGenericForStatement {
                     statement: generic_for,
                 });
                 self.push_work(generic_for.block());
@@ -639,7 +639,7 @@ impl<'a> Converter<'a> {
                 self.push_work(local_function.body().block());
             }
             ast::Stmt::NumericFor(numeric_for) => {
-                self.work_stack.push(ConvertWork::MakeNumericFor {
+                self.work_stack.push(ConvertWork::MakeNumericForStatement {
                     statement: numeric_for,
                 });
                 self.push_work(numeric_for.block());
@@ -1347,10 +1347,10 @@ enum ConvertWork<'a> {
     MakeWhileStatement {
         statement: &'a ast::While,
     },
-    MakeNumericFor {
+    MakeNumericForStatement {
         statement: &'a ast::NumericFor,
     },
-    MakeGenericFor {
+    MakeGenericForStatement {
         statement: &'a ast::GenericFor,
     },
     MakeFunctionDeclaration {
@@ -1371,6 +1371,15 @@ enum ConvertWork<'a> {
     MakeLocalAssignStatement {
         statement: &'a ast::LocalAssignment,
     },
+    MakeAssignStatement {
+        statement: &'a ast::Assignment,
+    },
+    MakeCompoundAssignStatement {
+        statement: &'a ast::types::CompoundAssignment,
+    },
+    MakeIfStatement {
+        statement: &'a ast::If,
+    },
     MakeArgumentsFromExpressions {
         arguments: &'a ast::punctuated::Punctuated<ast::Expression>,
         parentheses: &'a ast::span::ContainedSpan,
@@ -1381,20 +1390,11 @@ enum ConvertWork<'a> {
     MakeTableExpression {
         table: &'a ast::TableConstructor,
     },
-    MakeAssignStatement {
-        statement: &'a ast::Assignment,
-    },
     MakeVariable {
         variable: &'a ast::VarExpression,
     },
     MakePrefixExpression {
         variable: &'a ast::VarExpression,
-    },
-    MakeCompoundAssignStatement {
-        statement: &'a ast::types::CompoundAssignment,
-    },
-    MakeIfStatement {
-        statement: &'a ast::If,
     },
 }
 

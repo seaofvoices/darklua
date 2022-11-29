@@ -3,7 +3,7 @@ use std::fmt;
 use full_moon::ast::Ast;
 
 use crate::{
-    converter::{ConvertError, Converter},
+    ast_converter::{ConvertError, AstConverter},
     nodes::*,
 };
 
@@ -26,7 +26,7 @@ impl Parser {
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_ast(&self, ast: Ast) -> Result<Block, ConvertError> {
-        Converter::new(self.hold_token_data).convert(ast.nodes())
+        AstConverter::new(self.hold_token_data).convert(ast.nodes())
     }
 }
 
