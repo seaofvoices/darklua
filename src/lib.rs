@@ -1,5 +1,6 @@
 //! Transform Lua scripts.
 
+mod converter;
 mod frontend;
 pub mod generator;
 pub mod nodes;
