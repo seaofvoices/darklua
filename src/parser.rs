@@ -3,7 +3,7 @@ use std::fmt;
 use full_moon::ast::Ast;
 
 use crate::{
-    ast_converter::{ConvertError, AstConverter},
+    ast_converter::{AstConverter, ConvertError},
     nodes::*,
 };
 
