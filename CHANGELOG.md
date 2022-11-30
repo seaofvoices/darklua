@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* fix large AST tree parsing issue ([#73](https://github.com/seaofvoices/darklua/pull/73))
 * refactor ParserError into an opaque struct (instead of an enum) ([#71](https://github.com/seaofvoices/darklua/pull/71))
 * refactor darklua frontend ([#69](https://github.com/seaofvoices/darklua/pull/69)):
   * the `--config-path` argument of the `minify` command was removed

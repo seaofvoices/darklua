@@ -3,14 +3,9 @@
 macro_rules! generate_tests {
     ($( $name:ident =>  $file_name:literal ),* $(,)?) => {
         $(
-            #[cfg(not(debug_assertions))]
             #[test]
             fn $name() {
                 use darklua_core::Parser;
-
-                if cfg!(debug_assertions) {
-                    panic!("running test in debug mode :(")
-                };
 
                 let input = include_str!($file_name);
 
