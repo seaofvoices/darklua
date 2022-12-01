@@ -33,6 +33,78 @@ impl<'a> AstConverter<'a> {
         self.work_stack.push(work.into());
     }
 
+    #[inline]
+    fn pop_block(&mut self) -> Result<Block, ConvertError> {
+        self.blocks
+            .pop()
+            .ok_or(ConvertError::InternalStack { kind: "Block" })
+    }
+
+    #[inline]
+    fn pop_statement(&mut self) -> Result<Statement, ConvertError> {
+        self.statements
+            .pop()
+            .ok_or(ConvertError::InternalStack { kind: "Statement" })
+    }
+
+    #[inline]
+    fn pop_statements(&mut self, n: usize) -> Result<Vec<Statement>, ConvertError> {
+        std::iter::repeat_with(|| self.pop_statement())
+            .take(n)
+            .collect()
+    }
+
+    #[inline]
+    fn pop_last_statement(&mut self) -> Result<LastStatement, ConvertError> {
+        self.last_statements
+            .pop()
+            .ok_or(ConvertError::InternalStack {
+                kind: "LastStatement",
+            })
+    }
+
+    #[inline]
+    fn pop_expression(&mut self) -> Result<Expression, ConvertError> {
+        self.expressions
+            .pop()
+            .ok_or(ConvertError::InternalStack { kind: "Expression" })
+    }
+
+    #[inline]
+    fn pop_expressions(&mut self, n: usize) -> Result<Vec<Expression>, ConvertError> {
+        std::iter::repeat_with(|| self.pop_expression())
+            .take(n)
+            .collect()
+    }
+
+    #[inline]
+    fn pop_prefix(&mut self) -> Result<Prefix, ConvertError> {
+        self.prefixes
+            .pop()
+            .ok_or(ConvertError::InternalStack { kind: "Prefix" })
+    }
+
+    #[inline]
+    fn pop_variable(&mut self) -> Result<Variable, ConvertError> {
+        self.variables
+            .pop()
+            .ok_or(ConvertError::InternalStack { kind: "Variable" })
+    }
+
+    #[inline]
+    fn pop_variables(&mut self, n: usize) -> Result<Vec<Variable>, ConvertError> {
+        std::iter::repeat_with(|| self.pop_variable())
+            .take(n)
+            .collect()
+    }
+
+    #[inline]
+    fn pop_arguments(&mut self) -> Result<Arguments, ConvertError> {
+        self.arguments
+            .pop()
+            .ok_or(ConvertError::InternalStack { kind: "Arguments" })
+    }
+
     pub(crate) fn convert(&mut self, block: &'a ast::Block) -> Result<Block, ConvertError> {
         self.push_work(block);
 
@@ -60,14 +132,14 @@ impl<'a> AstConverter<'a> {
                 ConvertWork::LastStatement(last_statement) => match last_statement {
                     ast::LastStmt::Break(token) => {
                         self.last_statements.push(if self.hold_token_data {
-                            LastStatement::Break(Some(self.convert_token(token)))
+                            LastStatement::Break(Some(self.convert_token(token)?))
                         } else {
                             LastStatement::new_break()
                         });
                     }
                     ast::LastStmt::Continue(token) => {
                         self.last_statements.push(if self.hold_token_data {
-                            LastStatement::Continue(Some(self.convert_token(token)))
+                            LastStatement::Continue(Some(self.convert_token(token)?))
                         } else {
                             LastStatement::new_continue()
                         });
@@ -95,7 +167,7 @@ impl<'a> AstConverter<'a> {
                     }
                     ast::Prefix::Name(name) => {
                         self.prefixes
-                            .push(self.convert_token_to_identifier(name).into());
+                            .push(self.convert_token_to_identifier(name)?.into());
                     }
                     _ => {
                         return Err(ConvertError::Prefix {
@@ -119,13 +191,13 @@ impl<'a> AstConverter<'a> {
                     }
                     ast::FunctionArgs::String(string) => {
                         self.arguments
-                            .push(self.convert_string_expression(string).into());
+                            .push(self.convert_string_expression(string)?.into());
                     }
                     ast::FunctionArgs::TableConstructor(table) => {
                         self.work_stack
                             .push(ConvertWork::MakeArgumentsFromTableEntries { table });
 
-                        self.convert_table(table);
+                        self.convert_table(table)?;
                     }
                     _ => {
                         return Err(ConvertError::FunctionArguments {
@@ -135,20 +207,23 @@ impl<'a> AstConverter<'a> {
                 },
                 ConvertWork::MakeBlock { block } => {
                     let mut new_block = Block::new(
-                        std::iter::from_fn(|| self.statements.pop())
-                            .take(block.stmts().count())
-                            .collect(),
+                        self.pop_statements(block.stmts().count())?,
                         block
                             .last_stmt()
-                            .map(|_| self.last_statements.pop().expect("todo")),
+                            .map(|_| self.pop_last_statement())
+                            .transpose()?,
                     );
 
                     if self.hold_token_data {
                         let semicolons = block
                             .stmts_with_semicolon()
-                            .map(|(_, token)| token.as_ref().map(|token| self.convert_token(token)))
-                            .collect();
-
+                            .map(|(_, token)| {
+                                token
+                                    .as_ref()
+                                    .map(|token| self.convert_token(token))
+                                    .transpose()
+                            })
+                            .collect::<Result<Vec<_>, _>>()?;
                         let last_semicolon =
                             block.last_stmt_with_semicolon().and_then(|(_, semicolon)| {
                                 semicolon.as_ref().map(|token| self.convert_token(token))
@@ -156,87 +231,81 @@ impl<'a> AstConverter<'a> {
 
                         new_block.set_tokens(BlockTokens {
                             semicolons,
-                            last_semicolon,
+                            last_semicolon: last_semicolon.transpose()?,
                         });
                     };
 
                     self.blocks.push(new_block);
                 }
                 ConvertWork::MakeDoStatement { statement } => {
-                    let block = self.blocks.pop().expect("todo");
+                    let block = self.pop_block()?;
                     let mut do_statement = DoStatement::new(block);
                     if self.hold_token_data {
                         do_statement.set_tokens(DoTokens {
-                            r#do: self.convert_token(statement.do_token()),
-                            end: self.convert_token(statement.end_token()),
+                            r#do: self.convert_token(statement.do_token())?,
+                            end: self.convert_token(statement.end_token())?,
                         })
                     }
                     self.statements.push(do_statement.into());
                 }
                 ConvertWork::MakeReturn { statement } => {
-                    let mut return_statement = ReturnStatement::new(
-                        std::iter::from_fn(|| self.expressions.pop())
-                            .take(statement.returns().len())
-                            .collect(),
-                    );
+                    let mut return_statement =
+                        ReturnStatement::new(self.pop_expressions(statement.returns().len())?);
                     if self.hold_token_data {
-                        let commas = self.extract_tokens_from_punctuation(statement.returns());
+                        let commas = self.extract_tokens_from_punctuation(statement.returns())?;
                         return_statement.set_tokens(ReturnTokens {
-                            r#return: self.convert_token(statement.token()),
+                            r#return: self.convert_token(statement.token())?,
                             commas,
                         });
                     }
                     self.last_statements.push(return_statement.into());
                 }
                 ConvertWork::MakeBinaryExpression { operator } => {
-                    let left = self.expressions.pop().expect("todo");
-                    let right = self.expressions.pop().expect("todo");
+                    let left = self.pop_expression()?;
+                    let right = self.pop_expression()?;
                     let mut binary =
                         BinaryExpression::new(self.convert_binop(operator)?, left, right);
                     if self.hold_token_data {
-                        binary.set_token(self.convert_token(get_binary_operator_token(operator)?));
+                        binary.set_token(self.convert_token(get_binary_operator_token(operator)?)?);
                     }
                     self.expressions.push(binary.into());
                 }
                 ConvertWork::MakeUnaryExpression { operator } => {
-                    let mut unary = UnaryExpression::new(
-                        self.convert_unop(operator)?,
-                        self.expressions.pop().expect("todo"),
-                    );
+                    let mut unary =
+                        UnaryExpression::new(self.convert_unop(operator)?, self.pop_expression()?);
                     if self.hold_token_data {
-                        unary.set_token(self.convert_token(get_unary_operator_token(operator)?));
+                        unary.set_token(self.convert_token(get_unary_operator_token(operator)?)?);
                     }
                     self.expressions.push(unary.into());
                 }
                 ConvertWork::MakeParentheseExpression { contained_span } => {
-                    let mut parenthese =
-                        ParentheseExpression::new(self.expressions.pop().expect("todo"));
+                    let mut parenthese = ParentheseExpression::new(self.pop_expression()?);
                     if self.hold_token_data {
                         let (left, right) = contained_span.tokens();
                         parenthese.set_tokens(ParentheseTokens {
-                            left_parenthese: self.convert_token(left),
-                            right_parenthese: self.convert_token(right),
+                            left_parenthese: self.convert_token(left)?,
+                            right_parenthese: self.convert_token(right)?,
                         });
                     }
                     self.expressions.push(parenthese.into());
                 }
                 ConvertWork::MakeIfExpression { if_expression } => {
-                    let condition = self.expressions.pop().expect("todo");
-                    let result = self.expressions.pop().expect("todo");
-                    let else_expression = self.expressions.pop().expect("todo");
+                    let condition = self.pop_expression()?;
+                    let result = self.pop_expression()?;
+                    let else_expression = self.pop_expression()?;
 
                     let mut value = IfExpression::new(condition, result, else_expression);
 
                     if let Some(elseifs) = if_expression.else_if_expressions() {
                         for elseif in elseifs.iter() {
-                            let elseif_condition = self.expressions.pop().expect("todo");
-                            let elseif_expression = self.expressions.pop().expect("todo");
+                            let elseif_condition = self.pop_expression()?;
+                            let elseif_expression = self.pop_expression()?;
                             let mut branch =
                                 ElseIfExpressionBranch::new(elseif_condition, elseif_expression);
                             if self.hold_token_data {
                                 branch.set_tokens(ElseIfExpressionBranchTokens {
-                                    elseif: self.convert_token(elseif.else_if_token()),
-                                    then: self.convert_token(elseif.then_token()),
+                                    elseif: self.convert_token(elseif.else_if_token())?,
+                                    then: self.convert_token(elseif.then_token())?,
                                 });
                             }
                             value.push_branch(branch);
@@ -245,16 +314,16 @@ impl<'a> AstConverter<'a> {
 
                     if self.hold_token_data {
                         value.set_tokens(IfExpressionTokens {
-                            r#if: self.convert_token(if_expression.if_token()),
-                            then: self.convert_token(if_expression.then_token()),
-                            r#else: self.convert_token(if_expression.else_token()),
+                            r#if: self.convert_token(if_expression.if_token())?,
+                            then: self.convert_token(if_expression.then_token())?,
+                            r#else: self.convert_token(if_expression.else_token())?,
                         });
                     }
 
                     self.expressions.push(value.into());
                 }
                 ConvertWork::MakeFunctionExpression { body, token } => {
-                    let block = self.blocks.pop().expect("todo");
+                    let block = self.pop_block()?;
                     let (parameters, is_variadic, tokens) =
                         self.convert_function_body_attributes(body)?;
 
@@ -262,7 +331,7 @@ impl<'a> AstConverter<'a> {
 
                     if let Some(tokens) = tokens {
                         function.set_tokens(FunctionExpressionTokens {
-                            function: self.convert_token(token),
+                            function: self.convert_token(token)?,
                             opening_parenthese: tokens.opening_parenthese,
                             closing_parenthese: tokens.closing_parenthese,
                             end: tokens.end,
@@ -273,51 +342,50 @@ impl<'a> AstConverter<'a> {
                     self.expressions.push(function.into());
                 }
                 ConvertWork::MakeRepeatStatement { statement } => {
-                    let mut repeat_statement = RepeatStatement::new(
-                        self.blocks.pop().expect("todo"),
-                        self.expressions.pop().expect("todo"),
-                    );
+                    let mut repeat_statement =
+                        RepeatStatement::new(self.pop_block()?, self.pop_expression()?);
                     if self.hold_token_data {
                         repeat_statement.set_tokens(RepeatTokens {
-                            repeat: self.convert_token(statement.repeat_token()),
-                            until: self.convert_token(statement.until_token()),
+                            repeat: self.convert_token(statement.repeat_token())?,
+                            until: self.convert_token(statement.until_token())?,
                         });
                     }
                     self.statements.push(repeat_statement.into());
                 }
                 ConvertWork::MakeWhileStatement { statement } => {
-                    let block = self.blocks.pop().expect("todo");
-                    let mut while_statement =
-                        WhileStatement::new(block, self.expressions.pop().expect("todo"));
+                    let block = self.pop_block()?;
+                    let mut while_statement = WhileStatement::new(block, self.pop_expression()?);
                     if self.hold_token_data {
                         while_statement.set_tokens(WhileTokens {
-                            r#while: self.convert_token(statement.while_token()),
-                            r#do: self.convert_token(statement.do_token()),
-                            end: self.convert_token(statement.end_token()),
+                            r#while: self.convert_token(statement.while_token())?,
+                            r#do: self.convert_token(statement.do_token())?,
+                            end: self.convert_token(statement.end_token())?,
                         });
                     }
                     self.statements.push(while_statement.into());
                 }
                 ConvertWork::MakeNumericForStatement { statement } => {
                     let mut numeric_for = NumericForStatement::new(
-                        self.convert_token_to_identifier(statement.index_variable()),
-                        self.expressions.pop().expect("todo"),
-                        self.expressions.pop().expect("todo"),
+                        self.convert_token_to_identifier(statement.index_variable())?,
+                        self.pop_expression()?,
+                        self.pop_expression()?,
                         statement
                             .step()
-                            .map(|_| self.expressions.pop().expect("todo")),
-                        self.blocks.pop().expect("todo"),
+                            .map(|_| self.pop_expression())
+                            .transpose()?,
+                        self.pop_block()?,
                     );
                     if self.hold_token_data {
                         numeric_for.set_tokens(NumericForTokens {
-                            r#for: self.convert_token(statement.for_token()),
-                            equal: self.convert_token(statement.equal_token()),
-                            r#do: self.convert_token(statement.do_token()),
-                            end: self.convert_token(statement.end_token()),
-                            end_comma: self.convert_token(statement.start_end_comma()),
+                            r#for: self.convert_token(statement.for_token())?,
+                            equal: self.convert_token(statement.equal_token())?,
+                            r#do: self.convert_token(statement.do_token())?,
+                            end: self.convert_token(statement.end_token())?,
+                            end_comma: self.convert_token(statement.start_end_comma())?,
                             step_comma: statement
                                 .end_step_comma()
-                                .map(|token| self.convert_token(token)),
+                                .map(|token| self.convert_token(token))
+                                .transpose()?,
                         });
                     }
                     self.statements.push(numeric_for.into());
@@ -328,22 +396,20 @@ impl<'a> AstConverter<'a> {
                             .names()
                             .iter()
                             .map(|name| self.convert_token_to_identifier(name))
-                            .collect(),
-                        std::iter::from_fn(|| self.expressions.pop())
-                            .take(statement.expressions().len())
-                            .collect(),
-                        self.blocks.pop().expect("todo"),
+                            .collect::<Result<Vec<_>, _>>()?,
+                        self.pop_expressions(statement.expressions().len())?,
+                        self.pop_block()?,
                     );
                     if self.hold_token_data {
                         generic_for.set_tokens(GenericForTokens {
-                            r#for: self.convert_token(statement.for_token()),
-                            r#in: self.convert_token(statement.in_token()),
-                            r#do: self.convert_token(statement.do_token()),
-                            end: self.convert_token(statement.end_token()),
+                            r#for: self.convert_token(statement.for_token())?,
+                            r#in: self.convert_token(statement.in_token())?,
+                            r#do: self.convert_token(statement.do_token())?,
+                            end: self.convert_token(statement.end_token())?,
                             identifier_commas: self
-                                .extract_tokens_from_punctuation(statement.names()),
+                                .extract_tokens_from_punctuation(statement.names())?,
                             value_commas: self
-                                .extract_tokens_from_punctuation(statement.expressions()),
+                                .extract_tokens_from_punctuation(statement.expressions())?,
                         });
                     }
                     self.statements.push(generic_for.into());
@@ -352,16 +418,12 @@ impl<'a> AstConverter<'a> {
                     let (parameters, is_variadic, tokens) =
                         self.convert_function_body_attributes(statement.body())?;
                     let name = self.convert_function_name(statement.name())?;
-                    let mut function = FunctionStatement::new(
-                        name,
-                        self.blocks.pop().expect("todo"),
-                        parameters,
-                        is_variadic,
-                    );
+                    let mut function =
+                        FunctionStatement::new(name, self.pop_block()?, parameters, is_variadic);
 
                     if let Some(tokens) = tokens {
                         function.set_tokens(FunctionStatementTokens {
-                            function: self.convert_token(statement.function_token()),
+                            function: self.convert_token(statement.function_token())?,
                             opening_parenthese: tokens.opening_parenthese,
                             closing_parenthese: tokens.closing_parenthese,
                             end: tokens.end,
@@ -375,18 +437,16 @@ impl<'a> AstConverter<'a> {
                     let call = self.make_function_call(call)?;
                     self.statements.push(call.into());
                 }
-                ConvertWork::MakePrefixFromExpression { prefix } => {
-                    match self.expressions.pop().expect("todo") {
-                        Expression::Parenthese(parenthese) => {
-                            self.prefixes.push(Prefix::Parenthese(*parenthese));
-                        }
-                        _ => {
-                            return Err(ConvertError::Prefix {
-                                prefix: prefix.to_string(),
-                            })
-                        }
+                ConvertWork::MakePrefixFromExpression { prefix } => match self.pop_expression()? {
+                    Expression::Parenthese(parenthese) => {
+                        self.prefixes.push(Prefix::Parenthese(*parenthese));
                     }
-                }
+                    _ => {
+                        return Err(ConvertError::Prefix {
+                            prefix: prefix.to_string(),
+                        })
+                    }
+                },
                 ConvertWork::MakeFunctionCallExpression { call } => {
                     let call = self.make_function_call(call)?;
                     self.expressions.push(call.into());
@@ -396,18 +456,18 @@ impl<'a> AstConverter<'a> {
                         self.convert_function_body_attributes(statement.body())?;
                     let mut name = Identifier::new(statement.name().token().to_string());
                     if self.hold_token_data {
-                        name.set_token(self.convert_token(statement.name()));
+                        name.set_token(self.convert_token(statement.name())?);
                     }
                     let mut local_function = LocalFunctionStatement::new(
                         name,
-                        self.blocks.pop().expect("todo"),
+                        self.pop_block()?,
                         parameters,
                         is_variadic,
                     );
                     if let Some(tokens) = tokens {
                         local_function.set_tokens(LocalFunctionTokens {
-                            local: self.convert_token(statement.local_token()),
-                            function: self.convert_token(statement.function_token()),
+                            local: self.convert_token(statement.local_token())?,
+                            function: self.convert_token(statement.function_token())?,
                             opening_parenthese: tokens.opening_parenthese,
                             closing_parenthese: tokens.closing_parenthese,
                             end: tokens.end,
@@ -422,25 +482,24 @@ impl<'a> AstConverter<'a> {
                         .names()
                         .iter()
                         .map(|token_ref| self.convert_token_to_identifier(token_ref))
-                        .collect();
+                        .collect::<Result<Vec<_>, _>>()?;
 
                     let mut local_assign = LocalAssignStatement::new(
                         variables,
-                        std::iter::from_fn(|| self.expressions.pop())
-                            .take(statement.expressions().len())
-                            .collect(),
+                        self.pop_expressions(statement.expressions().len())?,
                     );
 
                     if self.hold_token_data {
                         local_assign.set_tokens(LocalAssignTokens {
-                            local: self.convert_token(statement.local_token()),
+                            local: self.convert_token(statement.local_token())?,
                             equal: statement
                                 .equal_token()
-                                .map(|token| self.convert_token(token)),
+                                .map(|token| self.convert_token(token))
+                                .transpose()?,
                             variable_commas: self
-                                .extract_tokens_from_punctuation(statement.names()),
+                                .extract_tokens_from_punctuation(statement.names())?,
                             value_commas: self
-                                .extract_tokens_from_punctuation(statement.expressions()),
+                                .extract_tokens_from_punctuation(statement.expressions())?,
                         })
                     }
                     self.statements.push(local_assign.into());
@@ -449,17 +508,13 @@ impl<'a> AstConverter<'a> {
                     arguments,
                     parentheses,
                 } => {
-                    let mut tuple = TupleArguments::new(
-                        std::iter::from_fn(|| self.expressions.pop())
-                            .take(arguments.len())
-                            .collect(),
-                    );
+                    let mut tuple = TupleArguments::new(self.pop_expressions(arguments.len())?);
                     if self.hold_token_data {
                         let (left, right) = parentheses.tokens();
                         tuple.set_tokens(TupleArgumentsTokens {
-                            opening_parenthese: self.convert_token(left),
-                            closing_parenthese: self.convert_token(right),
-                            commas: self.extract_tokens_from_punctuation(arguments),
+                            opening_parenthese: self.convert_token(left)?,
+                            closing_parenthese: self.convert_token(right)?,
+                            commas: self.extract_tokens_from_punctuation(arguments)?,
                         })
                     }
                     self.arguments.push(tuple.into());
@@ -473,20 +528,16 @@ impl<'a> AstConverter<'a> {
                     self.expressions.push(expression.into());
                 }
                 ConvertWork::MakeAssignStatement { statement } => {
-                    let variables = std::iter::from_fn(|| self.variables.pop())
-                        .take(statement.variables().len())
-                        .collect();
-                    let values = std::iter::from_fn(|| self.expressions.pop())
-                        .take(statement.expressions().len())
-                        .collect();
+                    let variables = self.pop_variables(statement.variables().len())?;
+                    let values = self.pop_expressions(statement.expressions().len())?;
                     let mut assignment = AssignStatement::new(variables, values);
                     if self.hold_token_data {
                         assignment.set_tokens(AssignTokens {
-                            equal: self.convert_token(statement.equal_token()),
+                            equal: self.convert_token(statement.equal_token())?,
                             variable_commas: self
-                                .extract_tokens_from_punctuation(statement.variables()),
+                                .extract_tokens_from_punctuation(statement.variables())?,
                             value_commas: self
-                                .extract_tokens_from_punctuation(statement.expressions()),
+                                .extract_tokens_from_punctuation(statement.expressions())?,
                         });
                     }
                     self.statements.push(assignment.into());
@@ -510,8 +561,8 @@ impl<'a> AstConverter<'a> {
                     self.expressions.push(prefix.into());
                 }
                 ConvertWork::MakeCompoundAssignStatement { statement } => {
-                    let variable = self.variables.pop().expect("todo");
-                    let value = self.expressions.pop().expect("todo");
+                    let variable = self.pop_variable()?;
+                    let value = self.pop_expression()?;
                     let mut assignment = CompoundAssignStatement::new(
                         self.convert_compound_op(statement.compound_operator())?,
                         variable,
@@ -521,40 +572,41 @@ impl<'a> AstConverter<'a> {
                         assignment.set_tokens(CompoundAssignTokens {
                             operator: self.convert_token(get_compound_operator_token(
                                 statement.compound_operator(),
-                            )?),
+                            )?)?,
                         });
                     }
                     self.statements.push(assignment.into());
                 }
                 ConvertWork::MakeIfStatement { statement } => {
-                    let condition = self.expressions.pop().expect("todo");
-                    let block = self.blocks.pop().expect("todo");
+                    let condition = self.pop_expression()?;
+                    let block = self.pop_block()?;
                     let mut if_statement = IfStatement::create(condition, block);
                     if let Some(elseifs) = statement.else_if() {
                         for else_if in elseifs {
-                            let elseif_condition = self.expressions.pop().expect("todo");
-                            let elseif_block = self.blocks.pop().expect("todo");
+                            let elseif_condition = self.pop_expression()?;
+                            let elseif_block = self.pop_block()?;
                             let mut branch = IfBranch::new(elseif_condition, elseif_block);
                             if self.hold_token_data {
                                 branch.set_tokens(IfBranchTokens {
-                                    elseif: self.convert_token(else_if.else_if_token()),
-                                    then: self.convert_token(else_if.then_token()),
+                                    elseif: self.convert_token(else_if.else_if_token())?,
+                                    then: self.convert_token(else_if.then_token())?,
                                 });
                             }
                             if_statement.push_branch(branch);
                         }
                     }
                     if statement.else_block().is_some() {
-                        if_statement.set_else_block(self.blocks.pop().expect("todo"));
+                        if_statement.set_else_block(self.pop_block()?);
                     }
                     if self.hold_token_data {
                         if_statement.set_tokens(IfStatementTokens {
-                            r#if: self.convert_token(statement.if_token()),
-                            then: self.convert_token(statement.then_token()),
-                            end: self.convert_token(statement.end_token()),
+                            r#if: self.convert_token(statement.if_token())?,
+                            then: self.convert_token(statement.then_token())?,
+                            end: self.convert_token(statement.end_token())?,
                             r#else: statement
                                 .else_token()
-                                .map(|token| self.convert_token(token)),
+                                .map(|token| self.convert_token(token))
+                                .transpose()?,
                         })
                     }
                     self.statements.push(if_statement.into());
@@ -692,7 +744,7 @@ impl<'a> AstConverter<'a> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
-    fn convert_table(&mut self, table: &'a ast::TableConstructor) {
+    fn convert_table(&mut self, table: &'a ast::TableConstructor) -> Result<(), ConvertError> {
         for field in table.fields() {
             match field {
                 ast::Field::ExpressionKey {
@@ -714,9 +766,14 @@ impl<'a> AstConverter<'a> {
                 ast::Field::NoKey(value) => {
                     self.push_work(value);
                 }
-                _ => todo!(),
+                _ => {
+                    return Err(ConvertError::TableEntry {
+                        entry: field.to_string(),
+                    })
+                }
             }
         }
+        Ok(())
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
@@ -734,15 +791,15 @@ impl<'a> AstConverter<'a> {
                     equal,
                     value: _,
                 } => {
-                    let key = self.expressions.pop().expect("todo");
-                    let value = self.expressions.pop().expect("todo");
+                    let key = self.pop_expression()?;
+                    let value = self.pop_expression()?;
                     let mut entry = TableIndexEntry::new(key, value);
                     if self.hold_token_data {
                         let (left, right) = brackets.tokens();
                         entry.set_tokens(TableIndexEntryTokens {
-                            opening_bracket: self.convert_token(left),
-                            closing_bracket: self.convert_token(right),
-                            equal: self.convert_token(equal),
+                            opening_bracket: self.convert_token(left)?,
+                            closing_bracket: self.convert_token(right)?,
+                            equal: self.convert_token(equal)?,
                         })
                     }
                     Ok(entry.into())
@@ -753,17 +810,15 @@ impl<'a> AstConverter<'a> {
                     value: _,
                 } => {
                     let mut entry = TableFieldEntry::new(
-                        self.convert_token_to_identifier(key),
-                        self.expressions.pop().expect("todo"),
+                        self.convert_token_to_identifier(key)?,
+                        self.pop_expression()?,
                     );
                     if self.hold_token_data {
-                        entry.set_token(self.convert_token(equal));
+                        entry.set_token(self.convert_token(equal)?);
                     }
                     Ok(entry.into())
                 }
-                ast::Field::NoKey(_) => {
-                    Ok(TableEntry::Value(self.expressions.pop().expect("todo")))
-                }
+                ast::Field::NoKey(_) => Ok(TableEntry::Value(self.pop_expression()?)),
                 _ => Err(ConvertError::TableEntry {
                     entry: field.to_string(),
                 }),
@@ -773,9 +828,9 @@ impl<'a> AstConverter<'a> {
         if self.hold_token_data {
             let (left, right) = table.braces().tokens();
             expression.set_tokens(TableTokens {
-                opening_brace: self.convert_token(left),
-                closing_brace: self.convert_token(right),
-                separators: self.extract_tokens_from_punctuation(table.fields()),
+                opening_brace: self.convert_token(left)?,
+                closing_brace: self.convert_token(right)?,
+                separators: self.extract_tokens_from_punctuation(table.fields())?,
             });
         }
         Ok(expression)
@@ -801,14 +856,13 @@ impl<'a> AstConverter<'a> {
         &mut self,
         suffixes: impl Iterator<Item = &'a ast::Suffix>,
     ) -> Result<Prefix, ConvertError> {
-        let mut prefix = self.prefixes.pop().expect("todo");
+        let mut prefix = self.pop_prefix()?;
 
         for suffix in suffixes {
             match suffix {
                 ast::Suffix::Call(call_suffix) => match call_suffix {
                     ast::Call::AnonymousCall(_) => {
-                        let mut call =
-                            FunctionCall::new(prefix, self.arguments.pop().expect("todo"), None);
+                        let mut call = FunctionCall::new(prefix, self.pop_arguments()?, None);
                         if self.hold_token_data {
                             call.set_tokens(FunctionCallTokens { colon: None })
                         }
@@ -817,12 +871,12 @@ impl<'a> AstConverter<'a> {
                     ast::Call::MethodCall(method_call) => {
                         let mut call = FunctionCall::new(
                             prefix,
-                            self.arguments.pop().expect("todo"),
-                            Some(self.convert_token_to_identifier(method_call.name())),
+                            self.pop_arguments()?,
+                            Some(self.convert_token_to_identifier(method_call.name())?),
                         );
                         if self.hold_token_data {
                             call.set_tokens(FunctionCallTokens {
-                                colon: Some(self.convert_token(method_call.colon_token())),
+                                colon: Some(self.convert_token(method_call.colon_token())?),
                             });
                         }
                         prefix = call.into();
@@ -838,22 +892,21 @@ impl<'a> AstConverter<'a> {
                         brackets,
                         expression: _,
                     } => {
-                        let mut index =
-                            IndexExpression::new(prefix, self.expressions.pop().expect("todo"));
+                        let mut index = IndexExpression::new(prefix, self.pop_expression()?);
                         if self.hold_token_data {
                             let (left, right) = brackets.tokens();
                             index.set_tokens(IndexExpressionTokens {
-                                opening_bracket: self.convert_token(left),
-                                closing_bracket: self.convert_token(right),
+                                opening_bracket: self.convert_token(left)?,
+                                closing_bracket: self.convert_token(right)?,
                             });
                         }
                         prefix = index.into();
                     }
                     ast::Index::Dot { name, dot } => {
                         let mut field =
-                            FieldExpression::new(prefix, self.convert_token_to_identifier(name));
+                            FieldExpression::new(prefix, self.convert_token_to_identifier(name)?);
                         if self.hold_token_data {
-                            field.set_token(self.convert_token(dot));
+                            field.set_token(self.convert_token(dot)?);
                         }
                         prefix = field.into();
                     }
@@ -915,7 +968,7 @@ impl<'a> AstConverter<'a> {
                 ast::Value::TableConstructor(table) => {
                     self.work_stack
                         .push(ConvertWork::MakeTableExpression { table });
-                    self.convert_table(table);
+                    self.convert_table(table)?;
                 }
                 ast::Value::Number(number) => {
                     let mut expression = NumberExpression::from_str(&number.token().to_string())
@@ -924,7 +977,7 @@ impl<'a> AstConverter<'a> {
                             parsing_error: err.to_string(),
                         })?;
                     if self.hold_token_data {
-                        expression.set_token(self.convert_token(number));
+                        expression.set_token(self.convert_token(number)?);
                     }
                     self.work_stack
                         .push(ConvertWork::PushExpression(expression.into()));
@@ -934,13 +987,13 @@ impl<'a> AstConverter<'a> {
                 }
                 ast::Value::String(token_ref) => {
                     self.work_stack.push(ConvertWork::PushExpression(
-                        self.convert_string_expression(token_ref).into(),
+                        self.convert_string_expression(token_ref)?.into(),
                     ));
                 }
                 ast::Value::Symbol(symbol_token) => match symbol_token.token().token_type() {
                     TokenType::Symbol { symbol } => {
                         let token = if self.hold_token_data {
-                            Some(self.convert_token(symbol_token))
+                            Some(self.convert_token(symbol_token)?)
                         } else {
                             None
                         };
@@ -975,7 +1028,7 @@ impl<'a> AstConverter<'a> {
                     ast::Var::Name(token_ref) => {
                         self.work_stack
                             .push(ConvertWork::PushExpression(Expression::Identifier(
-                                self.convert_token_to_identifier(token_ref),
+                                self.convert_token_to_identifier(token_ref)?,
                             )));
                     }
                     _ => {
@@ -1063,7 +1116,7 @@ impl<'a> AstConverter<'a> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
-    fn convert_token(&self, token: &tokenizer::TokenReference) -> Token {
+    fn convert_token(&self, token: &tokenizer::TokenReference) -> Result<Token, ConvertError> {
         let mut new_token = Token::new_with_line(
             token.start_position().bytes(),
             token.end_position().bytes(),
@@ -1071,53 +1124,51 @@ impl<'a> AstConverter<'a> {
         );
 
         for trivia_token in token.leading_trivia() {
-            new_token.push_leading_trivia(self.convert_trivia(trivia_token));
+            new_token.push_leading_trivia(self.convert_trivia(trivia_token)?);
         }
 
         for trivia_token in token.trailing_trivia() {
-            new_token.push_trailing_trivia(self.convert_trivia(trivia_token));
+            new_token.push_trailing_trivia(self.convert_trivia(trivia_token)?);
         }
 
-        new_token
+        Ok(new_token)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
-    fn convert_trivia(&self, token: &tokenizer::Token) -> Trivia {
+    fn convert_trivia(&self, token: &tokenizer::Token) -> Result<Trivia, ConvertError> {
         use tokenizer::TokenKind;
 
-        match token.token_kind() {
-            TokenKind::Eof => todo!(),
-            TokenKind::Identifier => todo!(),
+        let trivia = match token.token_kind() {
             TokenKind::MultiLineComment => TriviaKind::Comment,
-            TokenKind::Number => todo!(),
-            TokenKind::Shebang => todo!(),
             TokenKind::SingleLineComment => TriviaKind::Comment,
-            TokenKind::StringLiteral => todo!(),
-            TokenKind::Symbol => todo!(),
             TokenKind::Whitespace => TriviaKind::Whitespace,
-            _ => todo!("unexpected token kind"),
+            _ => return Err(ConvertError::UnexpectedTrivia(token.token_kind())),
         }
         .at(
             token.start_position().bytes(),
             token.end_position().bytes(),
             token.start_position().line(),
-        )
+        );
+        Ok(trivia)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
-    fn convert_token_to_identifier(&self, token: &tokenizer::TokenReference) -> Identifier {
+    fn convert_token_to_identifier(
+        &self,
+        token: &tokenizer::TokenReference,
+    ) -> Result<Identifier, ConvertError> {
         let mut identifier = Identifier::new(token.token().to_string());
         if self.hold_token_data {
-            identifier.set_token(self.convert_token(token));
+            identifier.set_token(self.convert_token(token)?);
         }
-        identifier
+        Ok(identifier)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn extract_tokens_from_punctuation<T>(
         &self,
         punctuated: &ast::punctuated::Punctuated<T>,
-    ) -> Vec<Token> {
+    ) -> Result<Vec<Token>, ConvertError> {
         punctuated
             .pairs()
             .filter_map(|pair| match pair {
@@ -1153,7 +1204,7 @@ impl<'a> AstConverter<'a> {
                     }
                     let mut identifier = Identifier::new(name.token().to_string());
                     if self.hold_token_data {
-                        identifier.set_token(self.convert_token(name));
+                        identifier.set_token(self.convert_token(name)?);
                     }
                     parameters.push(identifier);
                 }
@@ -1167,13 +1218,15 @@ impl<'a> AstConverter<'a> {
 
         let tokens = if self.hold_token_data {
             let (open, close) = body.parameters_parentheses().tokens();
-            let commas = self.extract_tokens_from_punctuation(body.parameters());
+            let commas = self.extract_tokens_from_punctuation(body.parameters())?;
             Some(FunctionBodyTokens {
-                opening_parenthese: self.convert_token(open),
-                closing_parenthese: self.convert_token(close),
-                end: self.convert_token(body.end_token()),
+                opening_parenthese: self.convert_token(open)?,
+                closing_parenthese: self.convert_token(close)?,
+                end: self.convert_token(body.end_token())?,
                 parameter_commas: commas,
-                variable_arguments: is_variadic.map(|token| self.convert_token(token)),
+                variable_arguments: is_variadic
+                    .map(|token| self.convert_token(token))
+                    .transpose()?,
             })
         } else {
             None
@@ -1183,13 +1236,16 @@ impl<'a> AstConverter<'a> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
-    fn convert_string_expression(&self, string: &tokenizer::TokenReference) -> StringExpression {
+    fn convert_string_expression(
+        &self,
+        string: &tokenizer::TokenReference,
+    ) -> Result<StringExpression, ConvertError> {
         let mut expression = StringExpression::new(&string.token().to_string())
             .expect("unable to convert string expression");
         if self.hold_token_data {
-            expression.set_token(self.convert_token(string));
+            expression.set_token(self.convert_token(string)?);
         }
-        expression
+        Ok(expression)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
@@ -1264,16 +1320,23 @@ impl<'a> AstConverter<'a> {
             .map(|token_ref| self.convert_token_to_identifier(token_ref));
 
         let mut function_name = FunctionName::new(
-            name_iter.next().expect("should have at least one name"),
-            name_iter.collect(),
+            name_iter
+                .next()
+                .transpose()?
+                .ok_or(ConvertError::ExpectedFunctionName)?,
+            name_iter.collect::<Result<Vec<_>, _>>()?,
             name.method_name()
-                .map(|token_ref| self.convert_token_to_identifier(token_ref)),
+                .map(|token_ref| self.convert_token_to_identifier(token_ref))
+                .transpose()?,
         );
 
         if self.hold_token_data {
             function_name.set_tokens(FunctionNameTokens {
-                periods: self.extract_tokens_from_punctuation(name.names()),
-                colon: name.method_colon().map(|colon| self.convert_token(colon)),
+                periods: self.extract_tokens_from_punctuation(name.names())?,
+                colon: name
+                    .method_colon()
+                    .map(|colon| self.convert_token(colon))
+                    .transpose()?,
             });
         }
 
@@ -1292,7 +1355,7 @@ impl<'a> AstConverter<'a> {
             }
             ast::Var::Name(name) => {
                 self.work_stack.push(ConvertWork::PushVariable(
-                    self.convert_token_to_identifier(name).into(),
+                    self.convert_token_to_identifier(name)?.into(),
                 ));
             }
             _ => {
@@ -1485,6 +1548,11 @@ pub(crate) enum ConvertError {
     UnaryOperator {
         operator: String,
     },
+    UnexpectedTrivia(tokenizer::TokenKind),
+    ExpectedFunctionName,
+    InternalStack {
+        kind: &'static str,
+    },
 }
 
 impl fmt::Display for ConvertError {
@@ -1515,6 +1583,23 @@ impl fmt::Display for ConvertError {
             ConvertError::BinaryOperator { operator } => ("binary operator", operator),
             ConvertError::CompoundOperator { operator } => ("compound operator", operator),
             ConvertError::UnaryOperator { operator } => ("unary operator", operator),
+            ConvertError::UnexpectedTrivia(token_kind) => {
+                return write!(
+                    f,
+                    "unable to convert trivia from token kind `{:?}`",
+                    token_kind
+                );
+            }
+            ConvertError::ExpectedFunctionName => {
+                return write!(f, "unable to convert empty function name",);
+            }
+            ConvertError::InternalStack { kind } => {
+                return write!(
+                    f,
+                    "internal conversion stack expected to find an item of `{}`",
+                    kind
+                )
+            }
         };
         write!(f, "unable to convert {} from `{}`", kind, code)
     }
@@ -1585,5 +1670,30 @@ fn get_compound_operator_token(
         _ => Err(ConvertError::CompoundOperator {
             operator: operator.to_string(),
         }),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    mod convert_error {
+        use super::*;
+
+        #[test]
+        fn display_unexpected_trivia_symbol() {
+            assert_eq!(
+                ConvertError::UnexpectedTrivia(tokenizer::TokenKind::Symbol).to_string(),
+                "unable to convert trivia from token kind `Symbol`"
+            )
+        }
+
+        #[test]
+        fn display_unexpected_trivia_eof() {
+            assert_eq!(
+                ConvertError::UnexpectedTrivia(tokenizer::TokenKind::Eof).to_string(),
+                "unable to convert trivia from token kind `Eof`"
+            )
+        }
     }
 }
