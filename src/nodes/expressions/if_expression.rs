@@ -96,6 +96,25 @@ impl IfExpression {
         self.branches.iter()
     }
 
+    pub fn clear_elseif_branches(&mut self) {
+        self.branches.clear();
+    }
+
+    pub fn retain_elseif_branches_mut(
+        &mut self,
+        filter: impl FnMut(&mut ElseIfExpressionBranch) -> bool,
+    ) {
+        self.branches.retain_mut(filter);
+    }
+
+    pub fn remove_branch(&mut self, index: usize) -> Option<ElseIfExpressionBranch> {
+        if index < self.branches.len() {
+            Some(self.branches.remove(index))
+        } else {
+            None
+        }
+    }
+
     #[inline]
     pub fn iter_mut_branches(&mut self) -> impl Iterator<Item = &mut ElseIfExpressionBranch> {
         self.branches.iter_mut()
@@ -164,6 +183,10 @@ impl ElseIfExpressionBranch {
     #[inline]
     pub fn mutate_result(&mut self) -> &mut Expression {
         &mut self.result
+    }
+
+    pub fn into_expressions(self) -> (Expression, Expression) {
+        (self.condition, self.result)
     }
 
     pub fn clear_comments(&mut self) {
