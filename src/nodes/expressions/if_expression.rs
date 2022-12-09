@@ -96,10 +96,12 @@ impl IfExpression {
         self.branches.iter()
     }
 
+    #[inline]
     pub fn clear_elseif_branches(&mut self) {
         self.branches.clear();
     }
 
+    #[inline]
     pub fn retain_elseif_branches_mut(
         &mut self,
         filter: impl FnMut(&mut ElseIfExpressionBranch) -> bool,

@@ -1,3 +1,5 @@
+use std::mem;
+
 use crate::nodes::{Block, Expression, Token};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -70,6 +72,11 @@ impl IfBranch {
     #[inline]
     pub fn mutate_block(&mut self) -> &mut Block {
         &mut self.block
+    }
+
+    #[inline]
+    pub fn take_block(&mut self) -> Block {
+        mem::replace(&mut self.block, Block::default())
     }
 
     #[inline]
@@ -255,5 +262,16 @@ impl IfStatement {
         self.branches
             .iter_mut()
             .for_each(IfBranch::clear_whitespaces);
+    }
+
+    pub fn retain_branches_mut(&mut self, filter: impl FnMut(&mut IfBranch) -> bool) -> bool {
+        self.branches.retain_mut(filter);
+        if self.branches.is_empty() {
+            // an if statement requires at least one branch
+            self.branches.push(IfBranch::new(false, Block::default()));
+            true
+        } else {
+            false
+        }
     }
 }
