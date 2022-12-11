@@ -76,7 +76,7 @@ impl IfBranch {
 
     #[inline]
     pub fn take_block(&mut self) -> Block {
-        mem::replace(&mut self.block, Block::default())
+        mem::take(&mut self.block)
     }
 
     #[inline]
