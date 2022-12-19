@@ -23,7 +23,7 @@ test_rule!(
     nested_field_expressions("var.object.prop += 1")
         => "do local __DARKLUA_VAR = var.object __DARKLUA_VAR.prop = __DARKLUA_VAR.prop + 1 end",
     consecutive_nested_field_assignments("a.object.counter += 1 b.object.counter -= 1")
-        => "do local __DARKLUA_VAR = a.object __DARKLUA_VAR.counter = __DARKLUA_VAR.counter + 1 local __DARKLUA_VAR0 = b.object __DARKLUA_VAR0.counter = __DARKLUA_VAR0.counter - 1 end",
+        => "do local __DARKLUA_VAR = a.object __DARKLUA_VAR.counter = __DARKLUA_VAR.counter + 1 end do local __DARKLUA_VAR0 = b.object __DARKLUA_VAR0.counter = __DARKLUA_VAR0.counter - 1 end",
 );
 
 #[test]
