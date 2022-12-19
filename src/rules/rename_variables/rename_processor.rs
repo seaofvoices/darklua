@@ -1,5 +1,5 @@
 use crate::nodes::{Expression, Identifier, LocalFunctionStatement};
-use crate::process::utils::{CharPermutator, identifier_permutator};
+use crate::process::utils::{identifier_permutator, CharPermutator};
 use crate::process::{utils::KEYWORDS, NodeProcessor, Scope};
 
 use std::cmp::Ordering;
