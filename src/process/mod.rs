@@ -13,5 +13,6 @@ pub use evaluator::*;
 #[cfg(test)]
 pub use node_counter::NodeCounter;
 pub use node_processor::NodeProcessor;
+pub(crate) use scope_visitor::IdentifierTracker;
 pub use scope_visitor::{Scope, ScopeVisitor};
 pub use visitors::{DefaultVisitor, NodeVisitor};

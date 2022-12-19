@@ -11,6 +11,7 @@ mod inject_value;
 mod method_def;
 mod no_local_function;
 mod remove_comments;
+mod remove_compound_assign;
 mod remove_nil_declarations;
 mod remove_spaces;
 mod rename_variables;
@@ -29,6 +30,7 @@ pub use inject_value::*;
 pub use method_def::*;
 pub use no_local_function::*;
 pub use remove_comments::*;
+pub use remove_compound_assign::*;
 pub use remove_nil_declarations::*;
 pub use remove_spaces::*;
 pub use rename_variables::*;
@@ -159,6 +161,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         GROUP_LOCAL_ASSIGNMENT_RULE_NAME,
         INJECT_GLOBAL_VALUE_RULE_NAME,
         REMOVE_COMMENTS_RULE_NAME,
+        REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME,
         REMOVE_EMPTY_DO_RULE_NAME,
         REMOVE_FUNCTION_CALL_PARENS_RULE_NAME,
         REMOVE_METHOD_DEFINITION_RULE_NAME,
@@ -184,6 +187,7 @@ impl FromStr for Box<dyn Rule> {
             GROUP_LOCAL_ASSIGNMENT_RULE_NAME => Box::new(GroupLocalAssignment::default()),
             INJECT_GLOBAL_VALUE_RULE_NAME => Box::new(InjectGlobalValue::default()),
             REMOVE_COMMENTS_RULE_NAME => Box::new(RemoveComments::default()),
+            REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME => Box::new(RemoveCompoundAssignment::default()),
             REMOVE_EMPTY_DO_RULE_NAME => Box::new(RemoveEmptyDo::default()),
             REMOVE_FUNCTION_CALL_PARENS_RULE_NAME => Box::new(RemoveFunctionCallParens::default()),
             REMOVE_METHOD_DEFINITION_RULE_NAME => Box::new(RemoveMethodDefinition::default()),

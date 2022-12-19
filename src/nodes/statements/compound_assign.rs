@@ -95,6 +95,11 @@ impl CompoundAssignStatement {
     }
 
     #[inline]
+    pub fn extract_assignment(self) -> (Variable, Expression) {
+        (self.variable, self.value)
+    }
+
+    #[inline]
     pub fn mutate_variable(&mut self) -> &mut Variable {
         &mut self.variable
     }
