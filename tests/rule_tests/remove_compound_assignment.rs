@@ -1,7 +1,7 @@
 use darklua_core::rules::{RemoveCompoundAssignment, Rule};
 
 test_rule!(
-    remove_nil_declaration,
+    remove_compound_assignment,
     RemoveCompoundAssignment::default(),
     increase_identifier("a += 1") => "a = a + 1",
     decrease_identifier("a -= 1") => "a = a - 1",
