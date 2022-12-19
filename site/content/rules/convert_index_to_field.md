@@ -6,4 +6,4 @@ examples:
   - content: "return var['field']"
 ---
 
-When an index expression is using a static string (or an expression that can be statically evaluated into a string), this rule replaces it with a field expression. For example, if you have this code:
+When an index expression is using a static string (or an expression that can be statically evaluated into a string), this rule replaces it with a field expression.
