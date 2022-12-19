@@ -22,6 +22,8 @@ test_rule!(
         => "do local __DARKLUA_VAR, __DARKLUA_VAR0 = object[call()], getKey() __DARKLUA_VAR[__DARKLUA_VAR0] = __DARKLUA_VAR[__DARKLUA_VAR0] + 1 end",
     nested_field_expressions("var.object.prop += 1")
         => "do local __DARKLUA_VAR = var.object __DARKLUA_VAR.prop = __DARKLUA_VAR.prop + 1 end",
+    consecutive_nested_field_assignments("a.object.counter += 1 b.object.counter -= 1")
+        => "do local __DARKLUA_VAR = a.object __DARKLUA_VAR.counter = __DARKLUA_VAR.counter + 1 local __DARKLUA_VAR0 = b.object __DARKLUA_VAR0.counter = __DARKLUA_VAR0.counter - 1 end",
 );
 
 #[test]
