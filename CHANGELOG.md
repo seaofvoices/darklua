@@ -2,8 +2,9 @@
 
 ## Unreleased
 
+* enhance `remove_unused_if_branch` to process if expressions ([#77](https://github.com/seaofvoices/darklua/pull/77))
 * remove possible panic in AST parsing ([#74](https://github.com/seaofvoices/darklua/pull/74))
-* fix large AST tree parsing issue ([#73](https://github.com/seaofvoices/darklua/pull/73))
+* fix large AST parsing issue ([#73](https://github.com/seaofvoices/darklua/pull/73))
 * refactor ParserError into an opaque struct (instead of an enum) ([#71](https://github.com/seaofvoices/darklua/pull/71))
 * refactor darklua frontend ([#69](https://github.com/seaofvoices/darklua/pull/69)):
   * the `--config-path` argument of the `minify` command was removed
