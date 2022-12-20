@@ -45,6 +45,27 @@ impl Evaluator {
         }
     }
 
+    pub fn can_return_multiple_values(&self, expression: &Expression) -> bool {
+        match expression {
+            Expression::Binary(_)
+            | Expression::Call(_)
+            | Expression::Field(_)
+            | Expression::Index(_)
+            | Expression::Unary(_)
+            | Expression::VariableArguments(_) => true,
+            Expression::False(_)
+            | Expression::Function(_)
+            | Expression::Identifier(_)
+            | Expression::If(_)
+            | Expression::Nil(_)
+            | Expression::Number(_)
+            | Expression::Parenthese(_)
+            | Expression::String(_)
+            | Expression::Table(_)
+            | Expression::True(_) => false,
+        }
+    }
+
     pub fn has_side_effects(&self, expression: &Expression) -> bool {
         match expression {
             Expression::False(_)

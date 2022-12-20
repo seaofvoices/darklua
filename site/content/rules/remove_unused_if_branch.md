@@ -2,9 +2,20 @@
 description: Removes unused if branch
 added_in: "0.3.1"
 parameters: []
+examples:
+  - content: "return if true then value else default"
+  - content: "return if false then value else default"
+  - content: |
+      if false then
+          local sum = 0
+          for _, element in ipairs(array) do
+              sum = sum + element
+          end
+          print("sum of array:", sum)
+      end
 ---
 
-When a condition in a if branch (`if condition then` or `elseif condition then`) can be evaluated to a known, the if statement is modified to remove branches that become useless.
+When a condition in a if branch (`if condition then` or `elseif condition then`) can be evaluated to a known value, the if statement (or if expression) is modified to remove branches that become useless.
 
 ```lua
 if unknown then
