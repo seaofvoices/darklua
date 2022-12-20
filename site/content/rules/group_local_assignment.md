@@ -10,7 +10,7 @@ examples:
 
 This rule will merge consecutive local assignments.
 
-The rule will not merge an assignments if one assignment temporally depends on the previous one, since it would break the code or change the behavior. The following code would not be changed:
+The rule will not merge assignments if one assignment temporally depends on the previous one, since it would break the code or change the behavior. The following code would not be changed:
 
 ```lua
 local foo = 1

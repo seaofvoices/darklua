@@ -1,8 +1,6 @@
 ---
 source: src/rules/mod.rs
-assertion_line: 306
 expression: rule_names
-
 ---
 [
   "compute_expression",
@@ -12,6 +10,7 @@ expression: rule_names
   "group_local_assignment",
   "inject_global_value",
   "remove_comments",
+  "remove_compound_assignment",
   "remove_empty_do",
   "remove_function_call_parens",
   "remove_method_definition",
