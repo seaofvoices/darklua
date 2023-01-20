@@ -13,7 +13,16 @@ test_rule!(
     increase_index_without_side_effect("a[prop] += 1") => "a[prop] = a[prop] + 1",
     increase_index_with_true("a[true] += 1") => "a[true] = a[true] + 1",
     increase_index_with_false("a[false] += 1") => "a[false] = a[false] + 1",
+    increase_index_with_parenthese_expression("a[(key)] += 1") => "a[key] = a[key] + 1",
     increase_field("a.counter += 1") => "a.counter = a.counter + 1",
+    increase_field_on_function_call("getObject().counter += 1")
+        => "do local __DARKLUA_VAR = getObject() __DARKLUA_VAR.counter = __DARKLUA_VAR.counter + 1 end",
+    increase_field_on_parentheses("(if condition then a else b).counter += 1")
+        => "do local __DARKLUA_VAR = if condition then a else b __DARKLUA_VAR.counter = __DARKLUA_VAR.counter + 1 end",
+    increase_identifier_in_parenthese_for_field("(a).counter += 1") => "a.counter = a.counter + 1",
+    increase_false_in_parenthese_for_field("(false).counter += 1") => "(false).counter = (false).counter + 1",
+    increase_identifier_in_parenthese_for_index("(a)['counter'] += 1") => "a['counter'] = a['counter'] + 1",
+    increase_true_in_parenthese_for_index("(true)['counter'] += 1") => "(true)['counter'] = (true)['counter'] + 1",
     increase_index_with_side_effects_in_index("a[call()] += 1")
         => "do local __DARKLUA_VAR = call() a[__DARKLUA_VAR] = a[__DARKLUA_VAR] + 1 end",
     increase_index_with_side_effects_in_prefix("object[call()][key] += 1")
