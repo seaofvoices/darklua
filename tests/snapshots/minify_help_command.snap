@@ -2,21 +2,17 @@
 source: tests/cli.rs
 expression: content
 ---
-darklua-minify 0.8.0
 Minify lua files without applying any transformation
 
-USAGE:
-    darklua minify [FLAGS] [OPTIONS] <input-path> <output-path>
+Usage: darklua minify [OPTIONS] <INPUT_PATH> <OUTPUT_PATH>
 
-FLAGS:
-    -h, --help       Prints help information
-    -V, --version    Prints version information
-    -v, --verbose    Sets verbosity level (can be specified multiple times)
+Arguments:
+  <INPUT_PATH>   Path to the lua file to minify
+  <OUTPUT_PATH>  Where to output the result
 
-OPTIONS:
-        --column-span <column-span>    The maximum number of characters that should be written on a line
-
-ARGS:
-    <input-path>     Path to the lua file to minify
-    <output-path>    Where to output the result
+Options:
+      --column-span <COLUMN_SPAN>  The maximum number of characters that should be written on a line
+  -v, --verbose...                 Sets verbosity level (can be specified multiple times)
+  -h, --help                       Print help
+  -V, --version                    Print version
 

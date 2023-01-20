@@ -2,21 +2,19 @@ use crate::cli::error::CliError;
 use crate::cli::utils::maybe_plural;
 use crate::cli::{CommandResult, GlobalOptions};
 
+use clap::Args;
 use darklua_core::{Configuration, GeneratorParameters, Resources};
 use std::path::PathBuf;
 use std::time::Instant;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct Options {
     /// Path to the lua file to minify.
-    #[structopt(parse(from_os_str))]
     input_path: PathBuf,
     /// Where to output the result.
-    #[structopt(parse(from_os_str))]
     output_path: PathBuf,
     /// The maximum number of characters that should be written on a line.
-    #[structopt(long)]
+    #[arg(long)]
     column_span: Option<usize>,
 }
 
