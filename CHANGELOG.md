@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* add rule to remove compount assignments ([#78](https://github.com/seaofvoices/darklua/pull/78))
 * enhance `remove_unused_if_branch` to process if expressions ([#77](https://github.com/seaofvoices/darklua/pull/77))
 * remove possible panic in AST parsing ([#74](https://github.com/seaofvoices/darklua/pull/74))
 * fix large AST parsing issue ([#73](https://github.com/seaofvoices/darklua/pull/73))

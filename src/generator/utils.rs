@@ -154,7 +154,7 @@ pub fn write_number(number: &NumberExpression) -> String {
                 format!("({}1/0)", if float.is_sign_negative() { "-" } else { "" })
             } else {
                 format!(
-                    "{:.}{}",
+                    "{}{}",
                     float,
                     number
                         .get_exponent()

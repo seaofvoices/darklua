@@ -1,17 +1,15 @@
 use crate::nodes::{Expression, Identifier, LocalFunctionStatement};
+use crate::process::utils::{identifier_permutator, CharPermutator};
 use crate::process::{utils::KEYWORDS, NodeProcessor, Scope};
-use crate::rules::rename_variables::Permutator;
 
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
-const CHAR_SET: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789";
-
 #[derive(Debug)]
 pub struct RenameProcessor {
     real_to_obfuscated: Vec<HashMap<String, String>>,
-    permutator: Permutator<std::str::Chars<'static>>,
+    permutator: CharPermutator,
     avoid_identifier: HashSet<String>,
     reuse_identifiers: Vec<String>,
     include_functions: bool,
@@ -24,7 +22,7 @@ impl RenameProcessor {
 
         Self {
             real_to_obfuscated: Vec::new(),
-            permutator: Permutator::new(CHAR_SET.chars()),
+            permutator: identifier_permutator(),
             avoid_identifier,
             reuse_identifiers: Vec::new(),
             include_functions,
@@ -127,8 +125,7 @@ impl Scope for RenameProcessor {
 
     fn pop(&mut self) {
         if let Some(dictionary) = self.real_to_obfuscated.pop() {
-            self.reuse_identifiers
-                .extend(dictionary.into_iter().map(|(_, obfuscated)| obfuscated));
+            self.reuse_identifiers.extend(dictionary.into_values());
             self.reuse_identifiers
                 .sort_by(|a, b| sort_identifiers(a, b).reverse());
         }

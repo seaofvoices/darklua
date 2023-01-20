@@ -649,7 +649,7 @@ impl LuaGenerator for DenseLuaGenerator {
                     self.push_char('0');
                     self.push_char(')');
                 } else {
-                    let mut result = format!("{:.}", float);
+                    let mut result = format!("{}", float);
 
                     if let Some(exponent) = number.get_exponent() {
                         let exponent_char = number

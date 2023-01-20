@@ -1,5 +1,11 @@
+use std::collections::HashSet;
+use std::ops::DerefMut;
+
 use crate::nodes::*;
+use crate::process::utils::is_valid_identifier;
 use crate::process::{NodeProcessor, NodeVisitor};
+
+use super::utils::{identifier_permutator, Permutator};
 
 /// Defines methods to interact with the concept of lexical scoping. The struct implementing this
 /// trait should be able to keep track of identifiers when used along the ScopeVisitor.
@@ -142,5 +148,115 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
         Self::visit_expression(statement.mutate_condition(), scope);
 
         scope.pop();
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct IdentifierTracker {
+    identifiers: Vec<HashSet<String>>,
+}
+
+impl IdentifierTracker {
+    fn insert_identifier(&mut self, identifier: &str) {
+        if let Some(set) = self.identifiers.last_mut() {
+            set.insert(identifier.to_string());
+        } else {
+            let mut set = HashSet::new();
+            set.insert(identifier.to_string());
+            self.identifiers.push(set);
+        }
+    }
+
+    pub fn new() -> IdentifierTracker {
+        Self {
+            identifiers: Vec::new(),
+        }
+    }
+
+    pub fn is_identifier_used(&self, identifier: &str) -> bool {
+        self.identifiers.iter().any(|set| set.contains(identifier))
+    }
+
+    pub fn generate_identifier(&mut self) -> String {
+        let mut permutator = identifier_permutator();
+
+        let identifier = permutator
+            .find(|identifier| {
+                is_valid_identifier(identifier) && !self.is_identifier_used(identifier)
+            })
+            .expect("the permutator should always ultimately return a valid identifier");
+        self.insert_identifier(&identifier);
+        identifier
+    }
+
+    pub fn generate_identifier_with_prefix(&mut self, prefix: impl Into<String>) -> String {
+        let mut identifier = prefix.into();
+        if identifier.is_empty() {
+            return self.generate_identifier();
+        }
+        let initial_length = identifier.len();
+        let mut permutator = Permutator::new("012345689".chars());
+
+        while self.is_identifier_used(&identifier) {
+            identifier.truncate(initial_length);
+            let next_suffix = permutator.next().unwrap_or_else(|| "_".to_owned());
+            identifier.push_str(&next_suffix);
+        }
+        self.insert_identifier(&identifier);
+        identifier
+    }
+}
+
+impl Scope for IdentifierTracker {
+    fn push(&mut self) {
+        self.identifiers.push(HashSet::new())
+    }
+
+    fn pop(&mut self) {
+        self.identifiers.pop();
+    }
+
+    fn insert(&mut self, identifier: &mut String) {
+        self.insert_identifier(identifier);
+    }
+
+    fn insert_local(&mut self, identifier: &mut String, _value: Option<&mut Expression>) {
+        self.insert_identifier(identifier);
+    }
+
+    fn insert_local_function(&mut self, function: &mut LocalFunctionStatement) {
+        self.insert_identifier(function.mutate_identifier().get_name());
+    }
+}
+
+// implement Scope on anything that can deref into a Scope
+impl<T, U> Scope for T
+where
+    T: DerefMut<Target = U>,
+    U: Scope,
+{
+    #[inline]
+    fn push(&mut self) {
+        self.deref_mut().push()
+    }
+
+    #[inline]
+    fn pop(&mut self) {
+        self.deref_mut().pop()
+    }
+
+    #[inline]
+    fn insert(&mut self, identifier: &mut String) {
+        self.deref_mut().insert(identifier);
+    }
+
+    #[inline]
+    fn insert_local(&mut self, identifier: &mut String, value: Option<&mut Expression>) {
+        self.deref_mut().insert_local(identifier, value)
+    }
+
+    #[inline]
+    fn insert_local_function(&mut self, function: &mut LocalFunctionStatement) {
+        self.deref_mut().insert_local_function(function)
     }
 }

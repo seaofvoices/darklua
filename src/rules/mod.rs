@@ -11,6 +11,7 @@ mod inject_value;
 mod method_def;
 mod no_local_function;
 mod remove_comments;
+mod remove_compound_assign;
 mod remove_nil_declarations;
 mod remove_spaces;
 mod rename_variables;
@@ -29,6 +30,7 @@ pub use inject_value::*;
 pub use method_def::*;
 pub use no_local_function::*;
 pub use remove_comments::*;
+pub use remove_compound_assign::*;
 pub use remove_nil_declarations::*;
 pub use remove_spaces::*;
 pub use rename_variables::*;
@@ -135,18 +137,18 @@ impl<T: FlawlessRule + RuleConfiguration> Rule for T {
 /// processed block will work as much as the original one.
 pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
     vec![
-        Box::new(RemoveSpaces::default()),
-        Box::new(RemoveComments::default()),
-        Box::new(ComputeExpression::default()),
-        Box::new(RemoveUnusedIfBranch::default()),
-        Box::new(RemoveUnusedWhile::default()),
-        Box::new(FilterAfterEarlyReturn::default()),
-        Box::new(RemoveEmptyDo::default()),
-        Box::new(RemoveMethodDefinition::default()),
-        Box::new(ConvertIndexToField::default()),
-        Box::new(RemoveNilDeclaration::default()),
-        Box::new(RenameVariables::default()),
-        Box::new(RemoveFunctionCallParens::default()),
+        Box::<RemoveSpaces>::default(),
+        Box::<RemoveComments>::default(),
+        Box::<ComputeExpression>::default(),
+        Box::<RemoveUnusedIfBranch>::default(),
+        Box::<RemoveUnusedWhile>::default(),
+        Box::<FilterAfterEarlyReturn>::default(),
+        Box::<RemoveEmptyDo>::default(),
+        Box::<RemoveMethodDefinition>::default(),
+        Box::<ConvertIndexToField>::default(),
+        Box::<RemoveNilDeclaration>::default(),
+        Box::<RenameVariables>::default(),
+        Box::<RemoveFunctionCallParens>::default(),
     ]
 }
 
@@ -159,6 +161,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         GROUP_LOCAL_ASSIGNMENT_RULE_NAME,
         INJECT_GLOBAL_VALUE_RULE_NAME,
         REMOVE_COMMENTS_RULE_NAME,
+        REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME,
         REMOVE_EMPTY_DO_RULE_NAME,
         REMOVE_FUNCTION_CALL_PARENS_RULE_NAME,
         REMOVE_METHOD_DEFINITION_RULE_NAME,
@@ -175,23 +178,24 @@ impl FromStr for Box<dyn Rule> {
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
         let rule: Box<dyn Rule> = match string {
-            COMPUTE_EXPRESSIONS_RULE_NAME => Box::new(ComputeExpression::default()),
-            CONVERT_INDEX_TO_FIELD_RULE_NAME => Box::new(ConvertIndexToField::default()),
+            COMPUTE_EXPRESSIONS_RULE_NAME => Box::<ComputeExpression>::default(),
+            CONVERT_INDEX_TO_FIELD_RULE_NAME => Box::<ConvertIndexToField>::default(),
             CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => {
-                Box::new(ConvertLocalFunctionToAssign::default())
+                Box::<ConvertLocalFunctionToAssign>::default()
             }
-            FILTER_AFTER_EARLY_RETURN_RULE_NAME => Box::new(FilterAfterEarlyReturn::default()),
-            GROUP_LOCAL_ASSIGNMENT_RULE_NAME => Box::new(GroupLocalAssignment::default()),
-            INJECT_GLOBAL_VALUE_RULE_NAME => Box::new(InjectGlobalValue::default()),
-            REMOVE_COMMENTS_RULE_NAME => Box::new(RemoveComments::default()),
-            REMOVE_EMPTY_DO_RULE_NAME => Box::new(RemoveEmptyDo::default()),
-            REMOVE_FUNCTION_CALL_PARENS_RULE_NAME => Box::new(RemoveFunctionCallParens::default()),
-            REMOVE_METHOD_DEFINITION_RULE_NAME => Box::new(RemoveMethodDefinition::default()),
-            REMOVE_NIL_DECLARATION_RULE_NAME => Box::new(RemoveNilDeclaration::default()),
-            REMOVE_SPACES_RULE_NAME => Box::new(RemoveSpaces::default()),
-            REMOVE_UNUSED_IF_BRANCH_RULE_NAME => Box::new(RemoveUnusedIfBranch::default()),
-            REMOVE_UNUSED_WHILE_RULE_NAME => Box::new(RemoveUnusedWhile::default()),
-            RENAME_VARIABLES_RULE_NAME => Box::new(RenameVariables::default()),
+            FILTER_AFTER_EARLY_RETURN_RULE_NAME => Box::<FilterAfterEarlyReturn>::default(),
+            GROUP_LOCAL_ASSIGNMENT_RULE_NAME => Box::<GroupLocalAssignment>::default(),
+            INJECT_GLOBAL_VALUE_RULE_NAME => Box::<InjectGlobalValue>::default(),
+            REMOVE_COMMENTS_RULE_NAME => Box::<RemoveComments>::default(),
+            REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME => Box::<RemoveCompoundAssignment>::default(),
+            REMOVE_EMPTY_DO_RULE_NAME => Box::<RemoveEmptyDo>::default(),
+            REMOVE_FUNCTION_CALL_PARENS_RULE_NAME => Box::<RemoveFunctionCallParens>::default(),
+            REMOVE_METHOD_DEFINITION_RULE_NAME => Box::<RemoveMethodDefinition>::default(),
+            REMOVE_NIL_DECLARATION_RULE_NAME => Box::<RemoveNilDeclaration>::default(),
+            REMOVE_SPACES_RULE_NAME => Box::<RemoveSpaces>::default(),
+            REMOVE_UNUSED_IF_BRANCH_RULE_NAME => Box::<RemoveUnusedIfBranch>::default(),
+            REMOVE_UNUSED_WHILE_RULE_NAME => Box::<RemoveUnusedWhile>::default(),
+            RENAME_VARIABLES_RULE_NAME => Box::<RenameVariables>::default(),
             _ => return Err(format!("invalid rule name: {}", string)),
         };
 
