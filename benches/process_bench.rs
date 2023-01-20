@@ -14,18 +14,18 @@ bench_utils::generate_bench!(roact, {
         dense_rewrite => Options::new("src").with_configuration(Configuration::empty()),
         minify => Options::new("src").with_configuration({
             let rules: Vec<Box<dyn Rule>> = vec![
-                Box::new(rules::RemoveSpaces::default()),
-                Box::new(rules::RemoveComments::default()),
-                Box::new(rules::ComputeExpression::default()),
-                Box::new(rules::RemoveUnusedIfBranch::default()),
-                Box::new(rules::RemoveUnusedWhile::default()),
-                Box::new(rules::FilterAfterEarlyReturn::default()),
-                Box::new(rules::RemoveEmptyDo::default()),
-                Box::new(rules::RemoveMethodDefinition::default()),
-                Box::new(rules::ConvertIndexToField::default()),
-                Box::new(rules::RemoveNilDeclaration::default()),
+                Box::<rules::RemoveSpaces>::default(),
+                Box::<rules::RemoveComments>::default(),
+                Box::<rules::ComputeExpression>::default(),
+                Box::<rules::RemoveUnusedIfBranch>::default(),
+                Box::<rules::RemoveUnusedWhile>::default(),
+                Box::<rules::FilterAfterEarlyReturn>::default(),
+                Box::<rules::RemoveEmptyDo>::default(),
+                Box::<rules::RemoveMethodDefinition>::default(),
+                Box::<rules::ConvertIndexToField>::default(),
+                Box::<rules::RemoveNilDeclaration>::default(),
                 Box::new(rules::RenameVariables::default().with_function_names()),
-                Box::new(rules::RemoveFunctionCallParens::default()),
+                Box::<rules::RemoveFunctionCallParens>::default(),
             ];
 
             rules.into_iter().fold(

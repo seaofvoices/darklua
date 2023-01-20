@@ -125,8 +125,7 @@ impl Scope for RenameProcessor {
 
     fn pop(&mut self) {
         if let Some(dictionary) = self.real_to_obfuscated.pop() {
-            self.reuse_identifiers
-                .extend(dictionary.into_iter().map(|(_, obfuscated)| obfuscated));
+            self.reuse_identifiers.extend(dictionary.into_values());
             self.reuse_identifiers
                 .sort_by(|a, b| sort_identifiers(a, b).reverse());
         }

@@ -41,57 +41,56 @@ fn generated_identifiers(length: usize) -> Vec<Identifier> {
 }
 
 #[inline]
+fn normal_sample(mean: f64, std_dev: f64) -> usize {
+    thread_rng()
+        .sample(Normal::new(mean, std_dev).unwrap())
+        .abs()
+        .floor() as usize
+}
+
+#[inline]
 fn function_param_length() -> usize {
-    let normal = Normal::new(0.0, 2.5).unwrap();
-    (thread_rng().sample(normal) as f64).abs().floor() as usize
+    normal_sample(0.0, 2.5)
 }
 
 #[inline]
 fn function_name_field_length() -> usize {
-    let normal = Normal::new(0.0, 1.0).unwrap();
-    (thread_rng().sample(normal) as f64).abs().floor() as usize
+    normal_sample(0.0, 1.0)
 }
 
 #[inline]
 fn generic_for_variables_length() -> usize {
-    let normal = Normal::new(0.0, 1.0).unwrap();
-    1 + (thread_rng().sample(normal) as f64).abs().floor() as usize
+    1 + normal_sample(0.0, 1.0)
 }
 
 #[inline]
 fn assign_variables_length() -> usize {
-    let normal = Normal::new(0.0, 1.0).unwrap();
-    1 + (thread_rng().sample(normal) as f64).abs().floor() as usize
+    1 + normal_sample(0.0, 1.0)
 }
 
 #[inline]
 fn local_assign_values_length() -> usize {
-    let normal = Normal::new(1.0, 1.0).unwrap();
-    (thread_rng().sample(normal) as f64).abs().floor() as usize
+    normal_sample(1.0, 1.0)
 }
 
 #[inline]
 fn assign_values_length() -> usize {
-    let normal = Normal::new(0.0, 1.0).unwrap();
-    1 + (thread_rng().sample(normal) as f64).abs().floor() as usize
+    1 + normal_sample(0.0, 1.0)
 }
 
 #[inline]
 fn generic_for_expression_length() -> usize {
-    let normal = Normal::new(0.0, 1.0).unwrap();
-    1 + (thread_rng().sample(normal) as f64).abs().floor() as usize
+    1 + normal_sample(0.0, 1.0)
 }
 
 #[inline]
 fn if_branch_count() -> usize {
-    let normal = Normal::new(0.0, 1.5).unwrap();
-    1 + (thread_rng().sample(normal) as f64).abs().floor() as usize
+    1 + normal_sample(0.0, 1.5)
 }
 
 #[inline]
 fn table_length() -> usize {
-    let normal = Normal::new(1.0, 1.5).unwrap();
-    (thread_rng().sample(normal) as f64).abs().floor() as usize
+    normal_sample(1.0, 1.5)
 }
 
 #[inline]
@@ -230,9 +229,7 @@ impl Fuzz<LastStatement> for LastStatement {
             0 => Self::new_break(),
             1 => Self::new_continue(),
             _ => {
-                let normal = Normal::new(0.0, 2.5).unwrap();
-                let mut rng = thread_rng();
-                let length = (rng.sample(normal) as f64).abs().floor() as usize;
+                let length = normal_sample(0.0, 2.5);
 
                 ReturnStatement::new(generate_expressions(length, context)).into()
             }

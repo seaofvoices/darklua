@@ -167,7 +167,7 @@ mod test {
     use std::iter::empty;
 
     fn new_rule() -> Box<dyn Rule> {
-        Box::new(RenameVariables::default())
+        Box::<RenameVariables>::default()
     }
 
     #[test]
