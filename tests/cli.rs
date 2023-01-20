@@ -184,6 +184,13 @@ fn snapshot_help_command() {
 }
 
 #[test]
+fn snapshot_short_help_command() {
+    Context::default()
+        .arg("-h")
+        .snapshot_command("short_help_command");
+}
+
+#[test]
 fn snapshot_process_help_command() {
     Context::default()
         .arg("process")

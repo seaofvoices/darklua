@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* upgrade CLI library (mostly changes the help messages format) ([#83](https://github.com/seaofvoices/darklua/pull/83))
 * add rule to remove compount assignments ([#78](https://github.com/seaofvoices/darklua/pull/78))
 * enhance `remove_unused_if_branch` to process if expressions ([#77](https://github.com/seaofvoices/darklua/pull/77))
 * remove possible panic in AST parsing ([#74](https://github.com/seaofvoices/darklua/pull/74))
