@@ -3,17 +3,17 @@ pub mod minify;
 pub mod process;
 pub mod utils;
 
+use clap::{Args, Parser, Subcommand};
 use log::LevelFilter;
-use structopt::StructOpt;
 
 use self::error::CliError;
 
 type CommandResult = Result<(), CliError>;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct GlobalOptions {
     /// Sets verbosity level (can be specified multiple times)
-    #[structopt(long, short, global(true), parse(from_occurrences))]
+    #[arg(long, short, global(true), action = clap::ArgAction::Count)]
     verbose: u8,
 }
 
@@ -28,7 +28,7 @@ impl GlobalOptions {
     }
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum Command {
     /// Minify lua files without applying any transformation
     Minify(minify::Options),
@@ -49,17 +49,17 @@ impl Command {
     }
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "darklua")]
+#[derive(Debug, Parser)]
+#[command(name = "darklua", about, version, propagate_version = true)]
 /// Transform Lua scripts
 ///
 /// For specific help about each command, run `darklua <command> --help`
 ///
 /// Site: https://darklua.com
 pub struct Darklua {
-    #[structopt(flatten)]
+    #[command(flatten)]
     global_options: GlobalOptions,
-    #[structopt(subcommand)]
+    #[command(subcommand)]
     command: Command,
 }
 

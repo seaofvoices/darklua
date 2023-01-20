@@ -2,26 +2,24 @@ use crate::cli::error::CliError;
 use crate::cli::utils::maybe_plural;
 use crate::cli::{CommandResult, GlobalOptions};
 
+use clap::Args;
 use darklua_core::{GeneratorParameters, Resources};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Instant;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct Options {
     /// Path to the lua file to process.
-    #[structopt(parse(from_os_str))]
     input_path: PathBuf,
     /// Where to output the result.
-    #[structopt(parse(from_os_str))]
     output_path: PathBuf,
     /// Choose a specific configuration file.
-    #[structopt(long, short, alias = "config-path")]
+    #[arg(long, short, alias = "config-path")]
     config: Option<PathBuf>,
     /// Choose how Lua code is formatted ('dense', 'readable' or 'retain-lines').
     /// This will override the format given by the configuration file.
-    #[structopt(long)]
+    #[arg(long)]
     format: Option<LuaFormat>,
 }
 

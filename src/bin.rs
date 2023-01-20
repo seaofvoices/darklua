@@ -2,16 +2,16 @@ mod cli;
 
 use std::process;
 
+use clap::Parser;
 use cli::Darklua;
 use env_logger::{
     fmt::{Color, Style, StyledValue},
     Builder,
 };
 use log::Level;
-use structopt::StructOpt;
 
 fn main() {
-    let darklua = Darklua::from_args();
+    let darklua = Darklua::parse();
 
     let filter = darklua.get_log_level_filter();
 
