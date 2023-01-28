@@ -18,6 +18,8 @@ test_rule!(
     assign_to_nil_and_nil_and_true("local a, b, c = nil, nil, true") => "local c, a, b = true",
     assign_to_nil_and_call("local a, b = nil, call()") => "local b, a = (call())",
     assign_to_nil_and_call_and_false("local a, b, c = nil, call(), false") => "local b, c, a = call(), false",
+    // the rule may trim unnecessary expressions in declarations
+    assign_to_call_and_true_and_variable("local a = call(), true, var") => "local a = call()",
 );
 
 test_rule_wihout_effects!(
