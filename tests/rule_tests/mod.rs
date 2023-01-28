@@ -115,16 +115,29 @@ macro_rules! test_rule_wihout_effects {
         $(
             #[test]
             fn $name() {
-                use darklua_core::rules::Rule;
+                use darklua_core::{
+                    rules::Rule,
+                    generator::{LuaGenerator, TokenBasedLuaGenerator},
+                };
 
                 let mut block = $crate::utils::parse_input($input);
                 let expect_block = block.clone();
                 let mut context = darklua_core::rules::Context::default();
 
                 $rule.process(&mut block, &mut context)
-                    .expect("rule should suceed");
+                    .expect("rule should succeed");
 
-                pretty_assertions::assert_eq!(block, expect_block);
+                let mut generator = TokenBasedLuaGenerator::new($input);
+                generator.write_block(&block);
+                let lua_code = generator.into_string();
+
+                pretty_assertions::assert_eq!(
+                    block,
+                    expect_block,
+                    "\nexpected code:\n{}\nbut received:\n{}",
+                    $input,
+                    lua_code,
+                );
             }
         )*
     };

@@ -4,6 +4,8 @@ test_rule!(
     remove_nil_declaration,
     RemoveNilDeclaration::default(),
     assign_to_nil("local a = nil") => "local a",
+    assign_to_nil_and_extra_true("local a = nil, true") => "local a",
+    assign_to_true_nil_and_false("local a, b, c = true, nil, false") => "local a, c, b = true, false",
     assign_to_true_and_nil("local a, b = true, nil") => "local a, b = true",
     assign_to_nil_and_nil("local a, b = nil, nil") => "local a, b",
     assign_call_and_nil("local a, b = call(), nil") => "local a, b = (call())",
@@ -21,8 +23,8 @@ test_rule!(
 test_rule_wihout_effects!(
     RemoveNilDeclaration::default(),
     assign_to_true("local a = true"),
-    assign_to_nil_and_true("local a = nil, true"),
-    assign_to_true_nil_and_false("local a, b, c = true, nil, false"),
+    assign_to_nil_and_extra_call("local a = nil, call()"),
+    assign_to_nil_and_extract_varargs("local a, b, c = nil, ..."),
 );
 
 #[test]

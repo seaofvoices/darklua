@@ -133,6 +133,16 @@ impl LocalAssignStatement {
     }
 
     #[inline]
+    pub fn push_variable(&mut self, variable: impl Into<Identifier>) {
+        self.variables.push(variable.into());
+    }
+
+    #[inline]
+    pub fn push_value(&mut self, value: impl Into<Expression>) {
+        self.values.push(value.into());
+    }
+
+    #[inline]
     pub fn append_values(&mut self, values: &mut Vec<Expression>) {
         self.values.append(values);
     }
@@ -142,8 +152,8 @@ impl LocalAssignStatement {
         self.values.last()
     }
 
-    pub fn pop_value(&mut self) {
-        self.values.pop();
+    pub fn pop_value(&mut self) -> Option<Expression> {
+        let value = self.values.pop();
         if let Some(tokens) = &mut self.tokens {
             let length = self.values.len();
             if length == 0 {
@@ -156,6 +166,44 @@ impl LocalAssignStatement {
             } else {
                 tokens.value_commas.truncate(length.saturating_sub(1));
             }
+        }
+        value
+    }
+
+    pub fn remove_value(&mut self, index: usize) -> Option<Expression> {
+        if index < self.values.len() {
+            let value = self.values.remove(index);
+
+            if let Some(tokens) = &mut self.tokens {
+                if index < tokens.value_commas.len() {
+                    tokens.value_commas.remove(index);
+                }
+                if self.values.is_empty() && tokens.equal.is_some() {
+                    tokens.equal = None;
+                }
+            }
+
+            Some(value)
+        } else {
+            None
+        }
+    }
+
+    pub fn remove_variable(&mut self, index: usize) -> Option<Identifier> {
+        let len = self.variables.len();
+
+        if len > 1 && index < len {
+            let variable = self.variables.remove(index);
+
+            if let Some(tokens) = &mut self.tokens {
+                if index < tokens.variable_commas.len() {
+                    tokens.variable_commas.remove(index);
+                }
+            }
+
+            Some(variable)
+        } else {
+            None
         }
     }
 
