@@ -342,7 +342,6 @@ mod test {
             pretty_assertions::assert_eq!(assign, copy);
         }
 
-
         #[test]
         fn single_variable_remove_outside_of_bounds() {
             let mut assign = LocalAssignStatement::from_variable("var");
