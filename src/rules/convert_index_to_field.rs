@@ -1,9 +1,8 @@
 use crate::nodes::{
     Block, Expression, FieldExpression, Identifier, IndexExpression, Prefix, Variable,
 };
-use crate::process::{
-    utils::keywords, DefaultVisitor, Evaluator, LuaValue, NodeProcessor, NodeVisitor,
-};
+use crate::process::utils::is_valid_identifier;
+use crate::process::{DefaultVisitor, Evaluator, LuaValue, NodeProcessor, NodeVisitor};
 use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
 };
@@ -17,16 +16,10 @@ struct Converter {
     evaluator: Evaluator,
 }
 
-fn is_identifier(string: &str) -> bool {
-    string.starts_with(|c: char| c.is_ascii_alphabetic())
-        && string.chars().skip(1).all(|c| c.is_ascii_alphanumeric())
-        && !matches!(string, keywords::matches_any!())
-}
-
 impl Converter {
     fn convert_to_field(&self, index: &IndexExpression) -> Option<FieldExpression> {
         if let LuaValue::String(string) = self.evaluator.evaluate(index.get_index()) {
-            if is_identifier(&string) {
+            if is_valid_identifier(&string) {
                 return Some(FieldExpression::new(
                     index.get_prefix().clone(),
                     Identifier::new(string),

@@ -253,6 +253,7 @@ mod $mod_name {
             index_with_bracket_string => "return ok[ [[field]]]",
             call_with_bracket_string => "return ok[[ [field] ]]",
             concat_numbers => "return 9 .. 3",
+            concat_float_numbers => "return 9. .. 3",
             concat_number_with_variable_arguments => "return 9 .. ...",
             concat_variable_arguments_with_number => "return ... ..1",
             double_unary_minus => "return - -10",
@@ -422,6 +423,83 @@ mod $mod_name {
 
     mod snapshots {
         use super::*;
+
+        snapshot_node!($mod_name, $generator, block, write_block => (
+            ambiguous_function_call_from_assign => Block::default()
+                .with_statement(
+                    AssignStatement::from_variable(Variable::new("name"), Expression::identifier("variable"))
+                )
+                .with_statement(
+                    AssignStatement::from_variable(
+                        FieldExpression::new(ParentheseExpression::new(Expression::identifier("t")), "field"),
+                        false
+                    )
+                ),
+            ambiguous_function_call_from_compound_assign => Block::default()
+                .with_statement(
+                    CompoundAssignStatement::new(
+                        CompoundOperator::Plus,
+                        Variable::new("name"),
+                        BinaryExpression::new(
+                            BinaryOperator::Plus,
+                            Expression::identifier("variable"),
+                            Expression::identifier("value"),
+                        )
+                    )
+                )
+                .with_statement(
+                    AssignStatement::from_variable(
+                        IndexExpression::new(
+                            ParentheseExpression::new(Expression::identifier("t")),
+                            Expression::identifier("field"),
+                        ),
+                        false
+                    )
+                ),
+            ambiguous_function_call_from_local_assign => Block::default()
+                .with_statement(
+                    LocalAssignStatement::from_variable("name")
+                        .with_value(
+                            IfExpression::new(
+                                Expression::identifier("condition"),
+                                true,
+                                FunctionCall::from_name("fn")
+                            )
+                        )
+                )
+                .with_statement(
+                    FunctionCall::from_prefix(ParentheseExpression::new(Expression::identifier("fn")))
+                ),
+            ambiguous_function_call_from_function_call => Block::default()
+                .with_statement(
+                    FunctionCall::from_name("fn")
+                )
+                .with_statement(
+                    CompoundAssignStatement::new(
+                        CompoundOperator::Plus,
+                        IndexExpression::new(ParentheseExpression::new(
+                            Expression::identifier("t")),
+                            Expression::identifier("field"),
+                        ),
+                        1
+                    )
+                ),
+            ambiguous_function_call_from_repeat => Block::default()
+                .with_statement(
+                    RepeatStatement::new(
+                        Block::default(),
+                        UnaryExpression::new(UnaryOperator::Not, Expression::identifier("variable"))
+                    )
+                )
+                .with_statement(
+                    CompoundAssignStatement::new(
+                        CompoundOperator::Plus,
+                        FieldExpression::new(ParentheseExpression::new(Expression::identifier("t")), "field"),
+                        1
+                    )
+                ),
+        ));
+
         snapshot_node!($mod_name, $generator, expression, write_expression => (
             false_value => false,
             true_value => true,

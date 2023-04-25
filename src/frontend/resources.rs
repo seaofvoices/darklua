@@ -8,7 +8,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use super::utils::normalize_path;
+use crate::utils::normalize_path;
 
 #[derive(Debug, Clone)]
 enum Source {
@@ -32,7 +32,7 @@ impl Source {
                 let location = normalize_path(location);
 
                 data.iter()
-                    .any(|(path, _content)| path.starts_with(&location))
+                    .any(|(path, _content)| path != &location && path.starts_with(&location))
             }
         };
         Ok(is_directory)
@@ -98,7 +98,7 @@ impl Source {
             Self::Memory(data) => {
                 let data = data.borrow();
                 let location = normalize_path(location);
-                let mut paths: Vec<_> = data.keys().map(|path| normalize_path(path)).collect();
+                let mut paths: Vec<_> = data.keys().map(normalize_path).collect();
                 paths.retain(|path| path.starts_with(&location));
 
                 Box::new(paths.into_iter())
@@ -273,6 +273,22 @@ mod test {
             resources.write(any_path(), ANY_CONTENT).unwrap();
 
             assert_eq!(resources.exists(any_path()), Ok(true));
+        }
+
+        #[test]
+        fn created_file_exists_is_a_file() {
+            let resources = new();
+            resources.write(any_path(), ANY_CONTENT).unwrap();
+
+            assert_eq!(resources.is_file(any_path()), Ok(true));
+        }
+
+        #[test]
+        fn created_file_exists_is_not_a_directory() {
+            let resources = new();
+            resources.write(any_path(), ANY_CONTENT).unwrap();
+
+            assert_eq!(resources.is_directory(any_path()), Ok(false));
         }
 
         #[test]

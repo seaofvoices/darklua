@@ -8,9 +8,7 @@ pub use timer::Timer;
 #[cfg(target_arch = "wasm32")]
 pub use wasm_timer::Timer;
 
-use std::path::{Component, Path, PathBuf};
-
-pub fn maybe_plural(count: usize) -> &'static str {
+pub(crate) fn maybe_plural(count: usize) -> &'static str {
     if count > 1 {
         "s"
     } else {
@@ -18,29 +16,22 @@ pub fn maybe_plural(count: usize) -> &'static str {
     }
 }
 
-pub fn normalize_path(path: &Path) -> PathBuf {
-    let mut components = path.components().peekable();
-    let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
-        components.next();
-        PathBuf::from(c.as_os_str())
-    } else {
-        PathBuf::new()
-    };
+#[cfg(test)]
+mod test {
+    use super::*;
 
-    for component in components {
-        match component {
-            Component::Prefix(..) => unreachable!(),
-            Component::RootDir => {
-                ret.push(component.as_os_str());
-            }
-            Component::CurDir => {}
-            Component::ParentDir => {
-                ret.pop();
-            }
-            Component::Normal(c) => {
-                ret.push(c);
-            }
-        }
+    #[test]
+    fn maybe_plural_gives_s_when_size_is_above_one() {
+        assert_eq!(maybe_plural(2), "s");
     }
-    ret
+
+    #[test]
+    fn maybe_plural_gives_s_when_size_is_one() {
+        assert_eq!(maybe_plural(1), "");
+    }
+
+    #[test]
+    fn maybe_plural_gives_s_when_size_is_zero() {
+        assert_eq!(maybe_plural(0), "");
+    }
 }

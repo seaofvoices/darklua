@@ -40,7 +40,7 @@ tracing = { version = "0.1", optional = true }
 assert_cmd = "2.0.4"
 criterion = { version = "0.4", features = ["html_reports"] }
 include_dir = "0.7.3"
-insta = "1.7.1"
+insta = { version = "1.29.0", features = ["json"] }
 paste = "1.0"
 pretty_assertions = "0.7.2"
 rand = "0.7.3"
