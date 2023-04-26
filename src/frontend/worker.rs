@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::{frontend::utils::normalize_path, rules::ContextBuilder, GeneratorParameters};
+use crate::{rules::ContextBuilder, utils::normalize_path, GeneratorParameters};
 
 use super::{
     configuration::Configuration,
@@ -239,7 +239,7 @@ impl<'a> Worker<'a> {
             let mut required_content: Vec<_> = rule
                 .require_content(&normalized_source, progress.block())
                 .into_iter()
-                .map(|path| normalize_path(&path))
+                .map(normalize_path)
                 .filter(|path| {
                     if *path == normalized_source {
                         log::debug!("filtering out currently processing path");

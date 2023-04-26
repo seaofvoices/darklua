@@ -18,7 +18,7 @@ pub use resources::Resources;
 use work_item::WorkItem;
 use worker::Worker;
 
-use self::utils::normalize_path;
+use crate::utils::normalize_path;
 
 pub fn process(resources: &Resources, options: Options) -> ProcessResult {
     match private_process(resources, options) {
@@ -66,7 +66,7 @@ fn private_process(
 
             worker.process(
                 resources.collect_work(&input).map(|source| {
-                    let source = normalize_path(&source);
+                    let source = normalize_path(source);
                     source
                         .strip_prefix(&input)
                         .map(|relative| WorkItem::new(&source, output.join(relative)))

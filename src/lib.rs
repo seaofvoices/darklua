@@ -7,6 +7,7 @@ pub mod nodes;
 mod parser;
 pub mod process;
 pub mod rules;
+mod utils;
 
 pub use frontend::{process, Configuration, DarkluaError, GeneratorParameters, Options, Resources};
 pub use parser::{Parser, ParserError};

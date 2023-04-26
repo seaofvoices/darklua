@@ -122,6 +122,66 @@ impl From<f64> for Expression {
     }
 }
 
+impl From<f32> for Expression {
+    fn from(value: f32) -> Self {
+        (value as f64).into()
+    }
+}
+
+impl From<usize> for Expression {
+    fn from(value: usize) -> Self {
+        (value as f64).into()
+    }
+}
+
+impl From<u64> for Expression {
+    fn from(value: u64) -> Self {
+        (value as f64).into()
+    }
+}
+
+impl From<u32> for Expression {
+    fn from(value: u32) -> Self {
+        (value as f64).into()
+    }
+}
+
+impl From<u16> for Expression {
+    fn from(value: u16) -> Self {
+        (value as f64).into()
+    }
+}
+
+impl From<u8> for Expression {
+    fn from(value: u8) -> Self {
+        (value as f64).into()
+    }
+}
+
+impl From<i64> for Expression {
+    fn from(value: i64) -> Self {
+        (value as f64).into()
+    }
+}
+
+impl From<i32> for Expression {
+    fn from(value: i32) -> Self {
+        (value as f64).into()
+    }
+}
+
+impl From<i16> for Expression {
+    fn from(value: i16) -> Self {
+        (value as f64).into()
+    }
+}
+
+impl From<i8> for Expression {
+    fn from(value: i8) -> Self {
+        (value as f64).into()
+    }
+}
+
 impl From<BinaryExpression> for Expression {
     fn from(binary: BinaryExpression) -> Expression {
         Expression::Binary(Box::new(binary))
