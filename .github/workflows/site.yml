@@ -27,7 +27,7 @@ jobs:
           cache-dependency-path: "site/package-lock.json"
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Verify code style
         run: npm run style-check
