@@ -7,6 +7,7 @@ test_rule!(
     key_is_a_valid_identifier_with_number("return var['field1']") => "return var.field1",
     key_in_double_index("return var['props'][' ']") => "return var.props[' ']",
     assign_to_a_valid_identifier("var[\"field\"] = call()") => "var.field = call()",
+    multiple_assign_to_a_valid_identifier("var[\"field\"], var['key'], var.prop = call()") => "var.field, var.key, var.prop = call()",
     call_function("object['process'](true)") => "object.process(true)",
     call_method("object['sub']:method(...)") => "object.sub:method(...)",
     // table entries
