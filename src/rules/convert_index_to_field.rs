@@ -131,4 +131,20 @@ mod test {
 
         assert_json_snapshot!("default_convert_index_to_field", rule);
     }
+
+    #[test]
+    fn configure_with_extra_field_error() {
+        let result = json5::from_str::<Box<dyn Rule>>(
+            r#"{
+            rule: 'convert_index_to_field',
+            prop: "something",
+        }"#,
+        );
+        let err_message = match result {
+            Ok(_) => panic!("expected error when deserializing rule"),
+            Err(e) => e,
+        }
+        .to_string();
+        pretty_assertions::assert_eq!(err_message, "unexpected field 'prop'");
+    }
 }

@@ -10,10 +10,12 @@ test_rule!(
     call_function("object['process'](true)") => "object.process(true)",
     call_method("object['sub']:method(...)") => "object.sub:method(...)",
     // table entries
-    table_key_is_valid_identifier("return { [\"a\"] = true }")=> "return { a = true }",
+    table_key_is_valid_identifier("return { [\"a\"] = true }") => "return { a = true }",
     table_key_is_valid_identifier_with_number("return { [\"key1\"] = true }") => "return { key1 = true }",
     function_table_args_key_is_valid_identifier("call { ['a'] = true }")=> "call { a = true }",
     function_table_args_key_is_valid_identifier_with_number("call { ['key1'] = true }") => "call { key1 = true }",
+    table_with_multiple_keys("return { 'one', 'two', [\"a\"] = true, [\"b\"] = false, c = 0, [{}] = {} }")
+        => "return { 'one', 'two', a = true, b = false, c = 0, [{}] = {} }",
 );
 
 test_rule_wihout_effects!(
@@ -26,6 +28,7 @@ test_rule_wihout_effects!(
     key_is_do_keyword("return var['do']"),
     key_starts_with_number("return var['1field']"),
     call_function("object['function'](true)"),
+    key_is_a_table("return var[{}]"),
     // table entries
     table_key_is_empty_string("return { [\"\"] = true }"),
     table_key_with_space("return { [\"field \"] = true }"),
