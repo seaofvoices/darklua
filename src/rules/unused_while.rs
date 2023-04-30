@@ -75,4 +75,20 @@ mod test {
 
         assert_json_snapshot!("default_remove_unused_while", rule);
     }
+
+    #[test]
+    fn configure_with_extra_field_error() {
+        let result = json5::from_str::<Box<dyn Rule>>(
+            r#"{
+            rule: 'remove_unused_while',
+            prop: "something",
+        }"#,
+        );
+        let err_message = match result {
+            Ok(_) => panic!("expected error when deserializing rule"),
+            Err(e) => e,
+        }
+        .to_string();
+        pretty_assertions::assert_eq!(err_message, "unexpected field 'prop'");
+    }
 }

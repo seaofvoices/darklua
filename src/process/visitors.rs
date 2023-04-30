@@ -232,17 +232,14 @@ pub trait NodeVisitor<T: NodeProcessor> {
     fn visit_table(table: &mut TableExpression, processor: &mut T) {
         processor.process_table_expression(table);
 
-        table
-            .mutate_entries()
-            .iter_mut()
-            .for_each(|entry| match entry {
-                TableEntry::Field(entry) => Self::visit_expression(entry.mutate_value(), processor),
-                TableEntry::Index(entry) => {
-                    Self::visit_expression(entry.mutate_key(), processor);
-                    Self::visit_expression(entry.mutate_value(), processor);
-                }
-                TableEntry::Value(value) => Self::visit_expression(value, processor),
-            });
+        table.iter_mut_entries().for_each(|entry| match entry {
+            TableEntry::Field(entry) => Self::visit_expression(entry.mutate_value(), processor),
+            TableEntry::Index(entry) => {
+                Self::visit_expression(entry.mutate_key(), processor);
+                Self::visit_expression(entry.mutate_value(), processor);
+            }
+            TableEntry::Value(value) => Self::visit_expression(value, processor),
+        });
     }
 
     fn visit_prefix_expression(prefix: &mut Prefix, processor: &mut T) {

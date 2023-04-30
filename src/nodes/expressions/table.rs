@@ -252,6 +252,11 @@ impl TableExpression {
     }
 
     #[inline]
+    pub fn iter_mut_entries(&mut self) -> impl Iterator<Item = &mut TableEntry> {
+        self.entries.iter_mut()
+    }
+
+    #[inline]
     pub fn len(&self) -> usize {
         self.entries.len()
     }

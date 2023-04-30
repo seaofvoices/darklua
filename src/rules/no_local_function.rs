@@ -94,6 +94,8 @@ impl Serialize for ConvertLocalFunctionToAssign {
 mod test {
     use super::*;
 
+    use crate::rules::Rule;
+
     use insta::assert_json_snapshot;
 
     fn new_rule() -> ConvertLocalFunctionToAssign {
@@ -103,5 +105,21 @@ mod test {
     #[test]
     fn serialize_default_rule() {
         assert_json_snapshot!("default_convert_local_function_to_assign", new_rule());
+    }
+
+    #[test]
+    fn configure_with_extra_field_error() {
+        let result = json5::from_str::<Box<dyn Rule>>(
+            r#"{
+            rule: 'convert_local_function_to_assign',
+            prop: "something",
+        }"#,
+        );
+        let err_message = match result {
+            Ok(_) => panic!("expected error when deserializing rule"),
+            Err(e) => e,
+        }
+        .to_string();
+        pretty_assertions::assert_eq!(err_message, "unexpected field 'prop'");
     }
 }

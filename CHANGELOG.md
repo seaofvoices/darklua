@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* improve `convert_index_to_field` to refactor table entries ([#88](https://github.com/seaofvoices/darklua/pull/88))
 * fix `remove_nil_declaration` ([#84](https://github.com/seaofvoices/darklua/pull/84))
 * upgrade CLI library (mostly changes the help messages format) ([#83](https://github.com/seaofvoices/darklua/pull/83))
 * add rule to remove compount assignments ([#78](https://github.com/seaofvoices/darklua/pull/78))
