@@ -343,7 +343,7 @@ dependencies = [
 
 [[package]]
 name = "darklua"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "assert_cmd",
  "clap 4.1.1",

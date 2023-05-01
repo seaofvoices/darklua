@@ -1,6 +1,6 @@
 ---
 description: Convert compound assignments into regular assignments
-added_in: "unreleased"
+added_in: "0.9.0"
 parameters: []
 examples:
   - content: "counter += 1"
