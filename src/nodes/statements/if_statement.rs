@@ -18,6 +18,11 @@ impl IfBranchTokens {
         self.elseif.clear_whitespaces();
         self.then.clear_whitespaces();
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.elseif.replace_referenced_tokens(code);
+        self.then.replace_referenced_tokens(code);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -95,6 +100,12 @@ impl IfBranch {
             tokens.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -121,6 +132,15 @@ impl IfStatementTokens {
         self.end.clear_whitespaces();
         if let Some(token) = &mut self.r#else {
             token.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.r#if.replace_referenced_tokens(code);
+        self.then.replace_referenced_tokens(code);
+        self.end.replace_referenced_tokens(code);
+        if let Some(token) = &mut self.r#else {
+            token.replace_referenced_tokens(code);
         }
     }
 }
@@ -262,6 +282,15 @@ impl IfStatement {
         self.branches
             .iter_mut()
             .for_each(IfBranch::clear_whitespaces);
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+        for branch in self.branches.iter_mut() {
+            branch.replace_referenced_tokens(code);
+        }
     }
 
     pub fn retain_branches_mut(&mut self, filter: impl FnMut(&mut IfBranch) -> bool) -> bool {

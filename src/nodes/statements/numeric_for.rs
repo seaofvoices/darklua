@@ -32,6 +32,17 @@ impl NumericForTokens {
             token.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.r#for.replace_referenced_tokens(code);
+        self.equal.replace_referenced_tokens(code);
+        self.r#do.replace_referenced_tokens(code);
+        self.end.replace_referenced_tokens(code);
+        self.end_comma.replace_referenced_tokens(code);
+        if let Some(token) = &mut self.step_comma {
+            token.replace_referenced_tokens(code);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -141,6 +152,12 @@ impl NumericForStatement {
     pub fn clear_whitespaces(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
         }
     }
 }

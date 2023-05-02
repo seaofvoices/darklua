@@ -22,7 +22,7 @@ pub const REMOVE_METHOD_DEFINITION_RULE_NAME: &str = "remove_method_definition";
 pub struct RemoveMethodDefinition {}
 
 impl FlawlessRule for RemoveMethodDefinition {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = FunctionMutator::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }

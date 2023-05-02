@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+use super::bundle::{PathRequireMode, RequireMode};
+
 pub type RuleProperties = HashMap<String, RulePropertyValue>;
 
 /// In order to be able to weakly-type the properties of any rule, this enum makes it possible to
@@ -14,6 +16,7 @@ pub enum RulePropertyValue {
     Usize(usize),
     Float(f64),
     StringList(Vec<String>),
+    RequireMode(RequireMode),
     None,
 }
 
@@ -25,6 +28,12 @@ impl From<bool> for RulePropertyValue {
 
 impl From<&str> for RulePropertyValue {
     fn from(value: &str) -> Self {
+        Self::String(value.to_owned())
+    }
+}
+
+impl From<&String> for RulePropertyValue {
+    fn from(value: &String) -> Self {
         Self::String(value.to_owned())
     }
 }
@@ -44,6 +53,20 @@ impl From<usize> for RulePropertyValue {
 impl From<f64> for RulePropertyValue {
     fn from(value: f64) -> Self {
         Self::Float(value)
+    }
+}
+
+impl From<&RequireMode> for RulePropertyValue {
+    fn from(value: &RequireMode) -> Self {
+        match value {
+            RequireMode::Path(mode) => {
+                if mode == &PathRequireMode::default() {
+                    Self::from("path")
+                } else {
+                    Self::RequireMode(value.clone())
+                }
+            }
+        }
     }
 }
 
@@ -80,6 +103,14 @@ mod test {
     fn from_string() {
         assert_eq!(
             RulePropertyValue::from(String::from("hello")),
+            RulePropertyValue::String(String::from("hello"))
+        );
+    }
+
+    #[test]
+    fn from_string_ref() {
+        assert_eq!(
+            RulePropertyValue::from(&String::from("hello")),
             RulePropertyValue::String(String::from("hello"))
         );
     }

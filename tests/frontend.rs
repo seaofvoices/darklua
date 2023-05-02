@@ -182,7 +182,7 @@ mod errors {
         }
 
         impl Rule for CustomRule {
-            fn process(&self, _: &mut Block, _: &mut Context) -> RuleProcessResult {
+            fn process(&self, _: &mut Block, _: &Context) -> RuleProcessResult {
                 Ok(())
             }
 

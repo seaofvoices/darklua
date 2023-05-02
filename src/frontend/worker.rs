@@ -1,20 +1,25 @@
 use std::path::Path;
 
-use crate::{rules::ContextBuilder, utils::normalize_path, GeneratorParameters};
-
 use super::{
-    configuration::Configuration,
+    configuration::{BundleConfiguration, Configuration},
     resources::Resources,
     utils::{self, Timer},
     work_cache::WorkCache,
-    work_item::{Progress, WorkData, WorkItem, WorkStatus},
+    work_item::{WorkData, WorkItem, WorkProgress, WorkStatus},
     DarkluaError, DarkluaResult, Options, ProcessResult,
+};
+
+use crate::{
+    nodes::Block,
+    rules::{bundle::Bundler, ContextBuilder, Rule, RuleConfiguration},
+    utils::normalize_path,
+    GeneratorParameters,
 };
 
 const DEFAULT_CONFIG_PATHS: [&str; 2] = [".darklua.json", ".darklua.json5"];
 
 #[derive(Debug)]
-pub struct Worker<'a> {
+pub(crate) struct Worker<'a> {
     resources: &'a Resources,
     cache: WorkCache<'a>,
     configuration: Configuration,
@@ -153,7 +158,7 @@ impl<'a> Worker<'a> {
                         errors.push(err);
                         if options.should_fail_fast() {
                             log::debug!(
-                                "dropping all work because of the fail-fast option is enabled"
+                                "dropping all work because the fail-fast option is enabled"
                             );
                             break 'work_loop;
                         }
@@ -176,9 +181,11 @@ impl<'a> Worker<'a> {
 
     fn read_configuration(&self, config: &Path) -> DarkluaResult<Configuration> {
         let config_content = self.resources.get(config)?;
-        json5::from_str(&config_content).map_err(|err| {
-            DarkluaError::invalid_configuration_file(config).context(err.to_string())
-        })
+        json5::from_str(&config_content)
+            .map_err(|err| {
+                DarkluaError::invalid_configuration_file(config).context(err.to_string())
+            })
+            .map(|configuration: Configuration| configuration.with_location(config))
     }
 
     fn do_work(&mut self, work: WorkItem) -> DarkluaResult<Option<WorkItem>> {
@@ -196,14 +203,18 @@ impl<'a> Worker<'a> {
 
                 let parser_timer = Timer::now();
 
-                let block = parser
+                let mut block = parser
                     .parse(&content)
                     .map_err(|parser_error| DarkluaError::parser_error(source, parser_error))?;
 
                 let parser_time = parser_timer.duration_label();
                 log::debug!("parsed `{}` in {}", source_display, parser_time);
 
-                self.apply_rules(data, Progress::new(content, block))
+                if let Some(bundle_config) = self.configuration.bundle() {
+                    self.bundle(&mut block, bundle_config, source, &content)?;
+                }
+
+                self.apply_rules(data, WorkProgress::new(content, block))
             }
             WorkStatus::InProgress(progress) => self.apply_rules(data, *progress),
         }
@@ -212,8 +223,10 @@ impl<'a> Worker<'a> {
     fn apply_rules(
         &mut self,
         data: WorkData,
-        mut progress: Progress,
+        progress: WorkProgress,
     ) -> DarkluaResult<Option<WorkItem>> {
+        let (content, mut progress) = progress.extract();
+
         let source_display = data.source().display();
         let normalized_source = normalize_path(data.source());
 
@@ -225,13 +238,13 @@ impl<'a> Worker<'a> {
             .enumerate()
             .skip(progress.next_rule())
         {
-            let mut context_builder = ContextBuilder::new(&normalized_source);
+            let mut context_builder = self.create_rule_context(data.source(), &content);
             log::trace!(
                 "[{}] apply rule `{}`{}",
                 source_display,
                 rule.get_name(),
                 if rule.has_properties() {
-                    format!("{:?}", rule.serialize_to_properties())
+                    format!(" {:?}", rule.serialize_to_properties())
                 } else {
                     "".to_owned()
                 }
@@ -286,26 +299,35 @@ impl<'a> Worker<'a> {
                         data.with_status(
                             progress
                                 .at_rule(index)
-                                .with_required_content(required_content),
+                                .with_required_content(required_content)
+                                .with_content(content),
                         ),
                     ));
                 }
             }
 
-            let mut context = context_builder.build();
-            rule.process(progress.mutate_block(), &mut context)
-                .map_err(|rule_error| {
-                    let error = DarkluaError::rule_error(data.source(), rule, index, rule_error);
+            let context = context_builder.build();
+            let block = progress.mutate_block();
+            let rule_timer = Timer::now();
+            rule.process(block, &context).map_err(|rule_error| {
+                let error = DarkluaError::rule_error(data.source(), rule, index, rule_error);
 
-                    log::trace!(
-                        "[{}] rule `{}` errored: {}",
-                        source_display,
-                        rule.get_name(),
-                        error
-                    );
-
+                log::trace!(
+                    "[{}] rule `{}` errored: {}",
+                    source_display,
+                    rule.get_name(),
                     error
-                })?;
+                );
+
+                error
+            })?;
+            let rule_duration = rule_timer.duration_label();
+            log::trace!(
+                "[{}] ⨽completed `{}` in {}",
+                source_display,
+                rule.get_name(),
+                rule_duration
+            );
         }
 
         let rule_time = progress.duration().duration_label();
@@ -320,9 +342,7 @@ impl<'a> Worker<'a> {
 
         let generator_timer = Timer::now();
 
-        let lua_code = self
-            .configuration
-            .generate_lua(progress.block(), progress.content());
+        let lua_code = self.configuration.generate_lua(progress.block(), &content);
 
         let generator_time = generator_timer.duration_label();
         log::debug!(
@@ -337,6 +357,58 @@ impl<'a> Worker<'a> {
             .link_source_to_output(normalized_source, data.output());
 
         Ok(None)
+    }
+
+    fn create_rule_context<'block, 'src>(
+        &self,
+        source: &Path,
+        original_code: &'src str,
+    ) -> ContextBuilder<'block, 'a, 'src> {
+        ContextBuilder::new(normalize_path(source), self.resources, original_code)
+    }
+
+    fn bundle(
+        &self,
+        block: &mut Block,
+        bundle_config: &BundleConfiguration,
+        source: &Path,
+        original_code: &str,
+    ) -> DarkluaResult<()> {
+        log::debug!("beginning bundling from `{}`", source.display());
+
+        let bundle_timer = Timer::now();
+
+        let mut bundler = Bundler::default()
+            .with_parser(self.configuration.build_parser())
+            .with_require_mode(bundle_config.require_mode().clone());
+
+        if let Some(location) = self.configuration.location() {
+            bundler = bundler.with_configuration_location(location);
+        }
+
+        if let Some(modules_identifier) = bundle_config.modules_identifier() {
+            bundler = bundler.with_modules_identifier(modules_identifier);
+        }
+
+        let context = self.create_rule_context(source, original_code).build();
+
+        bundler.process(block, &context).map_err(|rule_error| {
+            let error = DarkluaError::orphan_rule_error(source, &bundler, rule_error);
+
+            log::trace!(
+                "[{}] rule `{}` errored: {}",
+                source.display(),
+                bundler.get_name(),
+                error
+            );
+
+            error
+        })?;
+
+        let bundle_time = bundle_timer.duration_label();
+        log::debug!("bundled `{}` in {}", source.display(), bundle_time);
+
+        Ok(())
     }
 }
 

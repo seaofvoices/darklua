@@ -153,7 +153,7 @@ pub const REMOVE_SPACES_RULE_NAME: &str = "remove_spaces";
 pub struct RemoveSpaces {}
 
 impl FlawlessRule for RemoveSpaces {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = RemoveWhitespacesProcessor::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }

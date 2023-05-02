@@ -39,6 +39,20 @@ impl LocalFunctionTokens {
             token.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.local.replace_referenced_tokens(code);
+        self.function.replace_referenced_tokens(code);
+        self.opening_parenthese.replace_referenced_tokens(code);
+        self.closing_parenthese.replace_referenced_tokens(code);
+        self.end.replace_referenced_tokens(code);
+        for comma in self.parameter_commas.iter_mut() {
+            comma.replace_referenced_tokens(code);
+        }
+        if let Some(token) = &mut self.variable_arguments {
+            token.replace_referenced_tokens(code);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -178,6 +192,15 @@ impl LocalFunctionStatement {
             .for_each(Identifier::clear_whitespaces);
         if let Some(tokens) = self.tokens.as_mut() {
             tokens.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        for parameter in self.parameters.iter_mut() {
+            parameter.replace_referenced_tokens(code);
+        }
+        if let Some(tokens) = self.tokens.as_mut() {
+            tokens.replace_referenced_tokens(code);
         }
     }
 }

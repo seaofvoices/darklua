@@ -16,6 +16,11 @@ impl RepeatTokens {
         self.repeat.clear_whitespaces();
         self.until.clear_whitespaces();
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.repeat.replace_referenced_tokens(code);
+        self.until.replace_referenced_tokens(code);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -78,6 +83,12 @@ impl RepeatStatement {
     pub fn clear_whitespaces(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
         }
     }
 }

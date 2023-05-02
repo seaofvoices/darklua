@@ -65,6 +65,13 @@ impl TableFieldEntry {
             token.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.field.replace_referenced_tokens(code);
+        if let Some(token) = &mut self.token {
+            token.replace_referenced_tokens(code);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -85,6 +92,12 @@ impl TableIndexEntryTokens {
         self.opening_bracket.clear_whitespaces();
         self.closing_bracket.clear_whitespaces();
         self.equal.clear_whitespaces();
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.opening_bracket.replace_referenced_tokens(code);
+        self.closing_bracket.replace_referenced_tokens(code);
+        self.equal.replace_referenced_tokens(code);
     }
 }
 
@@ -150,6 +163,12 @@ impl TableIndexEntry {
             tokens.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -172,6 +191,14 @@ impl TableEntry {
         match self {
             TableEntry::Field(entry) => entry.clear_whitespaces(),
             TableEntry::Index(entry) => entry.clear_whitespaces(),
+            TableEntry::Value(_) => {}
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        match self {
+            TableEntry::Field(entry) => entry.replace_referenced_tokens(code),
+            TableEntry::Index(entry) => entry.replace_referenced_tokens(code),
             TableEntry::Value(_) => {}
         }
     }
@@ -209,6 +236,14 @@ impl TableTokens {
         self.separators
             .iter_mut()
             .for_each(Token::clear_whitespaces);
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.opening_brace.replace_referenced_tokens(code);
+        self.closing_brace.replace_referenced_tokens(code);
+        for separator in self.separators.iter_mut() {
+            separator.replace_referenced_tokens(code);
+        }
     }
 }
 
@@ -314,6 +349,15 @@ impl TableExpression {
         self.entries
             .iter_mut()
             .for_each(TableEntry::clear_whitespaces)
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+        for entry in self.entries.iter_mut() {
+            entry.replace_referenced_tokens(code);
+        }
     }
 }
 

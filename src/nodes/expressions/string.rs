@@ -175,8 +175,14 @@ impl StringExpression {
         self.token.as_ref()
     }
 
+    #[inline]
     pub fn get_value(&self) -> &str {
         &self.value
+    }
+
+    #[inline]
+    pub fn into_value(self) -> String {
+        self.value
     }
 
     pub fn is_multiline(&self) -> bool {
@@ -228,6 +234,12 @@ impl StringExpression {
     pub fn clear_whitespaces(&mut self) {
         if let Some(token) = &mut self.token {
             token.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(token) = &mut self.token {
+            token.replace_referenced_tokens(code);
         }
     }
 }

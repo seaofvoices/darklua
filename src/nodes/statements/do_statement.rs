@@ -16,6 +16,11 @@ impl DoTokens {
         self.r#do.clear_whitespaces();
         self.end.clear_whitespaces();
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.r#do.replace_referenced_tokens(code);
+        self.end.replace_referenced_tokens(code);
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -71,6 +76,12 @@ impl DoStatement {
     pub fn clear_whitespaces(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
         }
     }
 }

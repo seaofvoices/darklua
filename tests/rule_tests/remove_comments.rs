@@ -10,7 +10,8 @@ macro_rules! test_remove_comments_rule {
                     generator::{LuaGenerator, TokenBasedLuaGenerator},
                     rules::Rule,
                 };
-                let mut context = darklua_core::rules::Context::default();
+                let resources = darklua_core::Resources::from_memory();
+                let context = darklua_core::rules::ContextBuilder::new(".", &resources, $input).build();
 
                 let mut block = Parser::default()
                     .preserve_tokens()
@@ -19,7 +20,7 @@ macro_rules! test_remove_comments_rule {
                         panic!("could not parse content: {:?}\ncontent:\n{}", error, $input)
                     });
 
-                $rule.process(&mut block, &mut context)
+                $rule.process(&mut block, &context)
                     .expect("rule should suceed");
 
                 let mut generator = TokenBasedLuaGenerator::new($input);

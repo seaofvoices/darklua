@@ -1,0 +1,9 @@
+---
+source: src/rules/bundle/mod.rs
+expression: rule
+---
+{
+  "rule": "bundler",
+  "modules-identifier": "_CUSTOM_VAR",
+  "require-mode": "path"
+}

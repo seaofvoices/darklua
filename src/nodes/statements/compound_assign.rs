@@ -120,4 +120,10 @@ impl CompoundAssignStatement {
             tokens.operator.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.operator.replace_referenced_tokens(code);
+        }
+    }
 }

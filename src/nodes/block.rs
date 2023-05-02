@@ -24,6 +24,15 @@ impl BlockTokens {
             last_semicolon.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        for semicolon in self.semicolons.iter_mut().flatten() {
+            semicolon.replace_referenced_tokens(code);
+        }
+        if let Some(last_semicolon) = &mut self.last_semicolon {
+            last_semicolon.replace_referenced_tokens(code);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -218,6 +227,12 @@ impl Block {
     pub fn clear_whitespaces(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
         }
     }
 }

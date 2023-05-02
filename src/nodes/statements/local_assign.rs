@@ -32,6 +32,19 @@ impl LocalAssignTokens {
             token.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.local.replace_referenced_tokens(code);
+        for comma in self.variable_commas.iter_mut() {
+            comma.replace_referenced_tokens(code);
+        }
+        for comma in self.value_commas.iter_mut() {
+            comma.replace_referenced_tokens(code);
+        }
+        if let Some(token) = &mut self.equal {
+            token.replace_referenced_tokens(code);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -237,6 +250,15 @@ impl LocalAssignStatement {
             .for_each(Identifier::clear_whitespaces);
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        for variable in self.variables.iter_mut() {
+            variable.replace_referenced_tokens(code);
+        }
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
         }
     }
 }

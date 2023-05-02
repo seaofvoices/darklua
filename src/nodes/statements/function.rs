@@ -20,6 +20,15 @@ impl FunctionNameTokens {
             token.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        for token in self.periods.iter_mut() {
+            token.replace_referenced_tokens(code);
+        }
+        if let Some(token) = &mut self.colon {
+            token.replace_referenced_tokens(code);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -124,6 +133,12 @@ impl FunctionName {
             tokens.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -160,6 +175,19 @@ impl FunctionStatementTokens {
             .for_each(Token::clear_whitespaces);
         if let Some(token) = &mut self.variable_arguments {
             token.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.function.replace_referenced_tokens(code);
+        self.opening_parenthese.replace_referenced_tokens(code);
+        self.closing_parenthese.replace_referenced_tokens(code);
+        self.end.replace_referenced_tokens(code);
+        for comma in self.parameter_commas.iter_mut() {
+            comma.replace_referenced_tokens(code);
+        }
+        if let Some(token) = &mut self.variable_arguments {
+            token.replace_referenced_tokens(code);
         }
     }
 }
@@ -298,6 +326,16 @@ impl FunctionStatement {
             .for_each(Identifier::clear_whitespaces);
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.name.replace_referenced_tokens(code);
+        for parameter in self.parameters.iter_mut() {
+            parameter.replace_referenced_tokens(code);
+        }
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
         }
     }
 }

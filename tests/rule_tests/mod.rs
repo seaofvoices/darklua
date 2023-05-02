@@ -12,9 +12,10 @@ macro_rules! test_rule {
 
                 let mut block = $crate::utils::parse_input($input);
                 let expect_block = $crate::utils::parse_input($output);
-                let mut context = darklua_core::rules::Context::default();
+                let resources = darklua_core::Resources::from_memory();
+                let context = darklua_core::rules::ContextBuilder::new(".", &resources, $input).build();
 
-                $rule.process(&mut block, &mut context)
+                $rule.process(&mut block, &context)
                     .expect("rule should suceed");
 
                 let mut generator = ReadableLuaGenerator::default();
@@ -43,9 +44,10 @@ macro_rules! test_rule {
 
                 let mut block = $crate::utils::parse_input($input);
                 let expect_block = $crate::utils::parse_input($output);
-                let mut context = darklua_core::rules::Context::default();
+                let resources = darklua_core::Resources::from_memory();
+                let context = darklua_core::rules::ContextBuilder::new(".", &resources, $input).build();
 
-                $rule.process(&mut block, &mut context)
+                $rule.process(&mut block, &context)
                     .expect("rule should suceed");
 
                 let mut generator = DenseLuaGenerator::default();
@@ -76,7 +78,8 @@ macro_rules! test_rule {
                 };
 
                 let expect_block = $crate::utils::parse_input($output);
-                let mut context = darklua_core::rules::Context::default();
+                let resources = darklua_core::Resources::from_memory();
+                let context = darklua_core::rules::ContextBuilder::new(".", &resources, $input).build();
 
                 let mut block = Parser::default()
                     .preserve_tokens()
@@ -85,7 +88,7 @@ macro_rules! test_rule {
                         panic!("could not parse content: {:?}\ncontent:\n{}", error, $input)
                     });
 
-                $rule.process(&mut block, &mut context)
+                $rule.process(&mut block, &context)
                     .expect("rule should suceed");
 
                 let mut generator = TokenBasedLuaGenerator::new($input);
@@ -122,9 +125,10 @@ macro_rules! test_rule_wihout_effects {
 
                 let mut block = $crate::utils::parse_input($input);
                 let expect_block = block.clone();
-                let mut context = darklua_core::rules::Context::default();
+                let resources = darklua_core::Resources::from_memory();
+                let context = darklua_core::rules::ContextBuilder::new(".", &resources, $input).build();
 
-                $rule.process(&mut block, &mut context)
+                $rule.process(&mut block, &context)
                     .expect("rule should succeed");
 
                 let mut generator = TokenBasedLuaGenerator::new($input);

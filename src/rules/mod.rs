@@ -1,5 +1,6 @@
 //! A module that contains the different rules that mutates a Lua block.
 
+pub mod bundle;
 mod call_parens;
 mod compute_expression;
 mod configuration_error;
@@ -15,6 +16,7 @@ mod remove_compound_assign;
 mod remove_nil_declarations;
 mod remove_spaces;
 mod rename_variables;
+mod replace_referenced_tokens;
 mod rule_property;
 mod unused_if_branch;
 mod unused_while;
@@ -34,11 +36,13 @@ pub use remove_compound_assign::*;
 pub use remove_nil_declarations::*;
 pub use remove_spaces::*;
 pub use rename_variables::*;
+pub(crate) use replace_referenced_tokens::*;
 pub use rule_property::*;
 pub use unused_if_branch::*;
 pub use unused_while::*;
 
 use crate::nodes::Block;
+use crate::Resources;
 
 use serde::de::{self, MapAccess, Visitor};
 use serde::ser::SerializeMap;
@@ -49,45 +53,61 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 #[derive(Debug, Clone)]
-pub struct ContextBuilder<'a> {
+pub struct ContextBuilder<'a, 'b, 'c> {
     path: PathBuf,
+    resources: &'b Resources,
+    original_code: &'c str,
     blocks: HashMap<PathBuf, &'a Block>,
 }
 
-impl<'a> ContextBuilder<'a> {
-    pub fn new(path: impl Into<PathBuf>) -> Self {
+impl<'a, 'b, 'c> ContextBuilder<'a, 'b, 'c> {
+    pub fn new(path: impl Into<PathBuf>, resources: &'b Resources, original_code: &'c str) -> Self {
         Self {
             path: path.into(),
+            resources,
+            original_code,
             blocks: Default::default(),
         }
     }
 
-    pub fn build(self) -> Context<'a> {
+    pub fn build(self) -> Context<'a, 'b, 'c> {
         Context {
             path: self.path,
+            resources: self.resources,
+            original_code: self.original_code,
             blocks: self.blocks,
         }
     }
 
-    pub fn insert_block<'b: 'a>(&mut self, path: impl Into<PathBuf>, block: &'b Block) {
+    pub fn insert_block<'block: 'a>(&mut self, path: impl Into<PathBuf>, block: &'block Block) {
         self.blocks.insert(path.into(), block);
     }
 }
 
 /// The intent of this struct is to hold data shared across all rules applied to a file.
-#[derive(Debug, Clone, Default)]
-pub struct Context<'a> {
+#[derive(Debug, Clone)]
+pub struct Context<'a, 'b, 'c> {
     path: PathBuf,
+    resources: &'b Resources,
+    original_code: &'c str,
     blocks: HashMap<PathBuf, &'a Block>,
 }
 
-impl<'a> Context<'a> {
+impl<'a, 'b, 'c> Context<'a, 'b, 'c> {
     pub fn block(&self, path: impl AsRef<Path>) -> Option<&Block> {
         self.blocks.get(path.as_ref()).copied()
     }
 
     pub fn current_path(&self) -> &Path {
         self.path.as_ref()
+    }
+
+    fn resources(&self) -> &Resources {
+        self.resources
+    }
+
+    fn original_code(&self) -> &str {
+        self.original_code
     }
 }
 
@@ -97,7 +117,7 @@ pub type RuleProcessResult = Result<(), String>;
 /// the rule configuration.
 pub trait Rule: RuleConfiguration {
     /// This method should mutate the given block to apply the rule
-    fn process(&self, block: &mut Block, context: &mut Context) -> RuleProcessResult;
+    fn process(&self, block: &mut Block, context: &Context) -> RuleProcessResult;
 
     /// Return the list of paths to Lua files that is necessary to apply this rule. This will load
     /// each AST block from these files into the context object.
@@ -122,11 +142,11 @@ pub trait RuleConfiguration {
 }
 
 pub trait FlawlessRule {
-    fn flawless_process(&self, block: &mut Block, context: &mut Context);
+    fn flawless_process(&self, block: &mut Block, context: &Context);
 }
 
 impl<T: FlawlessRule + RuleConfiguration> Rule for T {
-    fn process(&self, block: &mut Block, context: &mut Context) -> RuleProcessResult {
+    fn process(&self, block: &mut Block, context: &Context) -> RuleProcessResult {
         self.flawless_process(block, context);
         Ok(())
     }

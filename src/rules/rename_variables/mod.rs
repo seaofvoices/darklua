@@ -94,7 +94,7 @@ impl Default for RenameVariables {
 }
 
 impl FlawlessRule for RenameVariables {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let avoid_identifiers = if self.include_functions {
             Vec::new()
         } else {

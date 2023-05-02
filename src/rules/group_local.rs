@@ -101,7 +101,7 @@ pub const GROUP_LOCAL_ASSIGNMENT_RULE_NAME: &str = "group_local_assignment";
 pub struct GroupLocalAssignment {}
 
 impl FlawlessRule for GroupLocalAssignment {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = GroupLocalProcessor::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }

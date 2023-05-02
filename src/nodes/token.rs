@@ -184,6 +184,45 @@ impl Token {
         self.trailing_trivia
             .retain(|trivia| trivia.kind() != TriviaKind::Whitespace);
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Position::LineNumberReference {
+            start,
+            end,
+            line_number,
+        } = self.position
+        {
+            self.position = Position::LineNumber {
+                line_number,
+                content: code
+                    .get(start..end)
+                    .expect("unable to extract code from position")
+                    .to_owned()
+                    .into(),
+            }
+        };
+        for trivia in self
+            .leading_trivia
+            .iter_mut()
+            .chain(self.trailing_trivia.iter_mut())
+        {
+            if let Position::LineNumberReference {
+                start,
+                end,
+                line_number,
+            } = trivia.position
+            {
+                trivia.position = Position::LineNumber {
+                    line_number,
+                    content: code
+                        .get(start..end)
+                        .expect("unable to extract code from position")
+                        .to_owned()
+                        .into(),
+                }
+            };
+        }
+    }
 }
 
 #[cfg(test)]

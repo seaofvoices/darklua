@@ -153,7 +153,7 @@ pub const REMOVE_COMMENTS_RULE_NAME: &str = "remove_comments";
 pub struct RemoveComments {}
 
 impl FlawlessRule for RemoveComments {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = RemoveCommentProcessor::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }

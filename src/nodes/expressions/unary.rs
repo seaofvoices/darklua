@@ -74,4 +74,10 @@ impl UnaryExpression {
             token.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(token) = &mut self.token {
+            token.replace_referenced_tokens(code);
+        }
+    }
 }

@@ -120,7 +120,7 @@ pub const COMPUTE_EXPRESSIONS_RULE_NAME: &str = "compute_expression";
 pub struct ComputeExpression {}
 
 impl FlawlessRule for ComputeExpression {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = Computer::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }
