@@ -65,6 +65,10 @@ pub trait NodeVisitor<T: NodeProcessor> {
                 Self::visit_expression(expression.mutate_inner_expression(), processor)
             }
             Expression::String(string) => processor.process_string_expression(string),
+            Expression::InterpolatedString(interpolated_string) => {
+                processor.process_interpolated_string_expression(interpolated_string);
+                todo!()
+            }
             Expression::Table(table) => Self::visit_table(table, processor),
             Expression::Unary(unary) => {
                 processor.process_unary_expression(unary);

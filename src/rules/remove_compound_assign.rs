@@ -73,6 +73,7 @@ impl Processor {
                     | Expression::Identifier(_)
                     | Expression::Number(_)
                     | Expression::Nil(_)
+                    | Expression::InterpolatedString(_)
                     | Expression::String(_)
                     | Expression::True(_)
                     | Expression::VariableArguments(_) => None,

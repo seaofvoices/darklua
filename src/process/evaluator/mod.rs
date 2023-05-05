@@ -37,6 +37,9 @@ impl Evaluator {
                 self.evaluate(parenthese.inner_expression())
             }
             Expression::If(if_expression) => self.evaluate_if(if_expression),
+            Expression::InterpolatedString(interpolated_string) => {
+                todo!()
+            }
             Expression::Call(_)
             | Expression::Field(_)
             | Expression::Identifier(_)
@@ -61,6 +64,7 @@ impl Evaluator {
             | Expression::Number(_)
             | Expression::Parenthese(_)
             | Expression::String(_)
+            | Expression::InterpolatedString(_)
             | Expression::Table(_)
             | Expression::True(_) => false,
         }
@@ -131,6 +135,9 @@ impl Evaluator {
                 .iter()
                 .any(|entry| self.table_entry_has_side_effects(entry)),
             Expression::Call(call) => self.call_has_side_effects(call),
+            Expression::InterpolatedString(interpolated_string) => {
+                todo!()
+            }
         }
     }
 

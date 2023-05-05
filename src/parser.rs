@@ -113,6 +113,34 @@ mod test {
         ),
         return_true_false("return true, false") => ReturnStatement::one(Expression::from(true))
             .with_expression(false),
+        return_empty_single_quote_string("return ''") => ReturnStatement::one(StringExpression::new("''").unwrap()),
+        return_empty_double_quote_string("return \"\"") => ReturnStatement::one(StringExpression::new("\"\"").unwrap()),
+        return_empty_backtick_string("return ``") => ReturnStatement::one(InterpolatedStringExpression::empty()),
+        return_backtick_string_hello("return `hello`") => ReturnStatement::one(InterpolatedStringExpression::new(
+            vec![StringSegment::new("hello").into()]
+        )),
+        return_backtick_string_with_single_value("return `{true}`") => ReturnStatement::one(InterpolatedStringExpression::new(
+            vec![ValueSegment::new(true).into()]
+        )),
+        return_backtick_string_with_prefixed_single_value("return `value = {true}`") => ReturnStatement::one(InterpolatedStringExpression::new(
+            vec![
+                StringSegment::new("value = ").into(),
+                ValueSegment::new(true).into(),
+            ]
+        )),
+        return_backtick_string_with_suffixed_single_value("return `{false} -> condition`") => ReturnStatement::one(InterpolatedStringExpression::new(
+            vec![
+                ValueSegment::new(false).into(),
+                StringSegment::new(" -> condition").into(),
+            ]
+        )),
+        return_backtick_string_with_prefix_and_suffixed_single_value("return `-> {value} (value)`") => ReturnStatement::one(InterpolatedStringExpression::new(
+            vec![
+                StringSegment::new("-> ").into(),
+                ValueSegment::new(Expression::identifier("value")).into(),
+                StringSegment::new(" (value)").into(),
+            ]
+        )),
         empty_while_true_do("while true do end") => WhileStatement::new(Block::default(), true),
         while_false_do_break("while false do break end") => WhileStatement::new(
             LastStatement::new_break(),
@@ -583,6 +611,112 @@ mod test {
             }),
             return_double_quote_string("return \"abc\"") => ReturnStatement::one(
                 StringExpression::from_value("abc").with_token(token_at_first_line(7, 12))
+            ).with_tokens(ReturnTokens {
+                r#return: spaced_token(0, 6),
+                commas: Vec::new(),
+            }),
+            return_empty_backtick_string("return ``") => ReturnStatement::one(
+                InterpolatedStringExpression::empty().with_tokens(
+                    InterpolatedStringTokens {
+                        opening_tick: token_at_first_line(7, 8),
+                        closing_tick: token_at_first_line(8, 9),
+                    }
+                )
+            ).with_tokens(ReturnTokens {
+                r#return: spaced_token(0, 6),
+                commas: Vec::new(),
+            }),
+            return_backtick_string_hello("return `hello`") => ReturnStatement::one(
+                InterpolatedStringExpression::new(vec![
+                    StringSegment::new("hello")
+                        .with_token(token_at_first_line(8, 13))
+                        .into()
+                ])
+                .with_tokens(InterpolatedStringTokens {
+                    opening_tick: token_at_first_line(7, 8),
+                    closing_tick: token_at_first_line(13, 14),
+                })
+            ).with_tokens(ReturnTokens {
+                r#return: spaced_token(0, 6),
+                commas: Vec::new(),
+            }),
+            return_backtick_string_with_single_value("return `{true}`") => ReturnStatement::one(
+                InterpolatedStringExpression::new(vec![
+                    ValueSegment::new(create_true(9, 0)).with_tokens(ValueSegmentTokens {
+                        opening_brace: token_at_first_line(8, 9),
+                        closing_brace: token_at_first_line(13, 14),
+                    }).into()
+                ])
+                .with_tokens(InterpolatedStringTokens {
+                    opening_tick: token_at_first_line(7, 8),
+                    closing_tick: token_at_first_line(14, 15),
+                })
+            ).with_tokens(ReturnTokens {
+                r#return: spaced_token(0, 6),
+                commas: Vec::new(),
+            }),
+            return_backtick_string_with_prefixed_single_value("return `value = {true}`") => ReturnStatement::one(
+                InterpolatedStringExpression::new(
+                    vec![
+                        StringSegment::new("value = ")
+                            .with_token(token_at_first_line(8, 16))
+                            .into(),
+                        ValueSegment::new(create_true(17, 0))
+                            .with_tokens(ValueSegmentTokens {
+                                opening_brace: token_at_first_line(16, 17),
+                                closing_brace: token_at_first_line(21, 22),
+                            }).into(),
+                    ]
+                )
+                .with_tokens(InterpolatedStringTokens {
+                    opening_tick: token_at_first_line(7, 8),
+                    closing_tick: token_at_first_line(22, 23),
+                })
+            ).with_tokens(ReturnTokens {
+                r#return: spaced_token(0, 6),
+                commas: Vec::new(),
+            }),
+            return_backtick_string_with_suffixed_single_value("return `{true} -> condition`") => ReturnStatement::one(
+                InterpolatedStringExpression::new(
+                    vec![
+                        ValueSegment::new(create_true(9, 0))
+                            .with_tokens(ValueSegmentTokens {
+                                opening_brace: token_at_first_line(8, 9),
+                                closing_brace: token_at_first_line(13, 14),
+                            }).into(),
+                        StringSegment::new(" -> condition")
+                            .with_token(token_at_first_line(14, 27))
+                            .into(),
+                    ]
+                )
+                .with_tokens(InterpolatedStringTokens {
+                    opening_tick: token_at_first_line(7, 8),
+                    closing_tick: token_at_first_line(27, 28),
+                })
+            ).with_tokens(ReturnTokens {
+                r#return: spaced_token(0, 6),
+                commas: Vec::new(),
+            }),
+            return_backtick_string_with_prefix_and_suffixed_single_value("return `-> {value} (value)`") => ReturnStatement::one(
+                InterpolatedStringExpression::new(
+                    vec![
+                        StringSegment::new("-> ")
+                            .with_token(token_at_first_line(8, 11))
+                            .into(),
+                        ValueSegment::new(create_identifier("value", 12, 0))
+                            .with_tokens(ValueSegmentTokens {
+                                opening_brace: token_at_first_line(11, 12),
+                                closing_brace: token_at_first_line(17, 18),
+                            }).into(),
+                        StringSegment::new(" (value)")
+                            .with_token(token_at_first_line(18, 26))
+                            .into(),
+                    ]
+                )
+                .with_tokens(InterpolatedStringTokens {
+                    opening_tick: token_at_first_line(7, 8),
+                    closing_tick: token_at_first_line(26, 27),
+                })
             ).with_tokens(ReturnTokens {
                 r#return: spaced_token(0, 6),
                 commas: Vec::new(),

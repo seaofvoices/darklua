@@ -94,6 +94,7 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
             | Expression::Number(_)
             | Expression::Parenthese(_)
             | Expression::String(_)
+            | Expression::InterpolatedString(_)
             | Expression::Table(_)
             | Expression::Unary(_) => {}
         }
@@ -141,6 +142,10 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
 
     fn process_unary_expression(&mut self, unary: &mut UnaryExpression) {
         unary.clear_whitespaces();
+    }
+
+    fn process_interpolated_string_expression(&mut self, string: &mut InterpolatedStringExpression) {
+        string.clear_whitespaces();
     }
 
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}

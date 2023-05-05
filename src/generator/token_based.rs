@@ -1147,6 +1147,9 @@ impl<'a> LuaGenerator for TokenBasedLuaGenerator<'a> {
             Number(number) => self.write_number(number),
             Parenthese(parenthese) => self.write_parenthese(parenthese),
             String(string) => self.write_string(string),
+            InterpolatedString(interpolated_string) => {
+                todo!()
+            }
             Table(table) => self.write_table(table),
             True(token) => {
                 if let Some(token) = token {

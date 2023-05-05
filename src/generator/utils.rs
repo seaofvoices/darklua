@@ -113,6 +113,7 @@ fn expression_ends_with_prefix(expression: &Expression) -> bool {
         | Expression::Nil(_)
         | Expression::Number(_)
         | Expression::String(_)
+        | Expression::InterpolatedString(_)
         | Expression::Table(_)
         | Expression::True(_)
         | Expression::VariableArguments(_) => false,

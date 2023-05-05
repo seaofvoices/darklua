@@ -38,6 +38,7 @@ fn ends_with_if_expression(expression: &Expression) -> bool {
             | Expression::Number(_)
             | Expression::Parenthese(_)
             | Expression::String(_)
+            | Expression::InterpolatedString(_)
             | Expression::Table(_)
             | Expression::True(_)
             | Expression::VariableArguments(_) => break false,

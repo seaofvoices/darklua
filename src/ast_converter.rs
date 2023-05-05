@@ -2,7 +2,7 @@ use std::{fmt, str::FromStr};
 
 use full_moon::{
     ast,
-    tokenizer::{self, Symbol, TokenType},
+    tokenizer::{self, InterpolatedStringKind, Symbol, TokenType},
 };
 
 use crate::nodes::*;
@@ -318,6 +318,116 @@ impl<'a> AstConverter<'a> {
                             then: self.convert_token(if_expression.then_token())?,
                             r#else: self.convert_token(if_expression.else_token())?,
                         });
+                    }
+
+                    self.expressions.push(value.into());
+                }
+                ConvertWork::MakeInterpolatedString {
+                    interpolated_string,
+                } => {
+                    let mut segments = Vec::new();
+                    let mut segments_iter = interpolated_string.segments().peekable();
+
+                    while let Some(segment) = segments_iter.next() {
+                        let literal = &segment.literal;
+                        if let Some(segment) = self.convert_string_interpolation_segment(literal)? {
+                            segments.push(segment.into());
+                        }
+
+                        let expression = self.pop_expression()?;
+                        let mut value_segment = ValueSegment::new(expression);
+
+                        if self.hold_token_data {
+                            let opening_brace = Token::new_with_line(
+                                literal.end_position().bytes().saturating_sub(1),
+                                literal.end_position().bytes(),
+                                literal.end_position().line(),
+                            );
+
+                            let next_literal = segments_iter
+                                .peek()
+                                .map(|next_segment| &next_segment.literal)
+                                .unwrap_or(interpolated_string.last_string());
+
+                            let start_position = next_literal.start_position().bytes();
+                            let closing_brace = Token::new_with_line(
+                                start_position,
+                                start_position + 1,
+                                next_literal.start_position().line(),
+                            );
+
+                            value_segment.set_tokens(ValueSegmentTokens {
+                                opening_brace,
+                                closing_brace,
+                            });
+                        }
+
+                        segments.push(value_segment.into());
+                    }
+
+                    if let Some(segment) = self
+                        .convert_string_interpolation_segment(interpolated_string.last_string())?
+                    {
+                        segments.push(segment.into());
+                    }
+
+                    let mut value = InterpolatedStringExpression::new(segments);
+
+                    if self.hold_token_data {
+                        let last = interpolated_string.last_string();
+                        let first = interpolated_string
+                            .segments()
+                            .next()
+                            .map(|segment| &segment.literal)
+                            .unwrap_or(last);
+
+                        let (opening_tick, closing_tick) = match first.token_type() {
+                            TokenType::InterpolatedString { literal: _, kind } => match kind {
+                                InterpolatedStringKind::Begin | InterpolatedStringKind::Simple => {
+                                    let start_position = first.start_position().bytes();
+                                    let mut start_token = Token::new_with_line(
+                                        start_position,
+                                        start_position + 1,
+                                        first.start_position().line(),
+                                    );
+                                    let end_position = last.end_position().bytes();
+                                    let mut end_token = Token::new_with_line(
+                                        end_position.saturating_sub(1),
+                                        end_position,
+                                        last.end_position().line(),
+                                    );
+
+                                    for trivia_token in first.leading_trivia() {
+                                        start_token.push_leading_trivia(
+                                            self.convert_trivia(trivia_token)?,
+                                        );
+                                    }
+
+                                    for trivia_token in first.trailing_trivia() {
+                                        end_token.push_trailing_trivia(
+                                            self.convert_trivia(trivia_token)?,
+                                        );
+                                    }
+                                    (start_token, end_token)
+                                }
+                                InterpolatedStringKind::Middle | InterpolatedStringKind::End => {
+                                    return Err(ConvertError::InterpolatedString {
+                                        string: interpolated_string.to_string(),
+                                    })
+                                }
+                            },
+                            _ => {
+                                return Err(ConvertError::InterpolatedString {
+                                    string: interpolated_string.to_string(),
+                                })
+                            }
+                        };
+
+                        let tokens = InterpolatedStringTokens {
+                            opening_tick,
+                            closing_tick,
+                        };
+                        value.set_tokens(tokens);
                     }
 
                     self.expressions.push(value.into());
@@ -1049,6 +1159,14 @@ impl<'a> AstConverter<'a> {
                         }
                     }
                 }
+                ast::Value::InterpolatedString(interpolated_string) => {
+                    self.push_work(ConvertWork::MakeInterpolatedString {
+                        interpolated_string,
+                    });
+                    for segment in interpolated_string.segments() {
+                        self.push_work(&segment.expression);
+                    }
+                }
                 _ => {
                     return Err(ConvertError::Expression {
                         expression: expression.to_string(),
@@ -1366,6 +1484,34 @@ impl<'a> AstConverter<'a> {
         }
         Ok(())
     }
+
+    fn convert_string_interpolation_segment(
+        &self,
+        token: &tokenizer::TokenReference,
+    ) -> Result<Option<StringSegment>, ConvertError> {
+        match token.token_type() {
+            TokenType::InterpolatedString { literal, kind: _ } => {
+                if !literal.is_empty() {
+                    let mut segment = StringSegment::new(literal.as_str());
+
+                    if self.hold_token_data {
+                        let segment_token = Token::new_with_line(
+                            token.start_position().bytes() + 1,
+                            token.end_position().bytes().saturating_sub(1),
+                            token.start_position().line(),
+                        );
+                        // no trivia since it is grabbing a substring of the token
+                        segment.set_token(segment_token);
+                    }
+
+                    Ok(Some(segment))
+                } else {
+                    Ok(None)
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -1459,6 +1605,9 @@ enum ConvertWork<'a> {
     MakePrefixExpression {
         variable: &'a ast::VarExpression,
     },
+    MakeInterpolatedString {
+        interpolated_string: &'a ast::types::InterpolatedString,
+    },
 }
 
 impl<'a> From<&'a ast::Block> for ConvertWork<'a> {
@@ -1548,6 +1697,9 @@ pub(crate) enum ConvertError {
     UnaryOperator {
         operator: String,
     },
+    InterpolatedString {
+        string: String,
+    },
     UnexpectedTrivia(tokenizer::TokenKind),
     ExpectedFunctionName,
     InternalStack {
@@ -1576,6 +1728,7 @@ impl fmt::Display for ConvertError {
                     number, parsing_error
                 )
             }
+            ConvertError::InterpolatedString { string } => ("interpolated string", string),
             ConvertError::Expression { expression } => ("expression", expression),
             ConvertError::FunctionParameter { parameter } => ("parameter", parameter),
             ConvertError::FunctionParameters { parameters } => ("parameters", parameters),
