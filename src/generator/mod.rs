@@ -100,6 +100,7 @@ pub trait LuaGenerator {
     fn write_tuple_arguments(&mut self, arguments: &nodes::TupleArguments);
 
     fn write_string(&mut self, string: &nodes::StringExpression);
+    fn write_interpolated_string(&mut self, string: &nodes::InterpolatedStringExpression);
 }
 
 #[cfg(test)]
@@ -681,8 +682,25 @@ mod $mod_name {
         snapshot_node!($mod_name, $generator, string, write_expression => (
             only_letters => StringExpression::from_value("hello"),
             with_single_quotes => StringExpression::from_value("I'm cool"),
-            with_dougle_quotes => StringExpression::from_value(r#"Say: "Hi""#),
+            with_double_quotes => StringExpression::from_value(r#"Say: "Hi""#),
             with_single_and_double_quotes => StringExpression::from_value(r#"Say: "Don't""#),
+        ));
+
+        snapshot_node!($mod_name, $generator, interpolated_string, write_expression => (
+            only_letters => InterpolatedStringExpression::empty()
+                .with_segment("hello"),
+            with_single_quotes => InterpolatedStringExpression::empty()
+                .with_segment("I'm cool"),
+            with_double_quotes => InterpolatedStringExpression::empty()
+                .with_segment(r#"Say: "Hi""#),
+            with_backticks => InterpolatedStringExpression::empty()
+                .with_segment("Say: `Hi`"),
+            with_single_and_double_quotes => InterpolatedStringExpression::empty()
+                .with_segment(r#"Say: "Don't""#),
+            with_true_value => InterpolatedStringExpression::empty()
+                .with_segment(Expression::from(true)),
+            with_empty_table => InterpolatedStringExpression::empty()
+                .with_segment(Expression::from(TableExpression::default())),
         ));
 
         snapshot_node!($mod_name, $generator, number, write_expression => (

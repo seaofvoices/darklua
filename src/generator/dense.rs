@@ -474,7 +474,9 @@ impl LuaGenerator for DenseLuaGenerator {
             Number(number) => self.write_number(number),
             Parenthese(parenthese) => self.write_parenthese(parenthese),
             String(string) => self.write_string(string),
-            InterpolatedString(interpolated_string) => todo!(),
+            InterpolatedString(interpolated_string) => {
+                self.write_interpolated_string(interpolated_string)
+            }
             Table(table) => self.write_table(table),
             True(_) => self.push_str("true"),
             Unary(unary) => self.write_unary_expression(unary),
@@ -719,6 +721,33 @@ impl LuaGenerator for DenseLuaGenerator {
         } else {
             self.push_str(&result);
         }
+    }
+
+    fn write_interpolated_string(
+        &mut self,
+        interpolated_string: &nodes::InterpolatedStringExpression,
+    ) {
+        self.push_char('`');
+
+        for segment in interpolated_string.iter_segments() {
+            match segment {
+                nodes::InterpolationSegment::String(string_segment) => {
+                    self.raw_push_str(&utils::write_interpolated_string_segment(string_segment));
+                }
+                nodes::InterpolationSegment::Value(value) => {
+                    self.raw_push_char('{');
+                    // add space when value segment is a table
+                    let expression = value.get_expression();
+                    if matches!(expression, nodes::Expression::Table(_)) {
+                        self.raw_push_char(' ');
+                    }
+                    self.write_expression(expression);
+                    self.push_char('}');
+                }
+            }
+        }
+
+        self.raw_push_char('`');
     }
 
     fn write_identifier(&mut self, identifier: &nodes::Identifier) {

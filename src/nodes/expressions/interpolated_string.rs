@@ -1,8 +1,8 @@
 use std::iter::FromIterator;
 
-use crate::nodes::Token;
+use crate::nodes::{StringError, Token};
 
-use super::Expression;
+use super::{string_utils, Expression};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StringSegment {
@@ -11,7 +11,11 @@ pub struct StringSegment {
 }
 
 impl StringSegment {
-    pub fn new(value: impl Into<String>) -> Self {
+    pub fn new(value: impl AsRef<str>) -> Result<Self, StringError> {
+        string_utils::read_escaped_string(value.as_ref().char_indices(), None).map(Self::from_value)
+    }
+
+    pub fn from_value(value: impl Into<String>) -> Self {
         Self {
             value: value.into(),
             token: None,
@@ -41,6 +45,10 @@ impl StringSegment {
         if let Some(token) = &mut self.token {
             token.clear_whitespaces();
         }
+    }
+
+    pub fn get_value(&self) -> &str {
+        self.value.as_str()
     }
 }
 
@@ -81,6 +89,10 @@ impl ValueSegment {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
         }
+    }
+
+    pub fn get_expression(&self) -> &Expression {
+        &self.value
     }
 }
 
@@ -136,6 +148,18 @@ impl From<ValueSegment> for InterpolationSegment {
     }
 }
 
+impl From<Expression> for InterpolationSegment {
+    fn from(value: Expression) -> Self {
+        Self::Value(ValueSegment::new(value))
+    }
+}
+
+impl<T: AsRef<str>> From<T> for InterpolationSegment {
+    fn from(string: T) -> Self {
+        Self::String(StringSegment::from_value(string.as_ref()))
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InterpolatedStringExpression {
     segments: Vec<InterpolationSegment>,
@@ -154,9 +178,18 @@ impl InterpolatedStringExpression {
         Self::new(Vec::default())
     }
 
+    pub fn with_segment(mut self, segment: impl Into<InterpolationSegment>) -> Self {
+        self.segments.push(segment.into());
+        self
+    }
+
     pub fn with_tokens(mut self, tokens: InterpolatedStringTokens) -> Self {
         self.tokens = Some(tokens);
         self
+    }
+
+    pub fn get_tokens(&self) -> Option<&InterpolatedStringTokens> {
+        self.tokens.as_ref()
     }
 
     pub fn set_tokens(&mut self, tokens: InterpolatedStringTokens) {
@@ -173,6 +206,10 @@ impl InterpolatedStringExpression {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
         }
+    }
+
+    pub fn iter_segments(&self) -> impl Iterator<Item = &InterpolationSegment> {
+        self.segments.iter()
     }
 }
 

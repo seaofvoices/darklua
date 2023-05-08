@@ -3,7 +3,7 @@
 
 use crate::nodes::{
     Expression, FieldExpression, FunctionCall, IndexExpression, NumberExpression, Prefix,
-    Statement, StringExpression, Variable,
+    Statement, StringExpression, StringSegment, Variable,
 };
 
 const QUOTED_STRING_MAX_LENGTH: usize = 60;
@@ -264,6 +264,35 @@ pub fn write_string(string: &StringExpression) -> String {
     } else {
         write_quoted(value)
     }
+}
+
+pub fn write_interpolated_string_segment(segment: &StringSegment) -> String {
+    let value = segment.get_value();
+
+    if value.is_empty() {
+        return "".to_owned();
+    }
+
+    let mut result = String::new();
+
+    result.reserve(value.len());
+
+    for character in value.chars() {
+        match character {
+            '`' | '{' => {
+                result.push('\\');
+                result.push(character);
+            }
+            _ if needs_escaping(character) => {
+                result.push_str(&escape(character));
+            }
+            _ => {
+                result.push(character);
+            }
+        }
+    }
+
+    result
 }
 
 fn write_long_bracket(value: &str) -> String {

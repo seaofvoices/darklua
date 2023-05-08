@@ -8,6 +8,7 @@ mod number;
 mod parenthese;
 mod prefix;
 mod string;
+pub(crate) mod string_utils;
 mod table;
 mod unary;
 
@@ -21,6 +22,7 @@ pub use number::*;
 pub use parenthese::*;
 pub use prefix::*;
 pub use string::*;
+pub use string_utils::StringError;
 pub use table::*;
 pub use unary::*;
 

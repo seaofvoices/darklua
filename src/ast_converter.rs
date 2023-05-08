@@ -338,11 +338,15 @@ impl<'a> AstConverter<'a> {
                         let mut value_segment = ValueSegment::new(expression);
 
                         if self.hold_token_data {
-                            let opening_brace = Token::new_with_line(
+                            let mut opening_brace = Token::new_with_line(
                                 literal.end_position().bytes().saturating_sub(1),
                                 literal.end_position().bytes(),
                                 literal.end_position().line(),
                             );
+
+                            for trivia_token in literal.trailing_trivia() {
+                                opening_brace.push_trailing_trivia(self.convert_trivia(trivia_token)?);
+                            }
 
                             let next_literal = segments_iter
                                 .peek()
@@ -403,7 +407,7 @@ impl<'a> AstConverter<'a> {
                                         );
                                     }
 
-                                    for trivia_token in first.trailing_trivia() {
+                                    for trivia_token in last.trailing_trivia() {
                                         end_token.push_trailing_trivia(
                                             self.convert_trivia(trivia_token)?,
                                         );
@@ -1492,7 +1496,8 @@ impl<'a> AstConverter<'a> {
         match token.token_type() {
             TokenType::InterpolatedString { literal, kind: _ } => {
                 if !literal.is_empty() {
-                    let mut segment = StringSegment::new(literal.as_str());
+                    let mut segment = StringSegment::new(literal.as_str())
+                        .expect("unable to convert interpolated string segment");
 
                     if self.hold_token_data {
                         let segment_token = Token::new_with_line(
