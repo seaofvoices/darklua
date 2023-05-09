@@ -94,6 +94,10 @@ impl ValueSegment {
     pub fn get_expression(&self) -> &Expression {
         &self.value
     }
+
+    pub fn mutate_expression(&mut self) -> &mut Expression {
+        &mut self.value
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -210,6 +214,10 @@ impl InterpolatedStringExpression {
 
     pub fn iter_segments(&self) -> impl Iterator<Item = &InterpolationSegment> {
         self.segments.iter()
+    }
+
+    pub fn iter_mut_segments(&mut self) -> impl Iterator<Item = &mut InterpolationSegment> {
+        self.segments.iter_mut()
     }
 }
 
