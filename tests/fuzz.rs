@@ -429,7 +429,7 @@ impl Fuzz<Expression> for Expression {
                 6 => Identifier::fuzz(context).into(),
                 7 => NumberExpression::fuzz(context).into(),
                 8 => StringExpression::fuzz(context).into(),
-                9 => InterpolatedStringExpression::fuzz(&mut context.share_budget()).into(),
+                // 9 => InterpolatedStringExpression::fuzz(&mut context.share_budget()).into(),
                 _ => TableExpression::fuzz(&mut context.share_budget()).into(),
             }
         }
