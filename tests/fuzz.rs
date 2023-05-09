@@ -399,7 +399,7 @@ impl Fuzz<Expression> for Expression {
         context.take_expression();
 
         if context.can_have_expression(2) {
-            match thread_rng().gen_range(0, 16) {
+            match thread_rng().gen_range(0, 17) {
                 0 => true.into(),
                 1 => false.into(),
                 2 => Expression::nil(),
@@ -414,11 +414,12 @@ impl Fuzz<Expression> for Expression {
                 11 => NumberExpression::fuzz(context).into(),
                 12 => StringExpression::fuzz(context).into(),
                 13 => TableExpression::fuzz(&mut context.share_budget()).into(),
-                14 => IfExpression::fuzz(context).into(),
+                14 => IfExpression::fuzz(&mut context.share_budget()).into(),
+                // 15 => InterpolatedStringExpression::fuzz(&mut context.share_budget()).into(),
                 _ => UnaryExpression::fuzz(context).into(),
             }
         } else {
-            match thread_rng().gen_range(0, 15) {
+            match thread_rng().gen_range(0, 11) {
                 0 => true.into(),
                 1 => false.into(),
                 2 => Expression::nil(),
@@ -428,6 +429,7 @@ impl Fuzz<Expression> for Expression {
                 6 => Identifier::fuzz(context).into(),
                 7 => NumberExpression::fuzz(context).into(),
                 8 => StringExpression::fuzz(context).into(),
+                9 => InterpolatedStringExpression::fuzz(&mut context.share_budget()).into(),
                 _ => TableExpression::fuzz(&mut context.share_budget()).into(),
             }
         }
@@ -551,6 +553,45 @@ impl Fuzz<IfExpression> for IfExpression {
     }
 }
 
+fn fuzz_string_value() -> String {
+    let poisson = Poisson::new(3.0).unwrap();
+
+    let mut rng = thread_rng();
+    let length: u64 = rng.sample(poisson);
+
+    const GEN_CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
+            abcdefghijklmnopqrstuvwxyz\
+            0123456789\
+            ()[]{}=<>.!?,:;+-*/%^|&#`";
+
+    iter::repeat(())
+        .take(length as usize)
+        .map(|()| GEN_CHARSET[rng.gen_range(0, GEN_CHARSET.len())] as char)
+        .collect()
+}
+
+impl Fuzz<InterpolatedStringExpression> for InterpolatedStringExpression {
+    fn fuzz(context: &mut FuzzContext) -> Self {
+        let mut string = InterpolatedStringExpression::empty();
+
+        let segment_count = normal_sample(1.0, 2.0);
+
+        let flip = if rand::random::<bool>() { 0 } else { 1 };
+
+        for i in 0..segment_count {
+            if i % 2 == flip {
+                string.push_segment(fuzz_string_value());
+            } else {
+                string.push_segment(ValueSegment::new(Expression::fuzz(
+                    &mut context.share_budget(),
+                )));
+            }
+        }
+
+        string
+    }
+}
+
 impl Fuzz<NumberExpression> for NumberExpression {
     fn fuzz(_context: &mut FuzzContext) -> Self {
         match thread_rng().gen_range(0, 4) {
@@ -587,22 +628,7 @@ impl Fuzz<ParentheseExpression> for ParentheseExpression {
 
 impl Fuzz<StringExpression> for StringExpression {
     fn fuzz(_context: &mut FuzzContext) -> Self {
-        let poisson = Poisson::new(3.0).unwrap();
-
-        let mut rng = thread_rng();
-        let length: u64 = rng.sample(poisson);
-
-        const GEN_CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
-                abcdefghijklmnopqrstuvwxyz\
-                0123456789\
-                ()[]{}=<>.!?,:;+-*/%^|&#";
-
-        Self::from_value::<String>(
-            iter::repeat(())
-                .take(length as usize)
-                .map(|()| GEN_CHARSET[rng.gen_range(0, GEN_CHARSET.len())] as char)
-                .collect(),
-        )
+        Self::from_value(fuzz_string_value())
     }
 }
 

@@ -183,7 +183,7 @@ impl InterpolatedStringExpression {
     }
 
     pub fn with_segment(mut self, segment: impl Into<InterpolationSegment>) -> Self {
-        self.segments.push(segment.into());
+        self.push_segment(segment);
         self
     }
 
@@ -219,6 +219,19 @@ impl InterpolatedStringExpression {
     pub fn iter_mut_segments(&mut self) -> impl Iterator<Item = &mut InterpolationSegment> {
         self.segments.iter_mut()
     }
+
+    pub fn push_segment(&mut self, segment: impl Into<InterpolationSegment>) {
+        let new_segment = segment.into();
+        match &new_segment {
+            InterpolationSegment::String(string_segment) => {
+                if string_segment.get_value().is_empty() {
+                    return;
+                }
+            }
+            InterpolationSegment::Value(_) => {}
+        }
+        self.segments.push(new_segment);
+    }
 }
 
 impl FromIterator<InterpolationSegment> for InterpolatedStringExpression {
@@ -245,5 +258,18 @@ impl InterpolatedStringTokens {
     pub fn clear_whitespaces(&mut self) {
         self.opening_tick.clear_whitespaces();
         self.closing_tick.clear_whitespaces();
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn push_segment_with_empty_string_does_not_mutate() {
+        let mut string = InterpolatedStringExpression::empty();
+        string.push_segment("");
+
+        pretty_assertions::assert_eq!(string, InterpolatedStringExpression::empty());
     }
 }
