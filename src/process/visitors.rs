@@ -67,7 +67,15 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Expression::String(string) => processor.process_string_expression(string),
             Expression::InterpolatedString(interpolated_string) => {
                 processor.process_interpolated_string_expression(interpolated_string);
-                todo!()
+
+                for segment in interpolated_string.iter_mut_segments() {
+                    match segment {
+                        InterpolationSegment::String(_) => {}
+                        InterpolationSegment::Value(value) => {
+                            Self::visit_expression(value.mutate_expression(), processor)
+                        }
+                    }
+                }
             }
             Expression::Table(table) => Self::visit_table(table, processor),
             Expression::Unary(unary) => {
@@ -402,5 +410,19 @@ mod test {
         assert_eq!(counter.compound_assign, 1);
         assert_eq!(counter.expression_count, 1);
         assert_eq!(counter.variable_count, 1);
+    }
+
+    #[test]
+    fn visit_interpolated_string() {
+        let mut counter = NodeCounter::new();
+        let statement = LocalAssignStatement::from_variable("value")
+            .with_value(InterpolatedStringExpression::empty().with_segment(Expression::from(true)));
+
+        let mut block = statement.into();
+
+        DefaultVisitor::visit_block(&mut block, &mut counter);
+
+        assert_eq!(counter.interpolated_string_count, 1);
+        assert_eq!(counter.expression_count, 2);
     }
 }
