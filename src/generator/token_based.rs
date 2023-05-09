@@ -693,22 +693,17 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         self.write_token(&tokens.opening_brace);
         let expression = value.get_expression();
         if self.output.ends_with('{') {
-            match expression {
-                Expression::Table(table) => {
-                    if let Some(tokens) = table.get_tokens() {
-                        if let Some(first_trivia) =
-                            tokens.opening_brace.iter_leading_trivia().next()
-                        {
-                            let trivia_str = first_trivia.read(self.original_code);
-                            if trivia_str.is_empty() {
-                                self.output.push(' ');
-                            }
+            if let Expression::Table(table) = expression {
+                if let Some(tokens) = table.get_tokens() {
+                    if let Some(first_trivia) = tokens.opening_brace.iter_leading_trivia().next() {
+                        let trivia_str = first_trivia.read(self.original_code);
+                        if trivia_str.is_empty() {
+                            self.output.push(' ');
                         }
-                    } else {
-                        self.output.push(' ');
                     }
+                } else {
+                    self.output.push(' ');
                 }
-                _ => {}
             }
         }
         self.write_expression(expression);
