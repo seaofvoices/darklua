@@ -345,7 +345,8 @@ impl<'a> AstConverter<'a> {
                             );
 
                             for trivia_token in literal.trailing_trivia() {
-                                opening_brace.push_trailing_trivia(self.convert_trivia(trivia_token)?);
+                                opening_brace
+                                    .push_trailing_trivia(self.convert_trivia(trivia_token)?);
                             }
 
                             let next_literal = segments_iter

@@ -144,7 +144,10 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
         unary.clear_whitespaces();
     }
 
-    fn process_interpolated_string_expression(&mut self, string: &mut InterpolatedStringExpression) {
+    fn process_interpolated_string_expression(
+        &mut self,
+        string: &mut InterpolatedStringExpression,
+    ) {
         string.clear_whitespaces();
     }
 

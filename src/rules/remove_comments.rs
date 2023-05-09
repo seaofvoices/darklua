@@ -144,7 +144,10 @@ impl NodeProcessor for RemoveCommentProcessor {
         unary.clear_comments();
     }
 
-    fn process_interpolated_string_expression(&mut self, string: &mut InterpolatedStringExpression) {
+    fn process_interpolated_string_expression(
+        &mut self,
+        string: &mut InterpolatedStringExpression,
+    ) {
         string.clear_comments();
     }
 
