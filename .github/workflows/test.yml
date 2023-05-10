@@ -99,6 +99,11 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-llvm-cov-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+
       - name: Run tests
         run: cargo llvm-cov --lcov --output-path lcov.info
 
