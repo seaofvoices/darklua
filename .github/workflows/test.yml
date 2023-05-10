@@ -108,7 +108,7 @@ jobs:
         run: cargo llvm-cov --lcov --output-path lcov.info
 
       - name: Create coverage report comment
-        uses: romeovs/lcov-reporter-action@v0.2.11
+        uses: romeovs/lcov-reporter-action@v0.3.1
         with:
           lcov-file: lcov.info
           delete-old-comments: true
