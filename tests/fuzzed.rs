@@ -1,3 +1,5 @@
+#![cfg(not(coverage))]
+
 // this test file is for collecting fuzzed Lua code that were causing issues that have been fixed
 
 macro_rules! generate_tests {
