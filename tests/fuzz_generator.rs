@@ -1,3 +1,5 @@
+#![cfg(not(coverage))]
+
 use darklua_core::{
     generator::LuaGenerator,
     nodes::{
@@ -253,6 +255,7 @@ macro_rules! generate_fuzz_tests {
         $($name:ident($generator:expr) => { $($extra:tt)* }),+,
     ) => {
         $(
+            #[cfg(not(coverage))]
             mod $name {
                 use super::*;
                 use darklua_core::generator::*;

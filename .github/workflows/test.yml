@@ -81,3 +81,30 @@ jobs:
 
       - name: Verify code format
         run: cargo fmt -- --check
+
+  coverage:
+    name: Generate coverage report
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-llvm-cov-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run tests
+        run: cargo llvm-cov --lcov --output-path lcov.info
+
+      - name: Create coverage report comment
+        uses: romeovs/lcov-reporter-action@v0.2.11
+        with:
+          lcov-file: lcov.info
+          delete-old-comments: true
+          filter-changed-files: true
