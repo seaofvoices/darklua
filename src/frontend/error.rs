@@ -313,18 +313,20 @@ impl Display for DarkluaError {
                 if let Some(rule_number) = rule_number {
                     write!(
                         f,
-                        "error processing `{}` ({} [#{}]): {}",
+                        "error processing `{}` ({} [#{}]):{}{}",
                         path.display(),
                         rule_name,
                         rule_number,
+                        if error.contains('\n') { '\n' } else { ' ' },
                         error,
                     )?;
                 } else {
                     write!(
                         f,
-                        "error processing `{}` ({}): {}",
+                        "error processing `{}` ({}):{}{}",
                         path.display(),
                         rule_name,
+                        if error.contains('\n') { '\n' } else { ' ' },
                         error,
                     )?;
                 }

@@ -302,4 +302,90 @@ data:
 
         process_main(&resources, "require_yml_with_object");
     }
+
+    mod cyclic_requires {
+        use super::*;
+
+        fn process_main_with_cyclic_requires(resources: &Resources, snapshot_name: &'static str) {
+            let errors = process(
+                resources,
+                Options::new("src/main.lua").with_output("out.lua"),
+            )
+            .result()
+            .unwrap_err();
+
+            let error_display: Vec<_> = errors.into_iter().map(|err| err.to_string()).collect();
+            assert_eq!(error_display.len(), 1);
+
+            insta::assert_snapshot!(snapshot_name, error_display.join("\n"));
+        }
+
+        #[test]
+        fn simple_direct_cycle() {
+            let resources = memory_resources!(
+                "src/value1.lua" => "return require('./value2')",
+                "src/value2.lua" => "return require('./value1')",
+                "src/main.lua" => "local value = require('./value1.lua')",
+                ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
+            );
+
+            process_main_with_cyclic_requires(&resources, "simple_direct_cycle");
+        }
+
+        #[test]
+        fn simple_direct_cycle_in_required_file() {
+            let resources = memory_resources!(
+                "src/value1.lua" => "return require('./value2')",
+                "src/value2.lua" => "return require('./value1')",
+                "src/constant.lua" => "return require('./value1.lua')",
+                "src/main.lua" => "local value = require('./constant.lua')",
+                ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
+            );
+
+            process_main_with_cyclic_requires(&resources, "simple_direct_cycle_in_required_file");
+        }
+
+        #[test]
+        fn simple_transitive_cycle() {
+            let resources = memory_resources!(
+                "src/value1.lua" => "return require('./constant')",
+                "src/value2.lua" => "return require('./value1')",
+                "src/constant.lua" => "return require('./value2.lua')",
+                "src/main.lua" => "local value = require('./value1.lua')",
+                ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
+            );
+
+            process_main_with_cyclic_requires(&resources, "simple_transitive_cycle");
+        }
+
+        #[test]
+        fn direct_cycle_in_required_file_with_ok_require() {
+            let resources = memory_resources!(
+                "src/value1.lua" => "return require('./value2')",
+                "src/value2.lua" => "return require('./value1')",
+                "src/constant.lua" => "return 1",
+                "src/main.lua" => "local constant = require('./constant.lua')\nlocal value = require('./value1.lua')",
+                ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
+            );
+
+            process_main_with_cyclic_requires(
+                &resources,
+                "direct_cycle_in_required_file_with_ok_require",
+            );
+        }
+
+        #[test]
+        fn two_different_direct_cycles() {
+            let resources = memory_resources!(
+                "src/value1.lua" => "return require('./value2')",
+                "src/value2.lua" => "return require('./value1')",
+                "src/constant1.lua" => "return require('./constant2')",
+                "src/constant2.lua" => "return require('./constant1')",
+                "src/main.lua" => "local constant = require('./constant1.lua')\nlocal value = require('./value1.lua')",
+                ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
+            );
+
+            process_main_with_cyclic_requires(&resources, "two_different_direct_cycles");
+        }
+    }
 }

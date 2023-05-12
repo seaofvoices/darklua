@@ -33,6 +33,7 @@ struct RequirePathProcessor<'a, 'b> {
     path_require_mode: &'a PathRequireMode,
     module_name_permutator: CharPermutator,
     module_cache: HashMap<PathBuf, Expression>,
+    require_stack: Vec<PathBuf>,
     skip_module_paths: HashSet<PathBuf>,
     module_definitions: Vec<Block>,
     parser: &'a Parser,
@@ -57,6 +58,7 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
             path_require_mode,
             module_name_permutator: identifier_permutator(),
             module_cache: Default::default(),
+            require_stack: Default::default(),
             skip_module_paths: Default::default(),
             module_definitions: Vec::new(),
             resources,
@@ -67,10 +69,10 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
     }
 
     fn result(self) -> RuleProcessResult {
-        if self.errors.is_empty() {
-            Ok(())
-        } else {
-            Err(self.errors.join("\n- "))
+        match self.errors.len() {
+            0 => Ok(()),
+            1 => Err(self.errors.first().unwrap().to_string()),
+            _ => Err(format!("- {}", self.errors.join("\n- "))),
         }
     }
 
@@ -101,9 +103,21 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
     }
 
     fn inline_call(&mut self, call: &FunctionCall) -> Option<Expression> {
-        let require_path = self.require_call(call)?;
+        let literal_require_path = self.require_call(call)?;
 
-        log::trace!("found require call to path `{}`", require_path.display());
+        let require_path = match self.normalize_require_path(&literal_require_path) {
+            Ok(path) => path,
+            Err(err) => {
+                self.errors.push(err.to_string());
+                return None;
+            }
+        };
+
+        log::trace!(
+            "found require call to path `{}` (normalized `{}`)",
+            literal_require_path.display(),
+            require_path.display()
+        );
 
         if self.skip_module_paths.contains(&require_path) {
             return None;
@@ -120,11 +134,35 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
     }
 
     fn try_inline_call(&mut self, require_path: &Path) -> DarkluaResult<Expression> {
-        let require_path = self.normalize_require_path(require_path)?;
-        if let Some(expression) = self.module_cache.get(&require_path) {
+        if let Some(expression) = self.module_cache.get(require_path) {
             Ok(expression.clone())
         } else {
-            let (module_name, block) = match self.require_resource(&require_path)? {
+            if let Some(i) = self
+                .require_stack
+                .iter()
+                .enumerate()
+                .find(|(_, path)| **path == require_path)
+                .map(|(i, _)| i)
+            {
+                let require_stack_paths: Vec<_> = self
+                    .require_stack
+                    .iter()
+                    .skip(i)
+                    .map(|path| path.display().to_string())
+                    .chain(std::iter::once(require_path.display().to_string()))
+                    .collect();
+
+                return Err(DarkluaError::custom(format!(
+                    "cyclic require detected with `{}`",
+                    require_stack_paths.join("` > `")
+                )));
+            }
+
+            self.require_stack.push(require_path.to_path_buf());
+            let required_resource = self.require_resource(require_path);
+            self.require_stack.pop();
+
+            let (module_name, block) = match required_resource? {
                 RequiredResource::Block(mut block) => {
                     let module_name = if let Some(LastStatement::Return(return_statement)) =
                         block.take_last_statement()
@@ -146,12 +184,6 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
                             ),
                             return_value,
                         ));
-                        // block.set_last_statement(ReturnStatement::default().with_expression(
-                        //     FieldExpression::new(
-                        //         Identifier::from(self.modules_identifier),
-                        //         module_name.clone(),
-                        //     ),
-                        // ));
 
                         module_name
                     } else {
@@ -165,28 +197,17 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
                 }
                 RequiredResource::Expression(expression) => {
                     let module_name = generate_identifier(&mut self.module_name_permutator);
-                    let block = Block::default()
-                        .with_statement(AssignStatement::from_variable(
-                            FieldExpression::new(
-                                Identifier::from(self.modules_identifier),
-                                module_name.clone(),
-                            ),
-                            expression,
-                        ))
-                        // .with_last_statement(
-                        //     ReturnStatement::default()
-                        //         .with_expression(FieldExpression::new(
-                        //             Identifier::from(self.modules_identifier),
-                        //             module_name.clone(),
-                        //         ))
-                        //         .into(),
-                        // )
-                        ;
+                    let block = Block::default().with_statement(AssignStatement::from_variable(
+                        FieldExpression::new(
+                            Identifier::from(self.modules_identifier),
+                            module_name.clone(),
+                        ),
+                        expression,
+                    ));
 
                     (module_name, block)
                 }
             };
-            // let module_function = FunctionExpression::from_block(block);
 
             self.module_definitions.push(block);
 
@@ -196,7 +217,6 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
             self.module_cache
                 .insert(require_path.to_path_buf(), module_value.clone());
 
-            // Ok(FunctionCall::from_prefix(ParentheseExpression::new(module_function)).into())
             Ok(module_value)
         }
     }
