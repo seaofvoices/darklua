@@ -2,6 +2,24 @@ use std::{borrow::Cow, fmt};
 
 use serde::{ser, Serialize};
 
+// By convention, the public API of a Serde serializer is one or more `to_abc`
+// functions such as `to_string`, `to_bytes`, or `to_writer` depending on what
+// Rust types the serializer is able to produce as output.
+//
+// This basic serializer supports only `to_string`.
+pub(crate) fn to_expression<T>(value: &T) -> Result<Expression>
+where
+    T: Serialize,
+{
+    let mut serializer = Serializer {
+        output: Expression::nil(),
+        operation: Vec::new(),
+        expression_stack: Vec::new(),
+    };
+    value.serialize(&mut serializer)?;
+    Ok(serializer.output)
+}
+
 #[derive(Debug)]
 pub(crate) struct LuaSerializerError {
     message: Cow<'static, str>,
@@ -165,24 +183,6 @@ impl Serializer {
     fn begin_table_entry_value(&mut self) {
         self.operation.push(SerializeOperation::TableEntryValue);
     }
-}
-
-// By convention, the public API of a Serde serializer is one or more `to_abc`
-// functions such as `to_string`, `to_bytes`, or `to_writer` depending on what
-// Rust types the serializer is able to produce as output.
-//
-// This basic serializer supports only `to_string`.
-pub(crate) fn to_expression<T>(value: &T) -> Result<Expression>
-where
-    T: Serialize,
-{
-    let mut serializer = Serializer {
-        output: Expression::nil(),
-        operation: Vec::new(),
-        expression_stack: Vec::new(),
-    };
-    value.serialize(&mut serializer)?;
-    Ok(serializer.output)
 }
 
 impl<'a> ser::Serializer for &'a mut Serializer {
