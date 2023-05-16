@@ -44,7 +44,7 @@ mod without_rules {
         fn require_lua_file() {
             process_main_require_value(memory_resources!(
                 "src/value.lua" => "return true",
-                "src/main.lua" => "local value = require('value.lua')",
+                "src/main.lua" => "local value = require('./value.lua')",
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
             ));
         }
@@ -53,7 +53,7 @@ mod without_rules {
         fn require_lua_file_in_sibling_nested_file() {
             process_main_require_value(memory_resources!(
                 "src/constants/value.lua" => "return true",
-                "src/main.lua" => "local value = require('constants/value.lua')",
+                "src/main.lua" => "local value = require('./constants/value.lua')",
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
             ));
         }
@@ -70,7 +70,7 @@ mod without_rules {
         fn require_lua_file_without_extension() {
             process_main_require_value(memory_resources!(
                 "src/value.lua" => "return true",
-                "src/main.lua" => "local value = require('value')",
+                "src/main.lua" => "local value = require('./value')",
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
             ));
         }
@@ -97,7 +97,7 @@ mod without_rules {
         fn require_luau_file_without_extension() {
             process_main_require_value(memory_resources!(
                 "src/value.luau" => "return true",
-                "src/main.lua" => "local value = require('value')",
+                "src/main.lua" => "local value = require('./value')",
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
             ));
         }
@@ -106,7 +106,7 @@ mod without_rules {
         fn require_directory_with_init_lua_file() {
             process_main_require_value(memory_resources!(
                 "src/value/init.lua" => "return true",
-                "src/main.lua" => "local value = require('value')",
+                "src/main.lua" => "local value = require('./value')",
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
             ));
         }
@@ -115,7 +115,7 @@ mod without_rules {
         fn require_directory_with_init_luau_file() {
             process_main_require_value(memory_resources!(
                 "src/value/init.luau" => "return true",
-                "src/main.lua" => "local value = require('value')",
+                "src/main.lua" => "local value = require('./value')",
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
             ));
         }
@@ -133,7 +133,7 @@ mod without_rules {
         fn require_in_packages_directory() {
             process_main_require_value(memory_resources!(
                 "packages/value.lua" => "return true",
-                "src/main.lua" => "local value = require('/Packages/value.lua')",
+                "src/main.lua" => "local value = require('Packages/value.lua')",
                 ".darklua.json" => "{ \"rules\": [], \"bundle\": { \"require-mode\": { \"name\": \"path\", \"sources\": { \"Packages\": \"./packages\" } } } }",
             ));
         }
@@ -142,7 +142,7 @@ mod without_rules {
         fn require_directory_with_custom_init_file() {
             process_main_require_value(memory_resources!(
                 "src/value/__init__.lua" => "return true",
-                "src/main.lua" => "local value = require('value')",
+                "src/main.lua" => "local value = require('./value')",
                 ".darklua.json" => "{ \"rules\": [], \"bundle\": { \"require-mode\": { \"name\": \"path\", \"module-folder-name\": \"__init__.lua\" } } }",
             ));
         }
@@ -152,7 +152,7 @@ mod without_rules {
     fn require_lua_file_after_declaration() {
         let resources = memory_resources!(
             "src/value.lua" => "return true",
-            "src/main.lua" => "local const = 1\nlocal value = require('value.lua')",
+            "src/main.lua" => "local const = 1\nlocal value = require('./value.lua')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
         );
 
@@ -163,8 +163,8 @@ mod without_rules {
     fn require_lua_file_nested() {
         let resources = memory_resources!(
             "src/constant.lua" => "return 2",
-            "src/value.lua" => "local constant = require('constant.lua')\nreturn constant + constant",
-            "src/main.lua" => "local value = require('value.lua')",
+            "src/value.lua" => "local constant = require('./constant.lua')\nreturn constant + constant",
+            "src/main.lua" => "local value = require('./value.lua')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
         );
 
@@ -175,11 +175,11 @@ mod without_rules {
     fn require_lua_file_twice() {
         let resources = memory_resources!(
             "src/constant.lua" => "print('load constant module') return 2",
-            "src/value_a.lua" => "print('load value a')\nlocal constant_a = require('constant.lua')\nreturn constant_a",
-            "src/value_b.lua" => "print('load value b')\nlocal constant_b = require('constant.lua')\nreturn constant_b",
+            "src/value_a.lua" => "print('load value a')\nlocal constant_a = require('./constant.lua')\nreturn constant_a",
+            "src/value_b.lua" => "print('load value b')\nlocal constant_b = require('./constant.lua')\nreturn constant_b",
             "src/main.lua" => concat!(
-                "local value_a = require('value_a.lua')\n",
-                "local value_b = require('value_b.lua')\n",
+                "local value_a = require('./value_a.lua')\n",
+                "local value_b = require('./value_b.lua')\n",
                 "print(value_a + value_b)"
             ),
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
@@ -193,10 +193,10 @@ mod without_rules {
         let resources = memory_resources!(
             "src/constant.lua" => "print('load constant module') return 2",
             "src/a/value_a.lua" => "print('load value a')\nlocal constant_a = require('../constant.lua')\nreturn constant_a",
-            "src/value_b.lua" => "print('load value b')\nlocal constant_b = require('constant.lua')\nreturn constant_b",
+            "src/value_b.lua" => "print('load value b')\nlocal constant_b = require('./constant.lua')\nreturn constant_b",
             "src/main.lua" => concat!(
-                "local value_a = require('a/value_a.lua')\n",
-                "local value_b = require('value_b.lua')\n",
+                "local value_a = require('./a/value_a.lua')\n",
+                "local value_b = require('./value_b.lua')\n",
                 "print(value_a + value_b)"
             ),
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
@@ -209,7 +209,7 @@ mod without_rules {
     fn require_lua_file_with_field_expression() {
         let resources = memory_resources!(
             "src/value.lua" => "return { value = 'oof' }",
-            "src/main.lua" => "local value = require('value.lua').value",
+            "src/main.lua" => "local value = require('./value.lua').value",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
         );
 
@@ -220,7 +220,7 @@ mod without_rules {
     fn require_lua_file_with_statement() {
         let resources = memory_resources!(
             "src/run.lua" => "print('run')\nreturn nil",
-            "src/main.lua" => "require('run.lua')",
+            "src/main.lua" => "require('./run.lua')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
         );
 
@@ -231,7 +231,7 @@ mod without_rules {
     fn require_json_file_with_object() {
         let resources = memory_resources!(
             "src/value.json" => "{ \"value\": true }",
-            "src/main.lua" => "local value = require('value.json')",
+            "src/main.lua" => "local value = require('./value.json')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
         );
 
@@ -242,7 +242,7 @@ mod without_rules {
     fn require_json5_file_with_object() {
         let resources = memory_resources!(
             "src/value.json5" => "{ value: true }",
-            "src/main.lua" => "local value = require('value.json5')",
+            "src/main.lua" => "local value = require('./value.json5')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
         );
 
@@ -253,7 +253,7 @@ mod without_rules {
     fn require_json5_file_as_json_with_object() {
         let resources = memory_resources!(
             "src/value.json" => "{ value: true }",
-            "src/main.lua" => "local value = require('value.json')",
+            "src/main.lua" => "local value = require('./value.json')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
         );
 
@@ -264,7 +264,7 @@ mod without_rules {
     fn require_toml_with_object() {
         let resources = memory_resources!(
             "src/value.toml" => "name = 'darklua'\nvalue = 10",
-            "src/main.lua" => "local value = require('value.toml')",
+            "src/main.lua" => "local value = require('./value.toml')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
         );
 
@@ -278,7 +278,7 @@ mod without_rules {
 - 0
 - 100
             "#,
-            "src/main.lua" => "local value = require('value.yaml')",
+            "src/main.lua" => "local value = require('./value.yaml')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
         );
 
@@ -296,7 +296,7 @@ data:
     - 0
     - 100
             "#,
-            "src/main.lua" => "local value = require('value.yml')",
+            "src/main.lua" => "local value = require('./value.yml')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
         );
 
@@ -306,7 +306,7 @@ data:
     mod cyclic_requires {
         use super::*;
 
-        fn process_main_with_cyclic_requires(resources: &Resources, snapshot_name: &'static str) {
+        fn process_main_with_error(resources: &Resources, snapshot_name: &'static str) {
             let errors = process(
                 resources,
                 Options::new("src/main.lua").with_output("out.lua"),
@@ -329,7 +329,7 @@ data:
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
             );
 
-            process_main_with_cyclic_requires(&resources, "simple_direct_cycle");
+            process_main_with_error(&resources, "simple_direct_cycle");
         }
 
         #[test]
@@ -342,7 +342,7 @@ data:
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
             );
 
-            process_main_with_cyclic_requires(&resources, "simple_direct_cycle_in_required_file");
+            process_main_with_error(&resources, "simple_direct_cycle_in_required_file");
         }
 
         #[test]
@@ -355,7 +355,7 @@ data:
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
             );
 
-            process_main_with_cyclic_requires(&resources, "simple_transitive_cycle");
+            process_main_with_error(&resources, "simple_transitive_cycle");
         }
 
         #[test]
@@ -368,10 +368,7 @@ data:
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
             );
 
-            process_main_with_cyclic_requires(
-                &resources,
-                "direct_cycle_in_required_file_with_ok_require",
-            );
+            process_main_with_error(&resources, "direct_cycle_in_required_file_with_ok_require");
         }
 
         #[test]
@@ -385,7 +382,7 @@ data:
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
             );
 
-            process_main_with_cyclic_requires(&resources, "two_different_direct_cycles");
+            process_main_with_error(&resources, "two_different_direct_cycles");
         }
     }
 }

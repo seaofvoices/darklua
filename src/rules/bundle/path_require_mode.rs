@@ -15,7 +15,6 @@ use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
     ContextBuilder, ReplaceReferencedTokens, Rule, RuleConfiguration, RuleProcessResult,
 };
-use crate::utils::normalize_path;
 use crate::{utils, DarkluaError, Parser, Resources};
 
 use super::expression_serializer::to_expression;
@@ -51,7 +50,16 @@ impl<'a, 'b> RequirePathLocator<'a, 'b> {
         source: &Path,
     ) -> Result<PathBuf, DarkluaError> {
         let mut path: PathBuf = path.into();
-        if path.has_root() {
+        if is_require_relative(&path) {
+            if self.resources.is_file(source)? {
+                let mut new_path = source.to_path_buf();
+                new_path.pop();
+                new_path.push(path);
+                path = new_path;
+            } else {
+                path = source.join(path);
+            }
+        } else if !path.is_absolute() {
             let extra_module_relative_location =
                 self.extra_module_relative_location.ok_or_else(|| {
                     DarkluaError::invalid_resource_path(
@@ -60,7 +68,7 @@ impl<'a, 'b> RequirePathLocator<'a, 'b> {
                     )
                 })?;
 
-            let mut components = path.components().skip(1);
+            let mut components = path.components();
             let root = components.next().ok_or_else(|| {
                 DarkluaError::invalid_resource_path(
                     path.display().to_string(),
@@ -87,16 +95,8 @@ impl<'a, 'b> RequirePathLocator<'a, 'b> {
                 .chain(components);
 
             path = extra_module_relative_location.join(PathBuf::from_iter(source_components));
-        } else if path.is_relative() {
-            if self.resources.is_file(source)? {
-                let mut new_path = source.to_path_buf();
-                new_path.pop();
-                new_path.push(path);
-                path = new_path;
-            } else {
-                path = source.join(path);
-            }
         }
+
         if self
             .resources
             .is_directory(&path)
@@ -104,14 +104,22 @@ impl<'a, 'b> RequirePathLocator<'a, 'b> {
         {
             path.push(self.path_require_mode.module_folder_name());
         }
+
         if path.extension().is_none() {
             path.set_extension("lua");
             if !self.resources.exists(&path)? {
                 path.set_extension("luau");
             }
         };
-        Ok(normalize_path(path))
+
+        Ok(utils::normalize_path_with_current_dir(path))
     }
+}
+
+// the `is_relative` method from std::path::Path is not what darklua needs
+// to consider a require relative, which is paths that starts with `.` or `..`
+fn is_require_relative(path: &Path) -> bool {
+    path.starts_with(Path::new(".")) || path.starts_with(Path::new(".."))
 }
 
 #[derive(Debug)]
@@ -188,7 +196,7 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
             _ => None,
         }
         .map(Path::new)
-        .map(utils::normalize_path)
+        .map(utils::normalize_path_with_current_dir)
     }
 
     fn try_inline_call(&mut self, call: &FunctionCall) -> Option<Expression> {
@@ -205,7 +213,7 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
             }
         };
 
-        log::trace!(
+        log::debug!(
             "found require call to path `{}` (normalized `{}`)",
             literal_require_path.display(),
             require_path.display()
@@ -354,9 +362,18 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
                     }
                     Ok(RequiredResource::Block(block))
                 }
-                "json" | "json5" => transcode(json5::from_str::<serde_json::Value>(&content)),
-                "yml" | "yaml" => transcode(serde_yaml::from_str::<serde_yaml::Value>(&content)),
-                "toml" => transcode(toml::from_str::<toml::Value>(&content)),
+                "json" | "json5" => {
+                    log::debug!("transcode json data to Lua from `{}`", path.display());
+                    transcode(json5::from_str::<serde_json::Value>(&content))
+                }
+                "yml" | "yaml" => {
+                    log::debug!("transcode yaml data to Lua from `{}`", path.display());
+                    transcode(serde_yaml::from_str::<serde_yaml::Value>(&content))
+                }
+                "toml" => {
+                    log::debug!("transcode toml data to Lua from `{}`", path.display());
+                    transcode(toml::from_str::<toml::Value>(&content))
+                }
                 _ => Err(DarkluaError::invalid_resource_extension(path)),
             },
             None => unreachable!("extension should be defined"),
