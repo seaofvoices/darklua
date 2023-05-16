@@ -13,7 +13,7 @@ macro_rules! memory_resources {
 }
 
 const DARKLUA_BUNDLE_ONLY_CONFIG: &str =
-    "{ \"rules\": [], \"bundle\": { \"require-mode\": \"path\" } }";
+    "{ \"rules\": [], \"generator\": \"readable\", \"bundle\": { \"require-mode\": \"path\" } }";
 
 mod without_rules {
     use super::*;

@@ -2,4 +2,13 @@
 source: tests/bundle.rs
 expression: main
 ---
-local __DARKLUA_BUNDLE_MODULES={}do __DARKLUA_BUNDLE_MODULES.a=1 end local value = __DARKLUA_BUNDLE_MODULES.a local require = function()end local v = require('v')
+local __DARKLUA_BUNDLE_MODULES = {}
+
+do
+    __DARKLUA_BUNDLE_MODULES.a = 1
+end
+
+local value = __DARKLUA_BUNDLE_MODULES.a
+local require = function() end
+local v = require('v')
+

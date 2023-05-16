@@ -2,4 +2,13 @@
 source: tests/bundle.rs
 expression: main
 ---
-local __DARKLUA_BUNDLE_MODULES={}do __DARKLUA_BUNDLE_MODULES.a={ value = 'oof' }end local value = __DARKLUA_BUNDLE_MODULES.a.value
+local __DARKLUA_BUNDLE_MODULES = {}
+
+do
+    __DARKLUA_BUNDLE_MODULES.a = {
+        value = 'oof',
+    }
+end
+
+local value = __DARKLUA_BUNDLE_MODULES.a.value
+
