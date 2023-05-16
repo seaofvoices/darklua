@@ -31,6 +31,19 @@ mod without_rules {
         insta::assert_snapshot!(format!("bundle_without_rules_{}", snapshot_name), main);
     }
 
+    fn process_main_with_errors(resources: &Resources, snapshot_name: &str) {
+        let errors = process(
+            resources,
+            Options::new("src/main.lua").with_output("out.lua"),
+        )
+        .result()
+        .unwrap_err();
+
+        let error_display: Vec<_> = errors.into_iter().map(|err| err.to_string()).collect();
+
+        insta::assert_snapshot!(snapshot_name, error_display.join("\n"));
+    }
+
     mod module_locations {
         use super::*;
 
@@ -314,21 +327,51 @@ data:
         process_main(&resources, "override_require");
     }
 
+    #[test]
+    fn require_unknown_module() {
+        let original_main = "local library = require('@lune/library')";
+        let resources = memory_resources!(
+            "src/main.lua" => original_main,
+            ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
+        );
+
+        process_main_with_errors(&resources, "require_unknown_module");
+    }
+
+    #[test]
+    fn require_skip_unknown_module() {
+        let resources = memory_resources!(
+            "src/main.lua" => "local library = require('@lune/library')",
+            ".darklua.json" => "{ \"rules\": [], \"bundle\": { \"require-mode\": { \"name\": \"path\", \"excludes\": [\"@lune/**\"] } } }",
+        );
+
+        process_main(&resources, "require_skip_unknown_module");
+    }
+
+    // #[test]
+    // fn require_unknown_module_emit_warning() {
+    //     let original_main = "local library = require('@lune/library')";
+    //     let resources = memory_resources!(
+    //         "src/main.lua" => original_main,
+    //         ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
+    //     );
+    //     process(
+    //         &resources,
+    //         Options::new("src/main.lua").with_output("out.lua"),
+    //     )
+    //     .result()
+    //     .unwrap();
+
+    //     let main = resources.get("out.lua").unwrap();
+
+    //     pretty_assertions::assert_eq!(main, original_main);
+    // }
+
     mod cyclic_requires {
         use super::*;
 
-        fn process_main_with_error(resources: &Resources, snapshot_name: &'static str) {
-            let errors = process(
-                resources,
-                Options::new("src/main.lua").with_output("out.lua"),
-            )
-            .result()
-            .unwrap_err();
-
-            let error_display: Vec<_> = errors.into_iter().map(|err| err.to_string()).collect();
-            assert_eq!(error_display.len(), 1);
-
-            insta::assert_snapshot!(snapshot_name, error_display.join("\n"));
+        fn process_main_with_error(resources: &Resources, snapshot_name: &str) {
+            process_main_with_errors(resources, &format!("cyclic_requires__{}", snapshot_name));
         }
 
         #[test]

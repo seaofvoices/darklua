@@ -5,6 +5,7 @@ use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
+use wax::{Glob, Pattern};
 
 use crate::frontend::DarkluaResult;
 use crate::nodes::{
@@ -30,6 +31,7 @@ struct RequirePathLocator<'a, 'b> {
     path_require_mode: &'a PathRequireMode,
     extra_module_relative_location: Option<&'a Path>,
     resources: &'b Resources,
+    cached_exclude_globs: wax::Any<'a>,
 }
 
 impl<'a, 'b> RequirePathLocator<'a, 'b> {
@@ -42,6 +44,20 @@ impl<'a, 'b> RequirePathLocator<'a, 'b> {
             path_require_mode,
             extra_module_relative_location,
             resources,
+            cached_exclude_globs: wax::any::<Glob, _>(path_require_mode.excludes().filter_map(
+                |exclusion| match Glob::new(exclusion) {
+                    Ok(glob) => Some(glob),
+                    Err(err) => {
+                        log::warn!(
+                            "unable to create exclude matcher from `{}`: {}",
+                            exclusion,
+                            err.to_string()
+                        );
+                        None
+                    }
+                },
+            ))
+            .expect("exclude globs errors should be filtered and only emit a warning"),
         }
     }
 
@@ -115,6 +131,16 @@ impl<'a, 'b> RequirePathLocator<'a, 'b> {
 
         Ok(utils::normalize_path_with_current_dir(path))
     }
+
+    fn is_excluded(&self, require_path: &Path) -> bool {
+        let excluded = self.cached_exclude_globs.is_match(require_path);
+        log::trace!(
+            "verify if `{}` is excluded: {}",
+            require_path.display(),
+            excluded
+        );
+        excluded
+    }
 }
 
 // the `is_relative` method from std::path::Path is not what darklua needs
@@ -129,13 +155,11 @@ const REQUIRE_FUNCTION_IDENTIFIER: &str = "require";
 struct RequirePathProcessor<'a, 'b> {
     identifier_tracker: IdentifierTracker,
     path_locator: RequirePathLocator<'a, 'b>,
+    module_definitions: BuildModuleDefinitions<'a>,
     source: PathBuf,
-    modules_identifier: &'a str,
-    module_name_permutator: CharPermutator,
     module_cache: HashMap<PathBuf, Expression>,
     require_stack: Vec<PathBuf>,
     skip_module_paths: HashSet<PathBuf>,
-    module_definitions: Vec<Block>,
     parser: &'a Parser,
     resources: &'b Resources,
     errors: Vec<String>,
@@ -157,20 +181,19 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
                 extra_module_relative_location,
                 resources,
             ),
+            module_definitions: BuildModuleDefinitions::new(modules_identifier),
             source: source.into(),
-            modules_identifier,
-            module_name_permutator: identifier_permutator(),
             module_cache: Default::default(),
             require_stack: Default::default(),
             skip_module_paths: Default::default(),
-            module_definitions: Vec::new(),
             resources,
             parser,
             errors: Vec::new(),
         }
     }
 
-    fn result(self) -> RuleProcessResult {
+    fn apply(self, block: &mut Block) -> RuleProcessResult {
+        self.module_definitions.apply(block);
         match self.errors.len() {
             0 => Ok(()),
             1 => Err(self.errors.first().unwrap().to_string()),
@@ -214,6 +237,10 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
 
     fn try_inline_call(&mut self, call: &FunctionCall) -> Option<Expression> {
         let literal_require_path = self.require_call(call)?;
+
+        if self.path_locator.is_excluded(&literal_require_path) {
+            return None;
+        }
 
         let require_path = match self
             .path_locator
@@ -275,57 +302,10 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
             let required_resource = self.require_resource(require_path);
             self.require_stack.pop();
 
-            let (module_name, block) = match required_resource? {
-                RequiredResource::Block(mut block) => {
-                    let module_name = if let Some(LastStatement::Return(return_statement)) =
-                        block.take_last_statement()
-                    {
-                        if return_statement.len() != 1 {
-                            return Err(DarkluaError::custom(format!(
-                                "invalid Lua module at `{}`: module must return exactly one value",
-                                require_path.display()
-                            )));
-                        }
+            let module_value = self
+                .module_definitions
+                .build_module_from_resource(required_resource?, require_path)?;
 
-                        let return_value = return_statement.into_iter_expressions().next().unwrap();
-                        let module_name = generate_identifier(&mut self.module_name_permutator);
-
-                        block.push_statement(AssignStatement::from_variable(
-                            FieldExpression::new(
-                                Identifier::from(self.modules_identifier),
-                                module_name.clone(),
-                            ),
-                            return_value,
-                        ));
-
-                        module_name
-                    } else {
-                        return Err(DarkluaError::custom(format!(
-                            "invalid Lua module at `{}`: module must end with a return statement",
-                            require_path.display()
-                        )));
-                    };
-
-                    (module_name, block)
-                }
-                RequiredResource::Expression(expression) => {
-                    let module_name = generate_identifier(&mut self.module_name_permutator);
-                    let block = Block::default().with_statement(AssignStatement::from_variable(
-                        FieldExpression::new(
-                            Identifier::from(self.modules_identifier),
-                            module_name.clone(),
-                        ),
-                        expression,
-                    ));
-
-                    (module_name, block)
-                }
-            };
-
-            self.module_definitions.push(block);
-
-            let module_value: Expression =
-                FieldExpression::new(Identifier::from(self.modules_identifier), module_name).into();
             self.module_cache
                 .insert(require_path.to_path_buf(), module_value.clone());
 
@@ -462,14 +442,22 @@ pub struct PathRequireMode {
     module_folder_name: Option<String>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     sources: HashMap<String, PathBuf>,
+    #[serde(default, skip_serializing_if = "HashSet::is_empty")]
+    excludes: HashSet<String>,
 }
 
 impl PathRequireMode {
     pub fn new(module_folder_name: impl Into<String>) -> Self {
         Self {
             module_folder_name: Some(module_folder_name.into()),
-            sources: HashMap::default(),
+            sources: Default::default(),
+            excludes: Default::default(),
         }
+    }
+
+    pub fn with_exclude(mut self, exclude: impl Into<String>) -> Self {
+        self.excludes.insert(exclude.into());
+        self
     }
 
     pub(crate) fn module_folder_name(&self) -> String {
@@ -480,6 +468,10 @@ impl PathRequireMode {
 
     pub(crate) fn get_source(&self, name: &str) -> Option<&Path> {
         self.sources.get(name).map(PathBuf::as_path)
+    }
+
+    pub(crate) fn excludes(&self) -> impl Iterator<Item = &str> {
+        self.excludes.iter().map(AsRef::as_ref)
     }
 
     pub(crate) fn process_block<'a>(
@@ -500,16 +492,94 @@ impl PathRequireMode {
             parser,
         );
         ScopeVisitor::visit_block(block, &mut processor);
-        if !processor.module_definitions.is_empty() {
-            for module_block in processor.module_definitions.drain(..).rev() {
-                block.insert_statement(0, DoStatement::new(module_block));
-            }
-            block.insert_statement(
-                0,
-                LocalAssignStatement::from_variable(module_identifier)
-                    .with_value(TableExpression::default()),
-            );
+        processor.apply(block)
+    }
+}
+
+#[derive(Debug)]
+struct BuildModuleDefinitions<'a> {
+    modules_identifier: &'a str,
+    module_definitions: Vec<Block>,
+    module_name_permutator: CharPermutator,
+}
+
+impl<'a> BuildModuleDefinitions<'a> {
+    fn new(modules_identifier: &'a str) -> Self {
+        Self {
+            modules_identifier,
+            module_definitions: Vec::new(),
+            module_name_permutator: identifier_permutator(),
         }
-        processor.result()
+    }
+
+    fn build_module_from_resource(
+        &mut self,
+        required_resource: RequiredResource,
+        require_path: &Path,
+    ) -> DarkluaResult<Expression> {
+        let (module_name, block) = match required_resource {
+            RequiredResource::Block(mut block) => {
+                let module_name = if let Some(LastStatement::Return(return_statement)) =
+                    block.take_last_statement()
+                {
+                    if return_statement.len() != 1 {
+                        return Err(DarkluaError::custom(format!(
+                            "invalid Lua module at `{}`: module must return exactly one value",
+                            require_path.display()
+                        )));
+                    }
+
+                    let return_value = return_statement.into_iter_expressions().next().unwrap();
+                    let module_name = generate_identifier(&mut self.module_name_permutator);
+
+                    block.push_statement(AssignStatement::from_variable(
+                        FieldExpression::new(
+                            Identifier::from(self.modules_identifier),
+                            module_name.clone(),
+                        ),
+                        return_value,
+                    ));
+
+                    module_name
+                } else {
+                    return Err(DarkluaError::custom(format!(
+                        "invalid Lua module at `{}`: module must end with a return statement",
+                        require_path.display()
+                    )));
+                };
+
+                (module_name, block)
+            }
+            RequiredResource::Expression(expression) => {
+                let module_name = generate_identifier(&mut self.module_name_permutator);
+                let block = Block::default().with_statement(AssignStatement::from_variable(
+                    FieldExpression::new(
+                        Identifier::from(self.modules_identifier),
+                        module_name.clone(),
+                    ),
+                    expression,
+                ));
+
+                (module_name, block)
+            }
+        };
+
+        self.module_definitions.push(block);
+
+        Ok(FieldExpression::new(Identifier::from(self.modules_identifier), module_name).into())
+    }
+
+    fn apply(mut self, block: &mut Block) {
+        if self.module_definitions.is_empty() {
+            return;
+        }
+        for module_block in self.module_definitions.drain(..).rev() {
+            block.insert_statement(0, DoStatement::new(module_block));
+        }
+        block.insert_statement(
+            0,
+            LocalAssignStatement::from_variable(self.modules_identifier)
+                .with_value(TableExpression::default()),
+        );
     }
 }

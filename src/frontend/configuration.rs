@@ -454,6 +454,25 @@ mod test {
         }
 
         #[test]
+        fn deserialize_path_require_mode_with_excludes() {
+            let config: Configuration = json5::from_str(
+                "{bundle: { 'require-mode': { name: 'path', 'excludes': ['@lune', 'secrets'] } } }",
+            )
+            .unwrap();
+
+            pretty_assertions::assert_eq!(
+                config.bundle.unwrap(),
+                BundleConfiguration {
+                    require_mode: PathRequireMode::default()
+                        .with_exclude("@lune")
+                        .with_exclude("secrets")
+                        .into(),
+                    modules_identifier: None
+                }
+            );
+        }
+
+        #[test]
         fn deserialize_unknown_require_mode_name() {
             let result: Result<Configuration, _> =
                 json5::from_str("{bundle: { 'require-mode': 'oops' } }");
