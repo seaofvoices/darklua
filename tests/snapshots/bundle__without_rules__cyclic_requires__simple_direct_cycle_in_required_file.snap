@@ -2,4 +2,4 @@
 source: tests/bundle.rs
 expression: "error_display.join(\"\\n\")"
 ---
-error processing `src/main.lua` (bundler): cyclic require detected with `src\value1.lua` > `src\value2.lua` > `src\value1.lua`
+error processing `src/main.lua` (bundler): cyclic require detected with `src/value1.lua` > `src/value2.lua` > `src/value1.lua`

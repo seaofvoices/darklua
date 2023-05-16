@@ -44,12 +44,11 @@ wax = "0.5.0"
 assert_cmd = "2.0.4"
 criterion = { version = "0.4", features = ["html_reports"] }
 include_dir = "0.7.3"
-insta = { version = "1.29.0", features = ["json"] }
+insta = { version = "1.29.0", features = ["json", "filters"] }
 paste = "1.0"
 pretty_assertions = "0.7.2"
 rand = "0.7.3"
 rand_distr = "0.2.2"
-regex = "1.5.5"
 serde_bytes = "0.11"
 tempfile = "3.5.0"
 tracing-subscriber = "0.3.16"

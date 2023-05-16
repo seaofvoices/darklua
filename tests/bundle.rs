@@ -41,7 +41,11 @@ mod without_rules {
 
         let error_display: Vec<_> = errors.into_iter().map(|err| err.to_string()).collect();
 
-        insta::assert_snapshot!(snapshot_name, error_display.join("\n"));
+        let mut settings = insta::Settings::clone_current();
+        settings.add_filter("\\\\", "/");
+        settings.bind(|| {
+            insta::assert_snapshot!(snapshot_name, error_display.join("\n"));
+        });
     }
 
     mod module_locations {
