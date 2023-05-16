@@ -628,7 +628,12 @@ mod test {
         serializes_true_value(true) => true,
         serializes_false_value(false) => false,
         serializes_one_number_value(1) => expression!("1"),
+        serializes_zero_as_i8(0 as i8) => expression!("0"),
+        serializes_zero_as_i16(0 as i8) => expression!("0"),
+        serializes_zero_as_u8(0 as u8) => expression!("0"),
+        serializes_zero_as_u16(0 as u16) => expression!("0"),
         serializes_one_point_five_number_value(1.5) => expression!("1.5"),
+        serializes_100_as_f32_number_value(100.0 as f32) => expression!("100"),
         serializes_char_value('a') => StringExpression::from_value("a"),
         serializes_str_value("abc") => StringExpression::from_value("abc"),
         serializes_none_value(Option::<String>::None) => Expression::nil(),
@@ -767,5 +772,17 @@ mod test {
                 list: vec![]
             }
         }) => expression!("{ field = \"value\", pair = { false, 10 }, list = {} }"),
+        serializes_new_type_struct({
+            #[derive(Serialize)]
+            struct Test(String);
+
+            Test("value".to_owned())
+        }) => expression!("'value'"),
+        serializes_tuple_struct({
+            #[derive(Serialize)]
+            struct Test(String, usize, String);
+
+            Test("value".to_owned(), 1, "".to_owned())
+        }) => expression!("{ 'value', 1, '' }"),
     );
 }
