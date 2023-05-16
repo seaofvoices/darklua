@@ -303,6 +303,17 @@ data:
         process_main(&resources, "require_yml_with_object");
     }
 
+    #[test]
+    fn require_value_and_override_require_function() {
+        let resources = memory_resources!(
+            "src/value.lua" => "return 1",
+            "src/main.lua" => "local value = require('./value') local require = function()end local v = require('v')",
+            ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
+        );
+
+        process_main(&resources, "override_require");
+    }
+
     mod cyclic_requires {
         use super::*;
 

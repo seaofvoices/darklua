@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use std::mem;
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -11,7 +12,7 @@ use crate::nodes::{
     Identifier, LastStatement, LocalAssignStatement, Prefix, Statement, TableExpression,
 };
 use crate::process::utils::{generate_identifier, identifier_permutator, CharPermutator};
-use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
+use crate::process::{DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
     ContextBuilder, ReplaceReferencedTokens, Rule, RuleConfiguration, RuleProcessResult,
 };
@@ -122,8 +123,11 @@ fn is_require_relative(path: &Path) -> bool {
     path.starts_with(Path::new(".")) || path.starts_with(Path::new(".."))
 }
 
+const REQUIRE_FUNCTION_IDENTIFIER: &str = "require";
+
 #[derive(Debug)]
 struct RequirePathProcessor<'a, 'b> {
+    identifier_tracker: IdentifierTracker,
     path_locator: RequirePathLocator<'a, 'b>,
     source: PathBuf,
     modules_identifier: &'a str,
@@ -147,6 +151,7 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
         parser: &'a Parser,
     ) -> Self {
         Self {
+            identifier_tracker: IdentifierTracker::new(),
             path_locator: RequirePathLocator::new(
                 path_require_mode,
                 extra_module_relative_location,
@@ -179,7 +184,15 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
         }
 
         match call.get_prefix() {
-            Prefix::Identifier(identifier) if identifier.get_name() == "require" => {
+            Prefix::Identifier(identifier)
+                if identifier.get_name() == REQUIRE_FUNCTION_IDENTIFIER =>
+            {
+                if self
+                    .identifier_tracker
+                    .is_identifier_used(REQUIRE_FUNCTION_IDENTIFIER)
+                {
+                    return None;
+                }
                 match call.get_arguments() {
                     Arguments::String(string) => Some(string.get_value()),
                     Arguments::Tuple(tuple) if tuple.len() == 1 => {
@@ -381,6 +394,20 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
     }
 }
 
+impl<'a, 'b> Deref for RequirePathProcessor<'a, 'b> {
+    type Target = IdentifierTracker;
+
+    fn deref(&self) -> &Self::Target {
+        &self.identifier_tracker
+    }
+}
+
+impl<'a, 'b> DerefMut for RequirePathProcessor<'a, 'b> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.identifier_tracker
+    }
+}
+
 fn transcode<T: Serialize, E: Into<DarkluaError>>(
     value: Result<T, E>,
 ) -> Result<RequiredResource, DarkluaError> {
@@ -472,7 +499,7 @@ impl PathRequireMode {
             resources,
             parser,
         );
-        DefaultVisitor::visit_block(block, &mut processor);
+        ScopeVisitor::visit_block(block, &mut processor);
         if !processor.module_definitions.is_empty() {
             for module_block in processor.module_definitions.drain(..).rev() {
                 block.insert_statement(0, DoStatement::new(module_block));
