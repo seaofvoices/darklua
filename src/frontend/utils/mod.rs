@@ -1,13 +1,3 @@
-#[cfg(not(target_arch = "wasm32"))]
-mod timer;
-#[cfg(target_arch = "wasm32")]
-mod wasm_timer;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use timer::Timer;
-#[cfg(target_arch = "wasm32")]
-pub use wasm_timer::Timer;
-
 pub(crate) fn maybe_plural(count: usize) -> &'static str {
     if count > 1 {
         "s"

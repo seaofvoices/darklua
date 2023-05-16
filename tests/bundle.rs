@@ -147,7 +147,7 @@ mod without_rules {
             process_main_require_value(memory_resources!(
                 "packages/value.lua" => "return true",
                 "src/main.lua" => "local value = require('Packages/value.lua')",
-                ".darklua.json" => "{ \"rules\": [], \"bundle\": { \"require-mode\": { \"name\": \"path\", \"sources\": { \"Packages\": \"./packages\" } } } }",
+                ".darklua.json" => "{ \"rules\": [], \"generator\": \"readable\", \"bundle\": { \"require-mode\": { \"name\": \"path\", \"sources\": { \"Packages\": \"./packages\" } } } }",
             ));
         }
 
@@ -156,7 +156,7 @@ mod without_rules {
             process_main_require_value(memory_resources!(
                 "src/value/__init__.lua" => "return true",
                 "src/main.lua" => "local value = require('./value')",
-                ".darklua.json" => "{ \"rules\": [], \"bundle\": { \"require-mode\": { \"name\": \"path\", \"module-folder-name\": \"__init__.lua\" } } }",
+                ".darklua.json" => "{ \"rules\": [], \"generator\": \"readable\", \"bundle\": { \"require-mode\": { \"name\": \"path\", \"module-folder-name\": \"__init__.lua\" } } }",
             ));
         }
     }
@@ -329,9 +329,8 @@ data:
 
     #[test]
     fn require_unknown_module() {
-        let original_main = "local library = require('@lune/library')";
         let resources = memory_resources!(
-            "src/main.lua" => original_main,
+            "src/main.lua" => "local library = require('@lune/library')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
         );
 
@@ -347,25 +346,6 @@ data:
 
         process_main(&resources, "require_skip_unknown_module");
     }
-
-    // #[test]
-    // fn require_unknown_module_emit_warning() {
-    //     let original_main = "local library = require('@lune/library')";
-    //     let resources = memory_resources!(
-    //         "src/main.lua" => original_main,
-    //         ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
-    //     );
-    //     process(
-    //         &resources,
-    //         Options::new("src/main.lua").with_output("out.lua"),
-    //     )
-    //     .result()
-    //     .unwrap();
-
-    //     let main = resources.get("out.lua").unwrap();
-
-    //     pretty_assertions::assert_eq!(main, original_main);
-    // }
 
     mod cyclic_requires {
         use super::*;

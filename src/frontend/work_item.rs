@@ -1,8 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crate::nodes::Block;
-
-use super::utils::Timer;
+use crate::{nodes::Block, utils::Timer};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Progress {

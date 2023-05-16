@@ -17,6 +17,7 @@ use crate::process::{DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisit
 use crate::rules::{
     ContextBuilder, ReplaceReferencedTokens, Rule, RuleConfiguration, RuleProcessResult,
 };
+use crate::utils::Timer;
 use crate::{utils, DarkluaError, Parser, Resources};
 
 use super::expression_serializer::to_expression;
@@ -239,6 +240,11 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
         let literal_require_path = self.require_call(call)?;
 
         if self.path_locator.is_excluded(&literal_require_path) {
+            log::info!(
+                "exclude `{}` from bundle [from `{}`]",
+                literal_require_path.display(),
+                self.source.display()
+            );
             return None;
         }
 
@@ -260,6 +266,10 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
         );
 
         if self.skip_module_paths.contains(&require_path) {
+            log::trace!(
+                "skip `{}` because it previously errored",
+                require_path.display()
+            );
             return None;
         }
 
@@ -321,13 +331,27 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
         match path.extension() {
             Some(extension) => match extension.to_string_lossy().as_ref() {
                 "lua" | "luau" => {
+                    let parser_timer = Timer::now();
                     let mut block = self.parser.parse(&content).map_err(|parser_error| {
                         DarkluaError::parser_error(path.to_path_buf(), parser_error)
                     })?;
+                    log::debug!(
+                        "parsed `{}` in {}",
+                        path.display(),
+                        parser_timer.duration_label()
+                    );
 
                     let path_buf = path.to_path_buf();
                     let current_source = mem::replace(&mut self.source, path.to_path_buf());
+
+                    let apply_processor_timer = Timer::now();
                     DefaultVisitor::visit_block(&mut block, self);
+                    log::debug!(
+                        "processed `{}` into bundle in {}",
+                        path_buf.display(),
+                        apply_processor_timer.duration_label()
+                    );
+
                     self.source = current_source;
 
                     if self.parser.is_preserving_tokens() {
@@ -336,6 +360,9 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
                         // run `replace_referenced_tokens` rule to avoid generating invalid code
                         // when using the token-based generator
                         let replace_tokens = ReplaceReferencedTokens::default();
+
+                        let apply_replace_tokens_timer = Timer::now();
+
                         replace_tokens
                             .process(&mut block, &context)
                             .map_err(|rule_error| {
@@ -352,21 +379,25 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
                                 );
                                 error
                             })?;
+
+                        log::trace!(
+                            "replaced token references for `{}` in {}",
+                            path_buf.display(),
+                            apply_replace_tokens_timer.duration_label()
+                        );
                     }
                     Ok(RequiredResource::Block(block))
                 }
                 "json" | "json5" => {
-                    log::debug!("transcode json data to Lua from `{}`", path.display());
-                    transcode(json5::from_str::<serde_json::Value>(&content))
+                    transcode("json", path, json5::from_str::<serde_json::Value>, &content)
                 }
-                "yml" | "yaml" => {
-                    log::debug!("transcode yaml data to Lua from `{}`", path.display());
-                    transcode(serde_yaml::from_str::<serde_yaml::Value>(&content))
-                }
-                "toml" => {
-                    log::debug!("transcode toml data to Lua from `{}`", path.display());
-                    transcode(toml::from_str::<toml::Value>(&content))
-                }
+                "yml" | "yaml" => transcode(
+                    "yaml",
+                    path,
+                    serde_yaml::from_str::<serde_yaml::Value>,
+                    &content,
+                ),
+                "toml" => transcode("toml", path, toml::from_str::<toml::Value>, &content),
                 _ => Err(DarkluaError::invalid_resource_extension(path)),
             },
             None => unreachable!("extension should be defined"),
@@ -388,13 +419,29 @@ impl<'a, 'b> DerefMut for RequirePathProcessor<'a, 'b> {
     }
 }
 
-fn transcode<T: Serialize, E: Into<DarkluaError>>(
-    value: Result<T, E>,
-) -> Result<RequiredResource, DarkluaError> {
-    let value = value.map_err(E::into)?;
-    to_expression(&value)
+fn transcode<'a, T, E>(
+    label: &'static str,
+    path: &Path,
+    deserialize_value: impl Fn(&'a str) -> Result<T, E>,
+    content: &'a str,
+) -> Result<RequiredResource, DarkluaError>
+where
+    T: Serialize,
+    E: Into<DarkluaError>,
+{
+    log::trace!("transcode {} data to Lua from `{}`", label, path.display());
+    let transcode_duration = Timer::now();
+    let value = deserialize_value(content).map_err(E::into)?;
+    let expression = to_expression(&value)
         .map(RequiredResource::Expression)
-        .map_err(DarkluaError::from)
+        .map_err(DarkluaError::from);
+    log::debug!(
+        "transcoded {} data to Lua from `{}` in {}",
+        label,
+        path.display(),
+        transcode_duration.duration_label()
+    );
+    expression
 }
 
 impl<'a, 'b> NodeProcessor for RequirePathProcessor<'a, 'b> {

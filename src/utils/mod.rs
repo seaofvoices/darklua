@@ -1,3 +1,13 @@
+#[cfg(not(target_arch = "wasm32"))]
+mod timer;
+#[cfg(target_arch = "wasm32")]
+mod wasm_timer;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use timer::Timer;
+#[cfg(target_arch = "wasm32")]
+pub use wasm_timer::Timer;
+
 use std::{
     ffi::OsStr,
     iter::FromIterator,

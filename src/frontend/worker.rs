@@ -3,7 +3,7 @@ use std::path::Path;
 use super::{
     configuration::{BundleConfiguration, Configuration},
     resources::Resources,
-    utils::{self, Timer},
+    utils::maybe_plural,
     work_cache::WorkCache,
     work_item::{WorkData, WorkItem, WorkProgress, WorkStatus},
     DarkluaError, DarkluaResult, Options, ProcessResult,
@@ -12,7 +12,7 @@ use super::{
 use crate::{
     nodes::Block,
     rules::{bundle::Bundler, ContextBuilder, Rule, RuleConfiguration},
-    utils::normalize_path,
+    utils::{normalize_path, Timer},
     GeneratorParameters,
 };
 
@@ -137,7 +137,7 @@ impl<'a> Worker<'a> {
             log::trace!(
                 "working on batch of {} task{}",
                 work_length,
-                utils::maybe_plural(work_length)
+                maybe_plural(work_length)
             );
 
             let mut work_left = Vec::new();
@@ -335,7 +335,7 @@ impl<'a> Worker<'a> {
         log::debug!(
             "{} rule{} applied in {} for `{}`",
             total_rules,
-            utils::maybe_plural(total_rules),
+            maybe_plural(total_rules),
             rule_time,
             source_display,
         );
