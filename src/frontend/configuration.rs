@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fmt,
     marker::PhantomData,
     path::{Path, PathBuf},
@@ -10,7 +11,10 @@ use serde::{de, Deserialize, Deserializer, Serialize};
 use crate::{
     generator::{DenseLuaGenerator, LuaGenerator, ReadableLuaGenerator, TokenBasedLuaGenerator},
     nodes::Block,
-    rules::{bundle::RequireMode, get_default_rules, Rule},
+    rules::{
+        bundle::{Bundler, RequireMode},
+        get_default_rules, Rule,
+    },
     Parser,
 };
 
@@ -89,14 +93,19 @@ impl Configuration {
         self.generator.generate_lua(block, code)
     }
 
-    #[inline]
-    pub(crate) fn bundle(&self) -> Option<&BundleConfiguration> {
-        self.bundle.as_ref()
-    }
-
-    #[inline]
-    pub(crate) fn location(&self) -> Option<&Path> {
-        self.location.as_ref().map(AsRef::as_ref)
+    pub(crate) fn bundle(&self) -> Option<Bundler> {
+        if let Some((bundle_config, location)) = self.bundle.as_ref().zip(self.location.as_ref()) {
+            let bundler = Bundler::new(
+                self.build_parser(),
+                location.parent().unwrap_or(Path::new("/")),
+                bundle_config.require_mode().clone(),
+                bundle_config.excludes(),
+            )
+            .with_modules_identifier(bundle_config.modules_identifier());
+            Some(bundler)
+        } else {
+            None
+        }
     }
 
     #[inline]
@@ -222,15 +231,42 @@ pub struct BundleConfiguration {
     require_mode: RequireMode,
     #[serde(skip_serializing_if = "Option::is_none")]
     modules_identifier: Option<String>,
+    #[serde(default, skip_serializing_if = "HashSet::is_empty")]
+    excludes: HashSet<String>,
 }
 
 impl BundleConfiguration {
+    pub fn new(require_mode: impl Into<RequireMode>) -> Self {
+        Self {
+            require_mode: require_mode.into(),
+            modules_identifier: None,
+            excludes: Default::default(),
+        }
+    }
+
+    pub fn with_modules_identifier(mut self, modules_identifier: impl Into<String>) -> Self {
+        self.modules_identifier = Some(modules_identifier.into());
+        self
+    }
+
+    pub fn with_exclude(mut self, exclude: impl Into<String>) -> Self {
+        self.excludes.insert(exclude.into());
+        self
+    }
+
     pub(crate) fn require_mode(&self) -> &RequireMode {
         &self.require_mode
     }
 
-    pub(crate) fn modules_identifier(&self) -> Option<&str> {
-        self.modules_identifier.as_ref().map(AsRef::as_ref)
+    pub(crate) fn modules_identifier(&self) -> &str {
+        self.modules_identifier
+            .as_ref()
+            .map(AsRef::as_ref)
+            .unwrap_or("__DARKLUA_BUNDLE_MODULES")
+    }
+
+    pub(crate) fn excludes(&self) -> impl Iterator<Item = &str> {
+        self.excludes.iter().map(AsRef::as_ref)
     }
 }
 
@@ -384,10 +420,7 @@ mod test {
 
             pretty_assertions::assert_eq!(
                 config.bundle.unwrap(),
-                BundleConfiguration {
-                    require_mode: RequireMode::Path(Default::default()),
-                    modules_identifier: None
-                }
+                BundleConfiguration::new(PathRequireMode::default())
             );
         }
 
@@ -398,10 +431,7 @@ mod test {
 
             pretty_assertions::assert_eq!(
                 config.bundle.unwrap(),
-                BundleConfiguration {
-                    require_mode: RequireMode::Path(Default::default()),
-                    modules_identifier: None
-                }
+                BundleConfiguration::new(PathRequireMode::default())
             );
         }
 
@@ -414,10 +444,7 @@ mod test {
 
             pretty_assertions::assert_eq!(
                 config.bundle.unwrap(),
-                BundleConfiguration {
-                    require_mode: PathRequireMode::new("__INIT__").into(),
-                    modules_identifier: None
-                }
+                BundleConfiguration::new(PathRequireMode::new("__INIT__"))
             );
         }
 
@@ -430,10 +457,7 @@ mod test {
 
             pretty_assertions::assert_eq!(
                 config.bundle.unwrap(),
-                BundleConfiguration {
-                    require_mode: RequireMode::Path(Default::default()),
-                    modules_identifier: Some("__M".to_owned())
-                }
+                BundleConfiguration::new(PathRequireMode::default()).with_modules_identifier("__M")
             );
         }
 
@@ -446,29 +470,23 @@ mod test {
 
             pretty_assertions::assert_eq!(
                 config.bundle.unwrap(),
-                BundleConfiguration {
-                    require_mode: PathRequireMode::new("__INIT__").into(),
-                    modules_identifier: Some("__M".to_owned())
-                }
+                BundleConfiguration::new(PathRequireMode::new("__INIT__"))
+                    .with_modules_identifier("__M")
             );
         }
 
         #[test]
         fn deserialize_path_require_mode_with_excludes() {
             let config: Configuration = json5::from_str(
-                "{bundle: { 'require-mode': { name: 'path', 'excludes': ['@lune', 'secrets'] } } }",
+                "{bundle: { 'require-mode': { name: 'path' }, excludes: ['@lune', 'secrets'] } }",
             )
             .unwrap();
 
             pretty_assertions::assert_eq!(
                 config.bundle.unwrap(),
-                BundleConfiguration {
-                    require_mode: PathRequireMode::default()
-                        .with_exclude("@lune")
-                        .with_exclude("secrets")
-                        .into(),
-                    modules_identifier: None
-                }
+                BundleConfiguration::new(PathRequireMode::default())
+                    .with_exclude("@lune")
+                    .with_exclude("secrets")
             );
         }
 

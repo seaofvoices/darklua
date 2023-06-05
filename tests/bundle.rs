@@ -345,7 +345,7 @@ data:
     fn require_skip_unknown_module() {
         let resources = memory_resources!(
             "src/main.lua" => "local library = require('@lune/library')",
-            ".darklua.json" => "{ \"rules\": [], \"bundle\": { \"require-mode\": { \"name\": \"path\", \"excludes\": [\"@lune/**\"] } } }",
+            ".darklua.json" => "{ \"rules\": [], \"bundle\": { \"require-mode\": \"path\", \"excludes\": [\"@lune/**\"] } }",
         );
 
         process_main(&resources, "require_skip_unknown_module");

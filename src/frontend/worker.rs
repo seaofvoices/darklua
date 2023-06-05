@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use super::{
-    configuration::{BundleConfiguration, Configuration},
+    configuration::Configuration,
     resources::Resources,
     utils::maybe_plural,
     work_cache::WorkCache,
@@ -23,6 +23,7 @@ pub(crate) struct Worker<'a> {
     resources: &'a Resources,
     cache: WorkCache<'a>,
     configuration: Configuration,
+    cached_bundler: Option<Bundler>,
 }
 
 impl<'a> Worker<'a> {
@@ -31,6 +32,7 @@ impl<'a> Worker<'a> {
             resources,
             cache: WorkCache::new(resources),
             configuration: Configuration::default(),
+            cached_bundler: None,
         }
     }
 
@@ -210,9 +212,7 @@ impl<'a> Worker<'a> {
                 let parser_time = parser_timer.duration_label();
                 log::debug!("parsed `{}` in {}", source_display, parser_time);
 
-                if let Some(bundle_config) = self.configuration.bundle() {
-                    self.bundle(&mut block, bundle_config, source, &content)?;
-                }
+                self.bundle(&mut block, source, &content)?;
 
                 self.apply_rules(data, WorkProgress::new(content, block))
             }
@@ -368,32 +368,29 @@ impl<'a> Worker<'a> {
     }
 
     fn bundle(
-        &self,
+        &mut self,
         block: &mut Block,
-        bundle_config: &BundleConfiguration,
         source: &Path,
         original_code: &str,
     ) -> DarkluaResult<()> {
+        if self.cached_bundler.is_none() {
+            if let Some(bundler) = self.configuration.bundle() {
+                self.cached_bundler = Some(bundler);
+            }
+        }
+        let bundler = match self.cached_bundler.as_ref() {
+            Some(bundler) => bundler,
+            None => return Ok(()),
+        };
+
         log::debug!("beginning bundling from `{}`", source.display());
 
         let bundle_timer = Timer::now();
 
-        let mut bundler = Bundler::default()
-            .with_parser(self.configuration.build_parser())
-            .with_require_mode(bundle_config.require_mode().clone());
-
-        if let Some(location) = self.configuration.location() {
-            bundler = bundler.with_configuration_location(location);
-        }
-
-        if let Some(modules_identifier) = bundle_config.modules_identifier() {
-            bundler = bundler.with_modules_identifier(modules_identifier);
-        }
-
         let context = self.create_rule_context(source, original_code).build();
 
         bundler.process(block, &context).map_err(|rule_error| {
-            let error = DarkluaError::orphan_rule_error(source, &bundler, rule_error);
+            let error = DarkluaError::orphan_rule_error(source, bundler, rule_error);
 
             log::trace!(
                 "[{}] rule `{}` errored: {}",

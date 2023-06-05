@@ -5,7 +5,6 @@ use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
-use wax::{Glob, Pattern};
 
 use crate::frontend::DarkluaResult;
 use crate::nodes::{
@@ -15,12 +14,13 @@ use crate::nodes::{
 use crate::process::utils::{generate_identifier, identifier_permutator, CharPermutator};
 use crate::process::{DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
-    ContextBuilder, ReplaceReferencedTokens, Rule, RuleConfiguration, RuleProcessResult,
+    Context, ContextBuilder, ReplaceReferencedTokens, Rule, RuleConfiguration, RuleProcessResult,
 };
 use crate::utils::Timer;
-use crate::{utils, DarkluaError, Parser, Resources};
+use crate::{utils, DarkluaError, Resources};
 
 use super::expression_serializer::to_expression;
+use super::BundleOptions;
 
 enum RequiredResource {
     Block(Block),
@@ -30,35 +30,20 @@ enum RequiredResource {
 #[derive(Debug)]
 struct RequirePathLocator<'a, 'b> {
     path_require_mode: &'a PathRequireMode,
-    extra_module_relative_location: Option<&'a Path>,
+    extra_module_relative_location: &'a Path,
     resources: &'b Resources,
-    cached_exclude_globs: wax::Any<'a>,
 }
 
 impl<'a, 'b> RequirePathLocator<'a, 'b> {
     fn new(
         path_require_mode: &'a PathRequireMode,
-        extra_module_relative_location: Option<&'a Path>,
+        extra_module_relative_location: &'a Path,
         resources: &'b Resources,
     ) -> Self {
         Self {
             path_require_mode,
             extra_module_relative_location,
             resources,
-            cached_exclude_globs: wax::any::<Glob, _>(path_require_mode.excludes().filter_map(
-                |exclusion| match Glob::new(exclusion) {
-                    Ok(glob) => Some(glob),
-                    Err(err) => {
-                        log::warn!(
-                            "unable to create exclude matcher from `{}`: {}",
-                            exclusion,
-                            err.to_string()
-                        );
-                        None
-                    }
-                },
-            ))
-            .expect("exclude globs errors should be filtered and only emit a warning"),
         }
     }
 
@@ -78,14 +63,6 @@ impl<'a, 'b> RequirePathLocator<'a, 'b> {
                 path = source.join(path);
             }
         } else if !path.is_absolute() {
-            let extra_module_relative_location =
-                self.extra_module_relative_location.ok_or_else(|| {
-                    DarkluaError::invalid_resource_path(
-                        path.display().to_string(),
-                        "unable to obtain configuration file location",
-                    )
-                })?;
-
             let mut components = path.components();
             let root = components.next().ok_or_else(|| {
                 DarkluaError::invalid_resource_path(
@@ -112,7 +89,9 @@ impl<'a, 'b> RequirePathLocator<'a, 'b> {
                 .components()
                 .chain(components);
 
-            path = extra_module_relative_location.join(PathBuf::from_iter(source_components));
+            path = self
+                .extra_module_relative_location
+                .join(PathBuf::from_iter(source_components));
         }
 
         if self
@@ -132,16 +111,6 @@ impl<'a, 'b> RequirePathLocator<'a, 'b> {
 
         Ok(utils::normalize_path_with_current_dir(path))
     }
-
-    fn is_excluded(&self, require_path: &Path) -> bool {
-        let excluded = self.cached_exclude_globs.is_match(require_path);
-        log::trace!(
-            "verify if `{}` is excluded: {}",
-            require_path.display(),
-            excluded
-        );
-        excluded
-    }
 }
 
 // the `is_relative` method from std::path::Path is not what darklua needs
@@ -154,6 +123,7 @@ const REQUIRE_FUNCTION_IDENTIFIER: &str = "require";
 
 #[derive(Debug)]
 struct RequirePathProcessor<'a, 'b> {
+    options: &'a BundleOptions,
     identifier_tracker: IdentifierTracker,
     path_locator: RequirePathLocator<'a, 'b>,
     module_definitions: BuildModuleDefinitions<'a>,
@@ -161,7 +131,6 @@ struct RequirePathProcessor<'a, 'b> {
     module_cache: HashMap<PathBuf, Expression>,
     require_stack: Vec<PathBuf>,
     skip_module_paths: HashSet<PathBuf>,
-    parser: &'a Parser,
     resources: &'b Resources,
     errors: Vec<String>,
 }
@@ -169,26 +138,24 @@ struct RequirePathProcessor<'a, 'b> {
 impl<'a, 'b> RequirePathProcessor<'a, 'b> {
     fn new(
         source: impl Into<PathBuf>,
-        extra_module_relative_location: Option<&'a Path>,
-        modules_identifier: &'a str,
+        options: &'a BundleOptions,
         path_require_mode: &'a PathRequireMode,
         resources: &'b Resources,
-        parser: &'a Parser,
     ) -> Self {
         Self {
+            options,
             identifier_tracker: IdentifierTracker::new(),
             path_locator: RequirePathLocator::new(
                 path_require_mode,
-                extra_module_relative_location,
+                options.extra_module_relative_location(),
                 resources,
             ),
-            module_definitions: BuildModuleDefinitions::new(modules_identifier),
+            module_definitions: BuildModuleDefinitions::new(options.modules_identifier()),
             source: source.into(),
             module_cache: Default::default(),
             require_stack: Default::default(),
             skip_module_paths: Default::default(),
             resources,
-            parser,
             errors: Vec::new(),
         }
     }
@@ -239,7 +206,7 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
     fn try_inline_call(&mut self, call: &FunctionCall) -> Option<Expression> {
         let literal_require_path = self.require_call(call)?;
 
-        if self.path_locator.is_excluded(&literal_require_path) {
+        if self.options.is_excluded(&literal_require_path) {
             log::info!(
                 "exclude `{}` from bundle [from `{}`]",
                 literal_require_path.display(),
@@ -332,9 +299,13 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
             Some(extension) => match extension.to_string_lossy().as_ref() {
                 "lua" | "luau" => {
                     let parser_timer = Timer::now();
-                    let mut block = self.parser.parse(&content).map_err(|parser_error| {
-                        DarkluaError::parser_error(path.to_path_buf(), parser_error)
-                    })?;
+                    let mut block =
+                        self.options
+                            .parser()
+                            .parse(&content)
+                            .map_err(|parser_error| {
+                                DarkluaError::parser_error(path.to_path_buf(), parser_error)
+                            })?;
                     log::debug!(
                         "parsed `{}` in {}",
                         path.display(),
@@ -354,7 +325,7 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
 
                     self.source = current_source;
 
-                    if self.parser.is_preserving_tokens() {
+                    if self.options.parser().is_preserving_tokens() {
                         let context =
                             ContextBuilder::new(path_buf.clone(), self.resources, &content).build();
                         // run `replace_referenced_tokens` rule to avoid generating invalid code
@@ -489,8 +460,6 @@ pub struct PathRequireMode {
     module_folder_name: Option<String>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     sources: HashMap<String, PathBuf>,
-    #[serde(default, skip_serializing_if = "HashSet::is_empty")]
-    excludes: HashSet<String>,
 }
 
 impl PathRequireMode {
@@ -498,13 +467,7 @@ impl PathRequireMode {
         Self {
             module_folder_name: Some(module_folder_name.into()),
             sources: Default::default(),
-            excludes: Default::default(),
         }
-    }
-
-    pub fn with_exclude(mut self, exclude: impl Into<String>) -> Self {
-        self.excludes.insert(exclude.into());
-        self
     }
 
     pub(crate) fn module_folder_name(&self) -> String {
@@ -517,27 +480,14 @@ impl PathRequireMode {
         self.sources.get(name).map(PathBuf::as_path)
     }
 
-    pub(crate) fn excludes(&self) -> impl Iterator<Item = &str> {
-        self.excludes.iter().map(AsRef::as_ref)
-    }
-
-    pub(crate) fn process_block<'a>(
+    pub(crate) fn process_block(
         &self,
         block: &mut Block,
-        source: PathBuf,
-        extra_module_relative_location: Option<&'a Path>,
-        module_identifier: &'a str,
-        resources: &Resources,
-        parser: &'a Parser,
+        context: &Context,
+        options: &BundleOptions,
     ) -> RuleProcessResult {
-        let mut processor = RequirePathProcessor::new(
-            source,
-            extra_module_relative_location,
-            module_identifier,
-            self,
-            resources,
-            parser,
-        );
+        let mut processor =
+            RequirePathProcessor::new(context.current_path(), options, self, context.resources());
         ScopeVisitor::visit_block(block, &mut processor);
         processor.apply(block)
     }

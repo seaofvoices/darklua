@@ -1,13 +1,11 @@
-use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
-use crate::nodes::Block;
 use crate::rules::RuleProcessResult;
-use crate::{Parser, Resources};
+use crate::{nodes::Block, rules::Context};
 
-use super::PathRequireMode;
+use super::{BundleOptions, PathRequireMode};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case", tag = "name")]
@@ -39,24 +37,16 @@ impl Default for RequireMode {
 }
 
 impl RequireMode {
-    pub(crate) fn process_block<'a>(
+    pub(crate) fn process_block(
         &self,
         block: &mut Block,
-        source: PathBuf,
-        extra_module_relative_location: Option<&'a Path>,
-        module_identifier: &'a str,
-        resources: &Resources,
-        parser: &'a Parser,
+        context: &Context,
+        options: &BundleOptions,
     ) -> RuleProcessResult {
         match self {
-            Self::Path(path_require_mode) => path_require_mode.process_block(
-                block,
-                source,
-                extra_module_relative_location,
-                module_identifier,
-                resources,
-                parser,
-            ),
+            Self::Path(path_require_mode) => {
+                path_require_mode.process_block(block, context, options)
+            }
         }
     }
 }
