@@ -1,17 +1,20 @@
+mod module_definitions;
+mod path_iterator;
+
+use module_definitions::BuildModuleDefinitions;
+
 use std::collections::{HashMap, HashSet};
-use std::iter::FromIterator;
-use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
+use std::{iter, mem};
 
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::DarkluaResult;
 use crate::nodes::{
-    Arguments, AssignStatement, Block, DoStatement, Expression, FieldExpression, FunctionCall,
-    Identifier, LastStatement, LocalAssignStatement, Prefix, Statement, TableExpression,
+    Arguments, Block, DoStatement, Expression, FunctionCall, LocalAssignStatement, Prefix,
+    Statement,
 };
-use crate::process::utils::{generate_identifier, identifier_permutator, CharPermutator};
 use crate::process::{DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
     Context, ContextBuilder, ReplaceReferencedTokens, Rule, RuleConfiguration, RuleProcessResult,
@@ -22,7 +25,7 @@ use crate::{utils, DarkluaError, Resources};
 use super::expression_serializer::to_expression;
 use super::BundleOptions;
 
-enum RequiredResource {
+pub(crate) enum RequiredResource {
     Block(Block),
     Expression(Expression),
 }
@@ -47,7 +50,7 @@ impl<'a, 'b> RequirePathLocator<'a, 'b> {
         }
     }
 
-    fn normalize_require_path(
+    fn find_require_path(
         &self,
         path: impl Into<PathBuf>,
         source: &Path,
@@ -77,44 +80,46 @@ impl<'a, 'b> RequirePathLocator<'a, 'b> {
                 )
             })?;
 
-            let source_components = self
-                .path_require_mode
-                .get_source(source_name)
-                .ok_or_else(|| {
+            let mut extra_module_location = self.extra_module_relative_location.to_path_buf();
+            extra_module_location.push(self.path_require_mode.get_source(source_name).ok_or_else(
+                || {
                     DarkluaError::invalid_resource_path(
                         path.display().to_string(),
                         format!("unknown source name `{}`", source_name),
                     )
-                })?
-                .components()
-                .chain(components);
-
-            path = self
-                .extra_module_relative_location
-                .join(PathBuf::from_iter(source_components));
+                },
+            )?);
+            extra_module_location.extend(components);
+            path = extra_module_location;
         }
 
-        if self
-            .resources
-            .is_directory(&path)
-            .map_err(DarkluaError::from)?
-        {
-            path.push(self.path_require_mode.module_folder_name());
-        }
-
-        if path.extension().is_none() {
-            path.set_extension("lua");
-            if !self.resources.exists(&path)? {
-                path.set_extension("luau");
+        let normalized_path = utils::normalize_path_with_current_dir(&path);
+        for potential_path in path_iterator::find_require_paths(
+            &normalized_path,
+            &self.path_require_mode.module_folder_name(),
+        ) {
+            if self.resources.is_file(&potential_path)? {
+                return Ok(utils::normalize_path_with_current_dir(potential_path));
             }
-        };
+        }
 
-        Ok(utils::normalize_path_with_current_dir(path))
+        Err(
+            DarkluaError::resource_not_found(&normalized_path).context(format!(
+                "tried `{}`",
+                path_iterator::find_require_paths(
+                    &normalized_path,
+                    &self.path_require_mode.module_folder_name(),
+                )
+                .map(|potential_path| potential_path.display().to_string())
+                .collect::<Vec<_>>()
+                .join("`, `")
+            )),
+        )
     }
 }
 
 // the `is_relative` method from std::path::Path is not what darklua needs
-// to consider a require relative, which is paths that starts with `.` or `..`
+// to consider a requi re relative, which is paths that starts with `.` or `..`
 fn is_require_relative(path: &Path) -> bool {
     path.starts_with(Path::new(".")) || path.starts_with(Path::new(".."))
 }
@@ -217,7 +222,7 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
 
         let require_path = match self
             .path_locator
-            .normalize_require_path(&literal_require_path, &self.source)
+            .find_require_path(&literal_require_path, &self.source)
         {
             Ok(path) => path,
             Err(err) => {
@@ -266,7 +271,7 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
                     .iter()
                     .skip(i)
                     .map(|path| path.display().to_string())
-                    .chain(std::iter::once(require_path.display().to_string()))
+                    .chain(iter::once(require_path.display().to_string()))
                     .collect();
 
                 return Err(DarkluaError::custom(format!(
@@ -490,93 +495,5 @@ impl PathRequireMode {
             RequirePathProcessor::new(context.current_path(), options, self, context.resources());
         ScopeVisitor::visit_block(block, &mut processor);
         processor.apply(block)
-    }
-}
-
-#[derive(Debug)]
-struct BuildModuleDefinitions<'a> {
-    modules_identifier: &'a str,
-    module_definitions: Vec<Block>,
-    module_name_permutator: CharPermutator,
-}
-
-impl<'a> BuildModuleDefinitions<'a> {
-    fn new(modules_identifier: &'a str) -> Self {
-        Self {
-            modules_identifier,
-            module_definitions: Vec::new(),
-            module_name_permutator: identifier_permutator(),
-        }
-    }
-
-    fn build_module_from_resource(
-        &mut self,
-        required_resource: RequiredResource,
-        require_path: &Path,
-    ) -> DarkluaResult<Expression> {
-        let (module_name, block) = match required_resource {
-            RequiredResource::Block(mut block) => {
-                let module_name = if let Some(LastStatement::Return(return_statement)) =
-                    block.take_last_statement()
-                {
-                    if return_statement.len() != 1 {
-                        return Err(DarkluaError::custom(format!(
-                            "invalid Lua module at `{}`: module must return exactly one value",
-                            require_path.display()
-                        )));
-                    }
-
-                    let return_value = return_statement.into_iter_expressions().next().unwrap();
-                    let module_name = generate_identifier(&mut self.module_name_permutator);
-
-                    block.push_statement(AssignStatement::from_variable(
-                        FieldExpression::new(
-                            Identifier::from(self.modules_identifier),
-                            module_name.clone(),
-                        ),
-                        return_value,
-                    ));
-
-                    module_name
-                } else {
-                    return Err(DarkluaError::custom(format!(
-                        "invalid Lua module at `{}`: module must end with a return statement",
-                        require_path.display()
-                    )));
-                };
-
-                (module_name, block)
-            }
-            RequiredResource::Expression(expression) => {
-                let module_name = generate_identifier(&mut self.module_name_permutator);
-                let block = Block::default().with_statement(AssignStatement::from_variable(
-                    FieldExpression::new(
-                        Identifier::from(self.modules_identifier),
-                        module_name.clone(),
-                    ),
-                    expression,
-                ));
-
-                (module_name, block)
-            }
-        };
-
-        self.module_definitions.push(block);
-
-        Ok(FieldExpression::new(Identifier::from(self.modules_identifier), module_name).into())
-    }
-
-    fn apply(mut self, block: &mut Block) {
-        if self.module_definitions.is_empty() {
-            return;
-        }
-        for module_block in self.module_definitions.drain(..).rev() {
-            block.insert_statement(0, DoStatement::new(module_block));
-        }
-        block.insert_statement(
-            0,
-            LocalAssignStatement::from_variable(self.modules_identifier)
-                .with_value(TableExpression::default()),
-        );
     }
 }

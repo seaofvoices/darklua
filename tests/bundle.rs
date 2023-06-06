@@ -342,6 +342,26 @@ data:
     }
 
     #[test]
+    fn require_unknown_relative_file() {
+        let resources = memory_resources!(
+            "src/main.lua" => "local library = require('./library')",
+            ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
+        );
+
+        process_main_with_errors(&resources, "require_unknown_relative_file");
+    }
+
+    #[test]
+    fn require_unknown_relative_file_with_extension() {
+        let resources = memory_resources!(
+            "src/main.lua" => "local library = require('./library.luau')",
+            ".darklua.json" => DARKLUA_BUNDLE_ONLY_CONFIG,
+        );
+
+        process_main_with_errors(&resources, "require_unknown_relative_file_with_extension");
+    }
+
+    #[test]
     fn require_skip_unknown_module() {
         let resources = memory_resources!(
             "src/main.lua" => "local library = require('@lune/library')",
