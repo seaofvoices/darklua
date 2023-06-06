@@ -42,7 +42,7 @@ For example, to avoid bundling any require to paths starting with `@lune`:
 {
   bundle: {
     "require-mode": "path",
-    excludes: ["@lune/**"]
+    excludes: ["@lune/**"],
   },
 }
 ```
@@ -59,21 +59,21 @@ Once enabled, darklua will find all require calls made with strings (single or d
 
 The first step consist of figuring out the head of the path or where to start looking for the resource:
 
-* **if the path starts with `.` or `..`:** the path is considered relative to the file where the require call is made
-* **if the path starts with `/`:** the path is considered like a regular absolute path
-* **else:** the first component of the path is used to find a matching [source](#sources)
+- **if the path starts with `.` or `..`:** the path is considered relative to the file where the require call is made
+- **if the path starts with `/`:** the path is considered like a regular absolute path
+- **else:** the first component of the path is used to find a matching [source](#sources)
 
 The next step is to resolve the tail of the path:
 
-* **if the path has an extension:** the resource is expected exactly as is
-* **else:** darklua will find the first available file based on the given path:
+- **if the path has an extension:** the resource is expected exactly as is
+- **else:** darklua will find the first available file based on the given path:
 
-    1. the given path
-    1. the given path with a `luau` extension
-	1. the given path with a `lua` extension
-	1. the given path joined with the module folder name
-	1. (if the module folder name does not have an extension) the given path joined with the module folder name and a `luau` extension
-	1. (if the module folder name does not have an extension) the given path joined with the module folder name and a `lua` extension
+  1. the given path
+  1. the given path with a `luau` extension
+  1. the given path with a `lua` extension
+  1. the given path joined with the module folder name
+  1. (if the module folder name does not have an extension) the given path joined with the module folder name and a `luau` extension
+  1. (if the module folder name does not have an extension) the given path joined with the module folder name and a `lua` extension
 
 Here is a concrete example of these steps with a require to `./example`. darklua will try the following paths and find the first file:
 
@@ -119,11 +119,11 @@ Given this configuration file:
     "require-mode": {
       name: "path",
       sources: {
-        "pkg": "./Packages",
+        pkg: "./Packages",
         // you can also map directly to a file (Lua or
         // any supported data file)
-        "images": "./assets/image-links.json"
-      }
+        images: "./assets/image-links.json",
+      },
     },
   },
 }
@@ -140,9 +140,9 @@ local images = require("images")
 
 The `path` require mode is able to require data files and convert them into Lua data. All that is needed is that the file has one of the recognized extensions:
 
-* [JSON](https://en.wikipedia.org/wiki/JSON) with `.json` or `.json5`
-* [YAML](https://en.wikipedia.org/wiki/YAML) with `.yml` or `.yaml`
-* [Toml](https://toml.io/en/) with `.toml`
+- [JSON](https://en.wikipedia.org/wiki/JSON) with `.json` or `.json5`
+- [YAML](https://en.wikipedia.org/wiki/YAML) with `.yml` or `.yaml`
+- [Toml](https://toml.io/en/) with `.toml`
 
 If you would like to see a format added, feel free to submit a request using a [GitHub issue](https://github.com/seaofvoices/darklua/issues).
 
@@ -317,10 +317,7 @@ tracing-tracy = "0.10.1"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 node-sys = "0.4.2"
-web-sys = {
-    version = "0.3.60",
-    features = ["Window", "Performance"]
-}
+web-sys = { version = "0.3.60", features = ["Window", "Performance"] }
 
 [profile.dev.package.full_moon]
 opt-level = 3
