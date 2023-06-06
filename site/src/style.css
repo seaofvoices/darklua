@@ -32,46 +32,16 @@ body {
 
 ul,
 ol {
-  margin-left: var(--spacing-0);
-  margin-right: var(--spacing-0);
-  padding: var(--spacing-0);
-  margin-bottom: var(--spacing-8);
   list-style-position: outside;
   list-style-image: none;
 }
 
-ul li,
-ol li {
-  padding-left: var(--spacing-0);
-  margin-bottom: calc(var(--spacing-8) / 2);
-}
-
-li > p {
-  margin-bottom: calc(var(--spacing-8) / 2);
-}
-
-li *:last-child {
-  margin-bottom: var(--spacing-0);
-}
-
-li > ul {
-  margin-left: var(--spacing-8);
-  margin-top: calc(var(--spacing-8) / 2);
-}
-
 blockquote {
   color: var(--color-text-light);
-  margin-left: calc(-1 * var(--spacing-6));
-  margin-right: var(--spacing-8);
-  padding: var(--spacing-0) var(--spacing-0) var(--spacing-0) var(--spacing-6);
-  border-left: var(--spacing-1) solid var(--color-primary);
+  border-left-style: solid;
+  border-left-color: var(--color-primary);
   font-size: var(--fontSize-2);
   font-style: italic;
-  margin-bottom: var(--spacing-8);
-}
-
-blockquote > :last-child {
-  margin-bottom: var(--spacing-0);
 }
 
 blockquote > ul,
@@ -81,7 +51,6 @@ blockquote > ol {
 
 table {
   width: 100%;
-  margin-bottom: var(--spacing-8);
   border-collapse: collapse;
   border-spacing: 0.25rem;
 }
@@ -134,12 +103,7 @@ a:focus {
 
 /* Custom classes */
 
-.global-header {
-  margin-bottom: var(--spacing-12);
-}
-
 .gatsby-highlight {
-  margin-bottom: var(--spacing-8);
   overflow: auto;
   max-width: 100%;
 }
@@ -147,10 +111,6 @@ a:focus {
 /* Media queries */
 
 @media (max-width: 42rem) {
-  blockquote {
-    padding: var(--spacing-0) var(--spacing-0) var(--spacing-0) var(--spacing-4);
-    margin-left: var(--spacing-0);
-  }
   ul,
   ol {
     list-style-position: inside;

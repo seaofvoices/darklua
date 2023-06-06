@@ -8,6 +8,7 @@ import { RuleReference } from "./rule-reference"
 import { toHast } from "mdast-util-to-hast"
 import { fromMarkdown } from "mdast-util-from-markdown"
 import ViewStateLink from "./ViewStateLink"
+import { CompareCode } from "./compare-code"
 
 const AnchorOffsetByToolbar = styled("div")(({ theme }) => {
   const newStyle = {
@@ -92,6 +93,7 @@ const renderAst = new rehypeReact({
     h6: createHeaderComponent(6),
     a: TextLink,
     "rule-reference": RuleReference,
+    "compare-code": CompareCode,
   },
 }).Compiler
 
@@ -136,3 +138,7 @@ export const RenderMarkdown = ({ markdown }) => {
   )
   return <MarkdownRenderer htmlAst={htmlAst} />
 }
+
+export const RenderCode = ({ code, language = "lua" }) => (
+  <RenderMarkdown markdown={`\`\`\`${language}\n` + code + "\n```"} />
+)

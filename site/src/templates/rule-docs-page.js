@@ -7,6 +7,7 @@ import ThemeProvider from "../components/theme-provider"
 import {
   MarkdownRenderer,
   RenderMarkdown,
+  RenderCode,
 } from "../components/markdown-renderer"
 import {
   Box,
@@ -24,10 +25,6 @@ import {
   useMediaQuery,
 } from "@mui/material"
 import { useTheme } from "@mui/material/styles"
-
-const RenderCode = ({ code }) => (
-  <RenderMarkdown markdown={"\n```lua\n" + code + "\n```"} />
-)
 
 const Parameters = ({ parameters }) => {
   if (parameters.length === 0) {
