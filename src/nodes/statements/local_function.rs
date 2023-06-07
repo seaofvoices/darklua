@@ -178,6 +178,7 @@ impl LocalFunctionStatement {
     }
 
     pub fn clear_comments(&mut self) {
+        self.identifier.clear_comments();
         self.parameters
             .iter_mut()
             .for_each(Identifier::clear_comments);
@@ -187,6 +188,7 @@ impl LocalFunctionStatement {
     }
 
     pub fn clear_whitespaces(&mut self) {
+        self.identifier.clear_whitespaces();
         self.parameters
             .iter_mut()
             .for_each(Identifier::clear_whitespaces);
@@ -196,6 +198,7 @@ impl LocalFunctionStatement {
     }
 
     pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.identifier.replace_referenced_tokens(code);
         for parameter in self.parameters.iter_mut() {
             parameter.replace_referenced_tokens(code);
         }

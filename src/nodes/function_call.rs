@@ -135,17 +135,26 @@ impl FunctionCall {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
         }
+        if let Some(method) = &mut self.method {
+            method.clear_comments();
+        }
     }
 
     pub fn clear_whitespaces(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
         }
+        if let Some(method) = &mut self.method {
+            method.clear_whitespaces();
+        }
     }
 
     pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
         if let Some(tokens) = &mut self.tokens {
             tokens.replace_referenced_tokens(code);
+        }
+        if let Some(method) = &mut self.method {
+            method.replace_referenced_tokens(code);
         }
     }
 }

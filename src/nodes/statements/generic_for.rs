@@ -140,17 +140,26 @@ impl GenericForStatement {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
         }
+        self.identifiers
+            .iter_mut()
+            .for_each(Identifier::clear_comments);
     }
 
     pub fn clear_whitespaces(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
         }
+        self.identifiers
+            .iter_mut()
+            .for_each(Identifier::clear_whitespaces);
     }
 
     pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
         if let Some(tokens) = &mut self.tokens {
             tokens.replace_referenced_tokens(code);
+        }
+        for identifier in self.identifiers.iter_mut() {
+            identifier.replace_referenced_tokens(code);
         }
     }
 }

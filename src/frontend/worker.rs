@@ -340,6 +340,17 @@ impl<'a> Worker<'a> {
             source_display,
         );
 
+        log::trace!("begin generating code for `{}`", source_display);
+
+        if cfg!(debug_assertions) && log::log_enabled!(log::Level::Trace) {
+            log::trace!(
+                "generate AST debugging view at `{}`",
+                data.output().display()
+            );
+            self.resources
+                .write(data.output(), &format!("{:#?}", progress.block()))?;
+        }
+
         let generator_timer = Timer::now();
 
         let lua_code = self.configuration.generate_lua(progress.block(), &content);
