@@ -213,6 +213,12 @@ impl BinaryExpression {
             token.replace_referenced_tokens(code);
         }
     }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(token) = &mut self.token {
+            token.shift_token_line(amount);
+        }
+    }
 }
 
 #[cfg(test)]

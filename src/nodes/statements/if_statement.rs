@@ -23,6 +23,11 @@ impl IfBranchTokens {
         self.elseif.replace_referenced_tokens(code);
         self.then.replace_referenced_tokens(code);
     }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.elseif.shift_token_line(amount);
+        self.then.shift_token_line(amount);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -106,6 +111,12 @@ impl IfBranch {
             tokens.replace_referenced_tokens(code);
         }
     }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -141,6 +152,15 @@ impl IfStatementTokens {
         self.end.replace_referenced_tokens(code);
         if let Some(token) = &mut self.r#else {
             token.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.r#if.shift_token_line(amount);
+        self.then.shift_token_line(amount);
+        self.end.shift_token_line(amount);
+        if let Some(token) = &mut self.r#else {
+            token.shift_token_line(amount);
         }
     }
 }
@@ -290,6 +310,15 @@ impl IfStatement {
         }
         for branch in self.branches.iter_mut() {
             branch.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
+        }
+        for branch in self.branches.iter_mut() {
+            branch.shift_token_line(amount);
         }
     }
 

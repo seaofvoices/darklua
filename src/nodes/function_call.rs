@@ -23,6 +23,12 @@ impl FunctionCallTokens {
             colon.replace_referenced_tokens(code);
         }
     }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(colon) = &mut self.colon {
+            colon.shift_token_line(amount);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -155,6 +161,15 @@ impl FunctionCall {
         }
         if let Some(method) = &mut self.method {
             method.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
+        }
+        if let Some(method) = &mut self.method {
+            method.shift_token_line(amount);
         }
     }
 }

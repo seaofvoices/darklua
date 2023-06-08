@@ -68,4 +68,11 @@ impl FieldExpression {
             token.replace_referenced_tokens(code);
         }
     }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.field.shift_token_line(amount);
+        if let Some(token) = &mut self.token {
+            token.shift_token_line(amount);
+        }
+    }
 }

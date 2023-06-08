@@ -21,6 +21,11 @@ impl RepeatTokens {
         self.repeat.replace_referenced_tokens(code);
         self.until.replace_referenced_tokens(code);
     }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.repeat.shift_token_line(amount);
+        self.until.shift_token_line(amount);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -89,6 +94,12 @@ impl RepeatStatement {
     pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
         if let Some(tokens) = &mut self.tokens {
             tokens.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
         }
     }
 }

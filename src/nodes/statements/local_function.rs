@@ -53,6 +53,20 @@ impl LocalFunctionTokens {
             token.replace_referenced_tokens(code);
         }
     }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.local.shift_token_line(amount);
+        self.function.shift_token_line(amount);
+        self.opening_parenthese.shift_token_line(amount);
+        self.closing_parenthese.shift_token_line(amount);
+        self.end.shift_token_line(amount);
+        for comma in self.parameter_commas.iter_mut() {
+            comma.shift_token_line(amount);
+        }
+        if let Some(token) = &mut self.variable_arguments {
+            token.shift_token_line(amount);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -204,6 +218,16 @@ impl LocalFunctionStatement {
         }
         if let Some(tokens) = self.tokens.as_mut() {
             tokens.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.identifier.shift_token_line(amount);
+        for parameter in self.parameters.iter_mut() {
+            parameter.shift_token_line(amount);
+        }
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
         }
     }
 }

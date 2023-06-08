@@ -72,6 +72,13 @@ impl TableFieldEntry {
             token.replace_referenced_tokens(code);
         }
     }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.field.shift_token_line(amount);
+        if let Some(token) = &mut self.token {
+            token.shift_token_line(amount);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -98,6 +105,12 @@ impl TableIndexEntryTokens {
         self.opening_bracket.replace_referenced_tokens(code);
         self.closing_bracket.replace_referenced_tokens(code);
         self.equal.replace_referenced_tokens(code);
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.opening_bracket.shift_token_line(amount);
+        self.closing_bracket.shift_token_line(amount);
+        self.equal.shift_token_line(amount);
     }
 }
 
@@ -169,6 +182,12 @@ impl TableIndexEntry {
             tokens.replace_referenced_tokens(code);
         }
     }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -199,6 +218,14 @@ impl TableEntry {
         match self {
             TableEntry::Field(entry) => entry.replace_referenced_tokens(code),
             TableEntry::Index(entry) => entry.replace_referenced_tokens(code),
+            TableEntry::Value(_) => {}
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        match self {
+            TableEntry::Field(entry) => entry.shift_token_line(amount),
+            TableEntry::Index(entry) => entry.shift_token_line(amount),
             TableEntry::Value(_) => {}
         }
     }
@@ -243,6 +270,14 @@ impl TableTokens {
         self.closing_brace.replace_referenced_tokens(code);
         for separator in self.separators.iter_mut() {
             separator.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.opening_brace.shift_token_line(amount);
+        self.closing_brace.shift_token_line(amount);
+        for separator in self.separators.iter_mut() {
+            separator.shift_token_line(amount);
         }
     }
 }
@@ -357,6 +392,15 @@ impl TableExpression {
         }
         for entry in self.entries.iter_mut() {
             entry.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
+        }
+        for entry in self.entries.iter_mut() {
+            entry.shift_token_line(amount);
         }
     }
 }

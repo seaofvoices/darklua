@@ -17,7 +17,7 @@ use crate::nodes::{
 };
 use crate::process::{DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
-    Context, ContextBuilder, ReplaceReferencedTokens, Rule, RuleConfiguration, RuleProcessResult,
+    Context, ContextBuilder, FlawlessRule, ReplaceReferencedTokens, RuleProcessResult,
 };
 use crate::utils::Timer;
 use crate::{utils, DarkluaError, Resources};
@@ -165,8 +165,8 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
         }
     }
 
-    fn apply(self, block: &mut Block) -> RuleProcessResult {
-        self.module_definitions.apply(block);
+    fn apply(self, block: &mut Block, context: &Context) -> RuleProcessResult {
+        self.module_definitions.apply(block, context);
         match self.errors.len() {
             0 => Ok(()),
             1 => Err(self.errors.first().unwrap().to_string()),
@@ -339,22 +339,7 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
 
                         let apply_replace_tokens_timer = Timer::now();
 
-                        replace_tokens
-                            .process(&mut block, &context)
-                            .map_err(|rule_error| {
-                                let error = DarkluaError::orphan_rule_error(
-                                    path_buf.clone(),
-                                    &replace_tokens,
-                                    rule_error,
-                                );
-                                log::trace!(
-                                    "[{}] rule `{}` errored: {}",
-                                    path_buf.display(),
-                                    replace_tokens.get_name(),
-                                    error
-                                );
-                                error
-                            })?;
+                        replace_tokens.flawless_process(&mut block, &context);
 
                         log::trace!(
                             "replaced token references for `{}` in {}",
@@ -494,6 +479,6 @@ impl PathRequireMode {
         let mut processor =
             RequirePathProcessor::new(context.current_path(), options, self, context.resources());
         ScopeVisitor::visit_block(block, &mut processor);
-        processor.apply(block)
+        processor.apply(block, context)
     }
 }

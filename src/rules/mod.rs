@@ -18,6 +18,7 @@ mod remove_spaces;
 mod rename_variables;
 mod replace_referenced_tokens;
 mod rule_property;
+mod shift_token_line;
 mod unused_if_branch;
 mod unused_while;
 
@@ -38,6 +39,7 @@ pub use remove_spaces::*;
 pub use rename_variables::*;
 pub(crate) use replace_referenced_tokens::*;
 pub use rule_property::*;
+pub(crate) use shift_token_line::*;
 pub use unused_if_branch::*;
 pub use unused_while::*;
 

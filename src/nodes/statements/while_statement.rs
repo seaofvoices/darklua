@@ -25,6 +25,12 @@ impl WhileTokens {
         self.r#do.replace_referenced_tokens(code);
         self.end.replace_referenced_tokens(code);
     }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.r#while.shift_token_line(amount);
+        self.r#do.shift_token_line(amount);
+        self.end.shift_token_line(amount);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -93,6 +99,12 @@ impl WhileStatement {
     pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
         if let Some(tokens) = &mut self.tokens {
             tokens.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
         }
     }
 }

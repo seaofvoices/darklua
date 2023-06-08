@@ -223,6 +223,14 @@ impl Token {
             };
         }
     }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        match &mut self.position {
+            Position::LineNumberReference { line_number, .. }
+            | Position::LineNumber { line_number, .. } => *line_number += amount,
+            Position::Any { .. } => {}
+        }
+    }
 }
 
 #[cfg(test)]
