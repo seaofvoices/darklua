@@ -13,6 +13,9 @@ on:
         default: ''
         type: string
 
+permissions:
+  contents: write
+
 jobs:
   create-release:
     name: Create release
@@ -34,12 +37,12 @@ jobs:
 
       - name: Create release
         id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ inputs.release_tag }}
-          release_name: ${{ inputs.release_tag }}
+          name: ${{ inputs.release_tag }}
           draft: false
 
   build:

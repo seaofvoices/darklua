@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* upgrade to full-moon parser to 0.18.1 ([#100](https://github.com/seaofvoices/darklua/pull/100))
+
 ## 0.9.0
 
 * improve `convert_index_to_field` to refactor table entries ([#88](https://github.com/seaofvoices/darklua/pull/88))
