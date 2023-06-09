@@ -108,8 +108,8 @@ impl Block {
         self.last_statement = Some(last_statement.into());
     }
 
-    pub fn with_last_statement(mut self, last_statement: LastStatement) -> Self {
-        self.last_statement = Some(last_statement);
+    pub fn with_last_statement(mut self, last_statement: impl Into<LastStatement>) -> Self {
+        self.last_statement = Some(last_statement.into());
         self
     }
 
