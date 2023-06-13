@@ -245,7 +245,7 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
             return None;
         }
 
-        match self.inline_require(&require_path) {
+        match self.inline_require(&require_path, call) {
             Ok(expression) => Some(expression),
             Err(error) => {
                 self.errors.push(error.to_string());
@@ -255,7 +255,11 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
         }
     }
 
-    fn inline_require(&mut self, require_path: &Path) -> DarkluaResult<Expression> {
+    fn inline_require(
+        &mut self,
+        require_path: &Path,
+        call: &FunctionCall,
+    ) -> DarkluaResult<Expression> {
         if let Some(expression) = self.module_cache.get(require_path) {
             Ok(expression.clone())
         } else {
@@ -286,7 +290,7 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
 
             let module_value = self
                 .module_definitions
-                .build_module_from_resource(required_resource?, require_path)?;
+                .build_module_from_resource(required_resource?, require_path, call)?;
 
             self.module_cache
                 .insert(require_path.to_path_buf(), module_value.clone());

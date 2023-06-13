@@ -32,6 +32,7 @@ impl<'a> BuildModuleDefinitions<'a> {
         &mut self,
         required_resource: RequiredResource,
         require_path: &Path,
+        call: &FunctionCall,
     ) -> DarkluaResult<Expression> {
         let block = match required_resource {
             RequiredResource::Block(block) => {
@@ -60,7 +61,22 @@ impl<'a> BuildModuleDefinitions<'a> {
         self.module_definitions
             .push((module_name.clone(), block, require_path.to_path_buf()));
 
-        let field = Identifier::new(module_name);
+        let token_for_trivia = match call.get_arguments() {
+            Arguments::Tuple(tuple) => tuple.get_tokens().map(|tokens| &tokens.closing_parenthese),
+            Arguments::String(string) => string.get_token(),
+            Arguments::Table(table) => table.get_tokens().map(|tokens| &tokens.closing_brace),
+        };
+
+        let field = if let Some(token_for_trivia) = token_for_trivia {
+            let mut field_token = Token::from_content(module_name.clone());
+            for trivia in token_for_trivia.iter_trailing_trivia() {
+                field_token.push_trailing_trivia(trivia.clone());
+            }
+            Identifier::new(module_name).with_token(field_token)
+        } else {
+            Identifier::new(module_name)
+        };
+
         Ok(FieldExpression::new(Identifier::from(self.modules_identifier), field).into())
     }
 

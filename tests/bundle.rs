@@ -15,6 +15,9 @@ macro_rules! memory_resources {
 const DARKLUA_BUNDLE_ONLY_READABLE_CONFIG: &str =
     "{ \"rules\": [], \"generator\": \"readable\", \"bundle\": { \"require-mode\": \"path\" } }";
 
+const DARKLUA_BUNDLE_ONLY_RETAIN_LINES_CONFIG: &str =
+    "{ \"rules\": [], \"generator\": \"retain-lines\", \"bundle\": { \"require-mode\": \"path\" } }";
+
 mod without_rules {
     use super::*;
 
@@ -369,6 +372,18 @@ data:
         );
 
         process_main(&resources, "require_skip_unknown_module");
+    }
+
+    #[test]
+    fn require_small_bundle_case() {
+        let resources = memory_resources!(
+            "src/value.lua" => include_str!("./test_cases/small_bundle/value.lua"),
+            "src/format.lua" => include_str!("./test_cases/small_bundle/format.lua"),
+            "src/main.lua" => include_str!("./test_cases/small_bundle/main.lua"),
+            ".darklua.json" => DARKLUA_BUNDLE_ONLY_RETAIN_LINES_CONFIG,
+        );
+
+        process_main(&resources, "require_small_bundle_case");
     }
 
     mod cyclic_requires {
