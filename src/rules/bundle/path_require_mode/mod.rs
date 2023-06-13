@@ -288,9 +288,11 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
             let required_resource = self.require_resource(require_path);
             self.require_stack.pop();
 
-            let module_value = self
-                .module_definitions
-                .build_module_from_resource(required_resource?, require_path, call)?;
+            let module_value = self.module_definitions.build_module_from_resource(
+                required_resource?,
+                require_path,
+                call,
+            )?;
 
             self.module_cache
                 .insert(require_path.to_path_buf(), module_value.clone());

@@ -285,7 +285,7 @@ impl ElseIfExpressionBranchTokens {
         self.then.replace_referenced_tokens(code);
     }
 
-    pub(crate)fn shift_token_line(&mut self, amount: usize) {
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
         self.elseif.shift_token_line(amount);
         self.then.shift_token_line(amount);
     }
