@@ -168,7 +168,7 @@ fn total_lines(block: &Block) -> usize {
 fn last_block_token(block: &Block) -> Option<&Token> {
     block
         .get_last_statement()
-        .and_then(last_last_statement_line)
+        .and_then(last_last_statement_token)
         .or_else(|| {
             block
                 .iter_statements()
@@ -182,7 +182,7 @@ fn last_statement_token(statement: &Statement) -> Option<&Token> {
         Statement::Assign(assign) => assign.last_value().and_then(last_expression_token),
         Statement::Do(do_statement) => do_statement.get_tokens().map(|tokens| &tokens.end),
         Statement::Call(call) => last_call_token(call),
-        Statement::CompoundAssign(_) => todo!(),
+        Statement::CompoundAssign(assign) => last_expression_token(assign.get_value()),
         Statement::Function(function) => function.get_tokens().map(|tokens| &tokens.end),
         Statement::GenericFor(generic_for) => generic_for.get_tokens().map(|tokens| &tokens.end),
         Statement::If(if_statement) => if_statement.get_tokens().map(|tokens| &tokens.end),
@@ -205,7 +205,7 @@ fn last_statement_token(statement: &Statement) -> Option<&Token> {
     }
 }
 
-fn last_last_statement_line(last: &LastStatement) -> Option<&Token> {
+fn last_last_statement_token(last: &LastStatement) -> Option<&Token> {
     match last {
         LastStatement::Break(token) | LastStatement::Continue(token) => token.as_ref(),
         LastStatement::Return(return_statement) => return_statement
@@ -220,7 +220,7 @@ fn last_expression_token(expression: &Expression) -> Option<&Token> {
     match expression {
         Expression::Binary(binary) => last_expression_token(binary.right()),
         Expression::Call(call) => last_call_token(call),
-        Expression::Field(field) => field.get_token(),
+        Expression::Field(field) => field.get_field().get_token(),
         Expression::Function(function) => function.get_tokens().map(|tokens| &tokens.end),
         Expression::Identifier(identifier) => identifier.get_token(),
         Expression::If(if_expression) => last_expression_token(if_expression.get_else_result()),
@@ -244,5 +244,85 @@ fn last_call_token(call: &FunctionCall) -> Option<&Token> {
         Arguments::Tuple(tuple) => tuple.get_tokens().map(|tokens| &tokens.closing_parenthese),
         Arguments::String(string) => string.get_token(),
         Arguments::Table(table) => table.get_tokens().map(|tokens| &tokens.closing_brace),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    mod test_total_lines {
+        use super::*;
+
+        macro_rules! test_total_lines {
+            (
+                $($name:ident ($code:literal) => $value:expr),+,
+            ) => {
+                $(
+                    #[test]
+                    fn $name() {
+                        let code = $code;
+
+                        let mut block = $crate::Parser::default().preserve_tokens().parse(&code).unwrap();
+
+                        let resources = $crate::Resources::from_memory();
+                        let context = $crate::rules::ContextBuilder::new(
+                                "placeholder",
+                                &resources,
+                                &code
+                            )
+                            .build();
+
+                        $crate::rules::ReplaceReferencedTokens::default()
+                        .flawless_process(&mut block, &context);
+
+                        let received_lines = total_lines(&block);
+                        assert_eq!(
+                            received_lines,
+                            $value,
+                            "expected {} line{} but received {}.\n{:#?}",
+                            $value,
+                            if $value > 1 { "s" } else { "" },
+                            received_lines,
+                            block,
+                        );
+                    }
+                )*
+            };
+        }
+
+        test_total_lines!(
+            return_statement("return\n") => 2,
+            return_one("return 1") => 1,
+            return_true("return true") => 1,
+            return_false("return true,\n\tfalse\n") => 3,
+            return_nil("return nil\n") => 2,
+            return_string("return 'hello' --end\n") => 2,
+            return_not_variable("return not variable") => 1,
+            return_function_call("return call()") => 1,
+            return_variadic_args("return ... -- comment") => 1,
+            return_parenthese("return (\ncall()\n)") => 3,
+            return_table("return {\n\t}\n") => 3,
+            return_function_expression("return function(arg1, ...)\nend -- ") => 2,
+            return_function_call_with_table_arguments("return call {\nelement\n}") => 3,
+            function_call_with_table_arguments("call {\nelement\n}") => 3,
+            require_with_string_argument("require 'module.lua'\n") => 2,
+            return_require_with_string_argument("return require 'module.lua'\n") => 2,
+            return_if_expression("return if condition then\n\tok\nelse\n\terr") => 4,
+            if_statement("if condition then\n\treturn ok\nelse\n\treturn err\nend -- end if") => 5,
+            do_statement("do\n--comment\n\n\nend") => 5,
+            compound_assign("\nvar += 10.5") => 2,
+            assign_with_binary_expression("var = var + 2") => 1,
+            local_assign_with_field_expression("local var =\n\tobject.prop\n-- end") => 3,
+            local_assign_with_index_expression("local var =\n\tobject['prop']\n-- end") => 3,
+            local_function_definition("local function fn()\nend\n") => 3,
+            function_definition("function fn()\nend\n --comment\n") => 3,
+            generic_for("for k, v in pairs({}) do\nend\n --comment") => 3,
+            numeric_for("for i = 1, 10 do\n-- comment\nend\n") => 4,
+            repeat_statement("\nrepeat\n-- do\nuntil condition\n") => 5,
+            while_statement("\nwhile condition do\n-- do\nend\n") => 5,
+            break_statement("break\n") => 2,
+            continue_statement("continue\n") => 2,
+        );
     }
 }
