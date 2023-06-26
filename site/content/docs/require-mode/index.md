@@ -144,6 +144,8 @@ The `path` require mode is able to require data files and convert them into Lua 
 - [YAML](https://en.wikipedia.org/wiki/YAML) with `.yml` or `.yaml`
 - [Toml](https://toml.io/en/) with `.toml`
 
+Text files (ending with `.txt`) are also supported and they will simply map to a string with the file content.
+
 If you would like to see a format added, feel free to submit a request using a [GitHub issue](https://github.com/seaofvoices/darklua/issues).
 
 ### JSON Example
