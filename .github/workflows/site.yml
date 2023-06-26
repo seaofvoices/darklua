@@ -47,9 +47,7 @@ jobs:
           key: ${{ runner.os }}-cargo-wasm-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build darklua-wasm for Node
-        run: |
-          wasm-pack -V
-          wasm-pack build darklua-wasm -t nodejs -d pkg
+        run: wasm-pack build darklua-wasm -t nodejs -d pkg
 
       - name: Install JavaScript wasm tests dependencies
         working-directory: site/darklua-wasm/javascript-tests
