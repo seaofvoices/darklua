@@ -18,6 +18,53 @@ const DARKLUA_BUNDLE_ONLY_READABLE_CONFIG: &str =
 const DARKLUA_BUNDLE_ONLY_RETAIN_LINES_CONFIG: &str =
     "{ \"rules\": [], \"generator\": \"retain-lines\", \"bundle\": { \"require-mode\": \"path\" } }";
 
+fn process_main_unchanged(resources: &Resources, main_code: &'static str) {
+    resources.write("src/main.lua", main_code).unwrap();
+    process(
+        resources,
+        Options::new("src/main.lua").with_output("out.lua"),
+    )
+    .result()
+    .unwrap();
+
+    let main = resources.get("out.lua").unwrap();
+
+    pretty_assertions::assert_eq!(main, main_code);
+}
+
+#[test]
+fn skip_require_call_without_a_string() {
+    let resources = memory_resources!(
+        ".darklua.json" => DARKLUA_BUNDLE_ONLY_RETAIN_LINES_CONFIG,
+    );
+
+    process_main_unchanged(&resources, "local library = require( {} )");
+}
+
+#[test]
+fn skip_require_call_with_method() {
+    let resources = memory_resources!(
+        ".darklua.json" => DARKLUA_BUNDLE_ONLY_RETAIN_LINES_CONFIG,
+    );
+
+    process_main_unchanged(
+        &resources,
+        "local library = require:method('./library.luau')",
+    );
+}
+
+#[test]
+fn skip_require_call_with_2_arguments() {
+    let resources = memory_resources!(
+        ".darklua.json" => DARKLUA_BUNDLE_ONLY_RETAIN_LINES_CONFIG,
+    );
+
+    process_main_unchanged(
+        &resources,
+        "local library = require('./example', 'argument')",
+    );
+}
+
 mod without_rules {
     use super::*;
 
@@ -65,6 +112,15 @@ mod without_rules {
             process_main_require_value(memory_resources!(
                 "src/value.lua" => "return true",
                 "src/main.lua" => "local value = require('./value.lua')",
+                ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
+            ));
+        }
+
+        #[test]
+        fn require_lua_file_with_string_call() {
+            process_main_require_value(memory_resources!(
+                "src/value.lua" => "return true",
+                "src/main.lua" => "local value = require './value.lua'",
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
             ));
         }
@@ -362,6 +418,38 @@ data:
         );
 
         process_main_with_errors(&resources, "require_unknown_relative_file_with_extension");
+    }
+
+    #[test]
+    fn require_empty_path_errors() {
+        let resources = memory_resources!(
+            "src/main.lua" => "local library = require('')",
+            ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
+        );
+
+        process_main_with_errors(&resources, "require_empty_path_errors");
+    }
+
+    #[test]
+    fn require_lua_file_with_parser_error() {
+        let resources = memory_resources!(
+            "src/main.lua" => "local library = require('./value.lua')",
+            "src/value.lua" => "returnone",
+            ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
+        );
+
+        process_main_with_errors(&resources, "require_lua_file_with_parser_error");
+    }
+
+    #[test]
+    fn require_lua_file_with_unsupported_extension() {
+        let resources = memory_resources!(
+            "src/main.lua" => "local library = require('./value.error')",
+            "src/value.error" => "",
+            ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
+        );
+
+        process_main_with_errors(&resources, "require_lua_file_with_unsupported_extension");
     }
 
     #[test]

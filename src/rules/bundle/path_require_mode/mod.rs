@@ -56,27 +56,29 @@ impl<'a, 'b> RequirePathLocator<'a, 'b> {
         source: &Path,
     ) -> Result<PathBuf, DarkluaError> {
         let mut path: PathBuf = path.into();
+        log::trace!(
+            "find require path for `{}` from `{}`",
+            path.display(),
+            source.display()
+        );
+
         if is_require_relative(&path) {
-            if self.resources.is_file(source)? {
-                let mut new_path = source.to_path_buf();
-                new_path.pop();
-                new_path.push(path);
-                path = new_path;
-            } else {
-                path = source.join(path);
-            }
+            let mut new_path = source.to_path_buf();
+            new_path.pop();
+            new_path.push(path);
+            path = new_path;
         } else if !path.is_absolute() {
             let mut components = path.components();
             let root = components.next().ok_or_else(|| {
                 DarkluaError::invalid_resource_path(
                     path.display().to_string(),
-                    "unable to obtain source from root path",
+                    "path is empty",
                 )
             })?;
             let source_name = root.as_os_str().to_str().ok_or_else(|| {
                 DarkluaError::invalid_resource_path(
                     path.display().to_string(),
-                    "unable to read source name",
+                    "cannot convert source name to utf-8",
                 )
             })?;
 
@@ -92,6 +94,7 @@ impl<'a, 'b> RequirePathLocator<'a, 'b> {
             extra_module_location.extend(components);
             path = extra_module_location;
         }
+        // else: the path is absolute so darklua should attempt to require it directly
 
         let normalized_path = utils::normalize_path_with_current_dir(&path);
         for potential_path in path_iterator::find_require_paths(
@@ -323,14 +326,13 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
                         parser_timer.duration_label()
                     );
 
-                    let path_buf = path.to_path_buf();
                     let current_source = mem::replace(&mut self.source, path.to_path_buf());
 
                     let apply_processor_timer = Timer::now();
                     DefaultVisitor::visit_block(&mut block, self);
                     log::debug!(
                         "processed `{}` into bundle in {}",
-                        path_buf.display(),
+                        path.display(),
                         apply_processor_timer.duration_label()
                     );
 
@@ -338,7 +340,7 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
 
                     if self.options.parser().is_preserving_tokens() {
                         let context =
-                            ContextBuilder::new(path_buf.clone(), self.resources, &content).build();
+                            ContextBuilder::new(path, self.resources, &content).build();
                         // run `replace_referenced_tokens` rule to avoid generating invalid code
                         // when using the token-based generator
                         let replace_tokens = ReplaceReferencedTokens::default();
@@ -349,7 +351,7 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
 
                         log::trace!(
                             "replaced token references for `{}` in {}",
-                            path_buf.display(),
+                            path.display(),
                             apply_replace_tokens_timer.duration_label()
                         );
                     }

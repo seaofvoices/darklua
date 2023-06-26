@@ -33,7 +33,13 @@ fn parent_dir() -> &'static OsStr {
 }
 
 fn normalize(path: impl AsRef<Path>, keep_current_dir: bool) -> PathBuf {
-    let mut components = path.as_ref().components().peekable();
+    let path = path.as_ref();
+
+    if path == Path::new("") {
+        return PathBuf::new();
+    }
+
+    let mut components = path.components().peekable();
     let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
         components.next();
         vec![c.as_os_str()]
@@ -133,6 +139,11 @@ mod test {
         verify_normalize_path("./directory/..", ".")
     }
 
+    #[test]
+    fn empty_path() {
+        verify_normalize_path("", "")
+    }
+
     mod with_current_dir {
         use super::*;
 
@@ -169,6 +180,11 @@ mod test {
         #[test]
         fn parent_directory_of_directory_inside_current_path() {
             verify_normalize_path_with_current_dir("./directory/..", ".")
+        }
+
+        #[test]
+        fn empty_path() {
+            verify_normalize_path_with_current_dir("", "")
         }
     }
 }
