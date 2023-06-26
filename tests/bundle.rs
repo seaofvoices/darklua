@@ -380,6 +380,17 @@ data:
     }
 
     #[test]
+    fn require_txt_file() {
+        let resources = memory_resources!(
+            "src/value.txt" => "Hello from txt file!\n\nThis is written on another line.\n",
+            "src/main.lua" => "local value = require('./value.txt')",
+            ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
+        );
+
+        process_main(&resources, "require_txt_file");
+    }
+
+    #[test]
     fn require_value_and_override_require_function() {
         let resources = memory_resources!(
             "src/value.lua" => "return 1",

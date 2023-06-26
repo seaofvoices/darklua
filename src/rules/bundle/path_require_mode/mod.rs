@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::frontend::DarkluaResult;
 use crate::nodes::{
     Arguments, Block, DoStatement, Expression, FunctionCall, LocalAssignStatement, Prefix,
-    Statement,
+    Statement, StringExpression,
 };
 use crate::process::{DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
@@ -70,10 +70,7 @@ impl<'a, 'b> RequirePathLocator<'a, 'b> {
         } else if !path.is_absolute() {
             let mut components = path.components();
             let root = components.next().ok_or_else(|| {
-                DarkluaError::invalid_resource_path(
-                    path.display().to_string(),
-                    "path is empty",
-                )
+                DarkluaError::invalid_resource_path(path.display().to_string(), "path is empty")
             })?;
             let source_name = root.as_os_str().to_str().ok_or_else(|| {
                 DarkluaError::invalid_resource_path(
@@ -339,8 +336,7 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
                     self.source = current_source;
 
                     if self.options.parser().is_preserving_tokens() {
-                        let context =
-                            ContextBuilder::new(path, self.resources, &content).build();
+                        let context = ContextBuilder::new(path, self.resources, &content).build();
                         // run `replace_referenced_tokens` rule to avoid generating invalid code
                         // when using the token-based generator
                         let replace_tokens = ReplaceReferencedTokens::default();
@@ -367,6 +363,9 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
                     &content,
                 ),
                 "toml" => transcode("toml", path, toml::from_str::<toml::Value>, &content),
+                "txt" => Ok(RequiredResource::Expression(
+                    StringExpression::from_value(content).into(),
+                )),
                 _ => Err(DarkluaError::invalid_resource_extension(path)),
             },
             None => unreachable!("extension should be defined"),

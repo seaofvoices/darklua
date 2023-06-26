@@ -1,0 +1,12 @@
+---
+source: tests/bundle.rs
+expression: main
+---
+local __DARKLUA_BUNDLE_MODULES = {}
+
+do
+    __DARKLUA_BUNDLE_MODULES.a = 'Hello from txt file!\n\nThis is written on another line.\n'
+end
+
+local value = __DARKLUA_BUNDLE_MODULES.a
+
