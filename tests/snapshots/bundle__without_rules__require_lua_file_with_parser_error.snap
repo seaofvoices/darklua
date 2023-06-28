@@ -1,0 +1,7 @@
+---
+source: tests/bundle.rs
+expression: "error_display.join(\"\\n\")"
+---
+error processing `src/main.lua` (bundler):
+unable to parse `src/value.lua`: error occurred while creating ast: unexpected token `returnone`. (starting from line 1, character 1 and ending on line 1, character 10)
+additional information: leftover token

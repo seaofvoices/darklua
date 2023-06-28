@@ -46,6 +46,26 @@ fn apply_default_config_to_output() {
 }
 
 #[test]
+fn apply_default_config_to_output_from_file_in_directory() {
+    let resources = memory_resources!(
+        "src/test.lua" => ANY_CODE,
+        "output/placeholder.txt" => "",
+    );
+
+    process(
+        &resources,
+        Options::new("src/test.lua").with_output("output"),
+    )
+    .result()
+    .unwrap();
+
+    assert_eq!(
+        resources.get("output/test.lua").unwrap(),
+        ANY_CODE_DEFAULT_PROCESS
+    );
+}
+
+#[test]
 fn apply_default_config_to_output_with_nested_content() {
     let init_lua = "return{}";
     let resources = memory_resources!(
@@ -155,6 +175,17 @@ mod errors {
 
     use super::*;
 
+    fn assert_errors(snapshot_name: &'static str, resources: &Resources, options: Options) {
+        let errors = process(resources, options).result().unwrap_err();
+
+        let errors_display = errors
+            .into_iter()
+            .map(|err| format!("- {}", err).replace('\\', "/"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        insta::assert_snapshot!(snapshot_name, errors_display);
+    }
+
     #[test]
     fn snapshot_simple_cyclic_work_error() {
         let resources = memory_resources!(
@@ -182,7 +213,7 @@ mod errors {
         }
 
         impl Rule for CustomRule {
-            fn process(&self, _: &mut Block, _: &mut Context) -> RuleProcessResult {
+            fn process(&self, _: &mut Block, _: &Context) -> RuleProcessResult {
                 Ok(())
             }
 
@@ -192,18 +223,39 @@ mod errors {
         }
 
         let rule: Box<dyn Rule> = Box::new(CustomRule);
-        let errors = process(
+
+        assert_errors(
+            "simple_cyclic_work_error",
             &resources,
             Options::new("src").with_configuration(Configuration::empty().with_rule(rule)),
-        )
-        .result()
-        .unwrap_err();
+        );
+    }
 
-        let errors_display = errors
-            .into_iter()
-            .map(|err| format!("- {}", err).replace('\\', "/"))
-            .collect::<Vec<_>>()
-            .join("\n");
-        insta::assert_snapshot!("simple_cyclic_work_error", errors_display);
+    #[test]
+    fn snapshot_missing_configuration_file() {
+        let resources = memory_resources!(
+            "src/init.lua" => "return ''",
+        );
+
+        assert_errors(
+            "missing_configuration_file",
+            &resources,
+            Options::new("src").with_configuration_at("missing/config.json"),
+        );
+    }
+
+    #[test]
+    fn snapshot_multiple_configuration_file_found() {
+        let resources = memory_resources!(
+            "src/init.lua" => "return ''",
+            ".darklua.json" => "{ rules: [] }",
+            ".darklua.json5" => "{ rules: [] }",
+        );
+
+        assert_errors(
+            "multiple_configuration_file_found",
+            &resources,
+            Options::new("src"),
+        );
     }
 }

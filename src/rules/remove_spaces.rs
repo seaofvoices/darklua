@@ -153,7 +153,7 @@ pub const REMOVE_SPACES_RULE_NAME: &str = "remove_spaces";
 pub struct RemoveSpaces {}
 
 impl FlawlessRule for RemoveSpaces {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = RemoveWhitespacesProcessor::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }
@@ -177,7 +177,11 @@ impl RuleConfiguration for RemoveSpaces {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::rules::Rule;
+    use crate::{
+        generator::{LuaGenerator, TokenBasedLuaGenerator},
+        rules::{ContextBuilder, Rule},
+        Parser, Resources,
+    };
 
     use insta::assert_json_snapshot;
 
@@ -206,5 +210,27 @@ mod test {
         }
         .to_string();
         pretty_assertions::assert_eq!(err_message, "unexpected field 'prop'");
+    }
+
+    #[test]
+    fn remove_spaces_in_code() {
+        let code = include_str!("../../tests/test_cases/spaces_and_comments.lua");
+
+        let parser = Parser::default().preserve_tokens();
+
+        let mut block = parser.parse(code).expect("unable to parse code");
+
+        RemoveSpaces::default().flawless_process(
+            &mut block,
+            &ContextBuilder::new(".", &Resources::from_memory(), code).build(),
+        );
+
+        let mut generator = TokenBasedLuaGenerator::new(code);
+
+        generator.write_block(&block);
+
+        let code_output = &generator.into_string();
+
+        insta::assert_snapshot!("remove_spaces_in_code", code_output);
     }
 }

@@ -154,7 +154,7 @@ impl Default for InjectGlobalValue {
 }
 
 impl FlawlessRule for InjectGlobalValue {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = ValueInjection::new(&self.identifier, self.value.clone());
         ScopeVisitor::visit_block(block, &mut processor);
     }

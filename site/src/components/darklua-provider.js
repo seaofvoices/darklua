@@ -6,7 +6,7 @@ const DarkluaProvider = ({ children }) => {
   const [darklua, setDarklua] = React.useState(null)
 
   React.useEffect(() => {
-    import("../../darklua-wasm/pkg/darklua_wasm")
+    import("darklua")
       .then(darklua => {
         setDarklua(darklua)
       })

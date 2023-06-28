@@ -80,6 +80,18 @@ impl DecimalNumber {
             token.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(token) = &mut self.token {
+            token.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(token) = &mut self.token {
+            token.shift_token_line(amount);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -164,6 +176,18 @@ impl HexNumber {
             token.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(token) = &mut self.token {
+            token.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(token) = &mut self.token {
+            token.shift_token_line(amount);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -224,6 +248,18 @@ impl BinaryNumber {
     pub fn clear_whitespaces(&mut self) {
         if let Some(token) = &mut self.token {
             token.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(token) = &mut self.token {
+            token.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(token) = &mut self.token {
+            token.shift_token_line(amount);
         }
     }
 }
@@ -292,6 +328,22 @@ impl NumberExpression {
             NumberExpression::Decimal(number) => number.clear_whitespaces(),
             NumberExpression::Hex(number) => number.clear_whitespaces(),
             NumberExpression::Binary(number) => number.clear_whitespaces(),
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        match self {
+            NumberExpression::Decimal(number) => number.replace_referenced_tokens(code),
+            NumberExpression::Hex(number) => number.replace_referenced_tokens(code),
+            NumberExpression::Binary(number) => number.replace_referenced_tokens(code),
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        match self {
+            NumberExpression::Decimal(number) => number.shift_token_line(amount),
+            NumberExpression::Hex(number) => number.shift_token_line(amount),
+            NumberExpression::Binary(number) => number.shift_token_line(amount),
         }
     }
 }

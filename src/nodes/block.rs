@@ -24,6 +24,24 @@ impl BlockTokens {
             last_semicolon.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        for semicolon in self.semicolons.iter_mut().flatten() {
+            semicolon.replace_referenced_tokens(code);
+        }
+        if let Some(last_semicolon) = &mut self.last_semicolon {
+            last_semicolon.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        for semicolon in self.semicolons.iter_mut().flatten() {
+            semicolon.shift_token_line(amount);
+        }
+        if let Some(last_semicolon) = &mut self.last_semicolon {
+            last_semicolon.shift_token_line(amount);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -90,8 +108,8 @@ impl Block {
         self.last_statement = Some(last_statement.into());
     }
 
-    pub fn with_last_statement(mut self, last_statement: LastStatement) -> Self {
-        self.last_statement = Some(last_statement);
+    pub fn with_last_statement(mut self, last_statement: impl Into<LastStatement>) -> Self {
+        self.last_statement = Some(last_statement.into());
         self
     }
 
@@ -218,6 +236,18 @@ impl Block {
     pub fn clear_whitespaces(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
         }
     }
 }

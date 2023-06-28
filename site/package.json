@@ -8,6 +8,7 @@
     "url": "https://github.com/seaofvoices/darklua/issues"
   },
   "dependencies": {
+    "darklua": "./darklua-wasm/pkg",
     "@babel/eslint-parser": "^7.21.3",
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",

@@ -61,4 +61,18 @@ impl FieldExpression {
             token.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.field.replace_referenced_tokens(code);
+        if let Some(token) = &mut self.token {
+            token.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.field.shift_token_line(amount);
+        if let Some(token) = &mut self.token {
+            token.shift_token_line(amount);
+        }
+    }
 }

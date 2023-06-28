@@ -36,7 +36,7 @@ pub const REMOVE_EMPTY_DO_RULE_NAME: &str = "remove_empty_do";
 pub struct RemoveEmptyDo {}
 
 impl FlawlessRule for RemoveEmptyDo {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         loop {
             let mut processor = EmptyDoFilter::default();
             DefaultVisitor::visit_block(block, &mut processor);
@@ -67,7 +67,8 @@ impl RuleConfiguration for RemoveEmptyDo {
 mod test {
     use super::*;
     use crate::nodes::DoStatement;
-    use crate::rules::Rule;
+    use crate::rules::{ContextBuilder, Rule};
+    use crate::Resources;
 
     use insta::assert_json_snapshot;
 
@@ -81,8 +82,11 @@ mod test {
 
         let mut block = Block::default().with_statement(DoStatement::new(Block::default()));
 
-        rule.process(&mut block, &mut Context::default())
-            .expect("rule should succeed");
+        rule.process(
+            &mut block,
+            &ContextBuilder::new(".", &Resources::from_memory(), "").build(),
+        )
+        .expect("rule should succeed");
 
         assert_eq!(block, Block::default());
     }
@@ -94,8 +98,11 @@ mod test {
         let block_with_do_statement = Block::default().with_statement(DoStatement::default());
         let mut block = Block::default().with_statement(DoStatement::new(block_with_do_statement));
 
-        rule.process(&mut block, &mut Context::default())
-            .expect("rule should succeed");
+        rule.process(
+            &mut block,
+            &ContextBuilder::new(".", &Resources::from_memory(), "").build(),
+        )
+        .expect("rule should succeed");
 
         assert_eq!(block, Block::default());
     }

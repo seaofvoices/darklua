@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-* upgrade to full-moon parser to 0.18.1 ([#100](https://github.com/seaofvoices/darklua/pull/100))
+* add bundling with path require mode ([#97](https://github.com/seaofvoices/darklua/pull/97))
+* upgrade full-moon parser to 0.18.1 ([#100](https://github.com/seaofvoices/darklua/pull/100))
 
 ## 0.9.0
 

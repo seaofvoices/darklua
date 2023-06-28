@@ -39,6 +39,34 @@ impl LocalFunctionTokens {
             token.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.local.replace_referenced_tokens(code);
+        self.function.replace_referenced_tokens(code);
+        self.opening_parenthese.replace_referenced_tokens(code);
+        self.closing_parenthese.replace_referenced_tokens(code);
+        self.end.replace_referenced_tokens(code);
+        for comma in self.parameter_commas.iter_mut() {
+            comma.replace_referenced_tokens(code);
+        }
+        if let Some(token) = &mut self.variable_arguments {
+            token.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.local.shift_token_line(amount);
+        self.function.shift_token_line(amount);
+        self.opening_parenthese.shift_token_line(amount);
+        self.closing_parenthese.shift_token_line(amount);
+        self.end.shift_token_line(amount);
+        for comma in self.parameter_commas.iter_mut() {
+            comma.shift_token_line(amount);
+        }
+        if let Some(token) = &mut self.variable_arguments {
+            token.shift_token_line(amount);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -164,6 +192,7 @@ impl LocalFunctionStatement {
     }
 
     pub fn clear_comments(&mut self) {
+        self.identifier.clear_comments();
         self.parameters
             .iter_mut()
             .for_each(Identifier::clear_comments);
@@ -173,11 +202,32 @@ impl LocalFunctionStatement {
     }
 
     pub fn clear_whitespaces(&mut self) {
+        self.identifier.clear_whitespaces();
         self.parameters
             .iter_mut()
             .for_each(Identifier::clear_whitespaces);
         if let Some(tokens) = self.tokens.as_mut() {
             tokens.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.identifier.replace_referenced_tokens(code);
+        for parameter in self.parameters.iter_mut() {
+            parameter.replace_referenced_tokens(code);
+        }
+        if let Some(tokens) = self.tokens.as_mut() {
+            tokens.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.identifier.shift_token_line(amount);
+        for parameter in self.parameters.iter_mut() {
+            parameter.shift_token_line(amount);
+        }
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
         }
     }
 }

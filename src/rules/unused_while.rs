@@ -36,7 +36,7 @@ pub const REMOVE_UNUSED_WHILE_RULE_NAME: &str = "remove_unused_while";
 pub struct RemoveUnusedWhile {}
 
 impl FlawlessRule for RemoveUnusedWhile {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = WhileFilter::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }

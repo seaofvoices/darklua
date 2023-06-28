@@ -1,0 +1,31 @@
+---
+source: tests/bundle.rs
+expression: main
+---
+local __DARKLUA_BUNDLE_MODULES = {}
+
+do
+    print('load constant module')
+
+    __DARKLUA_BUNDLE_MODULES.a = 2
+end
+do
+    print('load value a')
+
+    local constant_a = __DARKLUA_BUNDLE_MODULES.a
+
+    __DARKLUA_BUNDLE_MODULES.b = constant_a
+end
+do
+    print('load value b')
+
+    local constant_b = __DARKLUA_BUNDLE_MODULES.a
+
+    __DARKLUA_BUNDLE_MODULES.c = constant_b
+end
+
+local value_a = __DARKLUA_BUNDLE_MODULES.b
+local value_b = __DARKLUA_BUNDLE_MODULES.c
+
+print(value_a + value_b)
+

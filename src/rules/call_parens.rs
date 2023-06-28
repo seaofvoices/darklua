@@ -47,7 +47,7 @@ pub const REMOVE_FUNCTION_CALL_PARENS_RULE_NAME: &str = "remove_function_call_pa
 pub struct RemoveFunctionCallParens {}
 
 impl FlawlessRule for RemoveFunctionCallParens {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = Processor::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }

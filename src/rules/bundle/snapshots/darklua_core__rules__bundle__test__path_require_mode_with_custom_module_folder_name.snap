@@ -1,0 +1,11 @@
+---
+source: src/rules/bundle/mod.rs
+expression: rule
+---
+{
+  "rule": "bundler",
+  "require-mode": {
+    "name": "path",
+    "module-folder-name": "__init__"
+  }
+}

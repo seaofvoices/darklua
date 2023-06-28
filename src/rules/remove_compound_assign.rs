@@ -294,7 +294,7 @@ pub const REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME: &str = "remove_compound_assignme
 pub struct RemoveCompoundAssignment {}
 
 impl FlawlessRule for RemoveCompoundAssignment {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = Processor::default();
         ScopeVisitor::visit_block(block, &mut processor);
     }

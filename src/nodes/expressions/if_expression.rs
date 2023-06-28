@@ -139,6 +139,24 @@ impl IfExpression {
             .iter_mut()
             .for_each(ElseIfExpressionBranch::clear_whitespaces);
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+        for branch in self.branches.iter_mut() {
+            branch.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
+        }
+        for branch in self.branches.iter_mut() {
+            branch.shift_token_line(amount);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -202,6 +220,18 @@ impl ElseIfExpressionBranch {
             tokens.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -221,6 +251,16 @@ impl IfExpressionTokens {
         self.r#if.clear_whitespaces();
         self.then.clear_whitespaces();
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.r#if.replace_referenced_tokens(code);
+        self.then.replace_referenced_tokens(code);
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.r#if.shift_token_line(amount);
+        self.then.shift_token_line(amount);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -238,5 +278,15 @@ impl ElseIfExpressionBranchTokens {
     pub fn clear_whitespaces(&mut self) {
         self.elseif.clear_whitespaces();
         self.then.clear_whitespaces();
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.elseif.replace_referenced_tokens(code);
+        self.then.replace_referenced_tokens(code);
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.elseif.shift_token_line(amount);
+        self.then.shift_token_line(amount);
     }
 }

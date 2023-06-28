@@ -62,7 +62,7 @@ pub const CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME: &str = "convert_local_func
 pub struct ConvertLocalFunctionToAssign {}
 
 impl FlawlessRule for ConvertLocalFunctionToAssign {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = Processor::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }

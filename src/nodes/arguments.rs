@@ -19,6 +19,22 @@ impl TupleArgumentsTokens {
         self.closing_parenthese.clear_whitespaces();
         self.commas.iter_mut().for_each(Token::clear_whitespaces);
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.opening_parenthese.replace_referenced_tokens(code);
+        self.closing_parenthese.replace_referenced_tokens(code);
+        self.commas
+            .iter_mut()
+            .for_each(|token| token.replace_referenced_tokens(code));
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.opening_parenthese.shift_token_line(amount);
+        self.closing_parenthese.shift_token_line(amount);
+        self.commas
+            .iter_mut()
+            .for_each(|token| token.shift_token_line(amount));
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -91,6 +107,18 @@ impl TupleArguments {
             tokens.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
+        }
+    }
 }
 
 impl From<Arguments> for TupleArguments {
@@ -133,6 +161,20 @@ impl Arguments {
     pub fn clear_whitespaces(&mut self) {
         match self {
             Arguments::Tuple(tuple) => tuple.clear_whitespaces(),
+            Arguments::String(_) | Arguments::Table(_) => {}
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        match self {
+            Arguments::Tuple(tuple) => tuple.replace_referenced_tokens(code),
+            Arguments::String(_) | Arguments::Table(_) => {}
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        match self {
+            Arguments::Tuple(tuple) => tuple.shift_token_line(amount),
             Arguments::String(_) | Arguments::Table(_) => {}
         }
     }

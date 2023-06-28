@@ -1,0 +1,28 @@
+---
+source: tests/bundle.rs
+expression: main
+---
+local __DARKLUA_BUNDLE_MODULES={}do local function generateNumber()
+    return math.random(1, 9999)
+end
+
+__DARKLUA_BUNDLE_MODULES.a={
+    zero = 0,
+    one = 1,
+    number1 = generateNumber(),
+    number2 = generateNumber(),
+    number3 = generateNumber(),
+}
+end do
+local function format(value)
+    return '[' .. tostring(value) .. ']'
+end
+
+__DARKLUA_BUNDLE_MODULES.b=format -- comment after returning format function
+end
+local value = __DARKLUA_BUNDLE_MODULES.a -- import value module
+
+local format = __DARKLUA_BUNDLE_MODULES.b --[[ import format module ]]
+
+print(format(value.number1 + value.number2))
+

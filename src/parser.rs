@@ -24,6 +24,10 @@ impl Parser {
         self
     }
 
+    pub(crate) fn is_preserving_tokens(&self) -> bool {
+        self.hold_token_data
+    }
+
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_ast(&self, ast: Ast) -> Result<Block, ConvertError> {
         AstConverter::new(self.hold_token_data).convert(ast.nodes())

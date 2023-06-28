@@ -1,0 +1,15 @@
+---
+source: tests/bundle.rs
+expression: main
+---
+local __DARKLUA_BUNDLE_MODULES = {}
+
+do
+    print('run')
+
+    __DARKLUA_BUNDLE_MODULES.a = nil
+end
+do
+    local _ = __DARKLUA_BUNDLE_MODULES.a
+end
+

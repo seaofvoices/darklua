@@ -207,7 +207,7 @@ pub const REMOVE_UNUSED_IF_BRANCH_RULE_NAME: &str = "remove_unused_if_branch";
 pub struct RemoveUnusedIfBranch {}
 
 impl FlawlessRule for RemoveUnusedIfBranch {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = IfFilter::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }
