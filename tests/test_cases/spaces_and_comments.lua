@@ -11,6 +11,7 @@ function foo -- foo
 end
 function foo:var -- var method
     (param1 --[[string]], p2 , ... --[[rest]] ) -- end of parameters
+    return 0x01 --[[first]] - 0b1 -- number
 end
 
 for key --[[comment]], value   in pairs( variable ) do continue end

@@ -627,6 +627,8 @@ mod test {
             missing_hex_exponent_value("0x1p") => NumberParsingError::InvalidHexadecimalExponent,
             negative_hex_exponent_value("0x1p-3") => NumberParsingError::InvalidHexadecimalExponent,
             missing_hex_exponent_value_uppercase("0x1P") => NumberParsingError::InvalidHexadecimalExponent,
+            invalid_hex_exponent_value("0x1p1Z") => NumberParsingError::InvalidHexadecimalExponent,
+            invalid_hex_exponent_value_uppercase("0x1P1Z") => NumberParsingError::InvalidHexadecimalExponent,
             negative_hex_exponent_value_uppercase("0x1P-3") => NumberParsingError::InvalidHexadecimalExponent,
             invalid_digit_in_binary("0b190") => NumberParsingError::InvalidBinaryNumber,
             invalid_digit_in_binary_uppercase("0B190") => NumberParsingError::InvalidBinaryNumber,
