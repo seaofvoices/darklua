@@ -15,6 +15,7 @@ function foo
 end
 function foo:var 
     (param1 , p2 , ...  ) 
+    return 0x01  - 0b1 
 end
 
 for key , value   in pairs( variable ) do continue end

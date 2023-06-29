@@ -476,6 +476,7 @@ data:
     #[test]
     fn require_small_bundle_case() {
         let resources = memory_resources!(
+            "src/initialize.lua" => include_str!("./test_cases/small_bundle/initialize.lua"),
             "src/value.lua" => include_str!("./test_cases/small_bundle/value.lua"),
             "src/format.lua" => include_str!("./test_cases/small_bundle/format.lua"),
             "src/main.lua" => include_str!("./test_cases/small_bundle/main.lua"),

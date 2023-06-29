@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* fix number parsing to support underscores before `x` in hexadecimal number and before `b` in binary numbers ([#103](https://github.com/seaofvoices/darklua/pull/103))
 * add bundling with path require mode ([#97](https://github.com/seaofvoices/darklua/pull/97))
 * upgrade full-moon parser to 0.18.1 ([#100](https://github.com/seaofvoices/darklua/pull/100))
 
