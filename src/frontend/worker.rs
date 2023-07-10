@@ -187,7 +187,17 @@ impl<'a> Worker<'a> {
             .map_err(|err| {
                 DarkluaError::invalid_configuration_file(config).context(err.to_string())
             })
-            .map(|configuration: Configuration| configuration.with_location(config))
+            .map(|configuration: Configuration| {
+                configuration.with_location({
+                    config.parent().unwrap_or_else(|| {
+                        log::warn!(
+                            "unexpected configuration path `{}` (unable to extract parent path)",
+                            config.display()
+                        );
+                        config
+                    })
+                })
+            })
     }
 
     fn do_work(&mut self, work: WorkItem) -> DarkluaResult<Option<WorkItem>> {
@@ -375,7 +385,12 @@ impl<'a> Worker<'a> {
         source: &Path,
         original_code: &'src str,
     ) -> ContextBuilder<'block, 'a, 'src> {
-        ContextBuilder::new(normalize_path(source), self.resources, original_code)
+        let builder = ContextBuilder::new(normalize_path(source), self.resources, original_code);
+        if let Some(project_location) = self.configuration.location() {
+            builder.with_project_location(project_location)
+        } else {
+            builder
+        }
     }
 
     fn bundle(

@@ -115,16 +115,12 @@ impl RuleConfiguration for RenameVariables {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, value) in properties {
             match key.as_str() {
-                "globals" => match value {
-                    RulePropertyValue::StringList(globals) => self.set_globals(globals)?,
-                    _ => return Err(RuleConfigurationError::StringListExpected(key)),
-                },
-                "include_functions" => match value {
-                    RulePropertyValue::Boolean(value) => {
-                        self.include_functions = value;
-                    }
-                    _ => return Err(RuleConfigurationError::BooleanExpected(key)),
-                },
+                "globals" => {
+                    self.set_globals(value.expect_string_list(&key)?)?;
+                }
+                "include_functions" => {
+                    self.include_functions = value.expect_bool(&key)?;
+                }
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }
         }

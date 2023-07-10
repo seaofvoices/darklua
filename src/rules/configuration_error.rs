@@ -23,6 +23,9 @@ pub enum RuleConfigurationError {
     /// When a property is associated with something else than an expected list of strings. The
     /// string is the property name.
     StringListExpected(String),
+    /// When a property is associated with something else than an expected require mode. The
+    /// string is the property name.
+    RequireModeExpected(String),
     /// When the value type is invalid. The string is the property name that was given the wrong
     /// value type.
     UnexpectedValueType(String),
@@ -30,6 +33,9 @@ pub enum RuleConfigurationError {
     UnexpectedValue { property: String, message: String },
     /// When a rule cannot have multiple properties defined at the same time.
     PropertyCollision(Vec<String>),
+    /// When a rule can only be used internally by darklua. The string is the rule name
+    /// (this error should not surface to external consumers)
+    InternalUsageOnly(String),
 }
 
 fn enumerate_properties(properties: &[String]) -> String {
@@ -67,6 +73,9 @@ impl fmt::Display for RuleConfigurationError {
             StringListExpected(property) => {
                 write!(f, "list of string expected for field '{}'", property)
             }
+            RequireModeExpected(property) => {
+                write!(f, "require mode value expected for field `{}`", property)
+            }
             UnexpectedValueType(property) => write!(f, "unexpected type for field '{}'", property),
             UnexpectedValue { property, message } => {
                 write!(f, "unexpected value for field '{}': {}", property, message)
@@ -76,6 +85,13 @@ impl fmt::Display for RuleConfigurationError {
                 "the properties {} cannot be defined together",
                 enumerate_properties(properties)
             ),
+            InternalUsageOnly(rule_name) => {
+                write!(
+                    f,
+                    "usage of rule `{}` is reserved for darklua internal processing",
+                    rule_name
+                )
+            }
         }
     }
 }

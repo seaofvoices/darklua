@@ -2,15 +2,7 @@ use darklua_core::{process, Options, Resources};
 
 mod utils;
 
-macro_rules! memory_resources {
-    ($($path:literal => $content:expr),+$(,)?) => ({
-        let resources = Resources::from_memory();
-        $(
-            resources.write($path, $content).unwrap();
-        )*
-        resources
-    });
-}
+use utils::memory_resources;
 
 const DARKLUA_BUNDLE_ONLY_READABLE_CONFIG: &str =
     "{ \"rules\": [], \"generator\": \"readable\", \"bundle\": { \"require-mode\": \"path\" } }";
@@ -461,6 +453,16 @@ data:
         );
 
         process_main_with_errors(&resources, "require_lua_file_with_unsupported_extension");
+    }
+
+    #[test]
+    fn require_own_lua_file() {
+        let resources = memory_resources!(
+            "src/main.lua" => "local library = require('./main.lua') return nil",
+            ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
+        );
+
+        process_main_with_errors(&resources, "require_own_lua_file");
     }
 
     #[test]

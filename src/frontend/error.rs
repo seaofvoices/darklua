@@ -2,7 +2,7 @@ use std::{
     borrow::Cow,
     cmp::Ordering,
     collections::HashSet,
-    ffi::OsStr,
+    ffi::{OsStr, OsString},
     fmt::{self, Display},
     path::PathBuf,
 };
@@ -62,6 +62,9 @@ enum ErrorKind {
     },
     InvalidResourceExtension {
         location: PathBuf,
+    },
+    OsStringConversion {
+        os_string: OsString,
     },
     Custom {
         message: Cow<'static, str>,
@@ -214,6 +217,12 @@ impl DarkluaError {
         })
     }
 
+    pub(crate) fn os_string_conversion(os_string: impl Into<OsString>) -> Self {
+        Self::new(ErrorKind::OsStringConversion {
+            os_string: os_string.into(),
+        })
+    }
+
     pub(crate) fn custom(message: impl Into<Cow<'static, str>>) -> Self {
         Self::new(ErrorKind::Custom {
             message: message.into(),
@@ -232,6 +241,15 @@ impl From<ResourceError> for DarkluaError {
 
 impl From<json5::Error> for DarkluaError {
     fn from(error: json5::Error) -> Self {
+        Self::new(ErrorKind::Deserialization {
+            message: error.to_string(),
+            data_type: "json",
+        })
+    }
+}
+
+impl From<serde_json::Error> for DarkluaError {
+    fn from(error: serde_json::Error) -> Self {
         Self::new(ErrorKind::Deserialization {
             message: error.to_string(),
             data_type: "json",
@@ -393,6 +411,13 @@ impl Display for DarkluaError {
                         location.display()
                     )?;
                 }
+            }
+            ErrorKind::OsStringConversion { os_string } => {
+                write!(
+                    f,
+                    "unable to convert operating system string (`{}`) into a utf-8 string",
+                    os_string.to_string_lossy(),
+                )?;
             }
             ErrorKind::Custom { message } => {
                 write!(f, "{}", message)?;

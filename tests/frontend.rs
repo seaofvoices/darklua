@@ -1,16 +1,10 @@
+mod utils;
+
 use darklua_core::{process, Options, Resources};
 
 use pretty_assertions::assert_eq;
 
-macro_rules! memory_resources {
-    ($($path:literal => $content:expr),+$(,)?) => ({
-        let resources = Resources::from_memory();
-        $(
-            resources.write($path, $content).unwrap();
-        )*
-        resources
-    });
-}
+use utils::memory_resources;
 
 const ANY_CODE: &str = "do end return true";
 const ANY_CODE_DEFAULT_PROCESS: &str = "return true";

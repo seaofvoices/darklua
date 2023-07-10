@@ -1,18 +1,16 @@
 use std::{
     collections::HashSet,
-    fmt,
-    marker::PhantomData,
     path::{Path, PathBuf},
     str::FromStr,
 };
 
-use serde::{de, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     generator::{DenseLuaGenerator, LuaGenerator, ReadableLuaGenerator, TokenBasedLuaGenerator},
     nodes::Block,
     rules::{
-        bundle::{Bundler, RequireMode},
+        bundle::{BundleRequireMode, Bundler},
         get_default_rules, Rule,
     },
     Parser,
@@ -29,7 +27,7 @@ fn get_default_column_span() -> usize {
 pub struct Configuration {
     #[serde(alias = "process", default = "get_default_rules")]
     rules: Vec<Box<dyn Rule>>,
-    #[serde(default, deserialize_with = "string_or_struct")]
+    #[serde(default, deserialize_with = "crate::utils::string_or_struct")]
     generator: GeneratorParameters,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     bundle: Option<BundleConfiguration>,
@@ -94,10 +92,9 @@ impl Configuration {
     }
 
     pub(crate) fn bundle(&self) -> Option<Bundler> {
-        if let Some((bundle_config, location)) = self.bundle.as_ref().zip(self.location.as_ref()) {
+        if let Some(bundle_config) = self.bundle.as_ref() {
             let bundler = Bundler::new(
                 self.build_parser(),
-                location.parent().unwrap_or(Path::new("/")),
                 bundle_config.require_mode().clone(),
                 bundle_config.excludes(),
             )
@@ -111,6 +108,11 @@ impl Configuration {
     #[inline]
     pub(crate) fn rules_len(&self) -> usize {
         self.rules.len()
+    }
+
+    #[inline]
+    pub(crate) fn location(&self) -> Option<&Path> {
+        self.location.as_deref()
     }
 }
 
@@ -227,8 +229,8 @@ impl FromStr for GeneratorParameters {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct BundleConfiguration {
-    #[serde(deserialize_with = "string_or_struct")]
-    require_mode: RequireMode,
+    #[serde(deserialize_with = "crate::utils::string_or_struct")]
+    require_mode: BundleRequireMode,
     #[serde(skip_serializing_if = "Option::is_none")]
     modules_identifier: Option<String>,
     #[serde(default, skip_serializing_if = "HashSet::is_empty")]
@@ -236,7 +238,7 @@ pub struct BundleConfiguration {
 }
 
 impl BundleConfiguration {
-    pub fn new(require_mode: impl Into<RequireMode>) -> Self {
+    pub fn new(require_mode: impl Into<BundleRequireMode>) -> Self {
         Self {
             require_mode: require_mode.into(),
             modules_identifier: None,
@@ -254,7 +256,7 @@ impl BundleConfiguration {
         self
     }
 
-    pub(crate) fn require_mode(&self) -> &RequireMode {
+    pub(crate) fn require_mode(&self) -> &BundleRequireMode {
         &self.require_mode
     }
 
@@ -268,41 +270,6 @@ impl BundleConfiguration {
     pub(crate) fn excludes(&self) -> impl Iterator<Item = &str> {
         self.excludes.iter().map(AsRef::as_ref)
     }
-}
-
-fn string_or_struct<'de, T, D>(deserializer: D) -> Result<T, D::Error>
-where
-    T: Deserialize<'de> + FromStr<Err = String>,
-    D: Deserializer<'de>,
-{
-    struct StringOrStruct<T>(PhantomData<T>);
-
-    impl<'de, T> de::Visitor<'de> for StringOrStruct<T>
-    where
-        T: Deserialize<'de> + FromStr<Err = String>,
-    {
-        type Value = T;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("string or object")
-        }
-
-        fn visit_str<E>(self, value: &str) -> Result<T, E>
-        where
-            E: de::Error,
-        {
-            T::from_str(value).map_err(E::custom)
-        }
-
-        fn visit_map<M>(self, map: M) -> Result<T, M::Error>
-        where
-            M: de::MapAccess<'de>,
-        {
-            Deserialize::deserialize(de::value::MapAccessDeserializer::new(map))
-        }
-    }
-
-    deserializer.deserialize_any(StringOrStruct(PhantomData))
 }
 
 #[cfg(test)]
@@ -409,7 +376,7 @@ mod test {
     }
 
     mod bundle_configuration {
-        use crate::rules::bundle::PathRequireMode;
+        use crate::rules::require::PathRequireMode;
 
         use super::*;
 

@@ -1,0 +1,3 @@
+Generate the sourcemap using Rojo:
+
+* rojo sourcemap tests/test_cases/sourcemap/default.project.json > tests/test_cases/sourcemap/sourcemap.json

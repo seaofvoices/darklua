@@ -34,5 +34,20 @@ pub fn setup_logger(level_filter: log::LevelFilter) {
             writeln!(f, " {} > {}", level, record.args(),)
         })
         .filter_module("darklua", level_filter)
-        .init();
+        .try_init()
+        .ok();
 }
+
+#[allow(unused_macros)]
+macro_rules! memory_resources {
+        ($($path:literal => $content:expr),+$(,)?) => ({
+            let resources = Resources::from_memory();
+            $(
+                resources.write($path, $content).unwrap();
+            )*
+            resources
+        });
+    }
+
+#[allow(unused_imports)]
+pub(crate) use memory_resources;

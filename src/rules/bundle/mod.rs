@@ -1,21 +1,18 @@
 mod expression_serializer;
-mod path_require_mode;
+pub(crate) mod path_require_mode;
 mod require_mode;
 
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
+use std::path::Path;
 
 use crate::nodes::Block;
 use crate::rules::{
-    verify_required_properties, Context, Rule, RuleConfiguration, RuleConfigurationError,
-    RuleProcessResult, RuleProperties, RulePropertyValue,
+    Context, Rule, RuleConfiguration, RuleConfigurationError, RuleProcessResult, RuleProperties,
 };
 use crate::Parser;
 
 pub(crate) use expression_serializer::LuaSerializerError;
 
-pub use path_require_mode::PathRequireMode;
-pub use require_mode::RequireMode;
+pub use require_mode::BundleRequireMode;
 use wax::Pattern;
 
 pub const BUNDLER_RULE_NAME: &str = "bundler";
@@ -23,7 +20,6 @@ pub const BUNDLER_RULE_NAME: &str = "bundler";
 #[derive(Debug)]
 pub(crate) struct BundleOptions {
     parser: Parser,
-    extra_module_relative_location: PathBuf,
     modules_identifier: String,
     excludes: Option<wax::Any<'static>>,
 }
@@ -31,7 +27,6 @@ pub(crate) struct BundleOptions {
 impl BundleOptions {
     fn new<'a>(
         parser: Parser,
-        extra_module_relative_location: impl Into<PathBuf>,
         modules_identifier: impl Into<String>,
         excludes: impl Iterator<Item = &'a str>,
     ) -> Self {
@@ -50,7 +45,6 @@ impl BundleOptions {
             .collect();
         Self {
             parser,
-            extra_module_relative_location: extra_module_relative_location.into(),
             modules_identifier: modules_identifier.into(),
             excludes: if excludes.is_empty() {
                 None
@@ -70,10 +64,6 @@ impl BundleOptions {
         &self.modules_identifier
     }
 
-    fn extra_module_relative_location(&self) -> &Path {
-        self.extra_module_relative_location.as_path()
-    }
-
     fn is_excluded(&self, require: &Path) -> bool {
         self.excludes
             .as_ref()
@@ -85,25 +75,19 @@ impl BundleOptions {
 /// A rule that inlines required modules
 #[derive(Debug)]
 pub(crate) struct Bundler {
-    require_mode: RequireMode,
+    require_mode: BundleRequireMode,
     options: BundleOptions,
 }
 
 impl Bundler {
     pub(crate) fn new<'a>(
         parser: Parser,
-        extra_module_relative_location: impl Into<PathBuf>,
-        require_mode: RequireMode,
+        require_mode: BundleRequireMode,
         excludes: impl Iterator<Item = &'a str>,
     ) -> Self {
         Self {
             require_mode,
-            options: BundleOptions::new(
-                parser,
-                extra_module_relative_location,
-                DEFAULT_MODULE_IDENTIFIER,
-                excludes,
-            ),
+            options: BundleOptions::new(parser, DEFAULT_MODULE_IDENTIFIER, excludes),
         }
     }
 
@@ -121,37 +105,10 @@ impl Rule for Bundler {
 }
 
 impl RuleConfiguration for Bundler {
-    fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
-        verify_required_properties(&properties, &["require-mode"])?;
-
-        for (key, value) in properties {
-            match key.as_str() {
-                "modules-identifier" => match value {
-                    RulePropertyValue::String(identifier) => {
-                        self.options.modules_identifier = identifier;
-                    }
-                    _ => return Err(RuleConfigurationError::StringExpected(key)),
-                },
-                "require-mode" => match value {
-                    RulePropertyValue::String(require_mode) => {
-                        self.require_mode =
-                            RequireMode::from_str(&require_mode).map_err(|err| {
-                                RuleConfigurationError::UnexpectedValue {
-                                    property: "require-mode".to_owned(),
-                                    message: err,
-                                }
-                            })?;
-                    }
-                    RulePropertyValue::RequireMode(require_mode) => {
-                        self.require_mode = require_mode;
-                    }
-                    _ => return Err(RuleConfigurationError::StringExpected(key)),
-                },
-                _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
-            }
-        }
-
-        Ok(())
+    fn configure(&mut self, _properties: RuleProperties) -> Result<(), RuleConfigurationError> {
+        Err(RuleConfigurationError::InternalUsageOnly(
+            self.get_name().to_owned(),
+        ))
     }
 
     fn get_name(&self) -> &'static str {
@@ -159,21 +116,7 @@ impl RuleConfiguration for Bundler {
     }
 
     fn serialize_to_properties(&self) -> RuleProperties {
-        let mut properties = RuleProperties::new();
-
-        properties.insert(
-            "require-mode".to_owned(),
-            RulePropertyValue::from(&self.require_mode),
-        );
-
-        if self.options.modules_identifier != DEFAULT_MODULE_IDENTIFIER {
-            properties.insert(
-                "modules-identifier".to_owned(),
-                RulePropertyValue::from(&self.options.modules_identifier),
-            );
-        }
-
-        properties
+        RuleProperties::new()
     }
 }
 
@@ -182,27 +125,25 @@ const DEFAULT_MODULE_IDENTIFIER: &str = "__DARKLUA_BUNDLE_MODULES";
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::rules::Rule;
+    use crate::rules::{require::PathRequireMode, Rule};
 
     use insta::assert_json_snapshot;
 
     fn new_rule() -> Bundler {
         Bundler::new(
             Parser::default(),
-            "./modules",
-            RequireMode::default(),
+            BundleRequireMode::default(),
             std::iter::empty(),
         )
     }
 
-    fn new_rule_with_require_mode(mode: impl Into<RequireMode>) -> Bundler {
-        Bundler::new(
-            Parser::default(),
-            "./modules",
-            mode.into(),
-            std::iter::empty(),
-        )
+    fn new_rule_with_require_mode(mode: impl Into<BundleRequireMode>) -> Bundler {
+        Bundler::new(Parser::default(), mode.into(), std::iter::empty())
     }
+
+    // the bundler rule should only be used internally by darklua
+    // so there is no need for it to serialize properly. The
+    // implementation exist just make sure it does not panic
 
     #[test]
     fn serialize_default_rule() {
@@ -216,7 +157,7 @@ mod test {
         let rule: Box<dyn Rule> =
             Box::new(new_rule_with_require_mode(PathRequireMode::new("__init__")));
 
-        assert_json_snapshot!("path_require_mode_with_custom_module_folder_name", rule);
+        assert_json_snapshot!("default_bundler", rule);
     }
 
     #[test]
@@ -226,16 +167,13 @@ mod test {
                 .with_modules_identifier("_CUSTOM_VAR"),
         );
 
-        assert_json_snapshot!(
-            "path_require_mode_with_custom_module_folder_name_and_modules_identifier",
-            rule
-        );
+        assert_json_snapshot!("default_bundler", rule);
     }
 
     #[test]
     fn serialize_with_custom_modules_identifier() {
         let rule: Box<dyn Rule> = Box::new(new_rule().with_modules_identifier("_CUSTOM_VAR"));
 
-        assert_json_snapshot!("custom_modules_identifier", rule);
+        assert_json_snapshot!("default_bundler", rule);
     }
 }

@@ -1,5 +1,4 @@
 mod module_definitions;
-mod path_iterator;
 
 use module_definitions::BuildModuleDefinitions;
 
@@ -8,19 +7,22 @@ use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::{iter, mem};
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::frontend::DarkluaResult;
 use crate::nodes::{
-    Arguments, Block, DoStatement, Expression, FunctionCall, LocalAssignStatement, Prefix,
-    Statement, StringExpression,
+    Block, DoStatement, Expression, FunctionCall, LocalAssignStatement, Prefix, Statement,
+    StringExpression,
 };
 use crate::process::{DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
+use crate::rules::require::{
+    is_require_call, match_path_require_call, PathRequireMode, RequirePathLocator,
+};
 use crate::rules::{
     Context, ContextBuilder, FlawlessRule, ReplaceReferencedTokens, RuleProcessResult,
 };
 use crate::utils::Timer;
-use crate::{utils, DarkluaError, Resources};
+use crate::{DarkluaError, Resources};
 
 use super::expression_serializer::to_expression;
 use super::BundleOptions;
@@ -31,136 +33,44 @@ pub(crate) enum RequiredResource {
 }
 
 #[derive(Debug)]
-struct RequirePathLocator<'a, 'b> {
-    path_require_mode: &'a PathRequireMode,
-    extra_module_relative_location: &'a Path,
-    resources: &'b Resources,
-}
-
-impl<'a, 'b> RequirePathLocator<'a, 'b> {
-    fn new(
-        path_require_mode: &'a PathRequireMode,
-        extra_module_relative_location: &'a Path,
-        resources: &'b Resources,
-    ) -> Self {
-        Self {
-            path_require_mode,
-            extra_module_relative_location,
-            resources,
-        }
-    }
-
-    fn find_require_path(
-        &self,
-        path: impl Into<PathBuf>,
-        source: &Path,
-    ) -> Result<PathBuf, DarkluaError> {
-        let mut path: PathBuf = path.into();
-        log::trace!(
-            "find require path for `{}` from `{}`",
-            path.display(),
-            source.display()
-        );
-
-        if is_require_relative(&path) {
-            let mut new_path = source.to_path_buf();
-            new_path.pop();
-            new_path.push(path);
-            path = new_path;
-        } else if !path.is_absolute() {
-            let mut components = path.components();
-            let root = components.next().ok_or_else(|| {
-                DarkluaError::invalid_resource_path(path.display().to_string(), "path is empty")
-            })?;
-            let source_name = root.as_os_str().to_str().ok_or_else(|| {
-                DarkluaError::invalid_resource_path(
-                    path.display().to_string(),
-                    "cannot convert source name to utf-8",
-                )
-            })?;
-
-            let mut extra_module_location = self.extra_module_relative_location.to_path_buf();
-            extra_module_location.push(self.path_require_mode.get_source(source_name).ok_or_else(
-                || {
-                    DarkluaError::invalid_resource_path(
-                        path.display().to_string(),
-                        format!("unknown source name `{}`", source_name),
-                    )
-                },
-            )?);
-            extra_module_location.extend(components);
-            path = extra_module_location;
-        }
-        // else: the path is absolute so darklua should attempt to require it directly
-
-        let normalized_path = utils::normalize_path_with_current_dir(&path);
-        for potential_path in path_iterator::find_require_paths(
-            &normalized_path,
-            &self.path_require_mode.module_folder_name(),
-        ) {
-            if self.resources.is_file(&potential_path)? {
-                return Ok(utils::normalize_path_with_current_dir(potential_path));
-            }
-        }
-
-        Err(
-            DarkluaError::resource_not_found(&normalized_path).context(format!(
-                "tried `{}`",
-                path_iterator::find_require_paths(
-                    &normalized_path,
-                    &self.path_require_mode.module_folder_name(),
-                )
-                .map(|potential_path| potential_path.display().to_string())
-                .collect::<Vec<_>>()
-                .join("`, `")
-            )),
-        )
-    }
-}
-
-// the `is_relative` method from std::path::Path is not what darklua needs
-// to consider a requi re relative, which is paths that starts with `.` or `..`
-fn is_require_relative(path: &Path) -> bool {
-    path.starts_with(Path::new(".")) || path.starts_with(Path::new(".."))
-}
-
-const REQUIRE_FUNCTION_IDENTIFIER: &str = "require";
-
-#[derive(Debug)]
-struct RequirePathProcessor<'a, 'b> {
+struct RequirePathProcessor<'a, 'b, 'resources, 'code> {
     options: &'a BundleOptions,
     identifier_tracker: IdentifierTracker,
-    path_locator: RequirePathLocator<'a, 'b>,
-    module_definitions: BuildModuleDefinitions<'a>,
+    path_locator: RequirePathLocator<'b, 'code, 'resources>,
+    module_definitions: BuildModuleDefinitions,
     source: PathBuf,
     module_cache: HashMap<PathBuf, Expression>,
     require_stack: Vec<PathBuf>,
     skip_module_paths: HashSet<PathBuf>,
-    resources: &'b Resources,
+    resources: &'resources Resources,
     errors: Vec<String>,
 }
 
-impl<'a, 'b> RequirePathProcessor<'a, 'b> {
-    fn new(
-        source: impl Into<PathBuf>,
+impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> {
+    fn new<'context>(
+        context: &'context Context<'b, 'resources, 'code>,
         options: &'a BundleOptions,
-        path_require_mode: &'a PathRequireMode,
-        resources: &'b Resources,
-    ) -> Self {
+        path_require_mode: &'b PathRequireMode,
+    ) -> Self
+    where
+        'context: 'b,
+        'context: 'resources,
+        'context: 'code,
+    {
         Self {
             options,
             identifier_tracker: IdentifierTracker::new(),
             path_locator: RequirePathLocator::new(
                 path_require_mode,
-                options.extra_module_relative_location(),
-                resources,
+                context.project_location(),
+                context.resources(),
             ),
             module_definitions: BuildModuleDefinitions::new(options.modules_identifier()),
-            source: source.into(),
+            source: context.current_path().to_path_buf(),
             module_cache: Default::default(),
             require_stack: Default::default(),
             skip_module_paths: Default::default(),
-            resources,
+            resources: context.resources(),
             errors: Vec::new(),
         }
     }
@@ -175,37 +85,11 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
     }
 
     fn require_call(&self, call: &FunctionCall) -> Option<PathBuf> {
-        if call.get_method().is_some() {
-            return None;
+        if is_require_call(call, self) {
+            match_path_require_call(call)
+        } else {
+            None
         }
-
-        match call.get_prefix() {
-            Prefix::Identifier(identifier)
-                if identifier.get_name() == REQUIRE_FUNCTION_IDENTIFIER =>
-            {
-                if self
-                    .identifier_tracker
-                    .is_identifier_used(REQUIRE_FUNCTION_IDENTIFIER)
-                {
-                    return None;
-                }
-                match call.get_arguments() {
-                    Arguments::String(string) => Some(string.get_value()),
-                    Arguments::Tuple(tuple) if tuple.len() == 1 => {
-                        let expression = tuple.iter_values().next().unwrap();
-
-                        match expression {
-                            Expression::String(string) => Some(string.get_value()),
-                            _ => None,
-                        }
-                    }
-                    _ => None,
-                }
-            }
-            _ => None,
-        }
-        .map(Path::new)
-        .map(utils::normalize_path_with_current_dir)
     }
 
     fn try_inline_call(&mut self, call: &FunctionCall) -> Option<Expression> {
@@ -373,7 +257,7 @@ impl<'a, 'b> RequirePathProcessor<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Deref for RequirePathProcessor<'a, 'b> {
+impl<'a, 'b, 'resources, 'code> Deref for RequirePathProcessor<'a, 'b, 'resources, 'code> {
     type Target = IdentifierTracker;
 
     fn deref(&self) -> &Self::Target {
@@ -381,7 +265,7 @@ impl<'a, 'b> Deref for RequirePathProcessor<'a, 'b> {
     }
 }
 
-impl<'a, 'b> DerefMut for RequirePathProcessor<'a, 'b> {
+impl<'a, 'b, 'resources, 'code> DerefMut for RequirePathProcessor<'a, 'b, 'resources, 'code> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.identifier_tracker
     }
@@ -412,7 +296,7 @@ where
     expression
 }
 
-impl<'a, 'b> NodeProcessor for RequirePathProcessor<'a, 'b> {
+impl<'a, 'b, 'resources, 'code> NodeProcessor for RequirePathProcessor<'a, 'b, 'resources, 'code> {
     fn process_expression(&mut self, expression: &mut Expression) {
         if let Expression::Call(call) = expression {
             if let Some(replace_with) = self.try_inline_call(call) {
@@ -450,42 +334,13 @@ fn convert_expression_to_statement(expression: Expression) -> Statement {
     .into()
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
-pub struct PathRequireMode {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    module_folder_name: Option<String>,
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    sources: HashMap<String, PathBuf>,
-}
-
-impl PathRequireMode {
-    pub fn new(module_folder_name: impl Into<String>) -> Self {
-        Self {
-            module_folder_name: Some(module_folder_name.into()),
-            sources: Default::default(),
-        }
-    }
-
-    pub(crate) fn module_folder_name(&self) -> String {
-        self.module_folder_name
-            .clone()
-            .unwrap_or_else(|| "init".to_owned())
-    }
-
-    pub(crate) fn get_source(&self, name: &str) -> Option<&Path> {
-        self.sources.get(name).map(PathBuf::as_path)
-    }
-
-    pub(crate) fn process_block(
-        &self,
-        block: &mut Block,
-        context: &Context,
-        options: &BundleOptions,
-    ) -> RuleProcessResult {
-        let mut processor =
-            RequirePathProcessor::new(context.current_path(), options, self, context.resources());
-        ScopeVisitor::visit_block(block, &mut processor);
-        processor.apply(block, context)
-    }
+pub(crate) fn process_block(
+    block: &mut Block,
+    context: &Context,
+    options: &BundleOptions,
+    path_require_mode: &PathRequireMode,
+) -> Result<(), String> {
+    let mut processor = RequirePathProcessor::new(context, options, path_require_mode);
+    ScopeVisitor::visit_block(block, &mut processor);
+    processor.apply(block, context)
 }
