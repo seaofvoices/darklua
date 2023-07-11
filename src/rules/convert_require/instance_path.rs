@@ -1,4 +1,4 @@
-use crate::nodes::{FieldExpression, Identifier, Prefix};
+use crate::nodes::{FieldExpression, FunctionCall, Identifier, Prefix, StringExpression};
 
 use super::RobloxIndexStyle;
 
@@ -33,12 +33,23 @@ impl InstancePath {
     }
 
     pub(crate) fn convert(&self, index_style: &RobloxIndexStyle) -> Prefix {
+        let mut components_iter = self.components.iter();
+
         let mut prefix = match &self.root {
-            InstancePathRoot::Root => datamodel_identifier().into(),
+            InstancePathRoot::Root => {
+                let mut prefix: Prefix = datamodel_identifier().into();
+                if let Some(InstancePathComponent::Child(service_name)) = components_iter.next() {
+                    prefix = FunctionCall::from_prefix(prefix)
+                        .with_method("GetService")
+                        .with_argument(StringExpression::from_value(service_name))
+                        .into();
+                }
+                prefix
+            }
             InstancePathRoot::Script => script_identifier().into(),
         };
 
-        for component in self.components.iter() {
+        for component in components_iter {
             match component {
                 InstancePathComponent::Parent => {
                     prefix = get_parent_instance(prefix);

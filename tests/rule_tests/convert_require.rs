@@ -207,7 +207,7 @@ mod sourcemap {
     const CONVERT_PATH_TO_ROJO_SOURCEMAP_CONFIG: &str =
         "{ generator: \"retain-lines\", rules: [{ rule: 'convert_require', current: 'path', target: { name: 'roblox', 'rojo-sourcemap': './sourcemap.json' } }] }";
 
-    fn get_resources_for_sourcemap() -> Resources {
+    fn get_resources_for_sourcemap(datamodel_case: bool) -> Resources {
         memory_resources!(
             "src/init.lua" => include_str!("../test_cases/sourcemap/src/init.lua"),
             "src/a.lua" => include_str!("../test_cases/sourcemap/src/a.lua"),
@@ -218,15 +218,30 @@ mod sourcemap {
             "src/d/d1.lua" => include_str!("../test_cases/sourcemap/src/d/d1.lua"),
             "src/d/d2.lua" => include_str!("../test_cases/sourcemap/src/d/d2.lua"),
 
+            "main.server.lua" => include_str!("../test_cases/sourcemap/main.server.lua"),
+
             ".darklua.json" => CONVERT_PATH_TO_ROJO_SOURCEMAP_CONFIG,
-            "sourcemap.json" => include_str!("../test_cases/sourcemap/sourcemap.json"),
+            "sourcemap.json" => if datamodel_case {
+                include_str!("../test_cases/sourcemap/place-sourcemap.json")
+            } else {
+                include_str!("../test_cases/sourcemap/sourcemap.json")
+            },
         )
     }
 
     #[test]
     fn convert_sibling_module_from_init_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(),
+            &get_resources_for_sourcemap(false),
+            "src/d/init.lua",
+            "convert_sibling_module_from_init_module",
+        );
+    }
+
+    #[test]
+    fn in_datamodel_convert_sibling_module_from_init_module() {
+        snapshot_file_process(
+            &get_resources_for_sourcemap(true),
             "src/d/init.lua",
             "convert_sibling_module_from_init_module",
         );
@@ -235,7 +250,16 @@ mod sourcemap {
     #[test]
     fn convert_module_from_child_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(),
+            &get_resources_for_sourcemap(false),
+            "src/d/d2.lua",
+            "convert_module_from_child_module",
+        );
+    }
+
+    #[test]
+    fn in_datamodel_convert_module_from_child_module() {
+        snapshot_file_process(
+            &get_resources_for_sourcemap(true),
             "src/d/d2.lua",
             "convert_module_from_child_module",
         );
@@ -244,7 +268,16 @@ mod sourcemap {
     #[test]
     fn convert_multiple_sibling_modules_from_root_init_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(),
+            &get_resources_for_sourcemap(false),
+            "src/init.lua",
+            "convert_multiple_sibling_modules_from_root_init_module",
+        );
+    }
+
+    #[test]
+    fn in_datamodel_convert_multiple_sibling_modules_from_root_init_module() {
+        snapshot_file_process(
+            &get_resources_for_sourcemap(true),
             "src/init.lua",
             "convert_multiple_sibling_modules_from_root_init_module",
         );
@@ -253,9 +286,28 @@ mod sourcemap {
     #[test]
     fn convert_sibling_module_from_sibling_module() {
         expect_file_process(
-            &get_resources_for_sourcemap(),
+            &get_resources_for_sourcemap(false),
             "src/b.lua",
             "local a = require(script.Parent:FindFirstChild('a'))\n\nreturn a\n",
+        );
+    }
+
+    #[test]
+    fn in_datamodel_convert_sibling_module_from_sibling_module() {
+        expect_file_process(
+            &get_resources_for_sourcemap(true),
+            "src/b.lua",
+            "local a = require(script.Parent:FindFirstChild('a'))\n\nreturn a\n",
+        );
+    }
+
+    // following tests are only on the DataModel sourcemap case
+    #[test]
+    fn in_datamodel_convert_module_require_across_service_instance() {
+        snapshot_file_process(
+            &get_resources_for_sourcemap(true),
+            "main.server.lua",
+            "convert_module_require_across_service_instance",
         );
     }
 }

@@ -1,0 +1,18 @@
+{
+    "name": "Roblox Place",
+    "tree": {
+      "$className": "DataModel",
+      "ReplicatedStorage": {
+        "$className": "ReplicatedStorage",
+        "Project": {
+          "$path": "src"
+        }
+      },
+      "ServerScriptService": {
+        "$className": "ServerScriptService",
+        "MainScript": {
+          "$path": "main.server.lua"
+        }
+      }
+    }
+  }

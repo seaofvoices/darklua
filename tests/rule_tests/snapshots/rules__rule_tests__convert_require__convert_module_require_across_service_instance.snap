@@ -1,0 +1,6 @@
+---
+source: tests/rule_tests/convert_require.rs
+assertion_line: 152
+expression: "process `tests/test_cases/sourcemap/main.server.lua`"
+---
+local Project = require(game:GetService('ReplicatedStorage'):FindFirstChild('Project'))

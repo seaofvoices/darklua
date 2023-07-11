@@ -188,10 +188,15 @@ fn get_relative_path(
         })?,
     )
     .map(|path| {
-        if !use_current_dir_prefix || path.starts_with(".") || path.starts_with("..") {
-            path
-        } else {
+        if use_current_dir_prefix && !path.starts_with(".") && !path.starts_with("..") {
             Path::new(".").join(path)
+        } else if !use_current_dir_prefix && path.starts_with(".") {
+            path.strip_prefix(".")
+                .map(Path::to_path_buf)
+                .ok()
+                .unwrap_or(path)
+        } else {
+            path
         }
     })
     .map(utils::normalize_path_with_current_dir))
