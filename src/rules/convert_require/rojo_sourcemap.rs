@@ -149,27 +149,41 @@ impl RojoSourcemap {
 
         let relative_path_length = parents.len().saturating_add(descendants.len());
 
-        let (mut instance_path, mut current_parent) =
-            if !self.is_datamodel || relative_path_length <= target_ancestors.len() {
-                let mut instance_path = InstancePath::from_script();
+        if !self.is_datamodel || relative_path_length <= target_ancestors.len() {
+            log::trace!("  ⨽ use Roblox path from script instance");
 
-                for _ in 0..parents.len() {
-                    instance_path.parent();
-                }
+            let mut instance_path = InstancePath::from_script();
 
-                (
-                    instance_path,
-                    self.root_node.get_descendant(common_ancestor_id)?,
-                )
-            } else {
-                (InstancePath::from_root(), &self.root_node)
-            };
+            for _ in 0..parents.len() {
+                instance_path.parent();
+            }
 
-        for descendant_id in descendants.iter().rev() {
-            current_parent = current_parent.get_child(*descendant_id)?;
-            instance_path.child(&current_parent.name);
+            self.index_descendants(
+                instance_path,
+                self.root_node.get_descendant(common_ancestor_id)?,
+                descendants.iter().rev(),
+            )
+        } else {
+            log::trace!("  ⨽ use Roblox path from DataModel instance");
+
+            self.index_descendants(
+                InstancePath::from_root(),
+                &self.root_node,
+                target_ancestors.iter().rev().skip(1),
+            )
         }
+    }
 
+    fn index_descendants<'a>(
+        &self,
+        mut instance_path: InstancePath,
+        mut node: &RojoSourcemapNode,
+        descendants: impl Iterator<Item = &'a usize>,
+    ) -> Option<InstancePath> {
+        for descendant_id in descendants {
+            node = node.get_child(*descendant_id)?;
+            instance_path.child(&node.name);
+        }
         Some(instance_path)
     }
 

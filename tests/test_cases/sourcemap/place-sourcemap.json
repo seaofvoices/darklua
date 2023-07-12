@@ -43,6 +43,24 @@
                   "filePaths": ["src/d/d2.lua"]
                 }
               ]
+            },
+            {
+              "name": "Packages",
+              "className": "Folder",
+              "children": [
+                {
+                  "name": "Package1",
+                  "className": "ModuleScript",
+                  "filePaths": ["Packages/Package1/init.lua"],
+                  "children": [
+                    {
+                      "name": "value",
+                      "className": "ModuleScript",
+                      "filePaths": ["Packages/Package1/value.lua"]
+                    }
+                  ]
+                }
+              ]
             }
           ]
         }

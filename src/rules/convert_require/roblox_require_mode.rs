@@ -44,8 +44,8 @@ impl RobloxRequireMode {
         _call: &FunctionCall,
         _context: &Context,
     ) -> DarkluaResult<Option<PathBuf>> {
-        // todo!()
-        Ok(None)
+        Err(DarkluaError::custom("unsupported initial require mode")
+            .context("Roblox require mode cannot be used as the current require mode"))
     }
 
     pub(crate) fn generate_require(

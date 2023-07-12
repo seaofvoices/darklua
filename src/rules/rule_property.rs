@@ -116,9 +116,6 @@ impl From<&RequireMode> for RulePropertyValue {
                     return Self::from("roblox");
                 }
             }
-            RequireMode::None => {
-                todo!()
-            }
         }
 
         Self::RequireMode(value.clone())

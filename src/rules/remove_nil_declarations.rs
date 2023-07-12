@@ -135,11 +135,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        let err_message = match result {
-            Ok(_) => panic!("expected error when deserializing rule"),
-            Err(e) => e,
-        }
-        .to_string();
-        pretty_assertions::assert_eq!(err_message, "unexpected field 'prop'");
+        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
     }
 }

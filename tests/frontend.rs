@@ -187,6 +187,7 @@ mod errors {
             "src/b.lua" => "return 'module b'",
         );
 
+        #[derive(Debug)]
         struct CustomRule;
 
         impl RuleConfiguration for CustomRule {

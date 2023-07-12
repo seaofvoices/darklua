@@ -18,6 +18,7 @@ pub use roblox_require_mode::RobloxRequireMode;
 
 use super::{verify_required_properties, Rule, RuleProcessResult};
 
+use std::ffi::OsStr;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -27,7 +28,6 @@ use std::str::FromStr;
 pub enum RequireMode {
     Path(PathRequireMode),
     Roblox(RobloxRequireMode),
-    None, // todo
 }
 
 impl RequireMode {
@@ -39,7 +39,6 @@ impl RequireMode {
         match self {
             RequireMode::Path(path_mode) => path_mode.find_require(call, context),
             RequireMode::Roblox(roblox_mode) => roblox_mode.find_require(call, context),
-            RequireMode::None => Ok(None),
         }
     }
 
@@ -50,26 +49,26 @@ impl RequireMode {
         context: &Context,
     ) -> DarkluaResult<Option<Arguments>> {
         match self {
-            RequireMode::Path(_) => todo!(),
+            RequireMode::Path(path_mode) => path_mode.generate_require(path, current_mode, context),
             RequireMode::Roblox(roblox_mode) => {
                 roblox_mode.generate_require(path, current_mode, context)
             }
-            RequireMode::None => Ok(None),
         }
     }
 
     fn is_module_folder_name(&self, path: &Path) -> bool {
         match self {
             RequireMode::Path(path_mode) => path_mode.is_module_folder_name(path),
-            RequireMode::Roblox(_) => todo!(), // probably just check if its an `init` file
-            RequireMode::None => false,
+            RequireMode::Roblox(_roblox_mode) => {
+                matches!(path.file_stem().and_then(OsStr::to_str), Some("init"))
+            }
         }
     }
 
     fn initialize(&mut self, resources: &Resources) -> DarkluaResult<()> {
         match self {
             RequireMode::Roblox(roblox_mode) => roblox_mode.initialize(resources),
-            RequireMode::Path(_) | RequireMode::None => Ok(()),
+            RequireMode::Path(_) => Ok(()),
         }
     }
 }
@@ -158,8 +157,8 @@ pub struct ConvertRequire {
 impl Default for ConvertRequire {
     fn default() -> Self {
         Self {
-            current: RequireMode::None,
-            target: RequireMode::None,
+            current: RequireMode::Path(Default::default()),
+            target: RequireMode::Roblox(Default::default()),
         }
     }
 }
@@ -229,6 +228,21 @@ mod test {
     }
 
     #[test]
+    fn configure_with_invalid_require_mode_error() {
+        let result = json5::from_str::<Box<dyn Rule>>(
+            r#"{
+            rule: 'convert_require',
+            current: 'path',
+            target: 'rblox',
+        }"#,
+        );
+        pretty_assertions::assert_eq!(
+            result.unwrap_err().to_string(),
+            "unexpected value for field 'target': invalid require mode name `rblox`"
+        );
+    }
+
+    #[test]
     fn configure_with_extra_field_error() {
         let result = json5::from_str::<Box<dyn Rule>>(
             r#"{
@@ -238,11 +252,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        let err_message = match result {
-            Ok(_) => panic!("expected error when deserializing rule"),
-            Err(e) => e,
-        }
-        .to_string();
-        pretty_assertions::assert_eq!(err_message, "unexpected field 'prop'");
+        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
     }
 }

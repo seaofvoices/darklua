@@ -6,9 +6,12 @@ local b = require(script:FindFirstChild('b'))
 local c = require(script:FindFirstChild('c'))
 local d = require(script:FindFirstChild('d'))
 
+local Package1 = require(script:FindFirstChild('Packages'):FindFirstChild('Package1'))
+
 return {
     b = b,
     c = c,
     d = d,
+    Package1 = Package1,
 }
 

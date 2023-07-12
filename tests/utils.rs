@@ -1,5 +1,8 @@
+use std::panic::Location;
+use std::path::Path;
+
 use darklua_core::nodes::Block;
-use darklua_core::{Parser, ParserError};
+use darklua_core::{Parser, ParserError, Resources};
 use env_logger::fmt::Color;
 use log::Level;
 
@@ -36,6 +39,33 @@ pub fn setup_logger(level_filter: log::LevelFilter) {
         .filter_module("darklua", level_filter)
         .try_init()
         .ok();
+}
+
+#[track_caller]
+#[allow(dead_code)]
+pub fn snapshot_file_process_file_errors(
+    resources: &Resources,
+    file_name: &str,
+    snapshot_name: &str,
+) {
+    let errors = darklua_core::process(resources, darklua_core::Options::new(file_name))
+        .result()
+        .unwrap_err();
+
+    let error_display: Vec<_> = errors.into_iter().map(|err| err.to_string()).collect();
+
+    let caller_path = Path::new(Location::caller().file());
+    let snapshot_dir = Path::new("..")
+        .join(caller_path.parent().unwrap())
+        .join("snapshots");
+
+    let mut settings = insta::Settings::clone_current();
+    settings.add_filter("\\\\", "/");
+    settings.set_omit_expression(true);
+    settings.set_snapshot_path(snapshot_dir);
+    settings.bind(|| {
+        insta::assert_snapshot!(snapshot_name, error_display.join("\n"));
+    });
 }
 
 #[allow(unused_macros)]

@@ -146,7 +146,7 @@ pub type RuleProcessResult = Result<(), String>;
 
 /// Defines an interface that will be used to mutate blocks and how to serialize and deserialize
 /// the rule configuration.
-pub trait Rule: RuleConfiguration {
+pub trait Rule: RuleConfiguration + fmt::Debug {
     /// This method should mutate the given block to apply the rule
     fn process(&self, block: &mut Block, context: &Context) -> RuleProcessResult;
 
@@ -176,7 +176,7 @@ pub trait FlawlessRule {
     fn flawless_process(&self, block: &mut Block, context: &Context);
 }
 
-impl<T: FlawlessRule + RuleConfiguration> Rule for T {
+impl<T: FlawlessRule + RuleConfiguration + fmt::Debug> Rule for T {
     fn process(&self, block: &mut Block, context: &Context) -> RuleProcessResult {
         self.flawless_process(block, context);
         Ok(())

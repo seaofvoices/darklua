@@ -4,6 +4,7 @@ use crate::frontend::DarkluaResult;
 use crate::nodes::FunctionCall;
 use crate::rules::require::match_path_require_call;
 use crate::rules::Context;
+use crate::DarkluaError;
 
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -79,6 +80,16 @@ impl PathRequireMode {
         let expect_value = Some(self.module_folder_name.as_str());
         path.file_name().and_then(OsStr::to_str) == expect_value
             || path.file_stem().and_then(OsStr::to_str) == expect_value
+    }
+
+    pub(crate) fn generate_require(
+        &self,
+        _path: &Path,
+        _current_mode: &crate::rules::RequireMode,
+        _context: &Context<'_, '_, '_>,
+    ) -> Result<Option<crate::nodes::Arguments>, crate::DarkluaError> {
+        Err(DarkluaError::custom("unsupported target require mode")
+            .context("path require mode cannot"))
     }
 }
 
