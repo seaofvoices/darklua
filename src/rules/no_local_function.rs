@@ -11,7 +11,6 @@ use std::mem;
 
 use super::verify_no_rule_properties;
 
-#[derive(Default)]
 struct Processor;
 
 impl Processor {
@@ -63,7 +62,7 @@ pub struct ConvertLocalFunctionToAssign {}
 
 impl FlawlessRule for ConvertLocalFunctionToAssign {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
-        let mut processor = Processor::default();
+        let mut processor = Processor;
         DefaultVisitor::visit_block(block, &mut processor);
     }
 }
