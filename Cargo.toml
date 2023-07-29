@@ -30,7 +30,7 @@ clap = { version = "4.3.11", features = ["derive"] }
 durationfmt = "0.1.1"
 elsa = "1.8.1"
 env_logger = "0.10.0"
-full_moon = { version = "0.18.1", features = ["roblox"] }
+full_moon = { version = "0.18.1", features = ["roblox", "stacker"] }
 json5 = "0.4.1"
 log = "0.4.19"
 pathdiff = "0.2.1"
