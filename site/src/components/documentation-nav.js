@@ -3,10 +3,12 @@ import { graphql, useStaticQuery } from "gatsby"
 
 import {
   Collapse,
+  Divider,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Typography,
 } from "@mui/material"
 import ExpandLess from "@mui/icons-material/ExpandLess"
 import ExpandMore from "@mui/icons-material/ExpandMore"
@@ -42,6 +44,9 @@ const query = graphql`
         fields {
           slug
           ruleName
+        }
+        frontmatter {
+          added_in
         }
       }
     }
@@ -110,13 +115,33 @@ const DocumentationGroup = ({ name, content, drawerOpened, openDrawer }) => {
       {drawerOpened && (
         <Collapse in={open} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            {content.map(documentation => (
-              <DocumentationLink
-                key={documentation.slug}
-                drawerOpened={drawerOpened}
-                {...documentation}
-              />
-            ))}
+            {content.map(documentation => {
+              if (typeof documentation === "string") {
+                return (
+                  <>
+                    <Divider key={documentation} />
+                    <li>
+                      <Typography
+                        sx={{ mt: 0.5, ml: 2 }}
+                        color="text.secondary"
+                        display="block"
+                        variant="caption"
+                      >
+                        {documentation}
+                      </Typography>
+                    </li>
+                  </>
+                )
+              } else {
+                return (
+                  <DocumentationLink
+                    key={documentation.slug}
+                    drawerOpened={drawerOpened}
+                    {...documentation}
+                  />
+                )
+              }
+            })}
           </List>
         </Collapse>
       )}
@@ -168,16 +193,36 @@ export const DocumentationNavigation = ({ drawerOpened, openDrawer }) => {
     const rulesGroupName = data.site.siteMetadata.rulesGroup
     const rulesGroup = groups.find(({ name }) => name === rulesGroupName)
 
-    const rulesDocument = data.rules.nodes.map(({ fields }) => {
-      const { slug: ruleSlug, ruleName } = fields
-      const slug = `/docs/rules${ruleSlug}`
-      return {
-        title: ruleName,
-        slug,
-        isSelected: pathname === slug,
-      }
-    })
-    rulesGroup.content.push(...rulesDocument)
+    const [releasedRules, unreleasedRules] = data.rules.nodes.reduce(
+      ([releasedRules, unreleasedRules], { fields, frontmatter }) => {
+        const { slug: ruleSlug, ruleName } = fields
+        const { added_in: addedIn } = frontmatter
+        const slug = `/docs/rules${ruleSlug}`
+
+        const ruleLinkProps = {
+          title: ruleName,
+          slug: slug,
+          isSelected: pathname === slug,
+        }
+
+        if (addedIn === "unreleased") {
+          unreleasedRules.push(ruleLinkProps)
+        } else {
+          releasedRules.push(ruleLinkProps)
+        }
+
+        return [releasedRules, unreleasedRules]
+      },
+      [[], []]
+    )
+    const sortByTitle = (a, b) => a.title > b.title
+    releasedRules.sort(sortByTitle)
+    unreleasedRules.sort(sortByTitle)
+
+    rulesGroup.content.push("Rules")
+    rulesGroup.content.push(...releasedRules)
+    rulesGroup.content.push("Unreleased rules")
+    rulesGroup.content.push(...unreleasedRules)
 
     return groups
   }, [data, pathname])
