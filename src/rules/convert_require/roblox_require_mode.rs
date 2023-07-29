@@ -137,8 +137,12 @@ impl RobloxRequireMode {
                         }
                         Component::Normal(_) => {
                             return Err(DarkluaError::custom(format!(
-                                "unable to convert path `{}`: ",
-                                relative_require_path.display()
+                                concat!(
+                                    "unable to convert path `{}`: the require path should be ",
+                                    "relative and start with `.` or `..` (got `{}`)"
+                                ),
+                                require_path.display(),
+                                relative_require_path.display(),
                             )))
                         }
                         Component::Prefix(_) | Component::RootDir => {
@@ -149,7 +153,7 @@ impl RobloxRequireMode {
                                     "darklua can only convert relative paths ",
                                     "(starting with `.` or `..`)"
                                 ),
-                                relative_require_path.display(),
+                                require_path.display(),
                             )))
                         }
                     },
@@ -158,17 +162,34 @@ impl RobloxRequireMode {
                         Component::ParentDir => Ok(get_parent_instance(instance)),
                         Component::Normal(name) => utils::convert_os_string(name)
                             .map(|child_name| self.indexing_style.index(instance, child_name)),
-                        Component::Prefix(_) => todo!(),
-                        Component::RootDir => todo!(),
+                        Component::Prefix(_) | Component::RootDir => {
+                            Err(DarkluaError::custom(format!(
+                                "unable to convert path `{}`: unexpected component in relative path `{}`",
+                                require_path.display(),
+                                relative_require_path.display(),
+                            )))
+                        },
                     },
                 )?;
 
                 Ok(Some(Arguments::default().with_argument(instance_path)))
             } else {
-                todo!()
+                Err(DarkluaError::custom(format!(
+                    "unable to convert path `{}` from `{}` without a sourcemap: the relative path is empty `{}`",
+                    require_path.display(),
+                    source_path.display(),
+                    relative_require_path.display(),
+                )))
             }
         } else {
-            todo!()
+            Err(DarkluaError::custom(format!(
+                concat!(
+                    "unable to convert path `{}` from `{}` without a sourcemap: unable to ",
+                    "make the require path relative to the source file"
+                ),
+                require_path.display(),
+                source_path.display(),
+            )))
         }
     }
 }
