@@ -215,7 +215,7 @@ fn escape(character: char) -> String {
         '\u{B}' => "\\v".to_owned(),
         '\u{C}' => "\\f".to_owned(),
         _ => {
-            if character.is_ascii() {
+            if (character as u32) < 256 {
                 format!("\\{}", character as u8)
             } else {
                 format!("\\u{{{:x}}}", character as u32)
@@ -351,7 +351,8 @@ mod test {
             double_quote("\"") => "'\"'",
             null("\0") => "'\\0'",
             escape("\u{1B}") => "'\\27'",
-            unicode("\u{10FFFF}") => "'\\u{10ffff}'",
+            extended_ascii("\u{C3}") => "'\\195'",
+            unicode("\u{25C1}") => "'\\u{25c1}'",
             im_cool("I'm cool") => "\"I'm cool\"",
             ends_with_closing_bracket("oof]") => "'oof]'",
             multiline_ends_with_closing_bracket("oof\noof]") => "'oof\\noof]'",
