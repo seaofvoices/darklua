@@ -6,7 +6,6 @@ use crate::rules::{
 
 use super::verify_no_rule_properties;
 
-#[derive(Default)]
 struct FunctionMutator;
 
 impl NodeProcessor for FunctionMutator {
@@ -23,7 +22,7 @@ pub struct RemoveMethodDefinition {}
 
 impl FlawlessRule for RemoveMethodDefinition {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
-        let mut processor = FunctionMutator::default();
+        let mut processor = FunctionMutator;
         DefaultVisitor::visit_block(block, &mut processor);
     }
 }
@@ -72,11 +71,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        let err_message = match result {
-            Ok(_) => panic!("expected error when deserializing rule"),
-            Err(e) => e,
-        }
-        .to_string();
-        pretty_assertions::assert_eq!(err_message, "unexpected field 'prop'");
+        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
     }
 }

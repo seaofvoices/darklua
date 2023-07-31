@@ -7,14 +7,14 @@ fn generated_name() -> String {
     let poisson = Poisson::new(3.0).unwrap();
 
     let mut rng = thread_rng();
-    let length: u64 = rng.sample(poisson);
+    let length = rng.sample::<f64, _>(poisson).round() as usize;
 
     let identifier: String = (0..1 + length)
         .map(|i| loop {
             let character = rng.sample(Alphanumeric);
 
             if i != 0 || !character.is_ascii_digit() {
-                return character;
+                return character as char;
             }
         })
         .collect();
@@ -161,14 +161,14 @@ impl FuzzContext {
         let statement_amount = if self.statements_budget == 0 {
             0
         } else {
-            let statement_amount = thread_rng().gen_range(0, self.statements_budget);
+            let statement_amount = thread_rng().gen_range(0..self.statements_budget);
             self.statements_budget -= statement_amount;
             statement_amount
         };
         let expression_amount = if self.expressions_budget == 0 {
             0
         } else {
-            let expression_amount = thread_rng().gen_range(0, self.expressions_budget);
+            let expression_amount = thread_rng().gen_range(0..self.expressions_budget);
             self.expressions_budget -= expression_amount;
             expression_amount
         };
@@ -206,7 +206,7 @@ impl Fuzz<Identifier> for Identifier {
 
 impl Fuzz<Statement> for Statement {
     fn fuzz(context: &mut FuzzContext) -> Self {
-        match thread_rng().gen_range(0, 12) {
+        match thread_rng().gen_range(0..12) {
             0 => AssignStatement::fuzz(context).into(),
             1 => DoStatement::fuzz(&mut context.share_budget()).into(),
             2 => FunctionCall::fuzz(context).into(),
@@ -225,7 +225,7 @@ impl Fuzz<Statement> for Statement {
 
 impl Fuzz<LastStatement> for LastStatement {
     fn fuzz(context: &mut FuzzContext) -> Self {
-        match thread_rng().gen_range(0, 3) {
+        match thread_rng().gen_range(0..3) {
             0 => Self::new_break(),
             1 => Self::new_continue(),
             _ => {
@@ -263,7 +263,7 @@ impl Fuzz<CompoundOperator> for CompoundOperator {
     fn fuzz(_context: &mut FuzzContext) -> Self {
         use CompoundOperator::*;
 
-        match thread_rng().gen_range(0, 8) {
+        match thread_rng().gen_range(0..8) {
             1 => Plus,
             2 => Minus,
             3 => Asterisk,
@@ -278,7 +278,7 @@ impl Fuzz<CompoundOperator> for CompoundOperator {
 impl Fuzz<Variable> for Variable {
     fn fuzz(context: &mut FuzzContext) -> Self {
         if context.can_have_expression(2) {
-            match thread_rng().gen_range(0, 3) {
+            match thread_rng().gen_range(0..3) {
                 0 => Identifier::fuzz(context).into(),
                 1 => FieldExpression::fuzz(context).into(),
                 _ => IndexExpression::fuzz(context).into(),
@@ -399,7 +399,7 @@ impl Fuzz<Expression> for Expression {
         context.take_expression();
 
         if context.can_have_expression(2) {
-            match thread_rng().gen_range(0, 16) {
+            match thread_rng().gen_range(0..16) {
                 0 => true.into(),
                 1 => false.into(),
                 2 => Expression::nil(),
@@ -418,7 +418,7 @@ impl Fuzz<Expression> for Expression {
                 _ => UnaryExpression::fuzz(context).into(),
             }
         } else {
-            match thread_rng().gen_range(0, 15) {
+            match thread_rng().gen_range(0..15) {
                 0 => true.into(),
                 1 => false.into(),
                 2 => Expression::nil(),
@@ -464,7 +464,7 @@ impl Fuzz<BinaryOperator> for BinaryOperator {
     fn fuzz(_context: &mut FuzzContext) -> Self {
         use BinaryOperator::*;
 
-        match thread_rng().gen_range(0, 15) {
+        match thread_rng().gen_range(0..15) {
             0 => And,
             1 => Or,
             2 => Equal,
@@ -492,7 +492,7 @@ impl Fuzz<FieldExpression> for FieldExpression {
 
 impl Fuzz<Arguments> for Arguments {
     fn fuzz(context: &mut FuzzContext) -> Self {
-        match thread_rng().gen_range(0, 3) {
+        match thread_rng().gen_range(0..3) {
             0 => TupleArguments::new(generate_expressions(function_param_length(), context)).into(),
             1 => Self::String(StringExpression::fuzz(context)),
             _ => Self::Table(TableExpression::fuzz(context)),
@@ -553,10 +553,10 @@ impl Fuzz<IfExpression> for IfExpression {
 
 impl Fuzz<NumberExpression> for NumberExpression {
     fn fuzz(_context: &mut FuzzContext) -> Self {
-        match thread_rng().gen_range(0, 4) {
+        match thread_rng().gen_range(0..4) {
             0 => DecimalNumber::new(thread_rng().gen()).into(),
-            1 => HexNumber::new(thread_rng().gen_range(0, 100_000), rand::random()).into(),
-            _ => BinaryNumber::new(thread_rng().gen_range(0, 1_000_000), rand::random()).into(),
+            1 => HexNumber::new(thread_rng().gen_range(0..100_000), rand::random()).into(),
+            _ => BinaryNumber::new(thread_rng().gen_range(0..1_000_000), rand::random()).into(),
         }
     }
 }
@@ -564,7 +564,7 @@ impl Fuzz<NumberExpression> for NumberExpression {
 impl Fuzz<Prefix> for Prefix {
     fn fuzz(context: &mut FuzzContext) -> Self {
         if context.can_have_expression(2) {
-            match thread_rng().gen_range(0, 5) {
+            match thread_rng().gen_range(0..5) {
                 0 => FunctionCall::fuzz(context).into(),
                 1 => FieldExpression::fuzz(context).into(),
                 2 => Identifier::fuzz(context).into(),
@@ -590,7 +590,7 @@ impl Fuzz<StringExpression> for StringExpression {
         let poisson = Poisson::new(3.0).unwrap();
 
         let mut rng = thread_rng();
-        let length: u64 = rng.sample(poisson);
+        let length = rng.sample::<f64, _>(poisson).round() as usize;
 
         const GEN_CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                 abcdefghijklmnopqrstuvwxyz\
@@ -599,8 +599,8 @@ impl Fuzz<StringExpression> for StringExpression {
 
         Self::from_value::<String>(
             iter::repeat(())
-                .take(length as usize)
-                .map(|()| GEN_CHARSET[rng.gen_range(0, GEN_CHARSET.len())] as char)
+                .take(length)
+                .map(|()| GEN_CHARSET[rng.gen_range(0..GEN_CHARSET.len())] as char)
                 .collect(),
         )
     }
@@ -626,7 +626,7 @@ impl Fuzz<TableExpression> for TableExpression {
 impl Fuzz<TableEntry> for TableEntry {
     fn fuzz(context: &mut FuzzContext) -> Self {
         if context.can_have_expression(2) {
-            match thread_rng().gen_range(0, 3) {
+            match thread_rng().gen_range(0..3) {
                 0 => TableFieldEntry::fuzz(context).into(),
                 1 => TableIndexEntry::fuzz(context).into(),
                 _ => Self::Value(Expression::fuzz(context)),
@@ -669,7 +669,7 @@ impl Fuzz<UnaryOperator> for UnaryOperator {
     fn fuzz(_context: &mut FuzzContext) -> Self {
         use UnaryOperator::*;
 
-        match thread_rng().gen_range(0, 3) {
+        match thread_rng().gen_range(0..3) {
             0 => Length,
             1 => Minus,
             _ => Not,

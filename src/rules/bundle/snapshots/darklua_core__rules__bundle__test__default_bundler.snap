@@ -2,7 +2,4 @@
 source: src/rules/bundle/mod.rs
 expression: rule
 ---
-{
-  "rule": "bundler",
-  "require-mode": "path"
-}
+"bundler"

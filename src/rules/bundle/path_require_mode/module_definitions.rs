@@ -13,16 +13,16 @@ use crate::DarkluaError;
 use super::RequiredResource;
 
 #[derive(Debug)]
-pub(crate) struct BuildModuleDefinitions<'a> {
-    modules_identifier: &'a str,
+pub(crate) struct BuildModuleDefinitions {
+    modules_identifier: String,
     module_definitions: Vec<(String, Block, PathBuf)>,
     module_name_permutator: CharPermutator,
 }
 
-impl<'a> BuildModuleDefinitions<'a> {
-    pub(crate) fn new(modules_identifier: &'a str) -> Self {
+impl BuildModuleDefinitions {
+    pub(crate) fn new(modules_identifier: impl Into<String>) -> Self {
         Self {
-            modules_identifier,
+            modules_identifier: modules_identifier.into(),
             module_definitions: Vec::new(),
             module_name_permutator: identifier_permutator(),
         }
@@ -77,7 +77,7 @@ impl<'a> BuildModuleDefinitions<'a> {
             Identifier::new(module_name)
         };
 
-        Ok(FieldExpression::new(Identifier::from(self.modules_identifier), field).into())
+        Ok(FieldExpression::new(Identifier::from(&self.modules_identifier), field).into())
     }
 
     pub(crate) fn apply(mut self, block: &mut Block, context: &Context) {
@@ -85,7 +85,7 @@ impl<'a> BuildModuleDefinitions<'a> {
             return;
         }
 
-        let modules_identifier = Identifier::from(self.modules_identifier);
+        let modules_identifier = Identifier::from(&self.modules_identifier);
 
         let mut shift_lines = 0;
         for (module_name, module_block, _module_path) in self.module_definitions.iter_mut() {
@@ -102,19 +102,17 @@ impl<'a> BuildModuleDefinitions<'a> {
                 })
                 .expect("module should have a last statement");
 
-            let modules_prefix = if let Some(return_line_number) = return_statement
-                .get_tokens()
-                .and_then(|return_tokens| return_tokens.r#return.get_line_number())
-            {
-                modules_identifier
-                    .clone()
-                    .with_token(Token::from_position(Position::line_number(
-                        self.modules_identifier.to_owned(),
-                        return_line_number,
-                    )))
-            } else {
-                modules_identifier.clone()
-            };
+            let modules_prefix =
+                if let Some(return_line_number) = return_statement
+                    .get_tokens()
+                    .and_then(|return_tokens| return_tokens.r#return.get_line_number())
+                {
+                    modules_identifier.clone().with_token(Token::from_position(
+                        Position::line_number(self.modules_identifier.clone(), return_line_number),
+                    ))
+                } else {
+                    modules_identifier.clone()
+                };
 
             let return_value = return_statement
                 .into_iter_expressions()

@@ -1,8 +1,11 @@
+mod serde_string_or_struct;
+
 #[cfg(not(target_arch = "wasm32"))]
 mod timer;
 #[cfg(target_arch = "wasm32")]
 mod wasm_timer;
 
+pub(crate) use serde_string_or_struct::string_or_struct;
 #[cfg(not(target_arch = "wasm32"))]
 pub use timer::Timer;
 #[cfg(target_arch = "wasm32")]
@@ -13,6 +16,14 @@ use std::{
     iter::FromIterator,
     path::{Component, Path, PathBuf},
 };
+
+use crate::DarkluaError;
+
+pub(crate) fn convert_os_string(os_str: &OsStr) -> Result<&str, DarkluaError> {
+    os_str
+        .to_str()
+        .ok_or_else(|| DarkluaError::os_string_conversion(os_str))
+}
 
 pub(crate) fn normalize_path(path: impl AsRef<Path>) -> PathBuf {
     normalize(path, false)

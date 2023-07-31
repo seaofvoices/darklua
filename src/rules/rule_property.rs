@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use super::bundle::{PathRequireMode, RequireMode};
+use super::{require::PathRequireMode, RequireMode, RobloxRequireMode, RuleConfigurationError};
 
 pub type RuleProperties = HashMap<String, RulePropertyValue>;
 
@@ -18,6 +18,53 @@ pub enum RulePropertyValue {
     StringList(Vec<String>),
     RequireMode(RequireMode),
     None,
+}
+
+impl RulePropertyValue {
+    pub(crate) fn expect_bool(self, key: &str) -> Result<bool, RuleConfigurationError> {
+        if let Self::Boolean(value) = self {
+            Ok(value)
+        } else {
+            Err(RuleConfigurationError::BooleanExpected(key.to_owned()))
+        }
+    }
+
+    pub(crate) fn expect_string(self, key: &str) -> Result<String, RuleConfigurationError> {
+        if let Self::String(value) = self {
+            Ok(value)
+        } else {
+            Err(RuleConfigurationError::StringExpected(key.to_owned()))
+        }
+    }
+
+    pub(crate) fn expect_string_list(
+        self,
+        key: &str,
+    ) -> Result<Vec<String>, RuleConfigurationError> {
+        if let Self::StringList(value) = self {
+            Ok(value)
+        } else {
+            Err(RuleConfigurationError::StringListExpected(key.to_owned()))
+        }
+    }
+
+    pub(crate) fn expect_require_mode(
+        self,
+        key: &str,
+    ) -> Result<RequireMode, RuleConfigurationError> {
+        match self {
+            Self::RequireMode(require_mode) => Ok(require_mode),
+            Self::String(value) => {
+                value
+                    .parse()
+                    .map_err(|err: String| RuleConfigurationError::UnexpectedValue {
+                        property: key.to_owned(),
+                        message: err,
+                    })
+            }
+            _ => Err(RuleConfigurationError::RequireModeExpected(key.to_owned())),
+        }
+    }
 }
 
 impl From<bool> for RulePropertyValue {
@@ -61,12 +108,17 @@ impl From<&RequireMode> for RulePropertyValue {
         match value {
             RequireMode::Path(mode) => {
                 if mode == &PathRequireMode::default() {
-                    Self::from("path")
-                } else {
-                    Self::RequireMode(value.clone())
+                    return Self::from("path");
+                }
+            }
+            RequireMode::Roblox(mode) => {
+                if mode == &RobloxRequireMode::default() {
+                    return Self::from("roblox");
                 }
             }
         }
+
+        Self::RequireMode(value.clone())
     }
 }
 

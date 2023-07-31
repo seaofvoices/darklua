@@ -5,6 +5,7 @@ mod call_parens;
 mod compute_expression;
 mod configuration_error;
 mod convert_index_to_field;
+mod convert_require;
 mod empty_do;
 mod filter_early_return;
 mod group_local;
@@ -17,6 +18,7 @@ mod remove_nil_declarations;
 mod remove_spaces;
 mod rename_variables;
 mod replace_referenced_tokens;
+pub(crate) mod require;
 mod rule_property;
 mod shift_token_line;
 mod unused_if_branch;
@@ -26,6 +28,7 @@ pub use call_parens::*;
 pub use compute_expression::*;
 pub use configuration_error::RuleConfigurationError;
 pub use convert_index_to_field::*;
+pub use convert_require::*;
 pub use empty_do::*;
 pub use filter_early_return::*;
 pub use group_local::*;
@@ -55,29 +58,41 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 #[derive(Debug, Clone)]
-pub struct ContextBuilder<'a, 'b, 'c> {
+pub struct ContextBuilder<'a, 'resources, 'code> {
     path: PathBuf,
-    resources: &'b Resources,
-    original_code: &'c str,
+    resources: &'resources Resources,
+    original_code: &'code str,
     blocks: HashMap<PathBuf, &'a Block>,
+    project_location: Option<PathBuf>,
 }
 
-impl<'a, 'b, 'c> ContextBuilder<'a, 'b, 'c> {
-    pub fn new(path: impl Into<PathBuf>, resources: &'b Resources, original_code: &'c str) -> Self {
+impl<'a, 'resources, 'code> ContextBuilder<'a, 'resources, 'code> {
+    pub fn new(
+        path: impl Into<PathBuf>,
+        resources: &'resources Resources,
+        original_code: &'code str,
+    ) -> Self {
         Self {
             path: path.into(),
             resources,
             original_code,
             blocks: Default::default(),
+            project_location: None,
         }
     }
 
-    pub fn build(self) -> Context<'a, 'b, 'c> {
+    pub fn with_project_location(mut self, path: impl Into<PathBuf>) -> Self {
+        self.project_location = Some(path.into());
+        self
+    }
+
+    pub fn build(self) -> Context<'a, 'resources, 'code> {
         Context {
             path: self.path,
             resources: self.resources,
             original_code: self.original_code,
             blocks: self.blocks,
+            project_location: self.project_location,
         }
     }
 
@@ -88,14 +103,15 @@ impl<'a, 'b, 'c> ContextBuilder<'a, 'b, 'c> {
 
 /// The intent of this struct is to hold data shared across all rules applied to a file.
 #[derive(Debug, Clone)]
-pub struct Context<'a, 'b, 'c> {
+pub struct Context<'a, 'resources, 'code> {
     path: PathBuf,
-    resources: &'b Resources,
-    original_code: &'c str,
+    resources: &'resources Resources,
+    original_code: &'code str,
     blocks: HashMap<PathBuf, &'a Block>,
+    project_location: Option<PathBuf>,
 }
 
-impl<'a, 'b, 'c> Context<'a, 'b, 'c> {
+impl<'a, 'resources, 'code> Context<'a, 'resources, 'code> {
     pub fn block(&self, path: impl AsRef<Path>) -> Option<&Block> {
         self.blocks.get(path.as_ref()).copied()
     }
@@ -111,13 +127,26 @@ impl<'a, 'b, 'c> Context<'a, 'b, 'c> {
     fn original_code(&self) -> &str {
         self.original_code
     }
+
+    fn project_location(&self) -> &Path {
+        self.project_location.as_deref().unwrap_or_else(|| {
+            let source = self.current_path();
+            source.parent().unwrap_or_else(|| {
+                log::warn!(
+                    "unexpected file path `{}` (unable to extract parent path)",
+                    source.display()
+                );
+                source
+            })
+        })
+    }
 }
 
 pub type RuleProcessResult = Result<(), String>;
 
 /// Defines an interface that will be used to mutate blocks and how to serialize and deserialize
 /// the rule configuration.
-pub trait Rule: RuleConfiguration {
+pub trait Rule: RuleConfiguration + fmt::Debug {
     /// This method should mutate the given block to apply the rule
     fn process(&self, block: &mut Block, context: &Context) -> RuleProcessResult;
 
@@ -147,7 +176,7 @@ pub trait FlawlessRule {
     fn flawless_process(&self, block: &mut Block, context: &Context);
 }
 
-impl<T: FlawlessRule + RuleConfiguration> Rule for T {
+impl<T: FlawlessRule + RuleConfiguration + fmt::Debug> Rule for T {
     fn process(&self, block: &mut Block, context: &Context) -> RuleProcessResult {
         self.flawless_process(block, context);
         Ok(())
@@ -179,6 +208,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         COMPUTE_EXPRESSIONS_RULE_NAME,
         CONVERT_INDEX_TO_FIELD_RULE_NAME,
         CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME,
+        CONVERT_REQUIRE_RULE_NAME,
         FILTER_AFTER_EARLY_RETURN_RULE_NAME,
         GROUP_LOCAL_ASSIGNMENT_RULE_NAME,
         INJECT_GLOBAL_VALUE_RULE_NAME,
@@ -205,6 +235,7 @@ impl FromStr for Box<dyn Rule> {
             CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => {
                 Box::<ConvertLocalFunctionToAssign>::default()
             }
+            CONVERT_REQUIRE_RULE_NAME => Box::<ConvertRequire>::default(),
             FILTER_AFTER_EARLY_RETURN_RULE_NAME => Box::<FilterAfterEarlyReturn>::default(),
             GROUP_LOCAL_ASSIGNMENT_RULE_NAME => Box::<GroupLocalAssignment>::default(),
             INJECT_GLOBAL_VALUE_RULE_NAME => Box::<InjectGlobalValue>::default(),

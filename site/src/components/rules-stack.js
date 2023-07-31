@@ -74,8 +74,8 @@ class RulesStack {
 export const RulesStackContext = React.createContext()
 
 const DEFAULT_RULES = [
-  { name: "remove_comments" },
   { name: "remove_spaces" },
+  { name: "remove_comments" },
   {
     name: "inject_global_value",
     properties: {
@@ -86,8 +86,11 @@ const DEFAULT_RULES = [
   { name: "compute_expression" },
   { name: "remove_unused_if_branch" },
   { name: "remove_unused_while" },
+  { name: "filter_after_early_return" },
   { name: "remove_empty_do" },
   { name: "remove_method_definition" },
+  { name: "convert_index_to_field" },
+  { name: "remove_nil_declaration" },
   { name: "remove_function_call_parens" },
 ]
 
