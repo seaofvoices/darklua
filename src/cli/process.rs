@@ -37,6 +37,7 @@ impl FromStr for LuaFormat {
         match format {
             "dense" => Ok(Self::Dense),
             "readable" => Ok(Self::Readable),
+            // keep "retain-lines" for back-compatibility
             "retain_lines" | "retain-lines" => Ok(Self::RetainLines),
             _ => Err(format!(
                 "format '{}' does not exist! (possible options are: 'dense', 'readable' or 'retain_lines'",
