@@ -445,7 +445,7 @@ impl FromStr for NumberExpression {
             _ => {
                 // in Luau, underscores are valid everywhere in a number except
                 // after a `.`
-                if value.contains("._") {
+                if value.starts_with("._") {
                     return Err(Self::Err::InvalidDecimalNumber);
                 }
 
@@ -583,6 +583,7 @@ mod test {
             parse_integer_with_underscore_delimiter("123_456") => DecimalNumber::new(123_456_f64),
             parse_multiple_decimal("123.24") => DecimalNumber::new(123.24_f64),
             parse_multiple_decimal_with_underscore("123.245_6") => DecimalNumber::new(123.245_6_f64),
+            parse_multiple_decimal_with_underscore_after_point("0._24") => DecimalNumber::new(0.24_f64),
             parse_float_with_trailing_dot("123.") => DecimalNumber::new(123_f64),
             parse_starting_with_dot(".123") => DecimalNumber::new(0.123_f64),
             parse_digit_with_exponent("1e10") => DecimalNumber::new(1_f64).with_exponent(10, false),
@@ -617,7 +618,7 @@ mod test {
             parse_empty_string("") => NumberParsingError::InvalidDecimalNumber,
             missing_exponent_value("1e") => NumberParsingError::InvalidDecimalExponent,
             missing_exponent_value_uppercase("1E") => NumberParsingError::InvalidDecimalExponent,
-            invalid_underscore_position("1._1") => NumberParsingError::InvalidDecimalNumber,
+            invalid_underscore_position("._1") => NumberParsingError::InvalidDecimalNumber,
             missing_negative_exponent_value("1e-") => NumberParsingError::InvalidDecimalExponent,
             missing_negative_exponent_value_uppercase("1E-") => NumberParsingError::InvalidDecimalExponent,
             invalid_underscore_before_negative_exponent("1e_-1") => NumberParsingError::InvalidDecimalExponent,
