@@ -6,7 +6,7 @@ use crate::process::utils::is_valid_identifier;
 use std::str::FromStr;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "kebab-case", tag = "name")]
+#[serde(rename_all = "snake_case", tag = "name")]
 pub enum RobloxIndexStyle {
     FindFirstChild,
     WaitForChild,
@@ -53,8 +53,8 @@ impl FromStr for RobloxIndexStyle {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s {
-            "find-first-child" => Self::FindFirstChild,
-            "wait-for-child" => Self::WaitForChild,
+            "find_first_child" => Self::FindFirstChild,
+            "wait_for_child" => Self::WaitForChild,
             "property" => Self::Property,
             _ => return Err(format!("invalid roblox index style `{}`", s)),
         })
@@ -69,7 +69,7 @@ mod test {
     fn deserialize_find_first_child() {
         assert_eq!(
             RobloxIndexStyle::FindFirstChild,
-            "find-first-child".parse().unwrap()
+            "find_first_child".parse().unwrap()
         );
     }
 
@@ -77,7 +77,7 @@ mod test {
     fn deserialize_wait_for_child() {
         assert_eq!(
             RobloxIndexStyle::WaitForChild,
-            "wait-for-child".parse().unwrap()
+            "wait_for_child".parse().unwrap()
         );
     }
 

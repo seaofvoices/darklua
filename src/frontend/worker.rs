@@ -100,7 +100,7 @@ impl<'a> Worker<'a> {
             log::trace!(
                 "override with {} generator",
                 match generator {
-                    GeneratorParameters::RetainLines => "`retain-lines`".to_owned(),
+                    GeneratorParameters::RetainLines => "`retain_lines`".to_owned(),
                     GeneratorParameters::Dense { column_span } =>
                         format!("dense ({})", column_span),
                     GeneratorParameters::Readable { column_span } =>

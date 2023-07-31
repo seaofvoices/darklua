@@ -8,7 +8,7 @@ use crate::{nodes::Block, rules::Context};
 use super::{path_require_mode, BundleOptions};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case", tag = "name")]
+#[serde(deny_unknown_fields, rename_all = "snake_case", tag = "name")]
 pub enum BundleRequireMode {
     Path(PathRequireMode),
 }

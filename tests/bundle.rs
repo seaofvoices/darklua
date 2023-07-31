@@ -5,10 +5,10 @@ mod utils;
 use utils::memory_resources;
 
 const DARKLUA_BUNDLE_ONLY_READABLE_CONFIG: &str =
-    "{ \"rules\": [], \"generator\": \"readable\", \"bundle\": { \"require-mode\": \"path\" } }";
+    "{ \"rules\": [], \"generator\": \"readable\", \"bundle\": { \"require_mode\": \"path\" } }";
 
 const DARKLUA_BUNDLE_ONLY_RETAIN_LINES_CONFIG: &str =
-    "{ \"rules\": [], \"generator\": \"retain-lines\", \"bundle\": { \"require-mode\": \"path\" } }";
+    "{ \"rules\": [], \"generator\": \"retain_lines\", \"bundle\": { \"require_mode\": \"path\" } }";
 
 fn process_main_unchanged(resources: &Resources, main_code: &'static str) {
     resources.write("src/main.lua", main_code).unwrap();
@@ -202,7 +202,7 @@ mod without_rules {
             process_main_require_value(memory_resources!(
                 "packages/value.lua" => "return true",
                 "src/main.lua" => "local value = require('Packages/value.lua')",
-                ".darklua.json" => "{ \"rules\": [], \"generator\": \"readable\", \"bundle\": { \"require-mode\": { \"name\": \"path\", \"sources\": { \"Packages\": \"./packages\" } } } }",
+                ".darklua.json" => "{ \"rules\": [], \"generator\": \"readable\", \"bundle\": { \"require_mode\": { \"name\": \"path\", \"sources\": { \"Packages\": \"./packages\" } } } }",
             ));
         }
 
@@ -211,7 +211,7 @@ mod without_rules {
             process_main_require_value(memory_resources!(
                 "src/value/__init__.lua" => "return true",
                 "src/main.lua" => "local value = require('./value')",
-                ".darklua.json" => "{ \"rules\": [], \"generator\": \"readable\", \"bundle\": { \"require-mode\": { \"name\": \"path\", \"module-folder-name\": \"__init__.lua\" } } }",
+                ".darklua.json" => "{ \"rules\": [], \"generator\": \"readable\", \"bundle\": { \"require_mode\": { \"name\": \"path\", \"module_folder_name\": \"__init__.lua\" } } }",
             ));
         }
     }
@@ -469,7 +469,7 @@ data:
     fn require_skip_unknown_module() {
         let resources = memory_resources!(
             "src/main.lua" => "local library = require('@lune/library')",
-            ".darklua.json" => "{ \"rules\": [], \"bundle\": { \"require-mode\": \"path\", \"excludes\": [\"@lune/**\"] } }",
+            ".darklua.json" => "{ \"rules\": [], \"bundle\": { \"require_mode\": \"path\", \"excludes\": [\"@lune/**\"] } }",
         );
 
         process_main(&resources, "require_skip_unknown_module");

@@ -15,7 +15,7 @@ use super::{
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+#[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub struct RobloxRequireMode {
     rojo_sourcemap: Option<PathBuf>,
     #[serde(default, deserialize_with = "crate::utils::string_or_struct")]

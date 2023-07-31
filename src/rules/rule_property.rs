@@ -9,7 +9,7 @@ pub type RuleProperties = HashMap<String, RulePropertyValue>;
 /// In order to be able to weakly-type the properties of any rule, this enum makes it possible to
 /// easily use serde to gather the value associated with a property.
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-#[serde(untagged)]
+#[serde(untagged, rename_all = "snake_case")]
 pub enum RulePropertyValue {
     Boolean(bool),
     String(String),

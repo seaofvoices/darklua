@@ -24,7 +24,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case", tag = "name")]
+#[serde(deny_unknown_fields, rename_all = "snake_case", tag = "name")]
 pub enum RequireMode {
     Path(PathRequireMode),
     Roblox(RobloxRequireMode),

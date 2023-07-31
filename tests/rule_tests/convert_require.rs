@@ -10,7 +10,7 @@ test_rule!(
         r#"{
             rule: 'convert_require',
             current: 'path',
-            target: { name: 'roblox', 'indexing-style': 'find-first-child' },
+            target: { name: 'roblox', indexing_style: 'find_first_child' },
         }"#
     ).unwrap(),
     resources = memory_resources!(
@@ -52,7 +52,7 @@ test_rule!(
         r#"{
             rule: 'convert_require',
             current: 'path',
-            target: { name: 'roblox', 'indexing-style': 'wait-for-child' },
+            target: { name: 'roblox', indexing_style: 'wait_for_child' },
         }"#
     ).unwrap(),
     resources = memory_resources!(
@@ -94,7 +94,7 @@ test_rule!(
         r#"{
             rule: 'convert_require',
             current: 'path',
-            target: { name: 'roblox', 'indexing-style': 'property' },
+            target: { name: 'roblox', indexing_style: 'property' },
         }"#
     ).unwrap(),
     resources = memory_resources!(
@@ -159,7 +159,7 @@ fn snapshot_file_process(resources: &Resources, file_name: &str, snapshot_name: 
 }
 
 const CONVERT_PATH_TO_ROBLOX_DEFAULT_CONFIG: &str =
-    "{ rules: [{ rule: 'convert_require', current: 'path', target: 'roblox' }], generator: \"retain-lines\" }";
+    "{ rules: [{ rule: 'convert_require', current: 'path', target: 'roblox' }], generator: \"retain_lines\" }";
 
 #[test]
 fn convert_sibling_module_from_init_module() {
@@ -207,7 +207,7 @@ mod sourcemap {
     use super::*;
 
     const CONVERT_PATH_TO_ROJO_SOURCEMAP_CONFIG: &str = r#"{
-        generator: 'retain-lines',
+        generator: 'retain_lines',
         rules: [
             {
                 rule: 'convert_require',
@@ -219,7 +219,7 @@ mod sourcemap {
                 },
                 target: {
                     name: 'roblox',
-                    'rojo-sourcemap': './sourcemap.json',
+                    rojo_sourcemap: './sourcemap.json',
                 }
             }
         ]

@@ -149,8 +149,9 @@ impl std::fmt::Debug for Configuration {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case", tag = "name")]
+#[serde(deny_unknown_fields, rename_all = "snake_case", tag = "name")]
 pub enum GeneratorParameters {
+    #[serde(alias = "retain-lines")]
     RetainLines,
     Dense {
         #[serde(default = "get_default_column_span")]
@@ -214,7 +215,8 @@ impl FromStr for GeneratorParameters {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s {
-            "retain-lines" => Self::RetainLines,
+            // keep "retain-lines" for back-compatibility
+            "retain_lines" | "retain-lines" => Self::RetainLines,
             "dense" => Self::Dense {
                 column_span: DEFAULT_COLUMN_SPAN,
             },
@@ -227,7 +229,7 @@ impl FromStr for GeneratorParameters {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+#[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub struct BundleConfiguration {
     #[serde(deserialize_with = "crate::utils::string_or_struct")]
     require_mode: BundleRequireMode,
@@ -278,8 +280,17 @@ mod test {
 
     mod generator_parameters {
         use super::*;
+
         #[test]
         fn deserialize_retain_lines_params() {
+            let config: Configuration =
+                json5::from_str("{ generator: { name: 'retain_lines' } }").unwrap();
+
+            pretty_assertions::assert_eq!(config.generator, GeneratorParameters::RetainLines);
+        }
+
+        #[test]
+        fn deserialize_retain_lines_params_deprecated() {
             let config: Configuration =
                 json5::from_str("{ generator: { name: 'retain-lines' } }").unwrap();
 
@@ -335,7 +346,7 @@ mod test {
 
         #[test]
         fn deserialize_retain_lines_params_as_string() {
-            let config: Configuration = json5::from_str("{generator: 'retain-lines'}").unwrap();
+            let config: Configuration = json5::from_str("{generator: 'retain_lines'}").unwrap();
 
             pretty_assertions::assert_eq!(config.generator, GeneratorParameters::RetainLines);
         }
@@ -383,7 +394,7 @@ mod test {
         #[test]
         fn deserialize_path_require_mode_as_string() {
             let config: Configuration =
-                json5::from_str("{ bundle: { 'require-mode': 'path' } }").unwrap();
+                json5::from_str("{ bundle: { require_mode: 'path' } }").unwrap();
 
             pretty_assertions::assert_eq!(
                 config.bundle.unwrap(),
@@ -394,7 +405,7 @@ mod test {
         #[test]
         fn deserialize_path_require_mode_as_object() {
             let config: Configuration =
-                json5::from_str("{bundle: { 'require-mode': { name: 'path' } } }").unwrap();
+                json5::from_str("{bundle: { require_mode: { name: 'path' } } }").unwrap();
 
             pretty_assertions::assert_eq!(
                 config.bundle.unwrap(),
@@ -405,7 +416,7 @@ mod test {
         #[test]
         fn deserialize_path_require_mode_with_custom_module_folder_name() {
             let config: Configuration = json5::from_str(
-                "{bundle: { 'require-mode': { name: 'path', 'module-folder-name': '__INIT__' } } }",
+                "{bundle: { require_mode: { name: 'path', module_folder_name: '__INIT__' } } }",
             )
             .unwrap();
 
@@ -417,10 +428,9 @@ mod test {
 
         #[test]
         fn deserialize_path_require_mode_with_custom_module_identifier() {
-            let config: Configuration = json5::from_str(
-                "{bundle: { 'require-mode': 'path', 'modules-identifier': '__M' } }",
-            )
-            .unwrap();
+            let config: Configuration =
+                json5::from_str("{bundle: { require_mode: 'path', modules_identifier: '__M' } }")
+                    .unwrap();
 
             pretty_assertions::assert_eq!(
                 config.bundle.unwrap(),
@@ -431,7 +441,7 @@ mod test {
         #[test]
         fn deserialize_path_require_mode_with_custom_module_identifier_and_module_folder_name() {
             let config: Configuration = json5::from_str(
-                "{bundle: { 'require-mode': { name: 'path', 'module-folder-name': '__INIT__' }, 'modules-identifier': '__M' } }",
+                "{bundle: { require_mode: { name: 'path', module_folder_name: '__INIT__' }, modules_identifier: '__M' } }",
             )
             .unwrap();
 
@@ -445,7 +455,7 @@ mod test {
         #[test]
         fn deserialize_path_require_mode_with_excludes() {
             let config: Configuration = json5::from_str(
-                "{bundle: { 'require-mode': { name: 'path' }, excludes: ['@lune', 'secrets'] } }",
+                "{bundle: { require_mode: { name: 'path' }, excludes: ['@lune', 'secrets'] } }",
             )
             .unwrap();
 
@@ -460,7 +470,7 @@ mod test {
         #[test]
         fn deserialize_unknown_require_mode_name() {
             let result: Result<Configuration, _> =
-                json5::from_str("{bundle: { 'require-mode': 'oops' } }");
+                json5::from_str("{bundle: { require_mode: 'oops' } }");
 
             pretty_assertions::assert_eq!(
                 result.expect_err("deserialization should fail").to_string(),

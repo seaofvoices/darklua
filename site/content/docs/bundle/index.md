@@ -14,7 +14,7 @@ The process command will bundle Lua code when defined in the configuration file.
 ```json5
 {
   bundle: {
-    "require-mode": "path",
+    require_mode: "path",
   },
 }
 ```
@@ -55,7 +55,7 @@ For example, to avoid bundling any require to paths starting with `@lune`:
 ```json5
 {
   bundle: {
-    "require-mode": "path",
+    require_mode: "path",
     excludes: ["@lune/**"],
   },
 }
@@ -70,9 +70,9 @@ When darklua bundles multiple modules into a single file, it uses a variable to 
 ```json5
 {
   bundle: {
-    "require-mode": "path",
+    require_mode: "path",
     // by default, darklua will use the following value
-    "modules-identifier": "__DARKLUA_BUNDLE_MODULES",
+    modules_identifier: "__DARKLUA_BUNDLE_MODULES",
   },
 }
 ```
