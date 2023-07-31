@@ -14,10 +14,10 @@ The Roblox require mode can be defined as the string 'roblox' to use all the def
   name: "roblox",
 
   // optional
-  "rojo-sourcemap": "./path-to/sourcemap.json",
+  rojo_sourcemap: "./path-to/sourcemap.json",
 
-  // optional (defaults to 'find-first-child')
-  "indexing-style": "find-first-child", // 'wait-for-child' or 'property'
+  // optional (defaults to "find_first_child")
+  indexing_style: "find_first_child", // "wait_for_child" or "property"
 }
 ```
 
@@ -33,7 +33,7 @@ A Rojo sourcemap file can be provided to darklua to directly get a file location
       current: "path",
       target: {
         name: "roblox",
-        "rojo-sourcemap": "./path-to/sourcemap.json",
+        rojo_sourcemap: "./path-to/sourcemap.json",
       },
     },
   ],
@@ -60,11 +60,11 @@ This parameter controls how instance paths should be generated.
 
 There are 3 different indexing style available:
 
-- `find-first-child`: uses the [`FindFirstChild`](https://create.roblox.com/docs/reference/engine/classes/Instance#FindFirstChild) method for getting instances (default value)
-- `wait-for-child`: uses the [`WaitForChild`](https://create.roblox.com/docs/reference/engine/classes/Instance#WaitForChild) method for getting instances
+- `find_first_child`: uses the [`FindFirstChild`](https://create.roblox.com/docs/reference/engine/classes/Instance#FindFirstChild) method for getting instances (default value)
+- `wait_for_child`: uses the [`WaitForChild`](https://create.roblox.com/docs/reference/engine/classes/Instance#WaitForChild) method for getting instances
 - `property`: uses property-like way of getting child instances, using a period "." (note that this kind of indexing may collide with Instance properties!)
 
-Here is an example of how to configure the `convert_require` rule to use the `wait-for-child` indexing style:
+Here is an example of how to configure the `convert_require` rule to use the `wait_for_child` indexing style:
 
 ```json5
 {
@@ -74,8 +74,8 @@ Here is an example of how to configure the `convert_require` rule to use the `wa
       current: "path",
       target: {
         name: "roblox",
-        // indexing-style can be 'find-first-child', 'wait-for-child' or 'property'
-        "indexing-style": "wait-for-child",
+        // indexing_style can be "find_first_child", "wait_for_child" or "property"
+        indexing_style: "wait_for_child",
       },
     },
   ],

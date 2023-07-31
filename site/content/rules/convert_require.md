@@ -4,11 +4,11 @@ added_in: "unreleased"
 parameters:
   - name: current
     required: true
-    type: require-mode
+    type: require mode
     description: The require mode used in the input code
   - name: target
     required: true
-    type: require-mode
+    type: require mode
     description: The require mode used to generate the new require calls
 examples: []
 ---
@@ -31,7 +31,7 @@ Here is an overview of the rule configuration format:
     name: "path",
 
     // optional (defaults to 'init')
-    "module-folder-name": "init",
+    module_folder_name: "init",
 
     // optional
     sources: {
@@ -42,10 +42,10 @@ Here is an overview of the rule configuration format:
     name: "roblox",
 
     // optional
-    "rojo-sourcemap": "./path-to/sourcemap.json",
+    rojo_sourcemap: "./path-to/sourcemap.json",
 
-    // optional (defaults to 'find-first-child')
-    "indexing-style": "find-first-child", // 'wait-for-child' or 'property'
+    // optional (defaults to 'find_first_child')
+    indexing_style: "find_first_child", // 'wait_for_child' or 'property'
   },
 }
 ```

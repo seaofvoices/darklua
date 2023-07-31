@@ -31,11 +31,11 @@ Any missing field will be replaced with its default value.
 ```json5
 {
   // Output code in different ways depending on the given generator
-  generator: "retain-lines", // default value
+  generator: "retain_lines", // default value
 
   bundle: {
     // Identifier used by darklua to store the bundled modules
-    "modules-identifier": "__DARKLUA_BUNDLE_MODULES",
+    modules_identifier: "__DARKLUA_BUNDLE_MODULES",
 
     // To avoid bundling certain paths, insert patterns into the list to exclude
     // them (see https://github.com/olson-sean-k/wax/blob/master/README.md#patterns
@@ -43,12 +43,12 @@ Any missing field will be replaced with its default value.
     excludes: [],
 
     // Configure how requires are interpreted
-    "require-mode": {
+    require_mode: {
       // Currently, the only supported require mode is `path`
       name: "path",
 
       // When requiring folders, require the file named like this value inside of it
-      "module-folder-name": "init",
+      module_folder_name: "init",
 
       // Provide paths that can be required with a specific prefix
       sources: {

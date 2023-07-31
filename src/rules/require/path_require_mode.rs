@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use super::RequirePathLocator;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+#[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub struct PathRequireMode {
     #[serde(
         skip_serializing_if = "is_default_module_folder_name",

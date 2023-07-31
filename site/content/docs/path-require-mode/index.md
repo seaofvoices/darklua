@@ -16,7 +16,7 @@ The path require mode can be defined as the string 'path' to use all the default
   name: "path",
 
   // optional (defaults to 'init')
-  "module-folder-name": "init",
+  module_folder_name: "init",
 
   // optional
   sources: {
@@ -56,7 +56,7 @@ Here is a concrete example of these steps with a require to `./example`. darklua
 
 ## Module Folder Name
 
-When requiring a folder, this mode will look into the folder for a file named by the given value of the `module-folder-name` parameter. The default value is `init`.
+When requiring a folder, this mode will look into the folder for a file named by the given value of the `module_folder_name` parameter. The default value is `init`.
 
 For example, to configure darklua to use `index.lua` (or `index.luau`) similar to what is used in JavaScript, set the parameter to `index`.
 
@@ -65,11 +65,11 @@ To bundle with `index` files, provide this configuration:
 ```json5
 {
   bundle: {
-    "require-mode": {
+    require_mode: {
       name: "path",
       // folders with a `index.lua` or `index.luau` file
       // can be required
-      "module-folder-name": "index",
+      module_folder_name: "index",
     },
   },
 }
@@ -86,7 +86,7 @@ Or when using the `convert_require` rule, provide this configuration:
         name: "path",
         // folders with a `index.lua` or `index.luau` file
         // can be required
-        "module-folder-name": "index",
+        module_folder_name: "index",
       },
       target: "roblox",
     },
@@ -107,7 +107,7 @@ Given this configuration file for bundling:
 ```json5
 {
   bundle: {
-    "require-mode": {
+    require_mode: {
       name: "path",
       sources: {
         pkg: "./Packages",

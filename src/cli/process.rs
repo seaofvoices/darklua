@@ -17,7 +17,7 @@ pub struct Options {
     /// Choose a specific configuration file.
     #[arg(long, short, alias = "config-path")]
     config: Option<PathBuf>,
-    /// Choose how Lua code is formatted ('dense', 'readable' or 'retain-lines').
+    /// Choose how Lua code is formatted ('dense', 'readable' or 'retain_lines').
     /// This will override the format given by the configuration file.
     #[arg(long)]
     format: Option<LuaFormat>,
@@ -37,9 +37,10 @@ impl FromStr for LuaFormat {
         match format {
             "dense" => Ok(Self::Dense),
             "readable" => Ok(Self::Readable),
-            "retain-lines" => Ok(Self::RetainLines),
+            // keep "retain-lines" for back-compatibility
+            "retain_lines" | "retain-lines" => Ok(Self::RetainLines),
             _ => Err(format!(
-                "format '{}' does not exist! (possible options are: 'dense', 'readable' or 'retain-lines'",
+                "format '{}' does not exist! (possible options are: 'dense', 'readable' or 'retain_lines'",
                 format
             )),
         }
