@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* fix dense and readable string generator to escape extended ascii using backslashes ([#111](https://github.com/seaofvoices/darklua/pull/111))
 * fix number parsing to support underscore after decimal point (like `0._123`) ([#110](https://github.com/seaofvoices/darklua/pull/110))
 * add rule to convert require modes (from paths to Roblox instances) ([#107](https://github.com/seaofvoices/darklua/pull/107))
 * fix number parsing to support underscores before `x` in hexadecimal number and before `b` in binary numbers ([#103](https://github.com/seaofvoices/darklua/pull/103))
