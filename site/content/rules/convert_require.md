@@ -1,6 +1,6 @@
 ---
 description: Convert require calls from one environment to another
-added_in: "unreleased"
+added_in: "0.10.0"
 parameters:
   - name: current
     required: true

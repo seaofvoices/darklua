@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.10.0
+
 * convert configuration to snake case (this renames the `retain-lines` generator to `retain_lines`) ([#114](https://github.com/seaofvoices/darklua/pull/114))
 * fix dense and readable string generator to escape extended ascii using backslashes ([#111](https://github.com/seaofvoices/darklua/pull/111))
 * fix number parsing to support underscore after decimal point (like `0._123`) ([#110](https://github.com/seaofvoices/darklua/pull/110))
