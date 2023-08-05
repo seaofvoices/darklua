@@ -31,7 +31,7 @@ impl RojoSourcemapNode {
         while let Some(node) = queue.pop() {
             node.id = index;
             for file_path in &mut node.file_paths {
-                *file_path = utils::normalize_path_with_current_dir(relative_to.join(&file_path));
+                *file_path = utils::normalize_path(relative_to.join(&file_path));
             }
             for child in &mut node.children {
                 child.parent_id = index;
@@ -227,7 +227,7 @@ mod test {
     use super::*;
 
     fn new_sourcemap(content: &str) -> RojoSourcemap {
-        RojoSourcemap::parse(content, ".").expect("unable to parse sourcemap")
+        RojoSourcemap::parse(content, "").expect("unable to parse sourcemap")
     }
 
     mod instance_paths {

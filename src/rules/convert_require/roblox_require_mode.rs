@@ -69,7 +69,7 @@ impl RobloxRequireMode {
         current: &RequireMode,
         context: &Context,
     ) -> DarkluaResult<Option<Arguments>> {
-        let source_path = context.current_path();
+        let source_path = utils::normalize_path(context.current_path());
         log::trace!(
             "generate Roblox require for `{}` from `{}`",
             require_path.display(),
@@ -93,7 +93,7 @@ impl RobloxRequireMode {
                 );
 
                 if let Some(instance_path) =
-                    sourcemap.get_instance_path(source_path, &require_relative_to_sourcemap)
+                    sourcemap.get_instance_path(&source_path, &require_relative_to_sourcemap)
                 {
                     Ok(Some(Arguments::default().with_argument(
                         instance_path.convert(&self.indexing_style),
@@ -114,7 +114,7 @@ impl RobloxRequireMode {
                 Ok(None)
             }
         } else if let Some(relative_require_path) =
-            get_relative_path(require_path, source_path, true)?
+            get_relative_path(require_path, &source_path, true)?
         {
             log::trace!(
                 "make require path relative to source: `{}`",
@@ -132,7 +132,7 @@ impl RobloxRequireMode {
             let mut path_components = relative_require_path.components().take(take_components);
 
             if let Some(first_component) = path_components.next() {
-                let source_is_module_folder_name = current.is_module_folder_name(source_path);
+                let source_is_module_folder_name = current.is_module_folder_name(&source_path);
 
                 let instance_path = path_components.try_fold(
                     match first_component {
