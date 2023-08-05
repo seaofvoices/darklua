@@ -270,6 +270,35 @@ mod sourcemap {
     }
 
     #[test]
+    fn convert_sibling_module_from_init_module_in_nested_sourcemap() {
+        let resources = memory_resources!(
+            "parent/src/d/init.lua" => include_str!("../test_cases/sourcemap/src/d/init.lua"),
+            "parent/src/d/d1.lua" => include_str!("../test_cases/sourcemap/src/d/d1.lua"),
+            "parent/src/d/d2.lua" => include_str!("../test_cases/sourcemap/src/d/d2.lua"),
+
+            ".darklua.json" => r#"{
+                generator: 'retain_lines',
+                rules: [
+                    {
+                        rule: 'convert_require',
+                        current: 'path',
+                        target: {
+                            name: 'roblox',
+                            rojo_sourcemap: './parent/sourcemap.json',
+                        }
+                    }
+                ]
+            }"#,
+            "parent/sourcemap.json" => include_str!("../test_cases/sourcemap/sourcemap.json"),
+        );
+        snapshot_file_process(
+            &resources,
+            "parent/src/d/init.lua",
+            "convert_sibling_module_from_init_module",
+        );
+    }
+
+    #[test]
     fn in_datamodel_convert_sibling_module_from_init_module() {
         snapshot_file_process(
             &get_resources_for_sourcemap(true),

@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::DarkluaError;
+use crate::{utils, DarkluaError};
 
 use super::InstancePath;
 
@@ -24,12 +24,15 @@ struct RojoSourcemapNode {
 }
 
 impl RojoSourcemapNode {
-    fn assign_ids(mut self) -> Self {
+    fn initialize(mut self, relative_to: &Path) -> Self {
         let mut queue = vec![&mut self];
         let mut index = 0;
 
         while let Some(node) = queue.pop() {
             node.id = index;
+            for file_path in &mut node.file_paths {
+                *file_path = utils::normalize_path(relative_to.join(&file_path));
+            }
             for child in &mut node.children {
                 child.parent_id = index;
                 queue.push(child);
@@ -99,8 +102,12 @@ pub(crate) struct RojoSourcemap {
 }
 
 impl RojoSourcemap {
-    pub(crate) fn parse(content: &str) -> Result<Self, DarkluaError> {
-        let root_node = serde_json::from_str::<RojoSourcemapNode>(content)?.assign_ids();
+    pub(crate) fn parse(
+        content: &str,
+        relative_to: impl AsRef<Path>,
+    ) -> Result<Self, DarkluaError> {
+        let root_node =
+            serde_json::from_str::<RojoSourcemapNode>(content)?.initialize(relative_to.as_ref());
 
         let is_datamodel = root_node.class_name == "DataModel";
         Ok(Self {
@@ -220,7 +227,7 @@ mod test {
     use super::*;
 
     fn new_sourcemap(content: &str) -> RojoSourcemap {
-        RojoSourcemap::parse(content).expect("unable to parse sourcemap")
+        RojoSourcemap::parse(content, "").expect("unable to parse sourcemap")
     }
 
     mod instance_paths {
