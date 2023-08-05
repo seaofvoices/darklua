@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* make rojo sourcemap paths relative to its file location ([#117](https://github.com/seaofvoices/darklua/pull/117))
+
 ## 0.10.0
 
 * convert configuration to snake case (this renames the `retain-lines` generator to `retain_lines`) ([#114](https://github.com/seaofvoices/darklua/pull/114))
