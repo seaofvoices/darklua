@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.10.1
+
 * make rojo sourcemap paths relative to its file location ([#117](https://github.com/seaofvoices/darklua/pull/117))
 
 ## 0.10.0
