@@ -10,7 +10,6 @@ use crate::nodes::{Arguments, Block, FunctionCall};
 use crate::process::{DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor};
 use crate::rules::require::{is_require_call, PathRequireMode};
 use crate::rules::{Context, RuleConfiguration, RuleConfigurationError, RuleProperties};
-use crate::Resources;
 
 use instance_path::InstancePath;
 pub use roblox_index_style::RobloxIndexStyle;
@@ -65,9 +64,9 @@ impl RequireMode {
         }
     }
 
-    fn initialize(&mut self, resources: &Resources) -> DarkluaResult<()> {
+    fn initialize(&mut self, context: &Context) -> DarkluaResult<()> {
         match self {
-            RequireMode::Roblox(roblox_mode) => roblox_mode.initialize(resources),
+            RequireMode::Roblox(roblox_mode) => roblox_mode.initialize(context),
             RequireMode::Path(_) => Ok(()),
         }
     }
@@ -167,12 +166,12 @@ impl Rule for ConvertRequire {
     fn process(&self, block: &mut Block, context: &Context) -> RuleProcessResult {
         let mut current_mode = self.current.clone();
         current_mode
-            .initialize(context.resources())
+            .initialize(context)
             .map_err(|err| err.to_string())?;
 
         let mut target_mode = self.target.clone();
         target_mode
-            .initialize(context.resources())
+            .initialize(context)
             .map_err(|err| err.to_string())?;
 
         let mut processor = RequireConverter::new(current_mode, target_mode, context);

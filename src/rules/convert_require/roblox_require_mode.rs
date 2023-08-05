@@ -4,7 +4,7 @@ use crate::{
     frontend::DarkluaResult,
     nodes::{Arguments, FunctionCall, Prefix},
     rules::{convert_require::rojo_sourcemap::RojoSourcemap, Context},
-    utils, DarkluaError, Resources,
+    utils, DarkluaError,
 };
 
 use std::path::{Component, Path, PathBuf};
@@ -25,15 +25,30 @@ pub struct RobloxRequireMode {
 }
 
 impl RobloxRequireMode {
-    pub(crate) fn initialize(&mut self, resources: &Resources) -> DarkluaResult<()> {
-        if let Some(rojo_sourcemap_path) = &self.rojo_sourcemap {
-            let sourcemap =
-                RojoSourcemap::parse(&resources.get(rojo_sourcemap_path)?).map_err(|err| {
-                    err.context(format!(
-                        "unable to parse Rojo sourcemap at `{}`",
-                        rojo_sourcemap_path.display()
-                    ))
-                })?;
+    pub(crate) fn initialize(&mut self, context: &Context) -> DarkluaResult<()> {
+        if let Some(ref rojo_sourcemap_path) = self
+            .rojo_sourcemap
+            .as_ref()
+            .map(|rojo_sourcemap_path| context.project_location().join(rojo_sourcemap_path))
+        {
+            let sourcemap_parent_location = rojo_sourcemap_path
+                .parent()
+                .unwrap_or_else(|| Path::new("."));
+            let sourcemap = RojoSourcemap::parse(
+                &context
+                    .resources()
+                    .get(rojo_sourcemap_path)
+                    .map_err(|err| {
+                        DarkluaError::from(err).context("while initializing Roblox require mode")
+                    })?,
+                sourcemap_parent_location,
+            )
+            .map_err(|err| {
+                err.context(format!(
+                    "unable to parse Rojo sourcemap at `{}`",
+                    rojo_sourcemap_path.display()
+                ))
+            })?;
             self.cached_sourcemap = Some(sourcemap);
         }
         Ok(())
