@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.10.2
+
 * fix crashes when bundling code and fix `remove_spaces` and `remove_comments` rule for missing cases (if expressions and numeric for) ([#119](https://github.com/seaofvoices/darklua/pull/119))
 
 ## 0.10.1
