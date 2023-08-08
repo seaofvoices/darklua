@@ -37,7 +37,7 @@ local a--[[a]],b,c=id+--[[add]]id,nil--[[nothing]]
 local function fn--[[function name]](p1,p2-- p2
 ,p3,...)end
 
-for i =10,1,-3 do-- comment
+for i=10,1,-3 do-- comment
 continue--skip
 end
 
@@ -55,4 +55,4 @@ object:method--[[call]]({key--[[]]=[[true]],[true--[[key]] ]=(nil)-- nil
 },...--[[forward args]])
 
 object.--[[get field]]field:method--
-{if value then ok else err,{--[[empty table]]},--[[trailing comma]]}
+{if--[[condition]]value then--[[true]]ok else--[[false]]err,{--[[empty table]]},--[[trailing comma]]}

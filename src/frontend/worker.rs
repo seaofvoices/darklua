@@ -352,7 +352,7 @@ impl<'a> Worker<'a> {
 
         log::trace!("begin generating code for `{}`", source_display);
 
-        if cfg!(debug_assertions) && log::log_enabled!(log::Level::Trace) {
+        if cfg!(test) || (cfg!(debug_assertions) && log::log_enabled!(log::Level::Trace)) {
             log::trace!(
                 "generate AST debugging view at `{}`",
                 data.output().display()

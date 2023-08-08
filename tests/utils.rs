@@ -1,5 +1,6 @@
 use std::panic::Location;
 use std::path::Path;
+use std::time::{Duration, Instant};
 
 use darklua_core::nodes::Block;
 use darklua_core::{Parser, ParserError, Resources};
@@ -68,16 +69,29 @@ pub fn snapshot_file_process_file_errors(
     });
 }
 
+#[allow(dead_code)]
+pub fn run_for_minimum_time<F: Fn()>(duration: Duration, func: F) {
+    let start = Instant::now();
+
+    loop {
+        func();
+
+        if Instant::now().duration_since(start) > duration {
+            break;
+        }
+    }
+}
+
 #[allow(unused_macros)]
 macro_rules! memory_resources {
-        ($($path:literal => $content:expr),+$(,)?) => ({
-            let resources = Resources::from_memory();
-            $(
-                resources.write($path, $content).unwrap();
-            )*
-            resources
-        });
-    }
+    ($($path:literal => $content:expr),+$(,)?) => ({
+        let resources = Resources::from_memory();
+        $(
+            resources.write($path, $content).unwrap();
+        )*
+        resources
+    });
+}
 
 #[allow(unused_imports)]
 pub(crate) use memory_resources;

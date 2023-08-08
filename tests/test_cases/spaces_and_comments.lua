@@ -51,4 +51,4 @@ object : method --[[call]] ({ key --[[]] = [[true]], [ true --[[key]]] = ( nil )
  }, ... --[[forward args]] )
 
 object . --[[get field]] field : method --
-{ if value then ok else err, { --[[empty table]] }, --[[trailing comma]] }
+{ if --[[condition]]  value   then --[[true]]   ok   else --[[false]]  err, { --[[empty table]] }, --[[trailing comma]] }

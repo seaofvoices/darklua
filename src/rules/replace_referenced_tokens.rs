@@ -184,7 +184,11 @@ impl RuleConfiguration for ReplaceReferencedTokens {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::rules::Rule;
+    use crate::{
+        generator::{LuaGenerator, TokenBasedLuaGenerator},
+        rules::{ContextBuilder, Rule},
+        Parser, Resources,
+    };
 
     use insta::assert_json_snapshot;
 
@@ -197,5 +201,40 @@ mod test {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
         assert_json_snapshot!("default_replace_referenced_tokens", rule);
+    }
+
+    fn test_code(code: &str) {
+        let parser = Parser::default().preserve_tokens();
+
+        let mut block = parser.parse(code).expect("unable to parse code");
+
+        ReplaceReferencedTokens::default().flawless_process(
+            &mut block,
+            &ContextBuilder::new(".", &Resources::from_memory(), code).build(),
+        );
+
+        // provide invalid code to verify if the ReplaceReferencedTokens left token
+        // references, which will cause the TokenBasedLuaGenerator to panic
+        let mut generator = TokenBasedLuaGenerator::new("");
+
+        generator.write_block(&block);
+    }
+
+    #[test]
+    fn test_fuzzed_case_a() {
+        let code = include_str!("../../tests/fuzzed_test_cases/a.lua");
+        test_code(code);
+    }
+
+    #[test]
+    fn test_fuzzed_case_b() {
+        let code = include_str!("../../tests/fuzzed_test_cases/b.lua");
+        test_code(code);
+    }
+
+    #[test]
+    fn test_fuzzed_case_c() {
+        let code = include_str!("../../tests/fuzzed_test_cases/c.lua");
+        test_code(code);
     }
 }

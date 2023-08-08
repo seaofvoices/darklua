@@ -155,24 +155,28 @@ impl NumericForStatement {
     }
 
     pub fn clear_comments(&mut self) {
+        self.identifier.clear_comments();
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
         }
     }
 
     pub fn clear_whitespaces(&mut self) {
+        self.identifier.clear_whitespaces();
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
         }
     }
 
     pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.identifier.replace_referenced_tokens(code);
         if let Some(tokens) = &mut self.tokens {
             tokens.replace_referenced_tokens(code);
         }
     }
 
     pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.identifier.shift_token_line(amount);
         if let Some(tokens) = &mut self.tokens {
             tokens.shift_token_line(amount);
         }

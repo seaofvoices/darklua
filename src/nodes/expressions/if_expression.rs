@@ -245,21 +245,25 @@ impl IfExpressionTokens {
     pub fn clear_comments(&mut self) {
         self.r#if.clear_comments();
         self.then.clear_comments();
+        self.r#else.clear_comments();
     }
 
     pub fn clear_whitespaces(&mut self) {
         self.r#if.clear_whitespaces();
         self.then.clear_whitespaces();
+        self.r#else.clear_whitespaces();
     }
 
     pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
         self.r#if.replace_referenced_tokens(code);
         self.then.replace_referenced_tokens(code);
+        self.r#else.replace_referenced_tokens(code);
     }
 
     pub(crate) fn shift_token_line(&mut self, amount: usize) {
         self.r#if.shift_token_line(amount);
         self.then.shift_token_line(amount);
+        self.r#else.shift_token_line(amount);
     }
 }
 
