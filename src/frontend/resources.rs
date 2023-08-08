@@ -1,11 +1,11 @@
 use std::{
-    cell::RefCell,
     collections::HashMap,
     ffi::OsStr,
     fs::{self, File},
     io::{self, BufWriter, ErrorKind as IOErrorKind, Write},
     iter,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex},
 };
 
 use crate::utils::normalize_path;
@@ -13,14 +13,14 @@ use crate::utils::normalize_path;
 #[derive(Debug, Clone)]
 enum Source {
     FileSystem,
-    Memory(RefCell<HashMap<PathBuf, String>>),
+    Memory(Arc<Mutex<HashMap<PathBuf, String>>>),
 }
 
 impl Source {
     pub fn exists(&self, location: &Path) -> ResourceResult<bool> {
         match self {
             Self::FileSystem => Ok(location.exists()),
-            Self::Memory(data) => Ok(data.borrow().contains_key(&normalize_path(location))),
+            Self::Memory(data) => Ok(data.lock().unwrap().contains_key(&normalize_path(location))),
         }
     }
 
@@ -28,7 +28,7 @@ impl Source {
         let is_directory = match self {
             Source::FileSystem => self.exists(location)? && location.is_dir(),
             Source::Memory(data) => {
-                let data = data.borrow();
+                let data = data.lock().unwrap();
                 let location = normalize_path(location);
 
                 data.iter()
@@ -42,7 +42,7 @@ impl Source {
         let is_file = match self {
             Source::FileSystem => self.exists(location)? && location.is_file(),
             Source::Memory(data) => {
-                let data = data.borrow();
+                let data = data.lock().unwrap();
                 let location = normalize_path(location);
 
                 data.contains_key(&location)
@@ -58,7 +58,7 @@ impl Source {
                 _ => ResourceError::io_error(location, err),
             }),
             Self::Memory(data) => {
-                let data = data.borrow();
+                let data = data.lock().unwrap();
                 let location = normalize_path(location);
 
                 data.get(&location)
@@ -84,7 +84,7 @@ impl Source {
                     .map_err(|err| ResourceError::io_error(location, err))
             }
             Self::Memory(data) => {
-                let mut data = data.borrow_mut();
+                let mut data = data.lock().unwrap();
                 data.insert(normalize_path(location), content.to_string());
                 Ok(())
             }
@@ -96,7 +96,7 @@ impl Source {
             Self::FileSystem => Box::new(walk_file_system(location.to_path_buf()))
                 as Box<dyn Iterator<Item = PathBuf>>,
             Self::Memory(data) => {
-                let data = data.borrow();
+                let data = data.lock().unwrap();
                 let location = normalize_path(location);
                 let mut paths: Vec<_> = data.keys().map(normalize_path).collect();
                 paths.retain(|path| path.starts_with(&location));

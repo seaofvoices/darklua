@@ -68,7 +68,6 @@ impl Trivia {
                     panic!("unable to extract code from position: {} - {}", start, end);
                 })
             }
-            // .expect("unable to extract code from position"),
             Position::LineNumber { content, .. } | Position::Any { content } => content,
         }
     }

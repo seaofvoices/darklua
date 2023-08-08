@@ -6,7 +6,7 @@ use darklua_core::{
         BinaryExpression, BinaryOperator, Expression, LastStatement, UnaryExpression, UnaryOperator,
     },
 };
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 mod fuzz;
 mod utils;
@@ -123,24 +123,13 @@ macro_rules! fuzz_test_block {
 }
 
 fn run_for_minimum_time<F: Fn()>(func: F) {
-    let duration = get_fuzz_duration();
-    let start = Instant::now();
-
-    loop {
-        func();
-
-        if Instant::now().duration_since(start) > duration {
-            break;
-        }
-    }
-}
-
-fn get_fuzz_duration() -> Duration {
     let millis = option_env!("FUZZ_DURATION_MILLISECONDS")
         .and_then(|value| value.parse::<u64>().ok())
         .unwrap_or(1500);
 
-    Duration::from_millis(millis)
+    let duration = Duration::from_millis(millis);
+
+    utils::run_for_minimum_time(duration, func);
 }
 
 fn fuzz_three_terms_binary_expressions<T: LuaGenerator + Clone>(generator: T) {

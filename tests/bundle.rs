@@ -1,5 +1,6 @@
 use darklua_core::{process, Options, Resources};
 
+mod fuzz;
 mod utils;
 
 use utils::memory_resources;
@@ -58,6 +59,15 @@ fn skip_require_call_with_2_arguments() {
 }
 
 mod without_rules {
+    use std::time::Duration;
+
+    use darklua_core::{
+        generator::{LuaGenerator, ReadableLuaGenerator},
+        nodes::{Block, Expression, ReturnStatement},
+    };
+
+    use crate::fuzz::{Fuzz, FuzzContext};
+
     use super::*;
 
     fn process_main(resources: &Resources, snapshot_name: &'static str) {
@@ -486,6 +496,48 @@ data:
         );
 
         process_main(&resources, "require_small_bundle_case");
+    }
+
+    #[test]
+    fn fuzz_bundle() {
+        utils::run_for_minimum_time(Duration::from_millis(250), || {
+            let mut fuzz_context = FuzzContext::new(20, 40);
+            let mut block = Block::fuzz(&mut fuzz_context);
+            block.set_last_statement(ReturnStatement::one(Expression::nil()));
+
+            let mut generator = ReadableLuaGenerator::new(80);
+
+            generator.write_block(&block);
+
+            let block_file = generator.into_string();
+
+            let resources = memory_resources!(
+                "src/value.lua" => &block_file,
+                "src/main.lua" => "local value = require('./value')",
+                ".darklua.json" => DARKLUA_BUNDLE_ONLY_RETAIN_LINES_CONFIG,
+            );
+            let resource_ref = &resources;
+
+            let result = std::panic::catch_unwind(|| {
+                process(
+                    resource_ref,
+                    Options::new("src/main.lua").with_output("out.lua"),
+                )
+                .result()
+                .unwrap();
+            });
+
+            result
+                .map_err(|err| {
+                    std::fs::write("fuzz_bundle_failure.repro.txt", block_file).unwrap();
+
+                    let out = resources.get("out.lua").unwrap();
+                    std::fs::write("fuzz_bundle_failure.txt", out).unwrap();
+
+                    err
+                })
+                .unwrap();
+        })
     }
 
     mod cyclic_requires {
