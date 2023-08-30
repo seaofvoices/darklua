@@ -8,10 +8,10 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Instant;
 
-#[derive(Debug, Args)]
+#[derive(Debug, Args, Clone)]
 pub struct Options {
     /// Path to the lua file to process.
-    input_path: PathBuf,
+    pub input_path: PathBuf,
     /// Where to output the result.
     output_path: PathBuf,
     /// Choose a specific configuration file.
