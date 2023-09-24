@@ -1,7 +1,6 @@
 pub mod error;
 pub mod minify;
 pub mod process;
-pub mod watch;
 pub mod utils;
 
 use clap::{Args, Parser, Subcommand};
@@ -39,8 +38,6 @@ pub enum Command {
     /// If no configuration is passed, darklua will attempt to read
     /// `.darklua.json` or `darklua.json5` from the working directory.
     Process(process::Options),
-    /// Automatically processes files when they change
-    Watch(process::Options),
 }
 
 impl Command {
@@ -48,7 +45,6 @@ impl Command {
         match self {
             Command::Minify(options) => minify::run(options, global_options),
             Command::Process(options) => process::run(options, global_options),
-            Command::Watch(options) => watch::run(options, global_options)
         }
     }
 }

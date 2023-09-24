@@ -4,8 +4,10 @@ use crate::cli::{CommandResult, GlobalOptions};
 
 use clap::Args;
 use darklua_core::{GeneratorParameters, Resources};
+use notify::{Watcher, RecursiveMode};
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::time::Instant;
 
 #[derive(Debug, Args, Clone)]
@@ -21,6 +23,9 @@ pub struct Options {
     /// This will override the format given by the configuration file.
     #[arg(long)]
     format: Option<LuaFormat>,
+    /// Watch files and directories for changes and automatically re-run
+    #[arg(long, short)]
+    watch: bool,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -47,25 +52,7 @@ impl FromStr for LuaFormat {
     }
 }
 
-pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
-    log::debug!("running `process`: {:?}", options);
-
-    let resources = Resources::from_file_system();
-    let mut process_options =
-        darklua_core::Options::new(&options.input_path).with_output(&options.output_path);
-
-    if let Some(config) = options.config.as_ref() {
-        process_options = process_options.with_configuration_at(config);
-    }
-
-    if let Some(format) = options.format.as_ref() {
-        process_options = process_options.with_generator_override(match format {
-            LuaFormat::Dense => GeneratorParameters::default_dense(),
-            LuaFormat::Readable => GeneratorParameters::default_readable(),
-            LuaFormat::RetainLines => GeneratorParameters::RetainLines,
-        })
-    }
-
+fn process(resources: Resources, process_options: darklua_core::Options) -> Result<(), CliError> {
     let process_start_time = Instant::now();
 
     let result = darklua_core::process(&resources, process_options);
@@ -110,5 +97,56 @@ pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
 
             Err(CliError::new(1))
         }
+    }
+}
+
+pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
+    log::debug!("running `process`: {:?}", options);
+
+    let resources = Resources::from_file_system();
+    let mut process_options =
+        darklua_core::Options::new(&options.input_path).with_output(&options.output_path);
+
+    if let Some(config) = options.config.as_ref() {
+        process_options = process_options.with_configuration_at(config);
+    }
+
+    if let Some(format) = options.format.as_ref() {
+        process_options = process_options.with_generator_override(match format {
+            LuaFormat::Dense => GeneratorParameters::default_dense(),
+            LuaFormat::Readable => GeneratorParameters::default_readable(),
+            LuaFormat::RetainLines => GeneratorParameters::RetainLines,
+        })
+    }
+
+    if options.watch {
+        let mut watch_path = options.input_path.clone();
+        watch_path.pop();
+
+        let resources = Arc::new(resources);
+        let process_options = Arc::new(process_options);
+
+        let mut watcher = notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
+            match res {
+                Ok(event) => {
+                    if event.kind.is_create() || event.kind.is_modify() {
+                        let Err(e) = process(*(resources.clone()), *(process_options.clone())) else { return };
+                        log::error!("there was an process error while attempting to bundle: {:?}", e);
+                    }
+                }
+                Err(err) => {
+                    log::error!("there was an watcher error while attempting to bundle: {:?}", err);
+                }
+            }
+        }).expect("failed to create watcher");
+
+        watcher
+            .watch(&watch_path, RecursiveMode::Recursive)
+            .expect("failed to watch input path");
+
+        std::thread::park();
+        return Ok(())
+    } else {
+        return process(resources, process_options)
     }
 }
