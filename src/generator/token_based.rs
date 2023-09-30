@@ -190,6 +190,21 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         self.write_token(&tokens.right_parenthese);
     }
 
+    fn write_type_cast_with_tokens(&mut self, type_cast: &TypeCastExpression, token: &Token) {
+        let inner_expression = type_cast.get_expression();
+
+        if TypeCastExpression::needs_parentheses(inner_expression) {
+            self.write_symbol("(");
+            self.write_expression(inner_expression);
+            self.write_symbol(")");
+        } else {
+            self.write_expression(inner_expression);
+        }
+        self.write_expression(type_cast.get_expression());
+        self.write_token(&token);
+        self.write_type(&type_cast.get_type());
+    }
+
     fn write_tuple_arguments_with_tokens(
         &mut self,
         arguments: &TupleArguments,
@@ -308,7 +323,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
     fn write_function_statement_with_tokens(
         &mut self,
         function: &FunctionStatement,
-        tokens: &FunctionStatementTokens,
+        tokens: &FunctionBodyTokens,
     ) {
         self.write_token(&tokens.function);
 
@@ -327,7 +342,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             .iter_parameters()
             .enumerate()
             .for_each(|(i, param)| {
-                self.write_identifier(param);
+                self.write_typed_identifier(param);
                 if i < last_parameter_index {
                     if let Some(comma) = tokens.parameter_commas.get(i) {
                         self.write_token(comma);
@@ -351,9 +366,28 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             } else {
                 self.write_symbol("...");
             }
+
+            if let Some(variadic_type) = function.get_variadic_type() {
+                if let Some(colon) = &tokens.variable_arguments_colon {
+                    self.write_token(colon);
+                } else {
+                    self.write_symbol(":")
+                }
+                self.write_type(variadic_type);
+            }
         }
 
         self.write_token(&tokens.closing_parenthese);
+
+        if let Some(return_type) = function.get_return_type() {
+            if let Some(colon) = &tokens.return_type_colon {
+                self.write_token(colon);
+            } else {
+                self.write_symbol(":")
+            }
+
+            self.write_function_return_type(return_type);
+        }
 
         self.write_block(function.get_block());
 
@@ -401,7 +435,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             .iter_identifiers()
             .enumerate()
             .for_each(|(i, identifier)| {
-                self.write_identifier(identifier);
+                self.write_typed_identifier(identifier);
                 if i < last_identifier_index {
                     if let Some(comma) = tokens.identifier_commas.get(i) {
                         self.write_token(comma);
@@ -487,7 +521,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             .iter_variables()
             .enumerate()
             .for_each(|(i, identifier)| {
-                self.write_identifier(identifier);
+                self.write_typed_identifier(identifier);
                 if i < last_variable_index {
                     if let Some(comma) = tokens.variable_commas.get(i) {
                         self.write_token(comma);
@@ -534,7 +568,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             .iter_parameters()
             .enumerate()
             .for_each(|(i, param)| {
-                self.write_identifier(param);
+                self.write_typed_identifier(param);
                 if i < last_parameter_index {
                     if let Some(comma) = tokens.parameter_commas.get(i) {
                         self.write_token(comma);
@@ -558,9 +592,27 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             } else {
                 self.write_symbol("...");
             }
+
+            if let Some(variadic_type) = function.get_variadic_type() {
+                if let Some(colon) = &tokens.variable_arguments_colon {
+                    self.write_token(colon);
+                } else {
+                    self.write_symbol(":")
+                }
+                self.write_type(variadic_type);
+            }
         }
 
         self.write_token(&tokens.closing_parenthese);
+
+        if let Some(variadic_type) = function.get_variadic_type() {
+            if let Some(colon) = &tokens.variable_arguments_colon {
+                self.write_token(colon);
+            } else {
+                self.write_symbol(":")
+            }
+            self.write_type(variadic_type);
+        }
 
         self.write_block(function.get_block());
         self.write_token(&tokens.end);
@@ -572,7 +624,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         tokens: &NumericForTokens,
     ) {
         self.write_token(&tokens.r#for);
-        self.write_identifier(numeric_for.get_identifier());
+        self.write_typed_identifier(numeric_for.get_identifier());
         self.write_token(&tokens.equal);
         self.write_expression(numeric_for.get_start());
         self.write_token(&tokens.end_comma);
@@ -607,10 +659,69 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         self.write_token(&tokens.end);
     }
 
+    fn write_type_declaration_with_tokens(
+        &mut self,
+        statement: &TypeDeclarationStatement,
+        tokens: &TypeDeclarationTokens,
+    ) {
+        if statement.is_exported() {
+            if let Some(export_token) = &tokens.export {
+                self.write_token(export_token);
+            } else {
+                self.write_symbol("export");
+            }
+        }
+        self.write_token(&tokens.r#type);
+
+        self.write_identifier(statement.get_name());
+
+        if let Some(generic_parameters) = statement
+            .get_generic_parameters()
+            .filter(|generic_parameters| !generic_parameters.is_empty())
+        {
+            for parameter in generic_parameters {
+                match parameter {
+                    GenericParameterRef::TypeVariable(identifier) => {
+                        self.write_identifier(identifier);
+                    }
+                    GenericParameterRef::TypeVariableWithDefault(identifier_with_default) => {
+                        self.write_identifier(identifier_with_default.get_type_variable());
+                        if let Some(token) = identifier_with_default.get_token() {
+                            self.write_token(token);
+                        } else {
+                            self.write_symbol("=");
+                        }
+                        self.write_type(identifier_with_default.get_default_type());
+                    }
+                    GenericParameterRef::GenericTypePack(generic_type_pack) => {
+                        self.write_generic_type_pack(generic_type_pack);
+                    }
+                    GenericParameterRef::GenericTypePackWithDefault(generic_pack_with_default) => {
+                        self.write_generic_type_pack(
+                            generic_pack_with_default.get_generic_type_pack(),
+                        );
+                        if let Some(token) = generic_pack_with_default.get_token() {
+                            self.write_token(token);
+                        } else {
+                            self.write_symbol("=");
+                        }
+                        self.write_generic_type_pack_default(
+                            generic_pack_with_default.get_default_type(),
+                        );
+                    }
+                }
+            }
+        }
+
+        self.write_token(&tokens.equal);
+
+        self.write_type(statement.get_type());
+    }
+
     fn write_function_with_tokens(
         &mut self,
         function: &FunctionExpression,
-        tokens: &FunctionExpressionTokens,
+        tokens: &FunctionBodyTokens,
     ) {
         self.write_token(&tokens.function);
         self.write_token(&tokens.opening_parenthese);
@@ -621,7 +732,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             .iter_parameters()
             .enumerate()
             .for_each(|(i, param)| {
-                self.write_identifier(param);
+                self.write_typed_identifier(param);
                 if i < last_parameter_index {
                     if let Some(comma) = tokens.parameter_commas.get(i) {
                         self.write_token(comma);
@@ -645,12 +756,292 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             } else {
                 self.write_symbol("...");
             }
+
+            if let Some(variadic_type) = function.get_variadic_type() {
+                if let Some(colon) = &tokens.variable_arguments_colon {
+                    self.write_token(colon);
+                } else {
+                    self.write_symbol(":")
+                }
+                self.write_type(variadic_type);
+            }
         }
 
         self.write_token(&tokens.closing_parenthese);
 
+        if let Some(variadic_type) = function.get_variadic_type() {
+            if let Some(colon) = &tokens.variable_arguments_colon {
+                self.write_token(colon);
+            } else {
+                self.write_symbol(":")
+            }
+            self.write_type(variadic_type);
+        }
+
         self.write_block(function.get_block());
         self.write_token(&tokens.end);
+    }
+
+    fn write_type_parameters_with_tokens(
+        &mut self,
+        parameters: &TypeParameters,
+        tokens: &TypeParametersTokens,
+    ) {
+        self.write_token(&tokens.opening_list);
+        let last_index = parameters.len().saturating_sub(1);
+
+        for (i, parameter) in parameters.iter().enumerate() {
+            self.write_type_parameter(parameter);
+
+            if i < last_index {
+                if let Some(comma) = tokens.commas.get(i) {
+                    self.write_token(comma);
+                } else {
+                    self.write_symbol(",");
+                }
+            }
+        }
+
+        self.write_token(&tokens.closing_list);
+    }
+
+    fn write_type_field_with_token(&mut self, type_field: &TypeField, token: &Token) {
+        self.write_identifier(type_field.get_namespace());
+        self.write_token(token);
+        self.write_type_name(type_field.get_type_name());
+    }
+
+    fn write_array_type_with_tokens(&mut self, array_type: &ArrayType, tokens: &ArrayTypeTokens) {
+        self.write_token(&tokens.opening_brace);
+        self.write_type(array_type.get_element_type());
+        self.write_token(&tokens.closing_brace);
+    }
+
+    fn write_table_type_with_tokens(&mut self, table_type: &TableType, tokens: &TableTypeTokens) {
+        self.write_token(&tokens.opening_brace);
+
+        let last_index = table_type
+            .properties_len()
+            .saturating_sub(if table_type.has_indexer_type() { 0 } else { 1 });
+
+        for (i, property) in table_type.iter_property_type().enumerate() {
+            self.write_identifier(property.get_identifier());
+
+            if let Some(colon) = property.get_token() {
+                self.write_token(colon);
+            } else {
+                self.write_symbol(":");
+            }
+
+            self.write_type(property.get_type());
+
+            if i < last_index {
+                if let Some(comma) = tokens.separators.get(i) {
+                    self.write_token(comma);
+                } else {
+                    self.write_symbol(",");
+                }
+            }
+        }
+
+        self.write_token(&tokens.closing_brace);
+    }
+
+    fn write_expression_type_with_tokens(
+        &mut self,
+        expression_type: &ExpressionType,
+        tokens: &ExpressionTypeTokens,
+    ) {
+        self.write_token(&tokens.r#typeof);
+        self.write_token(&tokens.opening_parenthese);
+        self.write_expression(expression_type.get_expression());
+        self.write_token(&tokens.closing_parenthese);
+    }
+
+    fn write_parenthese_type_with_tokens(
+        &mut self,
+        parenthese_type: &ParentheseType,
+        tokens: &ParentheseTypeTokens,
+    ) {
+        self.write_token(&tokens.left_parenthese);
+        self.write_type(parenthese_type.get_inner_type());
+        self.write_token(&tokens.right_parenthese);
+    }
+
+    fn write_function_type_with_tokens(
+        &mut self,
+        function_type: &FunctionType,
+        tokens: &FunctionTypeTokens,
+    ) {
+        if let Some(generic_parameters) = function_type
+            .get_generic_parameters()
+            .filter(|generic_parameters| !generic_parameters.is_empty())
+        {
+            if let Some(generic_tokens) = generic_parameters.get_tokens() {
+                self.write_generic_parameters_with_tokens(generic_parameters, generic_tokens);
+            } else {
+                self.write_generic_parameters_with_tokens(
+                    generic_parameters,
+                    &self.generate_generic_parameters_tokens(generic_parameters),
+                );
+            }
+        }
+
+        self.write_token(&tokens.opening_parenthese);
+
+        let last_index = function_type.argument_len().saturating_sub(
+            if function_type.has_variadic_argument_type() {
+                0
+            } else {
+                1
+            },
+        );
+
+        for (i, argument) in function_type.iter_arguments().enumerate() {
+            if let Some(name) = argument.get_name() {
+                self.write_identifier(name);
+
+                if let Some(token) = argument.get_token() {
+                    self.write_token(token);
+                } else {
+                    self.write_symbol(":");
+                }
+            }
+
+            self.write_type(argument.get_type());
+
+            if i < last_index {
+                if let Some(comma) = tokens.commas.get(i) {
+                    self.write_token(comma);
+                } else {
+                    self.write_symbol(",");
+                }
+            }
+        }
+
+        self.write_token(&tokens.closing_parenthese);
+        self.write_token(&tokens.arrow);
+        self.write_function_return_type(function_type.get_return_type());
+    }
+
+    fn write_generic_parameters_with_tokens(
+        &mut self,
+        generic_parameters: &GenericParameters,
+        tokens: &GenericParametersTokens,
+    ) {
+        self.write_token(&tokens.opening_list);
+
+        let last_index = generic_parameters.len().saturating_sub(1);
+
+        for (i, type_variable) in generic_parameters.iter_type_variable().enumerate() {
+            self.write_identifier(type_variable);
+
+            if i < last_index {
+                if let Some(comma) = tokens.commas.get(i) {
+                    self.write_token(comma);
+                } else {
+                    self.write_symbol(",");
+                }
+            }
+        }
+
+        let type_variables_len = generic_parameters.type_variables_len();
+
+        for (i, generic_type_pack) in generic_parameters.iter_generic_type_pack().enumerate() {
+            self.write_generic_type_pack(generic_type_pack);
+
+            if (i + type_variables_len) < last_index {
+                if let Some(comma) = tokens.commas.get(i) {
+                    self.write_token(comma);
+                } else {
+                    self.write_symbol(",");
+                }
+            }
+        }
+
+        self.write_token(&tokens.closing_list);
+    }
+
+    fn write_type_pack_with_tokens(&mut self, type_pack: &TypePack, tokens: &TypePackTokens) {
+        self.write_token(&tokens.left_parenthese);
+
+        let last_index = type_pack
+            .len()
+            .saturating_sub(if type_pack.has_variadic_type() { 0 } else { 1 });
+
+        for (i, r#type) in type_pack.iter().enumerate() {
+            self.write_type(r#type);
+
+            if i < last_index {
+                if let Some(comma) = tokens.commas.get(i) {
+                    self.write_token(comma);
+                } else {
+                    self.write_symbol(",");
+                }
+            }
+        }
+
+        self.write_token(&tokens.right_parenthese);
+    }
+
+    fn write_optional_type_with_token(&mut self, optional: &OptionalType, token: &Token) {
+        let inner_type = optional.get_inner_type();
+        if OptionalType::needs_parentheses(inner_type) {
+            self.write_symbol("(");
+            self.write_type(inner_type);
+            self.write_symbol(")");
+        } else {
+            self.write_type(inner_type);
+        }
+        self.write_token(token);
+    }
+
+    fn write_intersection_type_with_token(
+        &mut self,
+        intersection: &IntersectionType,
+        token: &Token,
+    ) {
+        let left = intersection.get_left();
+        if IntersectionType::left_needs_parentheses(left) {
+            self.write_symbol("(");
+            self.write_type(left);
+            self.write_symbol(")");
+        } else {
+            self.write_type(left);
+        }
+
+        self.write_token(token);
+
+        let right = intersection.get_right();
+        if IntersectionType::right_needs_parentheses(right) {
+            self.write_symbol("(");
+            self.write_type(right);
+            self.write_symbol(")");
+        } else {
+            self.write_type(right);
+        }
+    }
+
+    fn write_union_type_with_token(&mut self, union: &UnionType, token: &Token) {
+        let left = union.get_left();
+        if UnionType::left_needs_parentheses(left) {
+            self.write_symbol("(");
+            self.write_type(left);
+            self.write_symbol(")");
+        } else {
+            self.write_type(left);
+        }
+
+        self.write_token(token);
+
+        let right = union.get_right();
+        if UnionType::right_needs_parentheses(right) {
+            self.write_symbol("(");
+            self.write_type(right);
+            self.write_symbol(")");
+        } else {
+            self.write_type(right);
+        }
     }
 
     fn generate_block_tokens(&self, _block: &Block) -> BlockTokens {
@@ -716,8 +1107,8 @@ impl<'a> TokenBasedLuaGenerator<'a> {
     fn generate_function_statement_tokens(
         &self,
         function: &FunctionStatement,
-    ) -> FunctionStatementTokens {
-        FunctionStatementTokens {
+    ) -> FunctionBodyTokens {
+        FunctionBodyTokens {
             function: Token::from_content("function"),
             opening_parenthese: Token::from_content("("),
             closing_parenthese: Token::from_content(")"),
@@ -728,6 +1119,16 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             ),
             variable_arguments: if function.is_variadic() {
                 Some(Token::from_content("..."))
+            } else {
+                None
+            },
+            variable_arguments_colon: if function.has_variadic_type() {
+                Some(Token::from_content(":"))
+            } else {
+                None
+            },
+            return_type_colon: if function.has_return_type() {
+                Some(Token::from_content(":"))
             } else {
                 None
             },
@@ -770,18 +1171,30 @@ impl<'a> TokenBasedLuaGenerator<'a> {
     ) -> LocalFunctionTokens {
         LocalFunctionTokens {
             local: Token::from_content("local"),
-            function: Token::from_content("function"),
-            opening_parenthese: Token::from_content("("),
-            closing_parenthese: Token::from_content(")"),
-            end: Token::from_content("end"),
-            parameter_commas: intersect_with_token(
-                comma_token(),
-                function.parameters_count() + usize::from(function.is_variadic()),
-            ),
-            variable_arguments: if function.is_variadic() {
-                Some(Token::from_content("..."))
-            } else {
-                None
+            function_body: FunctionBodyTokens {
+                function: Token::from_content("function"),
+                opening_parenthese: Token::from_content("("),
+                closing_parenthese: Token::from_content(")"),
+                end: Token::from_content("end"),
+                parameter_commas: intersect_with_token(
+                    comma_token(),
+                    function.parameters_count() + usize::from(function.is_variadic()),
+                ),
+                variable_arguments: if function.is_variadic() {
+                    Some(Token::from_content("..."))
+                } else {
+                    None
+                },
+                variable_arguments_colon: if function.has_variadic_type() {
+                    Some(Token::from_content(":"))
+                } else {
+                    None
+                },
+                return_type_colon: if function.has_return_type() {
+                    Some(Token::from_content(":"))
+                } else {
+                    None
+                },
             },
         }
     }
@@ -812,8 +1225,23 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         }
     }
 
-    fn generate_function_tokens(&self, function: &FunctionExpression) -> FunctionExpressionTokens {
-        FunctionExpressionTokens {
+    fn generate_type_declaration_tokens(
+        &self,
+        statement: &TypeDeclarationStatement,
+    ) -> TypeDeclarationTokens {
+        TypeDeclarationTokens {
+            r#type: Token::from_content("type"),
+            equal: Token::from_content("="),
+            export: if statement.is_exported() {
+                Some(Token::from_content("export"))
+            } else {
+                None
+            },
+        }
+    }
+
+    fn generate_function_tokens(&self, function: &FunctionExpression) -> FunctionBodyTokens {
+        FunctionBodyTokens {
             function: Token::from_content("function"),
             opening_parenthese: Token::from_content("("),
             closing_parenthese: Token::from_content(")"),
@@ -824,6 +1252,16 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             ),
             variable_arguments: if function.is_variadic() {
                 Some(Token::from_content("..."))
+            } else {
+                None
+            },
+            variable_arguments_colon: if function.has_variadic_type() {
+                Some(Token::from_content(":"))
+            } else {
+                None
+            },
+            return_type_colon: if function.has_return_type() {
+                Some(Token::from_content(":"))
             } else {
                 None
             },
@@ -900,6 +1338,108 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         }
     }
 
+    fn generate_type_cast_token(&self, _type_cast: &TypeCastExpression) -> Token {
+        Token::from_content("::")
+    }
+
+    fn generate_type_parameters_tokens(&self, parameters: &TypeParameters) -> TypeParametersTokens {
+        TypeParametersTokens {
+            opening_list: Token::from_content("<"),
+            closing_list: Token::from_content(">"),
+            commas: intersect_with_token(comma_token(), parameters.len()),
+        }
+    }
+
+    fn generate_type_field_token(&self, _type_field: &TypeField) -> Token {
+        Token::from_content(".")
+    }
+
+    fn generate_array_type_tokens(&self, _array: &ArrayType) -> ArrayTypeTokens {
+        ArrayTypeTokens {
+            opening_brace: Token::from_content("{"),
+            closing_brace: Token::from_content("}"),
+        }
+    }
+
+    fn generate_table_type_tokens(&self, table_type: &TableType) -> TableTypeTokens {
+        TableTypeTokens {
+            opening_brace: Token::from_content("{"),
+            closing_brace: Token::from_content("}"),
+            separators: intersect_with_token(
+                comma_token(),
+                table_type.properties_len() + usize::from(table_type.has_indexer_type()),
+            ),
+        }
+    }
+
+    fn generate_expression_type_tokens(
+        &self,
+        _expression_type: &ExpressionType,
+    ) -> ExpressionTypeTokens {
+        ExpressionTypeTokens {
+            r#typeof: Token::from_content("typeof"),
+            opening_parenthese: Token::from_content("("),
+            closing_parenthese: Token::from_content(")"),
+        }
+    }
+
+    fn generate_parenthese_type_tokens(
+        &self,
+        _parenthese_type: &ParentheseType,
+    ) -> ParentheseTypeTokens {
+        ParentheseTypeTokens {
+            left_parenthese: Token::from_content("("),
+            right_parenthese: Token::from_content(")"),
+        }
+    }
+
+    fn generate_function_type_tokens(&self, function_type: &FunctionType) -> FunctionTypeTokens {
+        FunctionTypeTokens {
+            opening_parenthese: Token::from_content("("),
+            closing_parenthese: Token::from_content(")"),
+            arrow: Token::from_content("->"),
+            commas: intersect_with_token(
+                comma_token(),
+                function_type.argument_len()
+                    + usize::from(function_type.has_variadic_argument_type()),
+            ),
+        }
+    }
+
+    fn generate_optional_type_token(&self, _optional: &OptionalType) -> Token {
+        Token::from_content("?")
+    }
+
+    fn generate_intersection_type_token(&self, _intersection: &IntersectionType) -> Token {
+        Token::from_content("&")
+    }
+
+    fn generate_union_type_token(&self, _union: &UnionType) -> Token {
+        Token::from_content("|")
+    }
+
+    fn generate_type_pack_tokens(&self, type_pack: &TypePack) -> TypePackTokens {
+        TypePackTokens {
+            left_parenthese: Token::from_content("("),
+            right_parenthese: Token::from_content(")"),
+            commas: intersect_with_token(
+                comma_token(),
+                type_pack.len() + usize::from(type_pack.has_variadic_type()),
+            ),
+        }
+    }
+
+    fn generate_generic_parameters_tokens(
+        &self,
+        generic_parameters: &GenericParameters,
+    ) -> GenericParametersTokens {
+        GenericParametersTokens {
+            opening_list: Token::from_content("<"),
+            closing_list: Token::from_content(">"),
+            commas: intersect_with_token(comma_token(), generic_parameters.len()),
+        }
+    }
+
     fn write_symbol(&mut self, symbol: &str) {
         if self.currently_commenting {
             self.uncomment();
@@ -909,9 +1449,35 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         self.push_str(symbol);
     }
 
+    fn write_typed_identifier(&mut self, typed_identifier: &TypedIdentifier) {
+        if let Some(token) = typed_identifier.get_token() {
+            let name_in_token = token.read(self.original_code);
+
+            if name_in_token == typed_identifier.get_name() {
+                self.write_token(token);
+            } else {
+                let mut new_token = token.clone();
+                new_token.replace_with_content(typed_identifier.get_name().clone());
+                self.write_token(&new_token);
+            }
+        } else {
+            let name = typed_identifier.get_name();
+            self.write_symbol(name);
+        }
+
+        if let Some(r#type) = typed_identifier.get_type() {
+            if let Some(colon) = typed_identifier.get_colon_token() {
+                self.write_token(colon);
+            } else {
+                self.write_symbol(":");
+            }
+            self.write_type(r#type);
+        }
+    }
+
     #[inline]
     fn needs_space(&self, next_character: char) -> bool {
-        is_ending_relevant_for_spacing(next_character)
+        is_next_char_relevant_for_spacing(next_character)
             && if let Some(last) = self.output.chars().last() {
                 is_relevant_for_spacing(last, next_character)
             } else {
@@ -945,8 +1511,8 @@ fn is_single_line_comment(content: &str) -> bool {
 }
 
 #[inline]
-fn is_ending_relevant_for_spacing(character: char) -> bool {
-    character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '[' | ']' | '.')
+fn is_next_char_relevant_for_spacing(character: char) -> bool {
+    character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '[' | ']' | '.' | '=')
 }
 
 #[inline]
@@ -956,6 +1522,7 @@ fn is_relevant_for_spacing(ending_character: char, next_character: char) -> bool
         'A'..='Z' | 'a'..='z' | '_' => {
             next_character.is_ascii_alphanumeric() || next_character == '_'
         }
+        '>' => next_character == '=',
         '-' => next_character == '-',
         '[' => next_character == '[',
         ']' => next_character == ']',
@@ -1120,49 +1687,46 @@ impl<'a> LuaGenerator for TokenBasedLuaGenerator<'a> {
         }
     }
 
-    fn write_expression(&mut self, expression: &Expression) {
-        use Expression::*;
-        match expression {
-            Binary(binary) => self.write_binary_expression(binary),
-            Call(call) => self.write_function_call(call),
-            False(token) => {
-                if let Some(token) = token {
-                    self.write_token(token);
-                } else {
-                    self.write_symbol("false");
-                }
-            }
-            Field(field) => self.write_field(field),
-            Function(function) => self.write_function(function),
-            Identifier(identifier) => self.write_identifier(identifier),
-            If(if_expression) => self.write_if_expression(if_expression),
-            Index(index) => self.write_index(index),
-            Nil(token) => {
-                if let Some(token) = token {
-                    self.write_token(token);
-                } else {
-                    self.write_symbol("nil");
-                }
-            }
-            Number(number) => self.write_number(number),
-            Parenthese(parenthese) => self.write_parenthese(parenthese),
-            String(string) => self.write_string(string),
-            Table(table) => self.write_table(table),
-            True(token) => {
-                if let Some(token) = token {
-                    self.write_token(token);
-                } else {
-                    self.write_symbol("true");
-                }
-            }
-            Unary(unary) => self.write_unary_expression(unary),
-            VariableArguments(token) => {
-                if let Some(token) = token {
-                    self.write_token(token);
-                } else {
-                    self.write_symbol("...");
-                }
-            }
+    fn write_type_declaration_statement(&mut self, statement: &TypeDeclarationStatement) {
+        if let Some(tokens) = statement.get_tokens() {
+            self.write_type_declaration_with_tokens(statement, tokens);
+        } else {
+            self.write_type_declaration_with_tokens(
+                statement,
+                &self.generate_type_declaration_tokens(statement),
+            );
+        }
+    }
+
+    fn write_false_expression(&mut self, token: &Option<Token>) {
+        if let Some(token) = token {
+            self.write_token(token);
+        } else {
+            self.write_symbol("false");
+        }
+    }
+
+    fn write_true_expression(&mut self, token: &Option<Token>) {
+        if let Some(token) = token {
+            self.write_token(token);
+        } else {
+            self.write_symbol("true");
+        }
+    }
+
+    fn write_nil_expression(&mut self, token: &Option<Token>) {
+        if let Some(token) = token {
+            self.write_token(token);
+        } else {
+            self.write_symbol("nil");
+        }
+    }
+
+    fn write_variable_arguments_expression(&mut self, token: &Option<Token>) {
+        if let Some(token) = token {
+            self.write_token(token);
+        } else {
+            self.write_symbol("...");
         }
     }
 
@@ -1312,7 +1876,7 @@ impl<'a> LuaGenerator for TokenBasedLuaGenerator<'a> {
         if let Some(token) = string.get_token() {
             self.write_token(token);
         } else {
-            self.write_symbol(&utils::write_string(string));
+            self.write_symbol(&utils::write_string(string.get_value()));
         }
     }
 
@@ -1342,6 +1906,171 @@ impl<'a> LuaGenerator for TokenBasedLuaGenerator<'a> {
                 &self.generate_parenthese_tokens(parenthese),
             );
         }
+    }
+
+    fn write_type_cast(&mut self, type_cast: &TypeCastExpression) {
+        if let Some(token) = type_cast.get_token() {
+            self.write_type_cast_with_tokens(type_cast, token);
+        } else {
+            self.write_type_cast_with_tokens(type_cast, &self.generate_type_cast_token(type_cast));
+        }
+    }
+
+    fn write_type_name(&mut self, type_name: &TypeName) {
+        self.write_identifier(type_name.get_type_name());
+        if let Some(parameters) = type_name.get_type_parameters() {
+            if let Some(tokens) = parameters.get_tokens() {
+                self.write_type_parameters_with_tokens(parameters, tokens);
+            } else {
+                self.write_type_parameters_with_tokens(
+                    parameters,
+                    &self.generate_type_parameters_tokens(parameters),
+                );
+            }
+        }
+    }
+
+    fn write_type_field(&mut self, type_field: &TypeField) {
+        if let Some(tokens) = type_field.get_token() {
+            self.write_type_field_with_token(type_field, tokens);
+        } else {
+            self.write_type_field_with_token(
+                type_field,
+                &self.generate_type_field_token(type_field),
+            );
+        }
+    }
+
+    fn write_true_type(&mut self, token: &Option<Token>) {
+        if let Some(token) = token {
+            self.write_token(token);
+        } else {
+            self.write_symbol("true");
+        }
+    }
+
+    fn write_false_type(&mut self, token: &Option<Token>) {
+        if let Some(token) = token {
+            self.write_token(token);
+        } else {
+            self.write_symbol("false");
+        }
+    }
+
+    fn write_nil_type(&mut self, token: &Option<Token>) {
+        if let Some(token) = token {
+            self.write_token(token);
+        } else {
+            self.write_symbol("nil");
+        }
+    }
+
+    fn write_string_type(&mut self, string_type: &StringType) {
+        if let Some(token) = string_type.get_token() {
+            self.write_token(token);
+        } else {
+            self.write_symbol(&utils::write_string(string_type.get_value()));
+        }
+    }
+
+    fn write_array_type(&mut self, array: &ArrayType) {
+        if let Some(tokens) = array.get_tokens() {
+            self.write_array_type_with_tokens(array, tokens);
+        } else {
+            self.write_array_type_with_tokens(array, &self.generate_array_type_tokens(array));
+        }
+    }
+
+    fn write_table_type(&mut self, table_type: &TableType) {
+        if let Some(tokens) = table_type.get_tokens() {
+            self.write_table_type_with_tokens(table_type, tokens);
+        } else {
+            self.write_table_type_with_tokens(
+                table_type,
+                &self.generate_table_type_tokens(table_type),
+            );
+        }
+    }
+
+    fn write_expression_type(&mut self, expression_type: &ExpressionType) {
+        if let Some(tokens) = expression_type.get_tokens() {
+            self.write_expression_type_with_tokens(expression_type, tokens);
+        } else {
+            self.write_expression_type_with_tokens(
+                expression_type,
+                &self.generate_expression_type_tokens(expression_type),
+            );
+        }
+    }
+
+    fn write_parenthese_type(&mut self, parenthese_type: &ParentheseType) {
+        if let Some(tokens) = parenthese_type.get_tokens() {
+            self.write_parenthese_type_with_tokens(parenthese_type, tokens);
+        } else {
+            self.write_parenthese_type_with_tokens(
+                parenthese_type,
+                &self.generate_parenthese_type_tokens(parenthese_type),
+            );
+        }
+    }
+
+    fn write_function_type(&mut self, function_type: &FunctionType) {
+        if let Some(tokens) = function_type.get_tokens() {
+            self.write_function_type_with_tokens(function_type, tokens);
+        } else {
+            self.write_function_type_with_tokens(
+                function_type,
+                &self.generate_function_type_tokens(function_type),
+            );
+        }
+    }
+
+    fn write_optional_type(&mut self, optional: &OptionalType) {
+        if let Some(token) = optional.get_token() {
+            self.write_optional_type_with_token(optional, token);
+        } else {
+            self.write_optional_type_with_token(
+                optional,
+                &self.generate_optional_type_token(optional),
+            );
+        }
+    }
+
+    fn write_intersection_type(&mut self, intersection: &IntersectionType) {
+        if let Some(token) = intersection.get_token() {
+            self.write_intersection_type_with_token(intersection, token);
+        } else {
+            self.write_intersection_type_with_token(
+                intersection,
+                &self.generate_intersection_type_token(intersection),
+            );
+        }
+    }
+
+    fn write_union_type(&mut self, union: &UnionType) {
+        if let Some(token) = union.get_token() {
+            self.write_union_type_with_token(union, token);
+        } else {
+            self.write_union_type_with_token(union, &self.generate_union_type_token(union));
+        }
+    }
+
+    fn write_type_pack(&mut self, type_pack: &TypePack) {
+        if let Some(tokens) = type_pack.get_tokens() {
+            self.write_type_pack_with_tokens(type_pack, tokens);
+        } else {
+            self.write_type_pack_with_tokens(type_pack, &self.generate_type_pack_tokens(type_pack));
+        }
+    }
+
+    fn write_variadic_type_pack(&mut self, variadic_type_pack: &VariadicTypePack) {
+        self.push_str("...");
+        self.write_type(variadic_type_pack.get_type());
+    }
+
+    fn write_generic_type_pack(&mut self, generic_type_pack: &GenericTypePack) {
+        self.write_identifier(generic_type_pack.get_name());
+        self.push_str("...");
     }
 }
 

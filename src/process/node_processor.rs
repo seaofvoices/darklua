@@ -20,6 +20,7 @@ pub trait NodeProcessor {
     fn process_numeric_for_statement(&mut self, _: &mut NumericForStatement) {}
     fn process_repeat_statement(&mut self, _: &mut RepeatStatement) {}
     fn process_while_statement(&mut self, _: &mut WhileStatement) {}
+    fn process_type_declaration(&mut self, _: &mut TypeDeclarationStatement) {}
 
     fn process_variable(&mut self, _: &mut Variable) {}
 
@@ -37,4 +38,7 @@ pub trait NodeProcessor {
     fn process_string_expression(&mut self, _: &mut StringExpression) {}
     fn process_table_expression(&mut self, _: &mut TableExpression) {}
     fn process_unary_expression(&mut self, _: &mut UnaryExpression) {}
+    fn process_type_cast_expression(&mut self, _: &mut TypeCastExpression) {}
+
+    fn process_type(&mut self, _: &mut Type) {}
 }

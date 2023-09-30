@@ -9,6 +9,7 @@ mod local_assign;
 mod local_function;
 mod numeric_for;
 mod repeat_statement;
+mod type_declaration;
 mod while_statement;
 
 pub use assign::*;
@@ -22,6 +23,7 @@ pub use local_assign::*;
 pub use local_function::*;
 pub use numeric_for::*;
 pub use repeat_statement::*;
+pub use type_declaration::*;
 pub use while_statement::*;
 
 use crate::nodes::FunctionCall;
@@ -40,6 +42,7 @@ pub enum Statement {
     NumericFor(Box<NumericForStatement>),
     Repeat(RepeatStatement),
     While(WhileStatement),
+    TypeDeclaration(TypeDeclarationStatement),
 }
 
 impl From<AssignStatement> for Statement {
@@ -111,5 +114,11 @@ impl From<RepeatStatement> for Statement {
 impl From<WhileStatement> for Statement {
     fn from(while_statement: WhileStatement) -> Statement {
         Statement::While(while_statement)
+    }
+}
+
+impl From<TypeDeclarationStatement> for Statement {
+    fn from(type_declaration: TypeDeclarationStatement) -> Statement {
+        Statement::TypeDeclaration(type_declaration)
     }
 }

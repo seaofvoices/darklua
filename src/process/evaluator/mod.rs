@@ -37,6 +37,7 @@ impl Evaluator {
                 self.evaluate(parenthese.inner_expression())
             }
             Expression::If(if_expression) => self.evaluate_if(if_expression),
+            Expression::TypeCast(type_cast) => self.evaluate(type_cast.get_expression()),
             Expression::Call(_)
             | Expression::Field(_)
             | Expression::Identifier(_)
@@ -63,6 +64,9 @@ impl Evaluator {
             | Expression::String(_)
             | Expression::Table(_)
             | Expression::True(_) => false,
+            Expression::TypeCast(type_cast) => {
+                self.can_return_multiple_values(type_cast.get_expression())
+            }
         }
     }
 
@@ -131,6 +135,7 @@ impl Evaluator {
                 .iter()
                 .any(|entry| self.table_entry_has_side_effects(entry)),
             Expression::Call(call) => self.call_has_side_effects(call),
+            Expression::TypeCast(type_cast) => self.has_side_effects(type_cast.get_expression()),
         }
     }
 

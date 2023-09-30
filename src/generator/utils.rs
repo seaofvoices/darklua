@@ -3,7 +3,7 @@
 
 use crate::nodes::{
     Expression, FieldExpression, FunctionCall, IndexExpression, NumberExpression, Prefix,
-    Statement, StringExpression, Variable,
+    Statement, Variable,
 };
 
 const QUOTED_STRING_MAX_LENGTH: usize = 60;
@@ -35,6 +35,14 @@ pub fn break_variable_arguments(last_string: &str) -> bool {
 pub fn break_minus(last_string: &str) -> bool {
     if let Some(last_char) = last_string.chars().last() {
         last_char == '-'
+    } else {
+        false
+    }
+}
+
+pub fn break_equal(last_string: &str) -> bool {
+    if let Some(last_char) = last_string.chars().last() {
+        last_char == '>'
     } else {
         false
     }
@@ -115,7 +123,8 @@ fn expression_ends_with_prefix(expression: &Expression) -> bool {
         | Expression::String(_)
         | Expression::Table(_)
         | Expression::True(_)
-        | Expression::VariableArguments(_) => false,
+        | Expression::VariableArguments(_)
+        | Expression::TypeCast(_) => false,
     }
 }
 
@@ -229,9 +238,7 @@ pub fn count_new_lines(string: &str) -> usize {
     string.chars().filter(|c| *c == '\n').count()
 }
 
-pub fn write_string(string: &StringExpression) -> String {
-    let value = string.get_value();
-
+pub fn write_string(value: &str) -> String {
     if value.is_empty() {
         return "''".to_owned();
     }
@@ -325,7 +332,7 @@ mod test {
                 $(
                     #[test]
                     fn $name() {
-                        assert_eq!($value, write_string(&StringExpression::from_value($input)));
+                        assert_eq!($value, write_string(&$input));
                     }
                 )*
             };

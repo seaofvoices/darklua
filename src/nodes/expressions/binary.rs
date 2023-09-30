@@ -40,7 +40,8 @@ fn ends_with_if_expression(expression: &Expression) -> bool {
             | Expression::String(_)
             | Expression::Table(_)
             | Expression::True(_)
-            | Expression::VariableArguments(_) => break false,
+            | Expression::VariableArguments(_)
+            | Expression::TypeCast(_) => break false,
         }
     }
 }

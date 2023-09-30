@@ -36,6 +36,7 @@ pub trait LuaGenerator {
             NumericFor(statement) => self.write_numeric_for(statement),
             Repeat(statement) => self.write_repeat_statement(statement),
             While(statement) => self.write_while_statement(statement),
+            TypeDeclaration(statement) => self.write_type_declaration_statement(statement),
         }
     }
 
@@ -51,6 +52,7 @@ pub trait LuaGenerator {
     fn write_numeric_for(&mut self, numeric_for: &nodes::NumericForStatement);
     fn write_repeat_statement(&mut self, repeat: &nodes::RepeatStatement);
     fn write_while_statement(&mut self, while_statement: &nodes::WhileStatement);
+    fn write_type_declaration_statement(&mut self, statement: &nodes::TypeDeclarationStatement);
 
     fn write_variable(&mut self, variable: &nodes::Variable) {
         use nodes::Variable::*;
@@ -61,7 +63,28 @@ pub trait LuaGenerator {
         }
     }
 
-    fn write_expression(&mut self, expression: &nodes::Expression);
+    fn write_expression(&mut self, expression: &nodes::Expression) {
+        use nodes::Expression::*;
+        match expression {
+            Binary(binary) => self.write_binary_expression(binary),
+            Call(call) => self.write_function_call(call),
+            False(token) => self.write_false_expression(token),
+            Field(field) => self.write_field(field),
+            Function(function) => self.write_function(function),
+            Identifier(identifier) => self.write_identifier(identifier),
+            If(if_expression) => self.write_if_expression(if_expression),
+            Index(index) => self.write_index(index),
+            Nil(token) => self.write_nil_expression(token),
+            Number(number) => self.write_number(number),
+            Parenthese(parenthese) => self.write_parenthese(parenthese),
+            String(string) => self.write_string(string),
+            Table(table) => self.write_table(table),
+            True(token) => self.write_true_expression(token),
+            Unary(unary) => self.write_unary_expression(unary),
+            VariableArguments(token) => self.write_variable_arguments_expression(token),
+            TypeCast(type_cast) => self.write_type_cast(type_cast),
+        }
+    }
 
     fn write_identifier(&mut self, identifier: &nodes::Identifier);
     fn write_binary_expression(&mut self, binary: &nodes::BinaryExpression);
@@ -72,6 +95,12 @@ pub trait LuaGenerator {
     fn write_field(&mut self, field: &nodes::FieldExpression);
     fn write_index(&mut self, index: &nodes::IndexExpression);
     fn write_parenthese(&mut self, parenthese: &nodes::ParentheseExpression);
+    fn write_type_cast(&mut self, type_cast: &nodes::TypeCastExpression);
+
+    fn write_false_expression(&mut self, token: &Option<nodes::Token>);
+    fn write_true_expression(&mut self, token: &Option<nodes::Token>);
+    fn write_nil_expression(&mut self, token: &Option<nodes::Token>);
+    fn write_variable_arguments_expression(&mut self, token: &Option<nodes::Token>);
 
     fn write_prefix(&mut self, prefix: &nodes::Prefix) {
         use nodes::Prefix::*;
@@ -100,6 +129,86 @@ pub trait LuaGenerator {
     fn write_tuple_arguments(&mut self, arguments: &nodes::TupleArguments);
 
     fn write_string(&mut self, string: &nodes::StringExpression);
+
+    fn write_type(&mut self, r#type: &nodes::Type) {
+        match r#type {
+            nodes::Type::Name(type_name) => self.write_type_name(type_name),
+            nodes::Type::Field(type_field) => self.write_type_field(type_field),
+            nodes::Type::True(token) => self.write_true_type(token),
+            nodes::Type::False(token) => self.write_false_type(token),
+            nodes::Type::Nil(token) => self.write_nil_type(token),
+            nodes::Type::String(string_type) => self.write_string_type(string_type),
+            nodes::Type::Array(array_type) => self.write_array_type(array_type),
+            nodes::Type::Table(table_type) => self.write_table_type(table_type),
+            nodes::Type::TypeOf(expression_type) => self.write_expression_type(expression_type),
+            nodes::Type::Parenthese(parenthese_type) => self.write_parenthese_type(parenthese_type),
+            nodes::Type::Function(function_type) => self.write_function_type(function_type),
+            nodes::Type::Optional(optional_type) => self.write_optional_type(optional_type),
+            nodes::Type::Intersection(intersection_type) => {
+                self.write_intersection_type(intersection_type)
+            }
+            nodes::Type::Union(union_type) => self.write_union_type(union_type),
+        }
+    }
+    fn write_type_name(&mut self, type_name: &nodes::TypeName);
+    fn write_type_field(&mut self, type_field: &nodes::TypeField);
+    fn write_true_type(&mut self, token: &Option<nodes::Token>);
+    fn write_false_type(&mut self, token: &Option<nodes::Token>);
+    fn write_nil_type(&mut self, token: &Option<nodes::Token>);
+    fn write_string_type(&mut self, string_type: &nodes::StringType);
+    fn write_array_type(&mut self, array_type: &nodes::ArrayType);
+    fn write_table_type(&mut self, table_type: &nodes::TableType);
+    fn write_expression_type(&mut self, expression_type: &nodes::ExpressionType);
+    fn write_parenthese_type(&mut self, parenthese_type: &nodes::ParentheseType);
+    fn write_function_type(&mut self, function_type: &nodes::FunctionType);
+    fn write_optional_type(&mut self, optional_type: &nodes::OptionalType);
+    fn write_intersection_type(&mut self, intersection_type: &nodes::IntersectionType);
+    fn write_union_type(&mut self, union_type: &nodes::UnionType);
+
+    fn write_type_pack(&mut self, type_pack: &nodes::TypePack);
+    fn write_variadic_type_pack(&mut self, variadic_type_pack: &nodes::VariadicTypePack);
+    fn write_generic_type_pack(&mut self, generic_type_pack: &nodes::GenericTypePack);
+
+    fn write_function_return_type(&mut self, return_type: &nodes::FunctionReturnType) {
+        match return_type {
+            nodes::FunctionReturnType::Type(r#type) => self.write_type(r#type),
+            nodes::FunctionReturnType::TypePack(type_pack) => self.write_type_pack(type_pack),
+            nodes::FunctionReturnType::VariadicTypePack(variadic_type_pack) => {
+                self.write_variadic_type_pack(variadic_type_pack);
+            }
+            nodes::FunctionReturnType::GenericTypePack(generic_type_pack) => {
+                self.write_generic_type_pack(generic_type_pack);
+            }
+        }
+    }
+
+    fn write_type_parameter(&mut self, type_parameter: &nodes::TypeParameter) {
+        match type_parameter {
+            nodes::TypeParameter::Type(r#type) => self.write_type(r#type),
+            nodes::TypeParameter::TypePack(type_pack) => self.write_type_pack(type_pack),
+            nodes::TypeParameter::VariadicTypePack(variadic_type_pack) => {
+                self.write_variadic_type_pack(variadic_type_pack);
+            }
+            nodes::TypeParameter::GenericTypePack(generic_type_pack) => {
+                self.write_generic_type_pack(generic_type_pack);
+            }
+        }
+    }
+
+    fn write_generic_type_pack_default(
+        &mut self,
+        generic_type_pack_default: &nodes::GenericTypePackDefault,
+    ) {
+        match generic_type_pack_default {
+            nodes::GenericTypePackDefault::TypePack(type_pack) => self.write_type_pack(type_pack),
+            nodes::GenericTypePackDefault::VariadicTypePack(variadic_type_pack) => {
+                self.write_variadic_type_pack(variadic_type_pack);
+            }
+            nodes::GenericTypePackDefault::GenericTypePack(generic_type_pack) => {
+                self.write_generic_type_pack(generic_type_pack);
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -546,6 +655,29 @@ mod $mod_name {
                 Vec::new(),
                 false
             ),
+            empty_with_one_typed_parameter => FunctionStatement::from_name("fn", Block::default())
+                .with_parameter(Identifier::new("a").with_type(TypeName::new("string"))),
+            empty_with_two_typed_parameters => FunctionStatement::from_name("fn", Block::default())
+                .with_parameter(Identifier::new("a").with_type(TypeName::new("string")))
+                .with_parameter(Identifier::new("b").with_type(TypeName::new("bool"))),
+            empty_variadic_with_one_typed_parameter => FunctionStatement::from_name("fn", Block::default())
+                .variadic()
+                .with_parameter(Identifier::new("a").with_type(TypeName::new("string"))),
+            empty_variadic_typed_with_one_typed_parameter => FunctionStatement::from_name("fn", Block::default())
+                .with_variadic_type(TypeName::new("any"))
+                .with_parameter(Identifier::new("a").with_type(TypeName::new("string"))),
+            empty_with_string_return_type => FunctionStatement::from_name("fn", Block::default())
+                .with_return_type(TypeName::new("string")),
+            empty_with_void_return_type => FunctionStatement::from_name("fn", Block::default())
+                .with_return_type(TypePack::default()),
+            empty_with_generic_pack_return_type => FunctionStatement::from_name("fn", Block::default())
+                .with_return_type(GenericTypePack::new("T")),
+            empty_with_variadic_pack_return_type => FunctionStatement::from_name("fn", Block::default())
+                .with_return_type(
+                    VariadicTypePack::new(ParentheseType::new(
+                        UnionType::new(Type::from(true), Type::nil())
+                    ))
+                ),
             empty_with_method => FunctionStatement::new(
                 FunctionName::from_name("foo").with_method("bar"),
                 Block::default(),
@@ -557,6 +689,19 @@ mod $mod_name {
         snapshot_node!($mod_name, $generator, generic_for, write_statement => (
             empty => GenericForStatement::new(
                 vec!["var".into()],
+                vec![Expression::from(true)],
+                Block::default()
+            ),
+            empty_with_typed_var => GenericForStatement::new(
+                vec![Identifier::new("var").with_type(TypeName::new("string"))],
+                vec![Expression::from(true)],
+                Block::default()
+            ),
+            empty_with_two_typed_vars => GenericForStatement::new(
+                vec![
+                    Identifier::new("key").with_type(TypeName::new("string")),
+                    Identifier::new("value").with_type(TypeName::new("bool")),
+                ],
                 vec![Expression::from(true)],
                 Block::default()
             ),
@@ -573,10 +718,20 @@ mod $mod_name {
 
         snapshot_node!($mod_name, $generator, local_assign, write_statement => (
             foo_unassigned => LocalAssignStatement::from_variable("foo"),
+            foo_typed_unassigned => LocalAssignStatement::from_variable(
+                Identifier::new("foo").with_type(Type::from(true))
+            ),
             foo_and_bar_unassigned => LocalAssignStatement::from_variable("foo")
                 .with_variable("bar"),
+            foo_and_bar_typed_unassigned => LocalAssignStatement::from_variable("foo")
+                .with_variable(Identifier::new("bar").with_type(Type::from(false))),
             var_assign_to_false => LocalAssignStatement::from_variable("var")
                 .with_value(false),
+            typed_generic_var_break_equal_sign => LocalAssignStatement::from_variable(
+                Identifier::new("var").with_type(
+                    TypeName::new("List").with_type_parameter(TypeName::new("string"))
+                )
+            ).with_value(false),
         ));
 
         snapshot_node!($mod_name, $generator, local_function, write_statement => (
@@ -601,8 +756,22 @@ mod $mod_name {
                 None,
                 Block::default()
             ),
+            empty_typed_without_step => NumericForStatement::new(
+                Identifier::new("i").with_type(TypeName::new("number")),
+                Expression::identifier("start"),
+                Expression::identifier("max"),
+                None,
+                Block::default()
+            ),
             empty_with_step => NumericForStatement::new(
                 "i",
+                Expression::identifier("start"),
+                Expression::identifier("max"),
+                Some(Expression::identifier("step")),
+                Block::default()
+            ),
+            empty_typed_with_step => NumericForStatement::new(
+                Identifier::new("i").with_type(TypeName::new("number")),
                 Expression::identifier("start"),
                 Expression::identifier("max"),
                 Some(Expression::identifier("step")),

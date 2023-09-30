@@ -42,7 +42,7 @@ impl NodeProcessor for Processor {
                 mem::swap(statement, &mut assign)
             } else {
                 let identifiers = vec![name.to_owned()];
-                let mut find_usage = FindVariables::from(&identifiers);
+                let mut find_usage: FindVariables = identifiers.iter().collect();
                 DefaultVisitor::visit_block(local_function.mutate_block(), &mut find_usage);
 
                 if !find_usage.has_found_usage() {

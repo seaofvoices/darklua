@@ -1,83 +1,27 @@
-use crate::nodes::{Block, Identifier, Token};
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FunctionExpressionTokens {
-    pub function: Token,
-    pub opening_parenthese: Token,
-    pub closing_parenthese: Token,
-    pub end: Token,
-    pub parameter_commas: Vec<Token>,
-    pub variable_arguments: Option<Token>,
-}
-
-impl FunctionExpressionTokens {
-    pub fn clear_comments(&mut self) {
-        self.function.clear_comments();
-        self.opening_parenthese.clear_comments();
-        self.closing_parenthese.clear_comments();
-        self.end.clear_comments();
-        self.parameter_commas
-            .iter_mut()
-            .for_each(Token::clear_comments);
-        if let Some(token) = &mut self.variable_arguments {
-            token.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.function.clear_whitespaces();
-        self.opening_parenthese.clear_whitespaces();
-        self.closing_parenthese.clear_whitespaces();
-        self.end.clear_whitespaces();
-        self.parameter_commas
-            .iter_mut()
-            .for_each(Token::clear_whitespaces);
-        if let Some(token) = &mut self.variable_arguments {
-            token.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.function.replace_referenced_tokens(code);
-        self.opening_parenthese.replace_referenced_tokens(code);
-        self.closing_parenthese.replace_referenced_tokens(code);
-        self.end.replace_referenced_tokens(code);
-        self.parameter_commas
-            .iter_mut()
-            .for_each(|token| token.replace_referenced_tokens(code));
-        if let Some(token) = &mut self.variable_arguments {
-            token.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.function.shift_token_line(amount);
-        self.opening_parenthese.shift_token_line(amount);
-        self.closing_parenthese.shift_token_line(amount);
-        self.end.shift_token_line(amount);
-        self.parameter_commas
-            .iter_mut()
-            .for_each(|token| token.shift_token_line(amount));
-        if let Some(token) = &mut self.variable_arguments {
-            token.shift_token_line(amount);
-        }
-    }
-}
+use crate::nodes::{
+    Block, FunctionBodyTokens, FunctionReturnType, GenericParameters, Type, TypedIdentifier,
+};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct FunctionExpression {
     block: Block,
-    parameters: Vec<Identifier>,
+    parameters: Vec<TypedIdentifier>,
     is_variadic: bool,
-    tokens: Option<Box<FunctionExpressionTokens>>,
+    variadic_type: Option<Type>,
+    return_type: Option<FunctionReturnType>,
+    generic_parameters: Option<GenericParameters>,
+    tokens: Option<Box<FunctionBodyTokens>>,
 }
 
 impl FunctionExpression {
-    pub fn new(block: Block, parameters: Vec<Identifier>, is_variadic: bool) -> Self {
+    pub fn new(block: Block, parameters: Vec<TypedIdentifier>, is_variadic: bool) -> Self {
         Self {
             block,
             parameters,
             is_variadic,
+            variadic_type: None,
+            return_type: None,
+            generic_parameters: None,
             tokens: None,
         }
     }
@@ -87,13 +31,52 @@ impl FunctionExpression {
             block: block.into(),
             parameters: Vec::new(),
             is_variadic: false,
+            variadic_type: None,
+            return_type: None,
+            generic_parameters: None,
             tokens: None,
         }
     }
 
-    pub fn with_parameter<P: Into<Identifier>>(mut self, parameter: P) -> Self {
+    pub fn with_parameters(mut self, parameters: Vec<TypedIdentifier>) -> Self {
+        self.parameters = parameters;
+        self
+    }
+
+    pub fn with_parameter(mut self, parameter: impl Into<TypedIdentifier>) -> Self {
         self.parameters.push(parameter.into());
         self
+    }
+
+    pub fn with_variadic_type(mut self, r#type: impl Into<Type>) -> Self {
+        self.is_variadic = true;
+        self.variadic_type = Some(r#type.into());
+        self
+    }
+
+    pub fn with_return_type(mut self, return_type: impl Into<FunctionReturnType>) -> Self {
+        self.return_type = Some(return_type.into());
+        self
+    }
+
+    #[inline]
+    pub fn set_return_type(&mut self, return_type: impl Into<FunctionReturnType>) {
+        self.return_type = Some(return_type.into());
+    }
+
+    #[inline]
+    pub fn get_return_type(&self) -> Option<&FunctionReturnType> {
+        self.return_type.as_ref()
+    }
+
+    #[inline]
+    pub fn has_return_type(&self) -> bool {
+        self.return_type.is_some()
+    }
+
+    #[inline]
+    pub fn mutate_return_type(&mut self) -> Option<&mut FunctionReturnType> {
+        self.return_type.as_mut()
     }
 
     pub fn variadic(mut self) -> Self {
@@ -103,20 +86,56 @@ impl FunctionExpression {
 
     pub fn set_variadic(&mut self, is_variadic: bool) {
         self.is_variadic = is_variadic;
+        if !is_variadic && self.variadic_type.is_some() {
+            self.variadic_type.take();
+        }
     }
 
-    pub fn with_tokens(mut self, tokens: FunctionExpressionTokens) -> Self {
+    pub fn set_variadic_type(&mut self, r#type: impl Into<Type>) {
+        self.is_variadic = true;
+        self.variadic_type = Some(r#type.into());
+    }
+
+    #[inline]
+    pub fn get_variadic_type(&self) -> Option<&Type> {
+        self.variadic_type.as_ref()
+    }
+
+    #[inline]
+    pub fn has_variadic_type(&self) -> bool {
+        self.variadic_type.is_some()
+    }
+
+    #[inline]
+    pub fn mutate_variadic_type(&mut self) -> Option<&mut Type> {
+        self.variadic_type.as_mut()
+    }
+
+    pub fn with_generic_parameters(mut self, generic_parameters: GenericParameters) -> Self {
+        self.generic_parameters = Some(generic_parameters);
+        self
+    }
+
+    pub fn set_generic_parameters(&mut self, generic_parameters: GenericParameters) {
+        self.generic_parameters = Some(generic_parameters);
+    }
+
+    pub fn is_generic(&self) -> bool {
+        self.generic_parameters.is_some()
+    }
+
+    pub fn with_tokens(mut self, tokens: FunctionBodyTokens) -> Self {
         self.tokens = Some(tokens.into());
         self
     }
 
     #[inline]
-    pub fn set_tokens(&mut self, tokens: FunctionExpressionTokens) {
+    pub fn set_tokens(&mut self, tokens: FunctionBodyTokens) {
         self.tokens = Some(tokens.into());
     }
 
     #[inline]
-    pub fn get_tokens(&self) -> Option<&FunctionExpressionTokens> {
+    pub fn get_tokens(&self) -> Option<&FunctionBodyTokens> {
         self.tokens.as_ref().map(|tokens| tokens.as_ref())
     }
 
@@ -126,13 +145,18 @@ impl FunctionExpression {
     }
 
     #[inline]
-    pub fn get_parameters(&self) -> &Vec<Identifier> {
+    pub fn get_parameters(&self) -> &Vec<TypedIdentifier> {
         &self.parameters
     }
 
     #[inline]
-    pub fn iter_parameters(&self) -> impl Iterator<Item = &Identifier> {
+    pub fn iter_parameters(&self) -> impl Iterator<Item = &TypedIdentifier> {
         self.parameters.iter()
+    }
+
+    #[inline]
+    pub fn iter_mut_parameters(&mut self) -> impl Iterator<Item = &mut TypedIdentifier> {
+        self.parameters.iter_mut()
     }
 
     #[inline]
@@ -146,7 +170,7 @@ impl FunctionExpression {
     }
 
     #[inline]
-    pub fn mutate_parameters(&mut self) -> &mut Vec<Identifier> {
+    pub fn mutate_parameters(&mut self) -> &mut Vec<TypedIdentifier> {
         &mut self.parameters
     }
 
@@ -163,7 +187,7 @@ impl FunctionExpression {
     pub fn clear_comments(&mut self) {
         self.parameters
             .iter_mut()
-            .for_each(Identifier::clear_comments);
+            .for_each(TypedIdentifier::clear_comments);
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
         }
@@ -172,7 +196,7 @@ impl FunctionExpression {
     pub fn clear_whitespaces(&mut self) {
         self.parameters
             .iter_mut()
-            .for_each(Identifier::clear_whitespaces);
+            .for_each(TypedIdentifier::clear_whitespaces);
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
         }

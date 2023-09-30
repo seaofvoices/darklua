@@ -1,4 +1,4 @@
-use crate::nodes::{Block, Expression, Identifier, Token};
+use crate::nodes::{Block, Expression, Token, TypedIdentifier};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GenericForTokens {
@@ -64,7 +64,7 @@ impl GenericForTokens {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GenericForStatement {
-    identifiers: Vec<Identifier>,
+    identifiers: Vec<TypedIdentifier>,
     expressions: Vec<Expression>,
     block: Block,
     tokens: Option<GenericForTokens>,
@@ -72,7 +72,7 @@ pub struct GenericForStatement {
 
 impl GenericForStatement {
     pub fn new<B: Into<Block>>(
-        identifiers: Vec<Identifier>,
+        identifiers: Vec<TypedIdentifier>,
         expressions: Vec<Expression>,
         block: B,
     ) -> Self {
@@ -105,12 +105,12 @@ impl GenericForStatement {
     }
 
     #[inline]
-    pub fn get_identifiers(&self) -> &Vec<Identifier> {
+    pub fn get_identifiers(&self) -> &Vec<TypedIdentifier> {
         &self.identifiers
     }
 
     #[inline]
-    pub fn iter_identifiers(&self) -> impl Iterator<Item = &Identifier> {
+    pub fn iter_identifiers(&self) -> impl Iterator<Item = &TypedIdentifier> {
         self.identifiers.iter()
     }
 
@@ -125,7 +125,7 @@ impl GenericForStatement {
     }
 
     #[inline]
-    pub fn iter_mut_identifiers(&mut self) -> impl Iterator<Item = &mut Identifier> {
+    pub fn iter_mut_identifiers(&mut self) -> impl Iterator<Item = &mut TypedIdentifier> {
         self.identifiers.iter_mut()
     }
 
@@ -155,7 +155,7 @@ impl GenericForStatement {
         }
         self.identifiers
             .iter_mut()
-            .for_each(Identifier::clear_comments);
+            .for_each(TypedIdentifier::clear_comments);
     }
 
     pub fn clear_whitespaces(&mut self) {
@@ -164,7 +164,7 @@ impl GenericForStatement {
         }
         self.identifiers
             .iter_mut()
-            .for_each(Identifier::clear_whitespaces);
+            .for_each(TypedIdentifier::clear_whitespaces);
     }
 
     pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {

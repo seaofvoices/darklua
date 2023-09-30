@@ -1,71 +1,47 @@
-use crate::nodes::{Block, Identifier, Token};
+use crate::nodes::{
+    Block, FunctionBodyTokens, FunctionReturnType, GenericParameters, Identifier, Token, Type,
+    TypedIdentifier,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LocalFunctionTokens {
     pub local: Token,
-    pub function: Token,
-    pub opening_parenthese: Token,
-    pub closing_parenthese: Token,
-    pub end: Token,
-    pub parameter_commas: Vec<Token>,
-    pub variable_arguments: Option<Token>,
+    pub function_body: FunctionBodyTokens,
 }
 
 impl LocalFunctionTokens {
     pub fn clear_comments(&mut self) {
         self.local.clear_comments();
-        self.function.clear_comments();
-        self.opening_parenthese.clear_comments();
-        self.closing_parenthese.clear_comments();
-        self.end.clear_comments();
-        self.parameter_commas
-            .iter_mut()
-            .for_each(Token::clear_comments);
-        if let Some(token) = &mut self.variable_arguments {
-            token.clear_comments();
-        }
+        self.function_body.clear_comments();
     }
 
     pub fn clear_whitespaces(&mut self) {
         self.local.clear_whitespaces();
-        self.function.clear_whitespaces();
-        self.opening_parenthese.clear_whitespaces();
-        self.closing_parenthese.clear_whitespaces();
-        self.end.clear_whitespaces();
-        self.parameter_commas
-            .iter_mut()
-            .for_each(Token::clear_whitespaces);
-        if let Some(token) = &mut self.variable_arguments {
-            token.clear_whitespaces();
-        }
+        self.function_body.clear_whitespaces();
     }
 
     pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
         self.local.replace_referenced_tokens(code);
-        self.function.replace_referenced_tokens(code);
-        self.opening_parenthese.replace_referenced_tokens(code);
-        self.closing_parenthese.replace_referenced_tokens(code);
-        self.end.replace_referenced_tokens(code);
-        for comma in self.parameter_commas.iter_mut() {
-            comma.replace_referenced_tokens(code);
-        }
-        if let Some(token) = &mut self.variable_arguments {
-            token.replace_referenced_tokens(code);
-        }
+        self.function_body.replace_referenced_tokens(code);
     }
 
     pub(crate) fn shift_token_line(&mut self, amount: usize) {
         self.local.shift_token_line(amount);
-        self.function.shift_token_line(amount);
-        self.opening_parenthese.shift_token_line(amount);
-        self.closing_parenthese.shift_token_line(amount);
-        self.end.shift_token_line(amount);
-        for comma in self.parameter_commas.iter_mut() {
-            comma.shift_token_line(amount);
-        }
-        if let Some(token) = &mut self.variable_arguments {
-            token.shift_token_line(amount);
-        }
+        self.function_body.shift_token_line(amount);
+    }
+}
+
+impl std::ops::Deref for LocalFunctionTokens {
+    type Target = FunctionBodyTokens;
+
+    fn deref(&self) -> &Self::Target {
+        &self.function_body
+    }
+}
+
+impl std::ops::DerefMut for LocalFunctionTokens {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.function_body
     }
 }
 
@@ -73,33 +49,42 @@ impl LocalFunctionTokens {
 pub struct LocalFunctionStatement {
     identifier: Identifier,
     block: Block,
-    parameters: Vec<Identifier>,
+    parameters: Vec<TypedIdentifier>,
     is_variadic: bool,
+    variadic_type: Option<Type>,
+    return_type: Option<FunctionReturnType>,
+    generic_parameters: Option<GenericParameters>,
     tokens: Option<Box<LocalFunctionTokens>>,
 }
 
 impl LocalFunctionStatement {
     pub fn new(
-        identifier: Identifier,
+        identifier: impl Into<Identifier>,
         block: Block,
-        parameters: Vec<Identifier>,
+        parameters: Vec<TypedIdentifier>,
         is_variadic: bool,
     ) -> Self {
         Self {
-            identifier,
+            identifier: identifier.into(),
             block,
             parameters,
             is_variadic,
+            variadic_type: None,
+            return_type: None,
+            generic_parameters: None,
             tokens: None,
         }
     }
 
-    pub fn from_name<S: Into<Identifier>, B: Into<Block>>(identifier: S, block: B) -> Self {
+    pub fn from_name(identifier: impl Into<Identifier>, block: impl Into<Block>) -> Self {
         Self {
             identifier: identifier.into(),
             block: block.into(),
             parameters: Vec::new(),
             is_variadic: false,
+            variadic_type: None,
+            return_type: None,
+            generic_parameters: None,
             tokens: None,
         }
     }
@@ -119,7 +104,7 @@ impl LocalFunctionStatement {
         self.tokens.as_ref().map(|tokens| tokens.as_ref())
     }
 
-    pub fn with_parameter<S: Into<Identifier>>(mut self, parameter: S) -> Self {
+    pub fn with_parameter(mut self, parameter: impl Into<TypedIdentifier>) -> Self {
         self.parameters.push(parameter.into());
         self
     }
@@ -129,8 +114,67 @@ impl LocalFunctionStatement {
         self
     }
 
+    pub fn with_variadic_type(mut self, r#type: impl Into<Type>) -> Self {
+        self.is_variadic = true;
+        self.variadic_type = Some(r#type.into());
+        self
+    }
+
+    pub fn set_variadic_type(&mut self, r#type: impl Into<Type>) {
+        self.is_variadic = true;
+        self.variadic_type = Some(r#type.into());
+    }
+
     #[inline]
-    pub fn mutate_parameters(&mut self) -> &mut Vec<Identifier> {
+    pub fn get_variadic_type(&self) -> Option<&Type> {
+        self.variadic_type.as_ref()
+    }
+
+    #[inline]
+    pub fn has_variadic_type(&self) -> bool {
+        self.variadic_type.is_some()
+    }
+
+    #[inline]
+    pub fn mutate_variadic_type(&mut self) -> Option<&mut Type> {
+        self.variadic_type.as_mut()
+    }
+
+    pub fn with_return_type(mut self, return_type: impl Into<FunctionReturnType>) -> Self {
+        self.return_type = Some(return_type.into());
+        self
+    }
+
+    pub fn set_return_type(&mut self, return_type: impl Into<FunctionReturnType>) {
+        self.return_type = Some(return_type.into());
+    }
+
+    #[inline]
+    pub fn get_return_type(&self) -> Option<&FunctionReturnType> {
+        self.return_type.as_ref()
+    }
+
+    #[inline]
+    pub fn has_return_type(&self) -> bool {
+        self.return_type.is_some()
+    }
+
+    #[inline]
+    pub fn mutate_return_type(&mut self) -> Option<&mut FunctionReturnType> {
+        self.return_type.as_mut()
+    }
+
+    pub fn with_generic_parameters(mut self, generic_parameters: GenericParameters) -> Self {
+        self.generic_parameters = Some(generic_parameters);
+        self
+    }
+
+    pub fn set_generic_parameters(&mut self, generic_parameters: GenericParameters) {
+        self.generic_parameters = Some(generic_parameters);
+    }
+
+    #[inline]
+    pub fn mutate_parameters(&mut self) -> &mut Vec<TypedIdentifier> {
         &mut self.parameters
     }
 
@@ -150,13 +194,18 @@ impl LocalFunctionStatement {
     }
 
     #[inline]
-    pub fn get_parameters(&self) -> &Vec<Identifier> {
+    pub fn get_parameters(&self) -> &Vec<TypedIdentifier> {
         &self.parameters
     }
 
     #[inline]
-    pub fn iter_parameters(&self) -> impl Iterator<Item = &Identifier> {
+    pub fn iter_parameters(&self) -> impl Iterator<Item = &TypedIdentifier> {
         self.parameters.iter()
+    }
+
+    #[inline]
+    pub fn iter_mut_parameters(&mut self) -> impl Iterator<Item = &mut TypedIdentifier> {
+        self.parameters.iter_mut()
     }
 
     #[inline]
@@ -195,7 +244,7 @@ impl LocalFunctionStatement {
         self.identifier.clear_comments();
         self.parameters
             .iter_mut()
-            .for_each(Identifier::clear_comments);
+            .for_each(TypedIdentifier::clear_comments);
         if let Some(tokens) = self.tokens.as_mut() {
             tokens.clear_comments();
         }
@@ -205,7 +254,7 @@ impl LocalFunctionStatement {
         self.identifier.clear_whitespaces();
         self.parameters
             .iter_mut()
-            .for_each(Identifier::clear_whitespaces);
+            .for_each(TypedIdentifier::clear_whitespaces);
         if let Some(tokens) = self.tokens.as_mut() {
             tokens.clear_whitespaces();
         }

@@ -1,5 +1,7 @@
 use crate::nodes::Token;
 
+use super::{Type, TypedIdentifier};
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Identifier {
     name: String,
@@ -12,6 +14,10 @@ impl Identifier {
             name: name.into(),
             token: None,
         }
+    }
+
+    pub fn with_type(self, r#type: impl Into<Type>) -> TypedIdentifier {
+        TypedIdentifier::from(self).with_type(r#type.into())
     }
 
     pub fn with_token(mut self, token: Token) -> Self {
