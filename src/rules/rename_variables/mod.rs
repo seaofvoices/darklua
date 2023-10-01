@@ -81,7 +81,7 @@ impl RenameVariables {
             result.push("$roblox".to_owned());
         }
 
-        result.extend(globals_set.into_iter());
+        result.extend(globals_set);
         result.sort();
         result
     }

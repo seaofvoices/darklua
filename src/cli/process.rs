@@ -206,7 +206,7 @@ pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
 
         std::thread::park();
 
-        return Ok(());
+        Ok(())
     } else {
         let resources = Resources::from_file_system();
         let mut process_options =

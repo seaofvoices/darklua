@@ -449,14 +449,14 @@ mod test {
 
     #[test]
     fn has_single_quote_is_true_if_unescaped_single_quotes_with_escaped_backslash() {
-        let string = StringExpression::from_value(r#"don\\'t"#);
+        let string = StringExpression::from_value(r"don\\'t");
 
         assert!(string.has_single_quote());
     }
 
     #[test]
     fn has_single_quote_is_false_if_escaped_single_quotes() {
-        let string = StringExpression::from_value(r#"don\'t"#);
+        let string = StringExpression::from_value(r"don\'t");
 
         assert!(!string.has_single_quote());
     }
