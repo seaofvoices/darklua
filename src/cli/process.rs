@@ -4,16 +4,15 @@ use crate::cli::{CommandResult, GlobalOptions};
 
 use clap::Args;
 use darklua_core::{GeneratorParameters, Resources};
-use notify::{Watcher, RecursiveMode};
-use std::path::PathBuf;
+use notify::{Event, EventHandler, EventKind, RecursiveMode, Watcher};
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::Arc;
 use std::time::Instant;
 
 #[derive(Debug, Args, Clone)]
 pub struct Options {
     /// Path to the lua file to process.
-    pub input_path: PathBuf,
+    input_path: PathBuf,
     /// Where to output the result.
     output_path: PathBuf,
     /// Choose a specific configuration file.
@@ -100,53 +99,131 @@ fn process(resources: Resources, process_options: darklua_core::Options) -> Resu
     }
 }
 
+struct ProcessWatchHandler {
+    options: Options,
+}
+
+impl ProcessWatchHandler {
+    fn new(options: Options) -> Self {
+        Self { options }
+    }
+}
+
+impl EventHandler for ProcessWatchHandler {
+    fn handle_event(&mut self, event: notify::Result<Event>) {
+        match event {
+            Ok(event) => {
+                if !matches!(event.kind, EventKind::Access(_)) {
+                    let resources = Resources::from_file_system();
+
+                    let mut process_options = darklua_core::Options::new(&self.options.input_path)
+                        .with_output(&self.options.output_path);
+
+                    if let Some(config) = self.options.config.as_ref() {
+                        process_options = process_options.with_configuration_at(config);
+                    }
+
+                    if let Some(format) = self.options.format {
+                        process_options = process_options.with_generator_override(match format {
+                            LuaFormat::Dense => GeneratorParameters::default_dense(),
+                            LuaFormat::Readable => GeneratorParameters::default_readable(),
+                            LuaFormat::RetainLines => GeneratorParameters::RetainLines,
+                        })
+                    }
+
+                    if let Err(_cli_err) = process(resources, process_options) {
+                        // ignore error since it already has been printed
+                    }
+                }
+            }
+            Err(err) => {
+                log::error!(
+                    "an error occured while watching file system for changes: {}",
+                    err
+                );
+            }
+        }
+    }
+}
+
+const DEFAULT_CONFIG_PATHS: [&str; 2] = [".darklua.json", ".darklua.json5"];
+
 pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
     log::debug!("running `process`: {:?}", options);
 
-    let resources = Resources::from_file_system();
-    let mut process_options =
-        darklua_core::Options::new(&options.input_path).with_output(&options.output_path);
-
-    if let Some(config) = options.config.as_ref() {
-        process_options = process_options.with_configuration_at(config);
-    }
-
-    if let Some(format) = options.format.as_ref() {
-        process_options = process_options.with_generator_override(match format {
-            LuaFormat::Dense => GeneratorParameters::default_dense(),
-            LuaFormat::Readable => GeneratorParameters::default_readable(),
-            LuaFormat::RetainLines => GeneratorParameters::RetainLines,
-        })
-    }
-
     if options.watch {
-        let mut watch_path = options.input_path.clone();
-        watch_path.pop();
+        let mut watcher = notify::recommended_watcher(ProcessWatchHandler::new(options.clone()))
+            .map_err(|err| {
+                log::error!("unable to create file watcher: {}", err);
+                CliError::new(1)
+            })?;
 
-        let resources = Arc::new(resources);
-        let process_options = Arc::new(process_options);
-
-        let mut watcher = notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
-            match res {
-                Ok(event) => {
-                    if event.kind.is_create() || event.kind.is_modify() {
-                        let Err(e) = process(*(resources.clone()), *(process_options.clone())) else { return };
-                        log::error!("there was an process error while attempting to bundle: {:?}", e);
-                    }
-                }
-                Err(err) => {
-                    log::error!("there was an watcher error while attempting to bundle: {:?}", err);
-                }
-            }
-        }).expect("failed to create watcher");
+        log::debug!(
+            "start watching file system {}",
+            options.input_path.display()
+        );
 
         watcher
-            .watch(&watch_path, RecursiveMode::Recursive)
-            .expect("failed to watch input path");
+            .watch(&options.input_path, RecursiveMode::Recursive)
+            .map_err(|err| {
+                log::error!(
+                    "unable to start watching file system at `{}`: {}",
+                    options.input_path.display(),
+                    err
+                );
+                CliError::new(1)
+            })?;
+
+        if let Some(config) = options.config.as_ref() {
+            log::debug!("start watching provided config path {}", config.display());
+            watcher
+                .watch(config, RecursiveMode::NonRecursive)
+                .map_err(|err| {
+                    log::error!(
+                        "unable to start watching file system at `{}`: {}",
+                        config.display(),
+                        err
+                    );
+                    CliError::new(1)
+                })?;
+        } else {
+            for path in DEFAULT_CONFIG_PATHS.iter().map(Path::new) {
+                if path.exists() {
+                    log::debug!("start watching default config path {}", path.display());
+                    watcher
+                        .watch(path, RecursiveMode::NonRecursive)
+                        .map_err(|err| {
+                            log::error!(
+                                "unable to start watching file system at `{}`: {}",
+                                path.display(),
+                                err
+                            );
+                            CliError::new(1)
+                        })?;
+                }
+            }
+        }
 
         std::thread::park();
-        return Ok(())
+
+        return Ok(());
     } else {
-        return process(resources, process_options)
+        let resources = Resources::from_file_system();
+        let mut process_options =
+            darklua_core::Options::new(&options.input_path).with_output(&options.output_path);
+
+        if let Some(config) = options.config.as_ref() {
+            process_options = process_options.with_configuration_at(config);
+        }
+
+        if let Some(format) = options.format.as_ref() {
+            process_options = process_options.with_generator_override(match format {
+                LuaFormat::Dense => GeneratorParameters::default_dense(),
+                LuaFormat::Readable => GeneratorParameters::default_readable(),
+                LuaFormat::RetainLines => GeneratorParameters::RetainLines,
+            })
+        }
+
+        process(resources, process_options)
     }
 }
