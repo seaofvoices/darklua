@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.10.3
+
 * add watch argument (`--watch` or `-w`) to process command to automatically re-run darklua on file changes ([#123](https://github.com/seaofvoices/darklua/pull/123))
 
 ## 0.10.2
