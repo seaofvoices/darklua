@@ -4,7 +4,9 @@ use crate::cli::{CommandResult, GlobalOptions};
 
 use clap::Args;
 use darklua_core::{GeneratorParameters, Resources};
+#[cfg(not(target_arch = "wasm32"))]
 use notify::RecursiveMode;
+#[cfg(not(target_arch = "wasm32"))]
 use notify_debouncer_mini::{new_debouncer, DebounceEventResult, DebouncedEventKind};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -131,7 +133,7 @@ const DEFAULT_CONFIG_PATHS: [&str; 2] = [".darklua.json", ".darklua.json5"];
 pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
     log::debug!("running `process`: {:?}", options);
 
-    if options.watch {
+    if cfg!(not(target_arch = "wasm32")) && options.watch {
         // run process once initially
         if let Err(_cli_err) = options.process() {
             // ignore error darklua need to setup watch mode
