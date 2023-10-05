@@ -4,10 +4,14 @@ use crate::cli::{CommandResult, GlobalOptions};
 
 use clap::Args;
 use darklua_core::{GeneratorParameters, Resources};
-use notify::{Event, EventHandler, EventKind, RecursiveMode, Watcher};
+use notify::RecursiveMode;
+use notify_debouncer_mini::{new_debouncer, DebounceEventResult, DebouncedEventKind};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::time::Instant;
+use std::sync::mpsc;
+use std::time::{Duration, Instant};
+
+const FILE_WATCHING_DEBOUNCE_DURATION_MILLIS: u64 = 400;
 
 #[derive(Debug, Args, Clone)]
 pub struct Options {
@@ -99,50 +103,26 @@ fn process(resources: Resources, process_options: darklua_core::Options) -> Resu
     }
 }
 
-struct ProcessWatchHandler {
-    options: Options,
-}
+impl Options {
+    fn process(&self) -> Result<(), CliError> {
+        let resources = Resources::from_file_system();
 
-impl ProcessWatchHandler {
-    fn new(options: Options) -> Self {
-        Self { options }
-    }
-}
+        let mut process_options =
+            darklua_core::Options::new(&self.input_path).with_output(&self.output_path);
 
-impl EventHandler for ProcessWatchHandler {
-    fn handle_event(&mut self, event: notify::Result<Event>) {
-        match event {
-            Ok(event) => {
-                if !matches!(event.kind, EventKind::Access(_)) {
-                    let resources = Resources::from_file_system();
-
-                    let mut process_options = darklua_core::Options::new(&self.options.input_path)
-                        .with_output(&self.options.output_path);
-
-                    if let Some(config) = self.options.config.as_ref() {
-                        process_options = process_options.with_configuration_at(config);
-                    }
-
-                    if let Some(format) = self.options.format {
-                        process_options = process_options.with_generator_override(match format {
-                            LuaFormat::Dense => GeneratorParameters::default_dense(),
-                            LuaFormat::Readable => GeneratorParameters::default_readable(),
-                            LuaFormat::RetainLines => GeneratorParameters::RetainLines,
-                        })
-                    }
-
-                    if let Err(_cli_err) = process(resources, process_options) {
-                        // ignore error since it already has been printed
-                    }
-                }
-            }
-            Err(err) => {
-                log::error!(
-                    "an error occured while watching file system for changes: {}",
-                    err
-                );
-            }
+        if let Some(config) = self.config.as_ref() {
+            process_options = process_options.with_configuration_at(config);
         }
+
+        if let Some(format) = self.format {
+            process_options = process_options.with_generator_override(match format {
+                LuaFormat::Dense => GeneratorParameters::default_dense(),
+                LuaFormat::Readable => GeneratorParameters::default_readable(),
+                LuaFormat::RetainLines => GeneratorParameters::RetainLines,
+            })
+        }
+
+        process(resources, process_options)
     }
 }
 
@@ -152,18 +132,49 @@ pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
     log::debug!("running `process`: {:?}", options);
 
     if options.watch {
-        let mut watcher = notify::recommended_watcher(ProcessWatchHandler::new(options.clone()))
-            .map_err(|err| {
-                log::error!("unable to create file watcher: {}", err);
-                CliError::new(1)
-            })?;
+        // run process once initially
+        if let Err(_cli_err) = options.process() {
+            // ignore error darklua need to setup watch mode
+        }
+
+        let watcher_options = options.clone();
+
+        let mut debouncer = new_debouncer(
+            Duration::from_millis(FILE_WATCHING_DEBOUNCE_DURATION_MILLIS),
+            move |events: DebounceEventResult| {
+                match events {
+                    Ok(events) => {
+                        if events
+                            .iter()
+                            .any(|event| matches!(event.kind, DebouncedEventKind::Any))
+                        {
+                            log::debug!("changes detected, re-running process");
+                            if let Err(_cli_err) = watcher_options.process() {
+                                // ignore error since it already has been printed
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        log::error!(
+                            "an error occured while watching file system for changes: {}",
+                            err
+                        );
+                    }
+                }
+            },
+        )
+        .map_err(|err| {
+            log::error!("unable to create file watcher: {}", err);
+            CliError::new(1)
+        })?;
 
         log::debug!(
             "start watching file system {}",
             options.input_path.display()
         );
 
-        watcher
+        debouncer
+            .watcher()
             .watch(&options.input_path, RecursiveMode::Recursive)
             .map_err(|err| {
                 log::error!(
@@ -176,7 +187,8 @@ pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
 
         if let Some(config) = options.config.as_ref() {
             log::debug!("start watching provided config path {}", config.display());
-            watcher
+            debouncer
+                .watcher()
                 .watch(config, RecursiveMode::NonRecursive)
                 .map_err(|err| {
                     log::error!(
@@ -190,7 +202,8 @@ pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
             for path in DEFAULT_CONFIG_PATHS.iter().map(Path::new) {
                 if path.exists() {
                     log::debug!("start watching default config path {}", path.display());
-                    watcher
+                    debouncer
+                        .watcher()
                         .watch(path, RecursiveMode::NonRecursive)
                         .map_err(|err| {
                             log::error!(
@@ -204,26 +217,19 @@ pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
             }
         }
 
-        std::thread::park();
+        let (sender, receiver) = mpsc::channel();
+
+        ctrlc::set_handler(move || sender.send(()).expect("unable to send signal to terminate"))
+            .map_err(|err| {
+                log::error!("unable to set Ctrl-C handler: {}", err);
+                CliError::new(1)
+            })?;
+
+        log::debug!("waiting for Ctrl-C to close the program");
+        receiver.recv().expect("Could not receive from channel.");
 
         Ok(())
     } else {
-        let resources = Resources::from_file_system();
-        let mut process_options =
-            darklua_core::Options::new(&options.input_path).with_output(&options.output_path);
-
-        if let Some(config) = options.config.as_ref() {
-            process_options = process_options.with_configuration_at(config);
-        }
-
-        if let Some(format) = options.format.as_ref() {
-            process_options = process_options.with_generator_override(match format {
-                LuaFormat::Dense => GeneratorParameters::default_dense(),
-                LuaFormat::Readable => GeneratorParameters::default_readable(),
-                LuaFormat::RetainLines => GeneratorParameters::RetainLines,
-            })
-        }
-
-        process(resources, process_options)
+        options.process()
     }
 }
