@@ -1,6 +1,6 @@
 [package]
 name = "darklua"
-version = "0.10.2"
+version = "0.10.3"
 authors = ["jeparlefrancais <jeparlefrancais21@gmail.com>"]
 edition = "2018"
 readme = "README.md"
@@ -23,14 +23,16 @@ name = "darklua"
 path = "src/bin.rs"
 
 [features]
+default = ["stacker"]
 tracing = ["dep:tracing"]
+stacker = ["full_moon/stacker"]
 
 [dependencies]
 clap = { version = "4.3.11", features = ["derive"] }
 durationfmt = "0.1.1"
 elsa = "1.8.1"
 env_logger = "0.10.0"
-full_moon = { version = "0.18.1", features = ["roblox", "stacker"] }
+full_moon = { version = "0.18.1", features = ["roblox"] }
 json5 = "0.4.1"
 log = "0.4.19"
 pathdiff = "0.2.1"
@@ -58,6 +60,11 @@ tracing-tracy = "0.10.1"
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 node-sys = "0.4.2"
 web-sys = { version = "0.3.60", features = ["Window", "Performance"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+ctrlc = { version = "3.4.1", features = ["termination"] }
+notify = "6.1.1"
+notify-debouncer-mini = "0.4.1"
 
 # This is needed because when runnin `cargo test`, the library and its
 # dependencies are build with the `dev` profile. To make sure full_moon

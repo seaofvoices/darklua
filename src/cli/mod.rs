@@ -10,7 +10,7 @@ use self::error::CliError;
 
 type CommandResult = Result<(), CliError>;
 
-#[derive(Debug, Args)]
+#[derive(Debug, Args, Clone)]
 pub struct GlobalOptions {
     /// Sets verbosity level (can be specified multiple times)
     #[arg(long, short, global(true), action = clap::ArgAction::Count)]

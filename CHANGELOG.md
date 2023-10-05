@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.10.3
+
+* add watch argument (`--watch` or `-w`) to process command to automatically re-run darklua on file changes ([#123](https://github.com/seaofvoices/darklua/pull/123))
+
 ## 0.10.2
 
 * fix crashes when bundling code and fix `remove_spaces` and `remove_comments` rule for missing cases (if expressions and numeric for) ([#119](https://github.com/seaofvoices/darklua/pull/119))
