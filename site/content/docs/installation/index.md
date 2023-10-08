@@ -32,3 +32,9 @@ If you want to use the lastest darklua available, install it using the git url:
 ```
 cargo install --git https://github.com/seaofvoices/darklua.git
 ```
+
+## Other package managers
+
+darklua is available in some third-party package managers. These packages are primarily supported by the community.
+
+[![Packaging status via Repology](https://repology.org/badge/vertical-allrepos/darklua.svg)](https://repology.org/project/darklua/versions)
