@@ -50,7 +50,24 @@ impl TypeCastExpression {
     pub fn needs_parentheses(expression: &Expression) -> bool {
         matches!(
             expression,
-            Expression::Binary(_) | Expression::Unary(_) | Expression::TypeCast(_)
+            Expression::Binary(_)
+                | Expression::Unary(_)
+                | Expression::TypeCast(_)
+                | Expression::If(_)
         )
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::nodes::IfExpression;
+
+    use super::*;
+
+    #[test]
+    fn if_expression_needs_parentheses() {
+        assert!(TypeCastExpression::needs_parentheses(&Expression::from(
+            IfExpression::new(true, false, true)
+        )));
     }
 }

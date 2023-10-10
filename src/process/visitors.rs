@@ -93,8 +93,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
         for r#type in function
             .iter_mut_parameters()
-            .map(TypedIdentifier::mutate_type)
-            .flatten()
+            .filter_map(TypedIdentifier::mutate_type)
         {
             Self::visit_type(r#type, processor);
         }
@@ -131,8 +130,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
         for r#type in statement
             .iter_mut_parameters()
-            .map(TypedIdentifier::mutate_type)
-            .flatten()
+            .filter_map(TypedIdentifier::mutate_type)
         {
             Self::visit_type(r#type, processor);
         }
@@ -148,8 +146,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
         for r#type in statement
             .iter_mut_identifiers()
-            .map(TypedIdentifier::mutate_type)
-            .flatten()
+            .filter_map(TypedIdentifier::mutate_type)
         {
             Self::visit_type(r#type, processor);
         }
@@ -182,8 +179,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
         for r#type in statement
             .iter_mut_parameters()
-            .map(TypedIdentifier::mutate_type)
-            .flatten()
+            .filter_map(TypedIdentifier::mutate_type)
         {
             Self::visit_type(r#type, processor);
         }

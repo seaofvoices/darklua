@@ -55,6 +55,11 @@ impl TypeName {
     }
 
     #[inline]
+    pub fn has_type_parameters(&self) -> bool {
+        self.type_parameters.is_some()
+    }
+
+    #[inline]
     pub fn mutate_type_parameters(&mut self) -> Option<&mut TypeParameters> {
         self.type_parameters.as_mut()
     }

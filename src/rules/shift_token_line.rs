@@ -103,7 +103,8 @@ impl NodeProcessor for Processor {
             | Expression::Parenthese(_)
             | Expression::String(_)
             | Expression::Table(_)
-            | Expression::Unary(_) => {}
+            | Expression::Unary(_)
+            | Expression::TypeCast(_) => {}
         }
     }
 
@@ -152,6 +153,10 @@ impl NodeProcessor for Processor {
     }
 
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}
+
+    fn process_type(&mut self, r#type: &mut Type) {
+        r#type.shift_token_line(self.shift_amount);
+    }
 }
 
 pub const SHIFT_TOKEN_LINE: &str = "shift_token_line";

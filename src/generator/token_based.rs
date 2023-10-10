@@ -200,9 +200,9 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         } else {
             self.write_expression(inner_expression);
         }
-        self.write_expression(type_cast.get_expression());
-        self.write_token(&token);
-        self.write_type(&type_cast.get_type());
+
+        self.write_token(token);
+        self.write_type(type_cast.get_type());
     }
 
     fn write_tuple_arguments_with_tokens(
@@ -605,13 +605,14 @@ impl<'a> TokenBasedLuaGenerator<'a> {
 
         self.write_token(&tokens.closing_parenthese);
 
-        if let Some(variadic_type) = function.get_variadic_type() {
-            if let Some(colon) = &tokens.variable_arguments_colon {
+        if let Some(return_type) = function.get_return_type() {
+            if let Some(colon) = &tokens.return_type_colon {
                 self.write_token(colon);
             } else {
                 self.write_symbol(":")
             }
-            self.write_type(variadic_type);
+
+            self.write_function_return_type(return_type);
         }
 
         self.write_block(function.get_block());
@@ -679,43 +680,70 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             .get_generic_parameters()
             .filter(|generic_parameters| !generic_parameters.is_empty())
         {
-            for parameter in generic_parameters {
-                match parameter {
-                    GenericParameterRef::TypeVariable(identifier) => {
-                        self.write_identifier(identifier);
-                    }
-                    GenericParameterRef::TypeVariableWithDefault(identifier_with_default) => {
-                        self.write_identifier(identifier_with_default.get_type_variable());
-                        if let Some(token) = identifier_with_default.get_token() {
-                            self.write_token(token);
-                        } else {
-                            self.write_symbol("=");
-                        }
-                        self.write_type(identifier_with_default.get_default_type());
-                    }
-                    GenericParameterRef::GenericTypePack(generic_type_pack) => {
-                        self.write_generic_type_pack(generic_type_pack);
-                    }
-                    GenericParameterRef::GenericTypePackWithDefault(generic_pack_with_default) => {
-                        self.write_generic_type_pack(
-                            generic_pack_with_default.get_generic_type_pack(),
-                        );
-                        if let Some(token) = generic_pack_with_default.get_token() {
-                            self.write_token(token);
-                        } else {
-                            self.write_symbol("=");
-                        }
-                        self.write_generic_type_pack_default(
-                            generic_pack_with_default.get_default_type(),
-                        );
-                    }
-                }
+            if let Some(tokens) = generic_parameters.get_tokens() {
+                self.write_generic_parameters_with_default_with_tokens(generic_parameters, tokens);
+            } else {
+                self.write_generic_parameters_with_default_with_tokens(
+                    generic_parameters,
+                    &self.generate_generic_parameters_with_defaults_tokens(generic_parameters),
+                );
             }
         }
 
         self.write_token(&tokens.equal);
 
         self.write_type(statement.get_type());
+    }
+
+    fn write_generic_parameters_with_default_with_tokens(
+        &mut self,
+        generic_parameters: &GenericParametersWithDefaults,
+        tokens: &GenericParametersTokens,
+    ) {
+        self.write_token(&tokens.opening_list);
+
+        let last_index = generic_parameters.len().saturating_sub(1);
+
+        for (i, parameter) in generic_parameters.iter().enumerate() {
+            match parameter {
+                GenericParameterRef::TypeVariable(identifier) => {
+                    self.write_identifier(identifier);
+                }
+                GenericParameterRef::TypeVariableWithDefault(identifier_with_default) => {
+                    self.write_identifier(identifier_with_default.get_type_variable());
+                    if let Some(token) = identifier_with_default.get_token() {
+                        self.write_token(token);
+                    } else {
+                        self.write_symbol("=");
+                    }
+                    self.write_type(identifier_with_default.get_default_type());
+                }
+                GenericParameterRef::GenericTypePack(generic_type_pack) => {
+                    self.write_generic_type_pack(generic_type_pack);
+                }
+                GenericParameterRef::GenericTypePackWithDefault(generic_pack_with_default) => {
+                    self.write_generic_type_pack(generic_pack_with_default.get_generic_type_pack());
+                    if let Some(token) = generic_pack_with_default.get_token() {
+                        self.write_token(token);
+                    } else {
+                        self.write_symbol("=");
+                    }
+                    self.write_generic_type_pack_default(
+                        generic_pack_with_default.get_default_type(),
+                    );
+                }
+            }
+
+            if i < last_index {
+                if let Some(comma) = tokens.commas.get(i) {
+                    self.write_token(comma);
+                } else {
+                    self.write_symbol(",");
+                }
+            }
+        }
+
+        self.write_token(&tokens.closing_list);
     }
 
     fn write_function_with_tokens(
@@ -769,13 +797,14 @@ impl<'a> TokenBasedLuaGenerator<'a> {
 
         self.write_token(&tokens.closing_parenthese);
 
-        if let Some(variadic_type) = function.get_variadic_type() {
-            if let Some(colon) = &tokens.variable_arguments_colon {
+        if let Some(return_type) = function.get_return_type() {
+            if let Some(colon) = &tokens.return_type_colon {
                 self.write_token(colon);
             } else {
                 self.write_symbol(":")
             }
-            self.write_type(variadic_type);
+
+            self.write_function_return_type(return_type);
         }
 
         self.write_block(function.get_block());
@@ -844,7 +873,30 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             }
         }
 
+        if let Some(indexer_type) = table_type.get_indexer_type() {
+            if let Some(tokens) = indexer_type.get_tokens() {
+                self.write_table_indexer_type_with_tokens(indexer_type, tokens);
+            } else {
+                self.write_table_indexer_type_with_tokens(
+                    indexer_type,
+                    &self.generate_table_indexer_type_tokens(indexer_type),
+                );
+            }
+        }
+
         self.write_token(&tokens.closing_brace);
+    }
+
+    fn write_table_indexer_type_with_tokens(
+        &mut self,
+        indexer_type: &TableIndexerType,
+        tokens: &TableIndexerTypeTokens,
+    ) {
+        self.write_token(&tokens.opening_bracket);
+        self.write_type(indexer_type.get_key_type());
+        self.write_token(&tokens.closing_bracket);
+        self.write_token(&tokens.colon);
+        self.write_type(indexer_type.get_value_type());
     }
 
     fn write_expression_type_with_tokens(
@@ -889,13 +941,8 @@ impl<'a> TokenBasedLuaGenerator<'a> {
 
         self.write_token(&tokens.opening_parenthese);
 
-        let last_index = function_type.argument_len().saturating_sub(
-            if function_type.has_variadic_argument_type() {
-                0
-            } else {
-                1
-            },
-        );
+        let argument_len = function_type.argument_len();
+        let last_index = argument_len.saturating_sub(1);
 
         for (i, argument) in function_type.iter_arguments().enumerate() {
             if let Some(name) = argument.get_name() {
@@ -917,6 +964,17 @@ impl<'a> TokenBasedLuaGenerator<'a> {
                     self.write_symbol(",");
                 }
             }
+        }
+
+        if let Some(variadic_argument_type) = function_type.get_variadic_argument_type() {
+            if argument_len > 0 {
+                if let Some(comma) = tokens.commas.get(argument_len) {
+                    self.write_token(comma);
+                } else {
+                    self.write_symbol(",");
+                }
+            }
+            self.write_variadic_argument_type(variadic_argument_type);
         }
 
         self.write_token(&tokens.closing_parenthese);
@@ -979,6 +1037,10 @@ impl<'a> TokenBasedLuaGenerator<'a> {
                     self.write_symbol(",");
                 }
             }
+        }
+
+        if let Some(variadic_argument_type) = type_pack.get_variadic_type() {
+            self.write_variadic_argument_type(variadic_argument_type);
         }
 
         self.write_token(&tokens.right_parenthese);
@@ -1372,6 +1434,17 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         }
     }
 
+    fn generate_table_indexer_type_tokens(
+        &self,
+        _table_indexer: &TableIndexerType,
+    ) -> TableIndexerTypeTokens {
+        TableIndexerTypeTokens {
+            opening_bracket: Token::from_content("["),
+            closing_bracket: Token::from_content("]"),
+            colon: Token::from_content(":"),
+        }
+    }
+
     fn generate_expression_type_tokens(
         &self,
         _expression_type: &ExpressionType,
@@ -1440,6 +1513,17 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         }
     }
 
+    fn generate_generic_parameters_with_defaults_tokens(
+        &self,
+        generic_parameters: &GenericParametersWithDefaults,
+    ) -> GenericParametersTokens {
+        GenericParametersTokens {
+            opening_list: Token::from_content("<"),
+            closing_list: Token::from_content(">"),
+            commas: intersect_with_token(comma_token(), generic_parameters.len()),
+        }
+    }
+
     fn write_symbol(&mut self, symbol: &str) {
         if self.currently_commenting {
             self.uncomment();
@@ -1477,12 +1561,11 @@ impl<'a> TokenBasedLuaGenerator<'a> {
 
     #[inline]
     fn needs_space(&self, next_character: char) -> bool {
-        is_next_char_relevant_for_spacing(next_character)
-            && if let Some(last) = self.output.chars().last() {
-                is_relevant_for_spacing(last, next_character)
-            } else {
-                false
-            }
+        if let Some(last) = self.output.chars().last() {
+            utils::should_break_with_space(last, next_character)
+        } else {
+            false
+        }
     }
 
     #[inline]
@@ -1508,27 +1591,6 @@ fn is_single_line_comment(content: &str) -> bool {
     };
 
     !is_multiline_comment
-}
-
-#[inline]
-fn is_next_char_relevant_for_spacing(character: char) -> bool {
-    character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '[' | ']' | '.' | '=')
-}
-
-#[inline]
-fn is_relevant_for_spacing(ending_character: char, next_character: char) -> bool {
-    match ending_character {
-        '0'..='9' => matches!(next_character, '0'..='9' | 'A'..='Z' | 'a'..='z' | '_' | '.'),
-        'A'..='Z' | 'a'..='z' | '_' => {
-            next_character.is_ascii_alphanumeric() || next_character == '_'
-        }
-        '>' => next_character == '=',
-        '-' => next_character == '-',
-        '[' => next_character == '[',
-        ']' => next_character == ']',
-        '.' => matches!(next_character, '.' | '0'..='9'),
-        _ => false,
-    }
 }
 
 #[inline]

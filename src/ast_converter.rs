@@ -171,6 +171,7 @@ impl<'a> AstConverter<'a> {
 
         while let Some(work) = self.work_stack.pop() {
             match work {
+                // todo: those PushSomething variants are probably not needed
                 ConvertWork::PushVariable(variable) => {
                     self.variables.push(variable);
                 }
@@ -572,23 +573,14 @@ impl<'a> AstConverter<'a> {
                                             TypeInfo::Tuple { .. } => self
                                                 .pop_type_pack()
                                                 .map(GenericTypePackDefault::from),
-                                            TypeInfo::Intersection { left, .. } | TypeInfo::Union { left, .. }
+                                            TypeInfo::Intersection { left, .. }
+                                            | TypeInfo::Union { left, .. }
                                                 if matches!(**left, TypeInfo::Variadic { .. }) =>
                                             {
-                                                self.pop_variadic_type_pack().map(GenericTypePackDefault::from)
+                                                self.pop_variadic_type_pack()
+                                                    .map(GenericTypePackDefault::from)
                                             }
-                                            TypeInfo::Array { .. }
-                                            | TypeInfo::Basic(_)
-                                            | TypeInfo::String(_)
-                                            | TypeInfo::Boolean(_)
-                                            | TypeInfo::Callback { .. }
-                                            | TypeInfo::Generic { .. }
-                                            | TypeInfo::Module { .. }
-                                            | TypeInfo::Optional { .. }
-                                            | TypeInfo::Table { .. }
-                                            | TypeInfo::Typeof { .. }
-                                            | TypeInfo::Variadic { .. } // todo: maybe this needs to pop a variadic_type_pack?
-                                            | _ => Err(ConvertError::GenericDeclaration {
+                                            _ => Err(ConvertError::GenericDeclaration {
                                                 generics: generics.to_string(),
                                             }),
                                         })
@@ -669,8 +661,13 @@ impl<'a> AstConverter<'a> {
                         }
 
                         for type_variable_with_default in type_variable_with_default_iter {
-                            generic_parameters
-                                .push_type_variable_with_default(type_variable_with_default);
+                            if !generic_parameters
+                                .push_type_variable_with_default(type_variable_with_default)
+                            {
+                                return Err(ConvertError::GenericDeclaration {
+                                    generics: generics.to_string(),
+                                });
+                            }
                         }
 
                         for generic_type_pack in generic_type_packs_iter {
@@ -679,6 +676,12 @@ impl<'a> AstConverter<'a> {
                                     generics: generics.to_string(),
                                 });
                             }
+                        }
+
+                        for generic_type_pack_with_default in generic_type_packs_with_default_iter {
+                            generic_parameters.push_generic_type_pack_with_default(
+                                generic_type_pack_with_default,
+                            );
                         }
 
                         if self.hold_token_data {
@@ -873,8 +876,10 @@ impl<'a> AstConverter<'a> {
                         TypeInfo::Tuple { .. } => self.pop_type_pack()?.into(),
                         TypeInfo::Variadic { .. } => self.pop_variadic_type_pack()?.into(),
                         TypeInfo::GenericPack { .. } => self.pop_generic_type_pack()?.into(),
-                        TypeInfo::Intersection { left, .. } | TypeInfo::Union { left, .. }
-                            if matches!(**left, TypeInfo::Variadic { .. }) =>
+                        TypeInfo::Intersection { left: inner, .. }
+                        | TypeInfo::Union { left: inner, .. }
+                        | TypeInfo::Optional { base: inner, .. }
+                            if matches!(**inner, TypeInfo::Variadic { .. }) =>
                         {
                             self.pop_variadic_type_pack()?.into()
                         }
@@ -1350,10 +1355,7 @@ impl<'a> AstConverter<'a> {
                 self.work_stack.push(ConvertWork::MakeLocalAssignStatement {
                     statement: local_assign,
                 });
-                for type_specifier in local_assign
-                    .type_specifiers()
-                    .filter_map(|type_specifier| type_specifier)
-                {
+                for type_specifier in local_assign.type_specifiers().flatten() {
                     self.push_work(type_specifier.type_info());
                 }
                 for expression in local_assign.expressions().iter() {
@@ -1439,8 +1441,11 @@ impl<'a> AstConverter<'a> {
         if let Some(generics) = type_declaration.generics() {
             for parameter in generics.generics() {
                 if let Some(default_type) = parameter.default_type() {
-                    match default_type {
-                        ast::types::TypeInfo::Tuple { parentheses, types } => {
+                    match (parameter.parameter(), default_type) {
+                        (
+                            ast::types::GenericParameterInfo::Variadic { .. },
+                            ast::types::TypeInfo::Tuple { parentheses, types },
+                        ) => {
                             self.push_type_pack_work(types, parentheses);
                         }
                         _ => {
@@ -1952,20 +1957,7 @@ impl<'a> AstConverter<'a> {
                             }
                             has_variadic_type = true;
                         }
-                        TypeInfo::Array { .. }
-                        | TypeInfo::Basic(_)
-                        | TypeInfo::String(_)
-                        | TypeInfo::Boolean(_)
-                        | TypeInfo::Callback { .. }
-                        | TypeInfo::Generic { .. }
-                        | TypeInfo::Intersection { .. }
-                        | TypeInfo::Module { .. }
-                        | TypeInfo::Optional { .. }
-                        | TypeInfo::Table { .. }
-                        | TypeInfo::Typeof { .. }
-                        | TypeInfo::Tuple { .. }
-                        | TypeInfo::Union { .. }
-                        | _ => {}
+                        _ => {}
                     }
                     self.push_work(argument_type);
                 }
@@ -2076,12 +2068,23 @@ impl<'a> AstConverter<'a> {
             TypeInfo::Optional {
                 base,
                 question_mark,
-            } => {
-                self.work_stack
-                    .push(ConvertWork::MakeOptionalType { question_mark });
+            } => match base.as_ref() {
+                TypeInfo::Variadic { ellipse, type_info } => {
+                    self.work_stack
+                        .push(ConvertWork::MakeVariadicTypePack { ellipse });
 
-                self.push_work(base.as_ref());
-            }
+                    self.work_stack
+                        .push(ConvertWork::MakeOptionalType { question_mark });
+
+                    self.push_work(type_info.as_ref());
+                }
+                _ => {
+                    self.work_stack
+                        .push(ConvertWork::MakeOptionalType { question_mark });
+
+                    self.push_work(base.as_ref());
+                }
+            },
             TypeInfo::Table { braces, fields } => {
                 self.work_stack
                     .push(ConvertWork::MakeTableType { braces, fields });

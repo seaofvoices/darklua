@@ -95,7 +95,8 @@ impl NodeProcessor for RemoveCommentProcessor {
             | Expression::Parenthese(_)
             | Expression::String(_)
             | Expression::Table(_)
-            | Expression::Unary(_) => {}
+            | Expression::Unary(_)
+            | Expression::TypeCast(_) => {}
         }
     }
 

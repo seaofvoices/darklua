@@ -103,7 +103,8 @@ impl<'a> NodeProcessor for Processor<'a> {
             | Expression::Parenthese(_)
             | Expression::String(_)
             | Expression::Table(_)
-            | Expression::Unary(_) => {}
+            | Expression::Unary(_)
+            | Expression::TypeCast(_) => {}
         }
     }
 
@@ -152,6 +153,10 @@ impl<'a> NodeProcessor for Processor<'a> {
     }
 
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}
+
+    fn process_type(&mut self, r#type: &mut Type) {
+        r#type.replace_referenced_tokens(self.code);
+    }
 }
 
 pub const REPLACE_REFERENCED_TOKENS: &str = "replace_referenced_tokens";

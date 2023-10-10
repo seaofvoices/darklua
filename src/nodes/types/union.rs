@@ -78,13 +78,13 @@ impl UnionType {
     }
 
     pub fn left_needs_parentheses(r#type: &Type) -> bool {
-        matches!(r#type, Type::Optional(_) | Type::Intersection(_))
+        matches!(
+            r#type,
+            Type::Optional(_) | Type::Intersection(_) | Type::Function(_) | Type::Union(_)
+        )
     }
 
     pub fn right_needs_parentheses(r#type: &Type) -> bool {
-        matches!(
-            r#type,
-            Type::Optional(_) | Type::Intersection(_) | Type::Union(_)
-        )
+        matches!(r#type, Type::Intersection(_))
     }
 }

@@ -2,4 +2,4 @@
 source: src/generator/mod.rs
 expression: generator.into_string()
 ---
-for i: number=start, max, step do end
+for i: number = start, max, step do end

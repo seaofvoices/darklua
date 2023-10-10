@@ -161,13 +161,18 @@ impl ReadableLuaGenerator {
 
     #[inline]
     fn needs_space(&self, next_character: char) -> bool {
-        utils::is_relevant_for_spacing(&next_character)
-            && self
-                .output
-                .chars()
-                .last()
-                .filter(utils::is_relevant_for_spacing)
-                .is_some()
+        if let Some(previous) = self.output.chars().last() {
+            utils::should_break_with_space(previous, next_character)
+        } else {
+            false
+        }
+        // utils::is_relevant_for_spacing(&next_character)
+        //     && self
+        //         .output
+        //         .chars()
+        //         .last()
+        //         .filter(utils::is_relevant_for_spacing)
+        //         .is_some()
     }
 
     #[inline]
@@ -219,23 +224,6 @@ impl ReadableLuaGenerator {
             self.push_new_line();
         }
         self.raw_push_str(content);
-    }
-
-    /// Same as `push_str_and_break_if` but for a single character
-    fn push_char_and_break_if<F>(&mut self, content: char, predicate: F)
-    where
-        F: Fn(&str) -> bool,
-    {
-        if predicate(self.get_last_push_str()) {
-            if self.fits_on_current_line(2) {
-                self.push_space();
-            } else {
-                self.push_new_line();
-            }
-        } else if !self.fits_on_current_line(1) {
-            self.push_new_line();
-        }
-        self.raw_push_char(content);
     }
 
     fn get_last_push_str(&self) -> &str {
@@ -331,7 +319,7 @@ impl ReadableLuaGenerator {
             parameters.iter().enumerate().for_each(|(index, variable)| {
                 self.push_new_line();
                 self.write_indentation();
-                self.raw_push_str(variable.get_name());
+                self.write_typed_identifier(variable);
 
                 if index != last_index {
                     self.raw_push_char(',');
@@ -345,6 +333,12 @@ impl ReadableLuaGenerator {
                 self.push_new_line();
                 self.write_indentation();
                 self.raw_push_str("...");
+
+                if let Some(variadic_type) = variadic_type {
+                    self.raw_push_char(':');
+                    self.raw_push_char(' ');
+                    self.write_type(r#variadic_type);
+                }
             };
 
             self.pop_indentation();
@@ -381,20 +375,6 @@ impl ReadableLuaGenerator {
             }
             nodes::FunctionReturnType::GenericTypePack(generic_type_pack) => {
                 self.write_generic_type_pack(generic_type_pack);
-            }
-        }
-    }
-
-    fn write_variadic_argument_type(
-        &mut self,
-        variadic_argument_type: &nodes::VariadicArgumentType,
-    ) {
-        match variadic_argument_type {
-            nodes::VariadicArgumentType::GenericTypePack(generic_type_pack) => {
-                self.write_generic_type_pack(generic_type_pack);
-            }
-            nodes::VariadicArgumentType::VariadicTypePack(variadic_type_pack) => {
-                self.write_variadic_type_pack(variadic_type_pack);
             }
         }
     }
@@ -650,7 +630,9 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.push_str("for ");
 
         self.write_typed_identifier(numeric_for.get_identifier());
+        self.raw_push_char(' ');
         self.raw_push_char('=');
+        self.raw_push_char(' ');
         self.write_expression(numeric_for.get_start());
         self.raw_push_char(',');
         self.raw_push_char(' ');
@@ -797,6 +779,7 @@ impl LuaGenerator for ReadableLuaGenerator {
             .get_generic_parameters()
             .filter(|generic_parameters| !generic_parameters.is_empty())
         {
+            self.push_char('<');
             let last_index = generic_parameters.len().saturating_sub(1);
             for (i, parameter) in generic_parameters.iter().enumerate() {
                 use nodes::GenericParameterRef;
@@ -829,9 +812,12 @@ impl LuaGenerator for ReadableLuaGenerator {
                     self.push_char(' ');
                 }
             }
+            self.push_char('>');
         }
 
-        self.push_char_and_break_if('=', utils::break_equal);
+        self.push_char(' ');
+        self.push_char('=');
+        self.push_char(' ');
 
         self.pop_can_add_new_line();
 

@@ -171,13 +171,31 @@ pub trait LuaGenerator {
 
     fn write_function_return_type(&mut self, return_type: &nodes::FunctionReturnType) {
         match return_type {
-            nodes::FunctionReturnType::Type(r#type) => self.write_type(r#type),
-            nodes::FunctionReturnType::TypePack(type_pack) => self.write_type_pack(type_pack),
+            nodes::FunctionReturnType::Type(r#type) => {
+                self.write_type(r#type);
+            }
+            nodes::FunctionReturnType::TypePack(type_pack) => {
+                self.write_type_pack(type_pack);
+            }
             nodes::FunctionReturnType::VariadicTypePack(variadic_type_pack) => {
                 self.write_variadic_type_pack(variadic_type_pack);
             }
             nodes::FunctionReturnType::GenericTypePack(generic_type_pack) => {
                 self.write_generic_type_pack(generic_type_pack);
+            }
+        }
+    }
+
+    fn write_variadic_argument_type(
+        &mut self,
+        variadic_argument_type: &nodes::VariadicArgumentType,
+    ) {
+        match variadic_argument_type {
+            nodes::VariadicArgumentType::GenericTypePack(generic_type_pack) => {
+                self.write_generic_type_pack(generic_type_pack);
+            }
+            nodes::VariadicArgumentType::VariadicTypePack(variadic_type_pack) => {
+                self.write_variadic_type_pack(variadic_type_pack);
             }
         }
     }
@@ -707,6 +725,91 @@ mod $mod_name {
             ),
         ));
 
+        snapshot_node!($mod_name, $generator, type_declaration, write_type_declaration_statement => (
+            string_alias => TypeDeclarationStatement::new("Str", TypeName::new("string")),
+            exported_string_alias => TypeDeclarationStatement::new("Str", TypeName::new("string"))
+                .export(),
+            generic_array => TypeDeclarationStatement::new("Array", ArrayType::new(TypeName::new("T")))
+                .with_generic_parameters(
+                    GenericParametersWithDefaults::from_type_variable("T")
+                ),
+            generic_array_with_default
+                => TypeDeclarationStatement::new("Array", ArrayType::new(TypeName::new("T")))
+                    .with_generic_parameters(
+                        GenericParametersWithDefaults::from_type_variable_with_default(
+                            TypeVariableWithDefault::new("T", Type::nil())
+                        )
+                    ),
+            table_with_one_property => TypeDeclarationStatement::new(
+                "Obj",
+                TableType::default()
+                    .with_property(TablePropertyType::new("name", TypeName::new("string")))
+            ),
+            table_with_indexer_type => TypeDeclarationStatement::new(
+                "StringArray",
+                TableType::default()
+                    .with_indexer_type(TableIndexerType::new(TypeName::new("number"), TypeName::new("string")))
+            ),
+            table_with_one_property_and_indexer_type => TypeDeclarationStatement::new(
+                "PackedArray",
+                TableType::default()
+                    .with_property(TablePropertyType::new("n", TypeName::new("number")))
+                    .with_indexer_type(TableIndexerType::new(TypeName::new("number"), TypeName::new("string")))
+            ),
+            callback_with_variadic_type_is_string => TypeDeclarationStatement::new(
+                "Fn",
+                FunctionType::new(TypePack::default())
+                    .with_variadic_type(VariadicTypePack::new(TypeName::new("string")))
+            ),
+            callback_with_variadic_type_is_generic_pack => TypeDeclarationStatement::new(
+                "Fn",
+                FunctionType::new(TypePack::default())
+                    .with_variadic_type(GenericTypePack::new("T"))
+            ),
+            generic_fn_with_default_generic_pack
+                => TypeDeclarationStatement::new("Fn", FunctionType::new(GenericTypePack::new("R")))
+                    .with_generic_parameters(
+                        GenericParametersWithDefaults::from_generic_type_pack_with_default(
+                            GenericTypePackWithDefault::new(
+                                GenericTypePack::new("R"),
+                                GenericTypePack::new("T")
+                            )
+                        )
+                    ),
+            generic_fn_with_type_variable_and_default_generic_pack
+                => TypeDeclarationStatement::new(
+                    "Fn",
+                    FunctionType::new(GenericTypePack::new("R"))
+                        .with_argument(TypeName::new("T"))
+                )
+                    .with_generic_parameters(
+                        GenericParametersWithDefaults::from_type_variable("T")
+                        .with_generic_type_pack_with_default(
+                            GenericTypePackWithDefault::new(
+                                GenericTypePack::new("R"),
+                                VariadicTypePack::new(TypeName::new("string"))
+                            )
+                        )
+                    ),
+            generic_fn_with_type_variable_with_default_and_default_generic_pack
+                => TypeDeclarationStatement::new(
+                    "Fn",
+                    FunctionType::new(GenericTypePack::new("R"))
+                        .with_argument(TypeName::new("T"))
+                )
+                    .with_generic_parameters(
+                        GenericParametersWithDefaults::from_type_variable_with_default(
+                            TypeVariableWithDefault::new("T", TypeName::new("boolean"))
+                        )
+                        .with_generic_type_pack_with_default(
+                            GenericTypePackWithDefault::new(
+                                GenericTypePack::new("R"),
+                                VariadicTypePack::new(TypeName::new("string"))
+                            )
+                        )
+                    ),
+        ));
+
         snapshot_node!($mod_name, $generator, if_statement, write_statement => (
             empty => IfStatement::create(false, Block::default()),
             empty_with_empty_else => IfStatement::create(false, Block::default())
@@ -746,6 +849,8 @@ mod $mod_name {
             empty_variadic_with_one_parameter => LocalFunctionStatement::from_name("foo", Block::default())
                 .with_parameter("bar")
                 .variadic(),
+            empty_with_generic_pack_return_type => LocalFunctionStatement::from_name("foo", Block::default())
+                .with_return_type(GenericTypePack::new("R")),
         ));
 
         snapshot_node!($mod_name, $generator, numeric_for, write_statement => (
@@ -809,9 +914,30 @@ mod $mod_name {
                 Expression::from(true),
                 Expression::from(false)
             ),
-            true_equal_false =>BinaryExpression::new(
+            true_equal_false => BinaryExpression::new(
                 BinaryOperator::Equal,
                 Expression::from(true),
+                Expression::from(false)
+            ),
+            type_cast_break_type_parameters => BinaryExpression::new(
+                BinaryOperator::Equal,
+                TypeCastExpression::new(
+                    true,
+                    TypeName::new("Array").with_type_parameter(TypeName::new("string"))
+                ),
+                Expression::from(false)
+            ),
+            wrap_left_to_break_type_name_parameters => BinaryExpression::new(
+                BinaryOperator::LowerThan,
+                TypeCastExpression::new(true, TypeName::new("Array")),
+                Expression::from(false)
+            ),
+            wrap_left_to_break_type_field_parameters => BinaryExpression::new(
+                BinaryOperator::LowerThan,
+                TypeCastExpression::new(
+                    true,
+                    TypeField::new("Collections", TypeName::new("Array"))
+                ),
                 Expression::from(false)
             ),
         ));
@@ -840,6 +966,8 @@ mod $mod_name {
             empty_with_two_parameter => FunctionExpression::default()
                 .with_parameter("a")
                 .with_parameter("b"),
+            empty_with_generic_pack_return_type => FunctionExpression::default()
+                .with_return_type(GenericTypePack::new("R")),
         ));
 
         snapshot_node!($mod_name, $generator, prefix, write_prefix => (

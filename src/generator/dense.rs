@@ -108,13 +108,11 @@ impl DenseLuaGenerator {
 
     #[inline]
     fn needs_space(&self, next_character: char) -> bool {
-        utils::is_relevant_for_spacing(&next_character)
-            && self
-                .output
-                .chars()
-                .last()
-                .filter(utils::is_relevant_for_spacing)
-                .is_some()
+        if let Some(previous) = self.output.chars().last() {
+            utils::should_break_with_space(previous, next_character)
+        } else {
+            false
+        }
     }
 
     /// Consumes the LuaGenerator and produce a String object.
@@ -228,20 +226,6 @@ impl DenseLuaGenerator {
         }
     }
 
-    fn write_variadic_argument_type(
-        &mut self,
-        variadic_argument_type: &nodes::VariadicArgumentType,
-    ) {
-        match variadic_argument_type {
-            nodes::VariadicArgumentType::GenericTypePack(generic_type_pack) => {
-                self.write_generic_type_pack(generic_type_pack);
-            }
-            nodes::VariadicArgumentType::VariadicTypePack(variadic_type_pack) => {
-                self.write_variadic_type_pack(variadic_type_pack);
-            }
-        }
-    }
-
     fn write_expression_in_parentheses(&mut self, expression: &nodes::Expression) {
         self.push_char('(');
         self.write_expression(expression);
@@ -289,7 +273,7 @@ impl LuaGenerator for DenseLuaGenerator {
 
     fn write_assign_statement(&mut self, assign: &nodes::AssignStatement) {
         let variables = assign.get_variables();
-        let last_variable_index = variables.len() - 1;
+        let last_variable_index = variables.len().saturating_sub(1);
 
         variables.iter().enumerate().for_each(|(index, variable)| {
             self.write_variable(variable);
@@ -301,7 +285,7 @@ impl LuaGenerator for DenseLuaGenerator {
 
         self.push_char_and_break_if('=', utils::break_equal);
 
-        let last_value_index = assign.values_len() - 1;
+        let last_value_index = assign.values_len().saturating_sub(1);
 
         assign.iter_values().enumerate().for_each(|(index, value)| {
             self.write_expression(value);
@@ -566,6 +550,7 @@ impl LuaGenerator for DenseLuaGenerator {
             .get_generic_parameters()
             .filter(|generic_parameters| !generic_parameters.is_empty())
         {
+            self.push_char('<');
             let last_index = generic_parameters.len().saturating_sub(1);
             for (i, parameter) in generic_parameters.iter().enumerate() {
                 use nodes::GenericParameterRef;
@@ -597,6 +582,8 @@ impl LuaGenerator for DenseLuaGenerator {
                     self.push_char(',');
                 }
             }
+
+            self.push_char('>');
         }
 
         self.push_char_and_break_if('=', utils::break_equal);
@@ -607,15 +594,15 @@ impl LuaGenerator for DenseLuaGenerator {
         self.push_str("false");
     }
 
-    fn write_true_expression(&mut self, token: &Option<nodes::Token>) {
+    fn write_true_expression(&mut self, _token: &Option<nodes::Token>) {
         self.push_str("true");
     }
 
-    fn write_nil_expression(&mut self, token: &Option<nodes::Token>) {
+    fn write_nil_expression(&mut self, _token: &Option<nodes::Token>) {
         self.push_str("nil");
     }
 
-    fn write_variable_arguments_expression(&mut self, token: &Option<nodes::Token>) {
+    fn write_variable_arguments_expression(&mut self, _token: &Option<nodes::Token>) {
         self.push_str_and_break_if("...", utils::break_variable_arguments);
     }
 
@@ -932,7 +919,9 @@ impl LuaGenerator for DenseLuaGenerator {
     fn write_table_type(&mut self, table_type: &nodes::TableType) {
         self.push_char('{');
 
-        let last_index = table_type.property_len().saturating_sub(1);
+        let last_index = table_type
+            .property_len()
+            .saturating_sub(if table_type.has_indexer_type() { 0 } else { 1 });
         for (index, property) in table_type.iter_property_type().enumerate() {
             self.write_identifier(property.get_identifier());
             self.push_char(':');
@@ -943,9 +932,6 @@ impl LuaGenerator for DenseLuaGenerator {
         }
 
         if let Some(indexer) = table_type.get_indexer_type() {
-            if table_type.property_len() > 0 {
-                self.push_char(',');
-            }
             self.push_char('[');
             self.write_type(indexer.get_key_type());
             self.push_char(']');

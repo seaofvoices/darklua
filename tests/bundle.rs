@@ -1,6 +1,6 @@
 use darklua_core::{process, Options, Resources};
 
-mod fuzz;
+mod ast_fuzzer;
 mod utils;
 
 use utils::memory_resources;
@@ -66,7 +66,7 @@ mod without_rules {
         nodes::{Block, Expression, ReturnStatement},
     };
 
-    use crate::fuzz::{Fuzz, FuzzContext};
+    use crate::ast_fuzzer::{AstFuzzer, FuzzBudget};
 
     use super::*;
 
@@ -501,8 +501,8 @@ data:
     #[test]
     fn fuzz_bundle() {
         utils::run_for_minimum_time(Duration::from_millis(250), || {
-            let mut fuzz_context = FuzzContext::new(20, 40);
-            let mut block = Block::fuzz(&mut fuzz_context);
+            let fuzz_budget = FuzzBudget::new(20, 40);
+            let mut block = AstFuzzer::new(fuzz_budget).fuzz_block();
             block.set_last_statement(ReturnStatement::one(Expression::nil()));
 
             let mut generator = ReadableLuaGenerator::new(80);

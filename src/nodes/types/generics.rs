@@ -440,6 +440,11 @@ impl GenericParametersWithDefaults {
         self.tokens = Some(tokens);
     }
 
+    #[inline]
+    pub fn get_tokens(&self) -> Option<&GenericParametersTokens> {
+        self.tokens.as_ref()
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = GenericParameterRef<'_>> {
         self.into_iter()
     }
@@ -585,7 +590,7 @@ where
             generic_type_packs: generic_type_packs.map(IntoIterator::into_iter),
             type_variables_with_default: type_variables_with_default.map(IntoIterator::into_iter),
             generic_type_packs_with_default: generic_type_packs_with_default.into_iter(),
-            _phantom: PhantomData::default(),
+            _phantom: PhantomData,
         }
     }
 }
