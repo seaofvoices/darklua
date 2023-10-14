@@ -1438,8 +1438,7 @@ impl AstFuzzer {
                         TypeField::new(
                             self.random.identifier(),
                             TypeName::new(self.random.identifier())
-                                .with_type_parameters(parameters.into_iter().collect())
-                                .into(),
+                                .with_type_parameters(parameters.into_iter().collect()),
                         )
                         .into(),
                     );

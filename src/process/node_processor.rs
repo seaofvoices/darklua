@@ -41,4 +41,20 @@ pub trait NodeProcessor {
     fn process_type_cast_expression(&mut self, _: &mut TypeCastExpression) {}
 
     fn process_type(&mut self, _: &mut Type) {}
+
+    fn process_type_name(&mut self, _: &mut TypeName) {}
+    fn process_type_field(&mut self, _: &mut TypeField) {}
+    fn process_string_type(&mut self, _: &mut StringType) {}
+    fn process_array_type(&mut self, _: &mut ArrayType) {}
+    fn process_table_type(&mut self, _: &mut TableType) {}
+    fn process_expression_type(&mut self, _: &mut ExpressionType) {}
+    fn process_parenthese_type(&mut self, _: &mut ParentheseType) {}
+    fn process_function_type(&mut self, _: &mut FunctionType) {}
+    fn process_optional_type(&mut self, _: &mut OptionalType) {}
+    fn process_intersection_type(&mut self, _: &mut IntersectionType) {}
+    fn process_union_type(&mut self, _: &mut UnionType) {}
+
+    fn process_type_pack(&mut self, _: &mut TypePack) {}
+    fn process_generic_type_pack(&mut self, _: &mut GenericTypePack) {}
+    fn process_variadic_type_pack(&mut self, _: &mut VariadicTypePack) {}
 }

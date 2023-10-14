@@ -152,36 +152,24 @@ impl TypeParameters {
     }
 
     pub fn clear_comments(&mut self) {
-        for parameter in &mut self.parameters {
-            parameter.clear_comments();
-        }
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
         }
     }
 
     pub fn clear_whitespaces(&mut self) {
-        for parameter in &mut self.parameters {
-            parameter.clear_comments();
-        }
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
         }
     }
 
     pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        for parameter in &mut self.parameters {
-            parameter.replace_referenced_tokens(code);
-        }
         if let Some(tokens) = &mut self.tokens {
             tokens.replace_referenced_tokens(code);
         }
     }
 
     pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        for parameter in &mut self.parameters {
-            parameter.shift_token_line(amount);
-        }
         if let Some(tokens) = &mut self.tokens {
             tokens.shift_token_line(amount);
         }
@@ -233,55 +221,55 @@ pub enum TypeParameter {
 }
 
 impl TypeParameter {
-    pub fn clear_comments(&mut self) {
-        match self {
-            TypeParameter::Type(r#type) => r#type.clear_comments(),
-            TypeParameter::TypePack(type_pack) => type_pack.clear_comments(),
-            TypeParameter::VariadicTypePack(variadic_type_pack) => {
-                variadic_type_pack.clear_comments()
-            }
-            TypeParameter::GenericTypePack(generic_type_pack) => generic_type_pack.clear_comments(),
-        }
-    }
+    // pub fn clear_comments(&mut self) {
+    //     match self {
+    //         Self::Type(r#type) => r#type.clear_comments(),
+    //         Self::TypePack(type_pack) => type_pack.clear_comments(),
+    //         Self::VariadicTypePack(variadic_type_pack) => {
+    //             variadic_type_pack.clear_comments()
+    //         }
+    //         Self::GenericTypePack(generic_type_pack) => generic_type_pack.clear_comments(),
+    //     }
+    // }
 
-    pub fn clear_whitespaces(&mut self) {
-        match self {
-            TypeParameter::Type(r#type) => r#type.clear_whitespaces(),
-            TypeParameter::TypePack(type_pack) => type_pack.clear_whitespaces(),
-            TypeParameter::VariadicTypePack(variadic_type_pack) => {
-                variadic_type_pack.clear_whitespaces()
-            }
-            TypeParameter::GenericTypePack(generic_type_pack) => {
-                generic_type_pack.clear_whitespaces()
-            }
-        }
-    }
+    // pub fn clear_whitespaces(&mut self) {
+    //     match self {
+    //         Self::Type(r#type) => r#type.clear_whitespaces(),
+    //         Self::TypePack(type_pack) => type_pack.clear_whitespaces(),
+    //         Self::VariadicTypePack(variadic_type_pack) => {
+    //             variadic_type_pack.clear_whitespaces()
+    //         }
+    //         Self::GenericTypePack(generic_type_pack) => {
+    //             generic_type_pack.clear_whitespaces()
+    //         }
+    //     }
+    // }
 
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        match self {
-            TypeParameter::Type(r#type) => r#type.replace_referenced_tokens(code),
-            TypeParameter::TypePack(type_pack) => type_pack.replace_referenced_tokens(code),
-            TypeParameter::VariadicTypePack(variadic_type_pack) => {
-                variadic_type_pack.replace_referenced_tokens(code)
-            }
-            TypeParameter::GenericTypePack(generic_type_pack) => {
-                generic_type_pack.replace_referenced_tokens(code)
-            }
-        }
-    }
+    // pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+    //     match self {
+    //         Self::Type(r#type) => r#type.replace_referenced_tokens(code),
+    //         Self::TypePack(type_pack) => type_pack.replace_referenced_tokens(code),
+    //         Self::VariadicTypePack(variadic_type_pack) => {
+    //             variadic_type_pack.replace_referenced_tokens(code)
+    //         }
+    //         Self::GenericTypePack(generic_type_pack) => {
+    //             generic_type_pack.replace_referenced_tokens(code)
+    //         }
+    //     }
+    // }
 
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        match self {
-            TypeParameter::Type(r#type) => r#type.shift_token_line(amount),
-            TypeParameter::TypePack(type_pack) => type_pack.shift_token_line(amount),
-            TypeParameter::VariadicTypePack(variadic_type_pack) => {
-                variadic_type_pack.shift_token_line(amount)
-            }
-            TypeParameter::GenericTypePack(generic_type_pack) => {
-                generic_type_pack.shift_token_line(amount)
-            }
-        }
-    }
+    // pub(crate) fn shift_token_line(&mut self, amount: usize) {
+    //     match self {
+    //         Self::Type(r#type) => r#type.shift_token_line(amount),
+    //         Self::TypePack(type_pack) => type_pack.shift_token_line(amount),
+    //         Self::VariadicTypePack(variadic_type_pack) => {
+    //             variadic_type_pack.shift_token_line(amount)
+    //         }
+    //         Self::GenericTypePack(generic_type_pack) => {
+    //             generic_type_pack.shift_token_line(amount)
+    //         }
+    //     }
+    // }
 }
 
 impl<T: Into<Type>> From<T> for TypeParameter {

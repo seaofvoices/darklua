@@ -1,7 +1,7 @@
 use super::{
     Block, FunctionExpression, FunctionName, FunctionReturnType, FunctionStatement,
     GenericParameters, Identifier, LocalFunctionStatement, LocalFunctionTokens, Token, Type,
-    TypedIdentifier, VariadicArgumentType,
+    TypedIdentifier,
 };
 
 pub(crate) struct FunctionBuilder {

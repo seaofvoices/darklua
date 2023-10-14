@@ -1040,20 +1040,7 @@ impl<'a> AstConverter<'a> {
                             TypeInfo::GenericPack { .. } => {
                                 function_type.set_variadic_type(self.pop_generic_type_pack()?);
                             }
-                            TypeInfo::Intersection { .. }
-                            | TypeInfo::Union { .. }
-                            | TypeInfo::Array { .. }
-                            | TypeInfo::Basic(_)
-                            | TypeInfo::String(_)
-                            | TypeInfo::Boolean(_)
-                            | TypeInfo::Callback { .. }
-                            | TypeInfo::Generic { .. }
-                            | TypeInfo::Module { .. }
-                            | TypeInfo::Optional { .. }
-                            | TypeInfo::Table { .. }
-                            | TypeInfo::Typeof { .. }
-                            | TypeInfo::Tuple { .. }
-                            | _ => {
+                            _ => {
                                 let mut argument_type = FunctionArgumentType::new(self.pop_type()?);
 
                                 if let Some((name, colon)) = argument.name() {

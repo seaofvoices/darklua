@@ -66,18 +66,12 @@ impl TypedIdentifier {
         if let Some(token) = &mut self.token {
             token.clear_comments();
         }
-        if let Some(r#type) = &mut self.r#type {
-            r#type.clear_comments();
-        }
     }
 
     pub fn clear_whitespaces(&mut self) {
         self.name.clear_whitespaces();
         if let Some(token) = &mut self.token {
             token.clear_whitespaces();
-        }
-        if let Some(r#type) = &mut self.r#type {
-            r#type.clear_whitespaces();
         }
     }
 
@@ -86,18 +80,12 @@ impl TypedIdentifier {
         if let Some(token) = &mut self.token {
             token.replace_referenced_tokens(code);
         }
-        if let Some(r#type) = &mut self.r#type {
-            r#type.replace_referenced_tokens(code);
-        }
     }
 
     pub(crate) fn shift_token_line(&mut self, amount: usize) {
         self.name.shift_token_line(amount);
         if let Some(token) = &mut self.token {
             token.shift_token_line(amount);
-        }
-        if let Some(r#type) = &mut self.r#type {
-            r#type.shift_token_line(amount);
         }
     }
 }

@@ -67,6 +67,42 @@ impl FunctionArgumentType {
     pub fn get_token(&self) -> Option<&Token> {
         self.token.as_ref()
     }
+
+    pub fn clear_comments(&mut self) {
+        if let Some(name) = &mut self.name {
+            name.clear_comments();
+        }
+        if let Some(token) = &mut self.token {
+            token.clear_comments();
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        if let Some(name) = &mut self.name {
+            name.clear_whitespaces();
+        }
+        if let Some(token) = &mut self.token {
+            token.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(name) = &mut self.name {
+            name.replace_referenced_tokens(code);
+        }
+        if let Some(token) = &mut self.token {
+            token.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(name) = &mut self.name {
+            name.shift_token_line(amount);
+        }
+        if let Some(token) = &mut self.token {
+            token.shift_token_line(amount);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -240,11 +276,17 @@ impl FunctionType {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
         }
+        for argument in &mut self.arguments {
+            argument.clear_comments();
+        }
     }
 
     pub fn clear_whitespaces(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
+        }
+        for argument in &mut self.arguments {
+            argument.clear_whitespaces();
         }
     }
 
@@ -252,11 +294,17 @@ impl FunctionType {
         if let Some(tokens) = &mut self.tokens {
             tokens.replace_referenced_tokens(code);
         }
+        for argument in &mut self.arguments {
+            argument.replace_referenced_tokens(code);
+        }
     }
 
     pub(crate) fn shift_token_line(&mut self, amount: usize) {
         if let Some(tokens) = &mut self.tokens {
             tokens.shift_token_line(amount);
+        }
+        for argument in &mut self.arguments {
+            argument.shift_token_line(amount);
         }
     }
 }

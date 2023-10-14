@@ -1,4 +1,6 @@
-use crate::nodes::{GenericParametersWithDefaults, Identifier, Token, Type};
+use crate::nodes::{
+    GenericParameterMutRef, GenericParametersWithDefaults, Identifier, Token, Type,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeDeclarationTokens {
@@ -10,18 +12,34 @@ pub struct TypeDeclarationTokens {
 impl TypeDeclarationTokens {
     pub fn clear_comments(&mut self) {
         self.r#type.clear_comments();
+        self.equal.clear_comments();
+        if let Some(export) = &mut self.export {
+            export.clear_comments();
+        }
     }
 
     pub fn clear_whitespaces(&mut self) {
         self.r#type.clear_whitespaces();
+        self.equal.clear_comments();
+        if let Some(export) = &mut self.export {
+            export.clear_comments();
+        }
     }
 
     pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
         self.r#type.replace_referenced_tokens(code);
+        self.equal.replace_referenced_tokens(code);
+        if let Some(export) = &mut self.export {
+            export.replace_referenced_tokens(code);
+        }
     }
 
     pub(crate) fn shift_token_line(&mut self, amount: usize) {
         self.r#type.shift_token_line(amount);
+        self.equal.shift_token_line(amount);
+        if let Some(export) = &mut self.export {
+            export.shift_token_line(amount);
+        }
     }
 }
 
@@ -61,6 +79,11 @@ impl TypeDeclarationStatement {
     #[inline]
     pub fn get_generic_parameters(&self) -> Option<&GenericParametersWithDefaults> {
         self.generic_parameters.as_ref()
+    }
+
+    #[inline]
+    pub fn mutate_generic_parameters(&mut self) -> Option<&mut GenericParametersWithDefaults> {
+        self.generic_parameters.as_mut()
     }
 
     pub fn export(mut self) -> Self {
@@ -119,26 +142,110 @@ impl TypeDeclarationStatement {
     }
 
     pub fn clear_comments(&mut self) {
+        self.name.clear_comments();
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
+        }
+        if let Some(parameters) = self.generic_parameters.as_mut() {
+            parameters.clear_comments();
+
+            for parameter in parameters {
+                match parameter {
+                    GenericParameterMutRef::TypeVariable(variable) => {
+                        variable.clear_comments();
+                    }
+                    GenericParameterMutRef::TypeVariableWithDefault(variable_with_default) => {
+                        variable_with_default.clear_comments();
+                    }
+                    GenericParameterMutRef::GenericTypePack(_) => {}
+                    GenericParameterMutRef::GenericTypePackWithDefault(
+                        generic_pack_with_default,
+                    ) => {
+                        generic_pack_with_default.clear_comments();
+                    }
+                }
+            }
         }
     }
 
     pub fn clear_whitespaces(&mut self) {
+        self.name.clear_whitespaces();
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
+        }
+        if let Some(parameters) = self.generic_parameters.as_mut() {
+            parameters.clear_whitespaces();
+
+            for parameter in parameters {
+                match parameter {
+                    GenericParameterMutRef::TypeVariable(variable) => {
+                        variable.clear_whitespaces();
+                    }
+                    GenericParameterMutRef::TypeVariableWithDefault(variable_with_default) => {
+                        variable_with_default.clear_whitespaces();
+                    }
+                    GenericParameterMutRef::GenericTypePack(_) => {}
+                    GenericParameterMutRef::GenericTypePackWithDefault(
+                        generic_pack_with_default,
+                    ) => {
+                        generic_pack_with_default.clear_whitespaces();
+                    }
+                }
+            }
         }
     }
 
     pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.name.replace_referenced_tokens(code);
         if let Some(tokens) = &mut self.tokens {
             tokens.replace_referenced_tokens(code);
+        }
+        if let Some(parameters) = self.generic_parameters.as_mut() {
+            parameters.replace_referenced_tokens(code);
+
+            for parameter in parameters {
+                match parameter {
+                    GenericParameterMutRef::TypeVariable(variable) => {
+                        variable.replace_referenced_tokens(code);
+                    }
+                    GenericParameterMutRef::TypeVariableWithDefault(variable_with_default) => {
+                        variable_with_default.replace_referenced_tokens(code);
+                    }
+                    GenericParameterMutRef::GenericTypePack(_) => {}
+                    GenericParameterMutRef::GenericTypePackWithDefault(
+                        generic_pack_with_default,
+                    ) => {
+                        generic_pack_with_default.replace_referenced_tokens(code);
+                    }
+                }
+            }
         }
     }
 
     pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.name.shift_token_line(amount);
         if let Some(tokens) = &mut self.tokens {
             tokens.shift_token_line(amount);
+        }
+        if let Some(parameters) = self.generic_parameters.as_mut() {
+            parameters.shift_token_line(amount);
+
+            for parameter in parameters {
+                match parameter {
+                    GenericParameterMutRef::TypeVariable(variable) => {
+                        variable.shift_token_line(amount);
+                    }
+                    GenericParameterMutRef::TypeVariableWithDefault(variable_with_default) => {
+                        variable_with_default.shift_token_line(amount);
+                    }
+                    GenericParameterMutRef::GenericTypePack(_) => {}
+                    GenericParameterMutRef::GenericTypePackWithDefault(
+                        generic_pack_with_default,
+                    ) => {
+                        generic_pack_with_default.shift_token_line(amount);
+                    }
+                }
+            }
         }
     }
 }

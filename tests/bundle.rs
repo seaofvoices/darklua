@@ -63,7 +63,7 @@ mod without_rules {
 
     use darklua_core::{
         generator::{LuaGenerator, ReadableLuaGenerator},
-        nodes::{Block, Expression, ReturnStatement},
+        nodes::{Expression, ReturnStatement},
     };
 
     use crate::ast_fuzzer::{AstFuzzer, FuzzBudget};
@@ -501,7 +501,7 @@ data:
     #[test]
     fn fuzz_bundle() {
         utils::run_for_minimum_time(Duration::from_millis(250), || {
-            let fuzz_budget = FuzzBudget::new(20, 40);
+            let fuzz_budget = FuzzBudget::new(20, 40).with_types(25);
             let mut block = AstFuzzer::new(fuzz_budget).fuzz_block();
             block.set_last_statement(ReturnStatement::one(Expression::nil()));
 

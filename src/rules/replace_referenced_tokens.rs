@@ -82,6 +82,10 @@ impl<'a> NodeProcessor for Processor<'a> {
         statement.replace_referenced_tokens(self.code);
     }
 
+    fn process_type_declaration(&mut self, type_declaration: &mut TypeDeclarationStatement) {
+        type_declaration.replace_referenced_tokens(self.code);
+    }
+
     fn process_expression(&mut self, expression: &mut Expression) {
         match expression {
             Expression::False(token)
@@ -89,7 +93,7 @@ impl<'a> NodeProcessor for Processor<'a> {
             | Expression::True(token)
             | Expression::VariableArguments(token) => {
                 if let Some(token) = token {
-                    token.replace_referenced_tokens(self.code)
+                    token.replace_referenced_tokens(self.code);
                 }
             }
             Expression::Binary(_)
@@ -152,10 +156,77 @@ impl<'a> NodeProcessor for Processor<'a> {
         unary.replace_referenced_tokens(self.code);
     }
 
+    fn process_type_cast_expression(&mut self, type_cast: &mut TypeCastExpression) {
+        type_cast.replace_referenced_tokens(self.code);
+    }
+
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}
 
     fn process_type(&mut self, r#type: &mut Type) {
-        r#type.replace_referenced_tokens(self.code);
+        match r#type {
+            Type::True(token) | Type::False(token) | Type::Nil(token) => {
+                if let Some(token) = token {
+                    token.replace_referenced_tokens(self.code)
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn process_type_name(&mut self, type_name: &mut TypeName) {
+        type_name.replace_referenced_tokens(self.code);
+    }
+
+    fn process_type_field(&mut self, type_field: &mut TypeField) {
+        type_field.replace_referenced_tokens(self.code);
+    }
+
+    fn process_string_type(&mut self, string_type: &mut StringType) {
+        string_type.replace_referenced_tokens(self.code);
+    }
+
+    fn process_array_type(&mut self, array: &mut ArrayType) {
+        array.replace_referenced_tokens(self.code);
+    }
+
+    fn process_table_type(&mut self, table: &mut TableType) {
+        table.replace_referenced_tokens(self.code);
+    }
+
+    fn process_expression_type(&mut self, expression_type: &mut ExpressionType) {
+        expression_type.replace_referenced_tokens(self.code);
+    }
+
+    fn process_parenthese_type(&mut self, parenthese_type: &mut ParentheseType) {
+        parenthese_type.replace_referenced_tokens(self.code);
+    }
+
+    fn process_function_type(&mut self, function_type: &mut FunctionType) {
+        function_type.replace_referenced_tokens(self.code);
+    }
+
+    fn process_optional_type(&mut self, optional: &mut OptionalType) {
+        optional.replace_referenced_tokens(self.code);
+    }
+
+    fn process_intersection_type(&mut self, intersection: &mut IntersectionType) {
+        intersection.replace_referenced_tokens(self.code);
+    }
+
+    fn process_union_type(&mut self, union: &mut UnionType) {
+        union.replace_referenced_tokens(self.code);
+    }
+
+    fn process_type_pack(&mut self, type_pack: &mut TypePack) {
+        type_pack.replace_referenced_tokens(self.code);
+    }
+
+    fn process_generic_type_pack(&mut self, generic_type_pack: &mut GenericTypePack) {
+        generic_type_pack.replace_referenced_tokens(self.code);
+    }
+
+    fn process_variadic_type_pack(&mut self, variadic_type_pack: &mut VariadicTypePack) {
+        variadic_type_pack.replace_referenced_tokens(self.code);
     }
 }
 

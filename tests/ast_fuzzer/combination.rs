@@ -1,5 +1,6 @@
 use darklua_core::nodes::{BinaryOperator, UnaryOperator};
 
+#[allow(dead_code)]
 pub fn binary_operators() -> impl Iterator<Item = BinaryOperator> {
     [
         BinaryOperator::And,
@@ -22,6 +23,7 @@ pub fn binary_operators() -> impl Iterator<Item = BinaryOperator> {
     .cloned()
 }
 
+#[allow(dead_code)]
 pub fn unary_operators() -> impl Iterator<Item = UnaryOperator> {
     [
         UnaryOperator::Length,

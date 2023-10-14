@@ -97,6 +97,14 @@ pub trait NodeVisitor<T: NodeProcessor> {
         {
             Self::visit_type(r#type, processor);
         }
+
+        if let Some(r#type) = function.mutate_variadic_type() {
+            Self::visit_type(r#type, processor);
+        }
+
+        if let Some(return_type) = function.mutate_return_type() {
+            Self::visit_function_return_type(return_type, processor);
+        }
     }
 
     fn visit_assign_statement(statement: &mut AssignStatement, processor: &mut T) {
@@ -133,6 +141,14 @@ pub trait NodeVisitor<T: NodeProcessor> {
             .filter_map(TypedIdentifier::mutate_type)
         {
             Self::visit_type(r#type, processor);
+        }
+
+        if let Some(r#type) = statement.mutate_variadic_type() {
+            Self::visit_type(r#type, processor);
+        }
+
+        if let Some(return_type) = statement.mutate_return_type() {
+            Self::visit_function_return_type(return_type, processor);
         }
     }
 
@@ -171,6 +187,13 @@ pub trait NodeVisitor<T: NodeProcessor> {
         statement
             .iter_mut_values()
             .for_each(|value| Self::visit_expression(value, processor));
+
+        for r#type in statement
+            .iter_mut_variables()
+            .filter_map(TypedIdentifier::mutate_type)
+        {
+            Self::visit_type(r#type, processor);
+        }
     }
 
     fn visit_local_function(statement: &mut LocalFunctionStatement, processor: &mut T) {
@@ -182,6 +205,14 @@ pub trait NodeVisitor<T: NodeProcessor> {
             .filter_map(TypedIdentifier::mutate_type)
         {
             Self::visit_type(r#type, processor);
+        }
+
+        if let Some(r#type) = statement.mutate_variadic_type() {
+            Self::visit_type(r#type, processor);
+        }
+
+        if let Some(return_type) = statement.mutate_return_type() {
+            Self::visit_function_return_type(return_type, processor);
         }
     }
 
@@ -218,6 +249,39 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
     fn visit_type_declaration(statement: &mut TypeDeclarationStatement, processor: &mut T) {
         processor.process_type_declaration(statement);
+
+        if let Some(generic_parameters) = statement.mutate_generic_parameters() {
+            for parameter in generic_parameters {
+                match parameter {
+                    GenericParameterMutRef::TypeVariable(_) => {}
+                    GenericParameterMutRef::TypeVariableWithDefault(type_variable) => {
+                        Self::visit_type(type_variable.mutate_default_type(), processor);
+                    }
+                    GenericParameterMutRef::GenericTypePack(generic_type_pack) => {
+                        processor.process_generic_type_pack(generic_type_pack);
+                    }
+                    GenericParameterMutRef::GenericTypePackWithDefault(
+                        generic_type_pack_with_default,
+                    ) => {
+                        processor.process_generic_type_pack(
+                            generic_type_pack_with_default.mutate_generic_type_pack(),
+                        );
+
+                        match generic_type_pack_with_default.mutate_default_type() {
+                            GenericTypePackDefault::TypePack(type_pack) => {
+                                Self::visit_type_pack(type_pack, processor);
+                            }
+                            GenericTypePackDefault::VariadicTypePack(variadic_type_pack) => {
+                                Self::visit_variadic_type_pack(variadic_type_pack, processor);
+                            }
+                            GenericTypePackDefault::GenericTypePack(generic_type_pack) => {
+                                processor.process_generic_type_pack(generic_type_pack);
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         Self::visit_type(statement.mutate_type(), processor);
     }
@@ -310,12 +374,18 @@ pub trait NodeVisitor<T: NodeProcessor> {
         match r#type {
             Type::Name(type_name) => Self::visit_type_name(type_name, processor),
             Type::Field(type_field) => {
+                processor.process_type_field(type_field);
+
                 Self::visit_type_name(type_field.mutate_type_name(), processor);
             }
             Type::Array(array) => {
+                processor.process_array_type(array);
+
                 Self::visit_type(array.mutate_element_type(), processor);
             }
             Type::Table(table) => {
+                processor.process_table_type(table);
+
                 for property in table.iter_mut_property_type() {
                     Self::visit_type(property.mutate_type(), processor);
                 }
@@ -325,44 +395,55 @@ pub trait NodeVisitor<T: NodeProcessor> {
                 }
             }
             Type::TypeOf(expression_type) => {
+                processor.process_expression_type(expression_type);
+
                 Self::visit_expression(expression_type.mutate_expression(), processor);
             }
             Type::Parenthese(parenthese) => {
+                processor.process_parenthese_type(parenthese);
+
                 Self::visit_type(parenthese.mutate_inner_type(), processor);
             }
             Type::Function(function) => {
+                processor.process_function_type(function);
+
                 for argument in function.iter_mut_arguments() {
                     Self::visit_type(argument.mutate_type(), processor);
                 }
-                match function.mutate_return_type() {
-                    FunctionReturnType::Type(next_type) => {
-                        Self::visit_type(next_type, processor);
-                    }
-                    FunctionReturnType::TypePack(type_pack) => {
-                        Self::visit_type_pack(type_pack, processor)
-                    }
-                    FunctionReturnType::VariadicTypePack(variadic_type_pack) => {
-                        Self::visit_type(variadic_type_pack.mutate_type(), processor);
-                    }
-                    FunctionReturnType::GenericTypePack(_) => {}
+
+                if let Some(variadic_type) = function.mutate_variadic_argument_type() {
+                    Self::visit_variadic_argument_type(variadic_type, processor);
                 }
+
+                Self::visit_function_return_type(function.mutate_return_type(), processor);
             }
             Type::Optional(optional) => {
+                processor.process_optional_type(optional);
+
                 Self::visit_type(optional.mutate_inner_type(), processor);
             }
             Type::Intersection(intersection) => {
+                processor.process_intersection_type(intersection);
+
                 Self::visit_type(intersection.mutate_left(), processor);
                 Self::visit_type(intersection.mutate_right(), processor);
             }
             Type::Union(union) => {
+                processor.process_union_type(union);
+
                 Self::visit_type(union.mutate_left(), processor);
                 Self::visit_type(union.mutate_right(), processor);
             }
-            Type::True(_) | Type::False(_) | Type::Nil(_) | Type::String(_) => {}
+            Type::String(string) => {
+                processor.process_string_type(string);
+            }
+            Type::True(_) | Type::False(_) | Type::Nil(_) => {}
         }
     }
 
     fn visit_type_name(type_name: &mut TypeName, processor: &mut T) {
+        processor.process_type_name(type_name);
+
         if let Some(type_parameters) = type_name.mutate_type_parameters() {
             for type_parameter in type_parameters {
                 match type_parameter {
@@ -373,22 +454,58 @@ pub trait NodeVisitor<T: NodeProcessor> {
                         Self::visit_type_pack(type_pack, processor);
                     }
                     TypeParameter::VariadicTypePack(variadic_type_pack) => {
-                        Self::visit_type(variadic_type_pack.mutate_type(), processor);
+                        Self::visit_variadic_type_pack(variadic_type_pack, processor);
                     }
-                    TypeParameter::GenericTypePack(_) => {}
+                    TypeParameter::GenericTypePack(generic_type_pack) => {
+                        processor.process_generic_type_pack(generic_type_pack);
+                    }
                 }
             }
         }
     }
 
     fn visit_type_pack(type_pack: &mut TypePack, processor: &mut T) {
+        processor.process_type_pack(type_pack);
+
         for next_type in type_pack.into_iter() {
             Self::visit_type(next_type, processor)
         }
-        if let Some(VariadicArgumentType::VariadicTypePack(variadic_type_pack)) =
-            type_pack.mutate_variadic_type()
-        {
-            Self::visit_type(variadic_type_pack.mutate_type(), processor);
+        if let Some(variadic_type) = type_pack.mutate_variadic_type() {
+            Self::visit_variadic_argument_type(variadic_type, processor);
+        }
+    }
+
+    fn visit_variadic_type_pack(variadic_type_pack: &mut VariadicTypePack, processor: &mut T) {
+        processor.process_variadic_type_pack(variadic_type_pack);
+        Self::visit_type(variadic_type_pack.mutate_type(), processor);
+    }
+
+    fn visit_variadic_argument_type(variadic_type: &mut VariadicArgumentType, processor: &mut T) {
+        match variadic_type {
+            VariadicArgumentType::VariadicTypePack(variadic_type_pack) => {
+                Self::visit_variadic_type_pack(variadic_type_pack, processor);
+            }
+            VariadicArgumentType::GenericTypePack(generic_type_pack) => {
+                processor.process_generic_type_pack(generic_type_pack);
+            }
+        }
+    }
+
+    fn visit_function_return_type(
+        function_return_type: &mut FunctionReturnType,
+        processor: &mut T,
+    ) {
+        match function_return_type {
+            FunctionReturnType::Type(next_type) => {
+                Self::visit_type(next_type, processor);
+            }
+            FunctionReturnType::TypePack(type_pack) => Self::visit_type_pack(type_pack, processor),
+            FunctionReturnType::VariadicTypePack(variadic_type_pack) => {
+                Self::visit_variadic_type_pack(variadic_type_pack, processor);
+            }
+            FunctionReturnType::GenericTypePack(generic_type_pack) => {
+                processor.process_generic_type_pack(generic_type_pack);
+            }
         }
     }
 }

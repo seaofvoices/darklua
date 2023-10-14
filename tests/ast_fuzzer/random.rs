@@ -309,9 +309,8 @@ fn generate_string_content(poisson_lambda: f64) -> String {
                 0123456789\
                 ()[]{}=<>.!?,:;+-*/%^|&#";
 
-    let value = iter::repeat(())
+    iter::repeat(())
         .take(length)
         .map(|()| GEN_CHARSET[rng.gen_range(0..GEN_CHARSET.len())] as char)
-        .collect();
-    value
+        .collect()
 }

@@ -46,6 +46,7 @@ impl Evaluator {
         }
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     pub fn can_return_multiple_values(&self, expression: &Expression) -> bool {
         match expression {
             Expression::Binary(_)
