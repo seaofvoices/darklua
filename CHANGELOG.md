@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* add rule to remove Luau types ([#130](https://github.com/seaofvoices/darklua/pull/130))
 * add support for Luau types ([#129](https://github.com/seaofvoices/darklua/pull/129))
 
 ## 0.10.3

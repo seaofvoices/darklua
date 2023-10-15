@@ -56,7 +56,7 @@ impl TypedIdentifier {
         self.r#type.as_mut()
     }
 
-    pub fn remove_type(mut self) -> Option<Type> {
+    pub fn remove_type(&mut self) -> Option<Type> {
         self.token.take();
         self.r#type.take()
     }

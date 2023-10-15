@@ -149,6 +149,12 @@ impl GenericForStatement {
         self.expressions.len()
     }
 
+    pub fn clear_types(&mut self) {
+        for identifier in &mut self.identifiers {
+            identifier.remove_type();
+        }
+    }
+
     pub fn clear_comments(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();

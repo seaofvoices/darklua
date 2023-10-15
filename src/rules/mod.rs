@@ -16,6 +16,7 @@ mod remove_comments;
 mod remove_compound_assign;
 mod remove_nil_declarations;
 mod remove_spaces;
+mod remove_types;
 mod rename_variables;
 mod replace_referenced_tokens;
 pub(crate) mod require;
@@ -39,6 +40,7 @@ pub use remove_comments::*;
 pub use remove_compound_assign::*;
 pub use remove_nil_declarations::*;
 pub use remove_spaces::*;
+pub use remove_types::*;
 pub use rename_variables::*;
 pub(crate) use replace_referenced_tokens::*;
 pub use rule_property::*;
@@ -219,6 +221,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         REMOVE_METHOD_DEFINITION_RULE_NAME,
         REMOVE_NIL_DECLARATION_RULE_NAME,
         REMOVE_SPACES_RULE_NAME,
+        REMOVE_TYPES_RULE_NAME,
         REMOVE_UNUSED_IF_BRANCH_RULE_NAME,
         REMOVE_UNUSED_WHILE_RULE_NAME,
         RENAME_VARIABLES_RULE_NAME,
@@ -246,6 +249,7 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_METHOD_DEFINITION_RULE_NAME => Box::<RemoveMethodDefinition>::default(),
             REMOVE_NIL_DECLARATION_RULE_NAME => Box::<RemoveNilDeclaration>::default(),
             REMOVE_SPACES_RULE_NAME => Box::<RemoveSpaces>::default(),
+            REMOVE_TYPES_RULE_NAME => Box::<RemoveTypes>::default(),
             REMOVE_UNUSED_IF_BRANCH_RULE_NAME => Box::<RemoveUnusedIfBranch>::default(),
             REMOVE_UNUSED_WHILE_RULE_NAME => Box::<RemoveUnusedWhile>::default(),
             RENAME_VARIABLES_RULE_NAME => Box::<RenameVariables>::default(),

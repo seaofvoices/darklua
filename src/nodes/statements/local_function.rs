@@ -240,6 +240,18 @@ impl LocalFunctionStatement {
         self.parameters.len()
     }
 
+    pub fn clear_types(&mut self) {
+        self.return_type.take();
+        self.variadic_type.take();
+        self.generic_parameters.take();
+        for parameter in &mut self.parameters {
+            parameter.remove_type();
+        }
+        if let Some(tokens) = &mut self.tokens {
+            tokens.variable_arguments_colon.take();
+        }
+    }
+
     pub fn clear_comments(&mut self) {
         self.identifier.clear_comments();
         self.parameters
