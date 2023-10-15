@@ -253,6 +253,12 @@ impl LocalAssignStatement {
         !self.values.is_empty()
     }
 
+    pub fn clear_types(&mut self) {
+        for variable in &mut self.variables {
+            variable.remove_type();
+        }
+    }
+
     pub fn clear_comments(&mut self) {
         self.variables
             .iter_mut()

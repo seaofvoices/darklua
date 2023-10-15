@@ -159,6 +159,10 @@ impl NumericForStatement {
         self.identifier = identifier.into();
     }
 
+    pub fn clear_types(&mut self) {
+        self.identifier.remove_type();
+    }
+
     pub fn clear_comments(&mut self) {
         self.identifier.clear_comments();
         if let Some(tokens) = &mut self.tokens {
