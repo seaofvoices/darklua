@@ -1,4 +1,4 @@
-use crate::nodes::{Block, Expression, Identifier, Token};
+use crate::nodes::{Block, Expression, Token, TypedIdentifier};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NumericForTokens {
@@ -58,7 +58,7 @@ impl NumericForTokens {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NumericForStatement {
-    identifier: Identifier,
+    identifier: TypedIdentifier,
     start: Expression,
     end: Expression,
     step: Option<Expression>,
@@ -67,7 +67,12 @@ pub struct NumericForStatement {
 }
 
 impl NumericForStatement {
-    pub fn new<S: Into<Identifier>, E1: Into<Expression>, E2: Into<Expression>, B: Into<Block>>(
+    pub fn new<
+        S: Into<TypedIdentifier>,
+        E1: Into<Expression>,
+        E2: Into<Expression>,
+        B: Into<Block>,
+    >(
         identifier: S,
         start: E1,
         end: E2,
@@ -140,17 +145,17 @@ impl NumericForStatement {
     }
 
     #[inline]
-    pub fn get_identifier(&self) -> &Identifier {
+    pub fn get_identifier(&self) -> &TypedIdentifier {
         &self.identifier
     }
 
     #[inline]
-    pub fn mutate_identifier(&mut self) -> &mut Identifier {
+    pub fn mutate_identifier(&mut self) -> &mut TypedIdentifier {
         &mut self.identifier
     }
 
     #[inline]
-    pub fn set_identifier<S: Into<Identifier>>(&mut self, identifier: S) {
+    pub fn set_identifier<S: Into<TypedIdentifier>>(&mut self, identifier: S) {
         self.identifier = identifier.into();
     }
 

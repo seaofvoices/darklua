@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 use crate::frontend::DarkluaResult;
 use crate::nodes::{
     Arguments, AssignStatement, Block, DoStatement, Expression, FieldExpression, FunctionCall,
-    Identifier, LastStatement, LocalAssignStatement, Position, ReturnStatement, Statement,
-    TableExpression, Token,
+    FunctionReturnType, Identifier, LastStatement, LocalAssignStatement, Position, ReturnStatement,
+    Statement, TableExpression, Token, Type,
 };
 use crate::process::utils::{generate_identifier, identifier_permutator, CharPermutator};
 use crate::rules::{Context, FlawlessRule, ShiftTokenLine};
@@ -200,6 +200,9 @@ fn last_statement_token(statement: &Statement) -> Option<&Token> {
         Statement::NumericFor(numeric_for) => numeric_for.get_tokens().map(|tokens| &tokens.end),
         Statement::Repeat(repeat) => last_expression_token(repeat.get_condition()),
         Statement::While(while_statement) => while_statement.get_tokens().map(|tokens| &tokens.end),
+        Statement::TypeDeclaration(type_declaration) => {
+            last_type_token(type_declaration.get_type())
+        }
     }
 }
 
@@ -234,6 +237,49 @@ fn last_expression_token(expression: &Expression) -> Option<&Token> {
         | Expression::True(token)
         | Expression::VariableArguments(token) => token.as_ref(),
         Expression::Unary(unary) => last_expression_token(unary.get_expression()),
+        Expression::TypeCast(type_cast) => last_type_token(type_cast.get_type()),
+    }
+}
+
+fn last_type_token(r#type: &Type) -> Option<&Token> {
+    match r#type {
+        Type::Name(name) => {
+            if let Some(type_params) = name.get_type_parameters() {
+                type_params.get_tokens().map(|tokens| &tokens.closing_list)
+            } else {
+                name.get_type_name().get_token()
+            }
+        }
+        Type::Field(field) => {
+            if let Some(type_params) = field.get_type_name().get_type_parameters() {
+                type_params.get_tokens().map(|tokens| &tokens.closing_list)
+            } else {
+                field.get_type_name().get_type_name().get_token()
+            }
+        }
+        Type::True(token) | Type::False(token) | Type::Nil(token) => token.as_ref(),
+        Type::String(string) => string.get_token(),
+        Type::Array(array) => array.get_tokens().map(|tokens| &tokens.closing_brace),
+        Type::Table(table) => table.get_tokens().map(|tokens| &tokens.closing_brace),
+        Type::TypeOf(expression_type) => expression_type
+            .get_tokens()
+            .map(|tokens| &tokens.closing_parenthese),
+        Type::Parenthese(parenthese) => parenthese
+            .get_tokens()
+            .map(|tokens| &tokens.right_parenthese),
+        Type::Function(function) => match function.get_return_type() {
+            FunctionReturnType::Type(return_type) => last_type_token(return_type),
+            FunctionReturnType::TypePack(type_pack) => type_pack
+                .get_tokens()
+                .map(|tokens| &tokens.right_parenthese),
+            FunctionReturnType::GenericTypePack(generic_pack) => generic_pack.get_token(),
+            FunctionReturnType::VariadicTypePack(variadic_pack) => {
+                last_type_token(variadic_pack.get_type())
+            }
+        },
+        Type::Optional(optional) => optional.get_token(),
+        Type::Intersection(intersection) => last_type_token(intersection.get_right()),
+        Type::Union(union) => last_type_token(union.get_right()),
     }
 }
 

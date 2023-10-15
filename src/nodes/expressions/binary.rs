@@ -1,4 +1,4 @@
-use crate::nodes::{Expression, Token};
+use crate::nodes::{Expression, FunctionReturnType, Token, Type};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BinaryOperator {
@@ -28,6 +28,64 @@ fn ends_with_if_expression(expression: &Expression) -> bool {
             Expression::If(_) => break true,
             Expression::Binary(binary) => current = binary.right(),
             Expression::Unary(unary) => current = unary.get_expression(),
+            Expression::Call(_)
+            | Expression::False(_)
+            | Expression::Field(_)
+            | Expression::Function(_)
+            | Expression::Identifier(_)
+            | Expression::Index(_)
+            | Expression::Nil(_)
+            | Expression::Number(_)
+            | Expression::Parenthese(_)
+            | Expression::String(_)
+            | Expression::Table(_)
+            | Expression::True(_)
+            | Expression::VariableArguments(_)
+            | Expression::TypeCast(_) => break false,
+        }
+    }
+}
+
+#[inline]
+fn ends_with_type_cast_to_type_name_without_type_parameters(expression: &Expression) -> bool {
+    let mut current = expression;
+
+    loop {
+        match current {
+            Expression::If(if_statement) => current = if_statement.get_else_result(),
+            Expression::Binary(binary) => current = binary.right(),
+            Expression::Unary(unary) => current = unary.get_expression(),
+            Expression::TypeCast(type_cast) => {
+                let mut current_type = type_cast.get_type();
+
+                break loop {
+                    match current_type {
+                        Type::Name(name) => break !name.has_type_parameters(),
+                        Type::Field(field) => break !field.get_type_name().has_type_parameters(),
+                        Type::Function(function) => {
+                            current_type = match function.get_return_type() {
+                                FunctionReturnType::Type(r#type) => r#type,
+                                FunctionReturnType::TypePack(_)
+                                | FunctionReturnType::GenericTypePack(_) => break false,
+                                FunctionReturnType::VariadicTypePack(variadic_type) => {
+                                    variadic_type.get_type()
+                                }
+                            }
+                        }
+                        Type::Intersection(intersection) => current_type = intersection.get_right(),
+                        Type::Union(union) => current_type = union.get_right(),
+                        Type::True(_)
+                        | Type::False(_)
+                        | Type::Nil(_)
+                        | Type::String(_)
+                        | Type::Array(_)
+                        | Type::Table(_)
+                        | Type::TypeOf(_)
+                        | Type::Parenthese(_)
+                        | Type::Optional(_) => break false,
+                    }
+                };
+            }
             Expression::Call(_)
             | Expression::False(_)
             | Expression::Field(_)
@@ -79,7 +137,10 @@ impl BinaryOperator {
             Expression::If(_) => true,
             _ => false,
         };
-        needs_parentheses || ends_with_if_expression(left)
+        needs_parentheses
+            || ends_with_if_expression(left)
+            || (matches!(self, BinaryOperator::LowerThan)
+                && ends_with_type_cast_to_type_name_without_type_parameters(left))
     }
 
     pub fn right_needs_parentheses(&self, right: &Expression) -> bool {

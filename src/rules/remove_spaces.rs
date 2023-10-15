@@ -74,6 +74,10 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
         statement.clear_whitespaces();
     }
 
+    fn process_type_declaration(&mut self, type_declaration: &mut TypeDeclarationStatement) {
+        type_declaration.clear_whitespaces();
+    }
+
     fn process_expression(&mut self, expression: &mut Expression) {
         match expression {
             Expression::False(token)
@@ -95,7 +99,8 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
             | Expression::Parenthese(_)
             | Expression::String(_)
             | Expression::Table(_)
-            | Expression::Unary(_) => {}
+            | Expression::Unary(_)
+            | Expression::TypeCast(_) => {}
         }
     }
 
@@ -143,7 +148,78 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
         unary.clear_whitespaces();
     }
 
+    fn process_type_cast_expression(&mut self, type_cast: &mut TypeCastExpression) {
+        type_cast.clear_whitespaces();
+    }
+
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}
+
+    fn process_type(&mut self, r#type: &mut Type) {
+        match r#type {
+            Type::True(token) | Type::False(token) | Type::Nil(token) => {
+                if let Some(token) = token {
+                    token.clear_whitespaces();
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn process_type_name(&mut self, type_name: &mut TypeName) {
+        type_name.clear_whitespaces();
+    }
+
+    fn process_type_field(&mut self, type_field: &mut TypeField) {
+        type_field.clear_whitespaces();
+    }
+
+    fn process_string_type(&mut self, string_type: &mut StringType) {
+        string_type.clear_whitespaces();
+    }
+
+    fn process_array_type(&mut self, array: &mut ArrayType) {
+        array.clear_whitespaces();
+    }
+
+    fn process_table_type(&mut self, table: &mut TableType) {
+        table.clear_whitespaces();
+    }
+
+    fn process_expression_type(&mut self, expression_type: &mut ExpressionType) {
+        expression_type.clear_whitespaces();
+    }
+
+    fn process_parenthese_type(&mut self, parenthese_type: &mut ParentheseType) {
+        parenthese_type.clear_whitespaces();
+    }
+
+    fn process_function_type(&mut self, function_type: &mut FunctionType) {
+        function_type.clear_whitespaces();
+    }
+
+    fn process_optional_type(&mut self, optional: &mut OptionalType) {
+        optional.clear_whitespaces();
+    }
+
+    fn process_intersection_type(&mut self, intersection: &mut IntersectionType) {
+        intersection.clear_whitespaces();
+    }
+
+    fn process_union_type(&mut self, union: &mut UnionType) {
+        union.clear_whitespaces();
+    }
+
+    fn process_type_pack(&mut self, type_pack: &mut TypePack) {
+        type_pack.clear_whitespaces();
+    }
+
+    fn process_generic_type_pack(&mut self, generic_type_pack: &mut GenericTypePack) {
+        generic_type_pack.clear_whitespaces();
+    }
+
+    fn process_variadic_type_pack(&mut self, variadic_type_pack: &mut VariadicTypePack) {
+        variadic_type_pack.clear_whitespaces();
+    }
 }
 
 pub const REMOVE_SPACES_RULE_NAME: &str = "remove_spaces";

@@ -1,5 +1,5 @@
 use crate::generator::{utils, LuaGenerator};
-use crate::nodes::{self, Identifier};
+use crate::nodes;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StatementType {
@@ -15,6 +15,7 @@ enum StatementType {
     NumericFor,
     Repeat,
     While,
+    TypeDeclaration,
     Return,
     Break,
     Continue,
@@ -36,6 +37,7 @@ impl From<&nodes::Statement> for StatementType {
             NumericFor(_) => Self::NumericFor,
             Repeat(_) => Self::Repeat,
             While(_) => Self::While,
+            TypeDeclaration(_) => Self::TypeDeclaration,
         }
     }
 }
@@ -159,13 +161,18 @@ impl ReadableLuaGenerator {
 
     #[inline]
     fn needs_space(&self, next_character: char) -> bool {
-        utils::is_relevant_for_spacing(&next_character)
-            && self
-                .output
-                .chars()
-                .last()
-                .filter(utils::is_relevant_for_spacing)
-                .is_some()
+        if let Some(previous) = self.output.chars().last() {
+            utils::should_break_with_space(previous, next_character)
+        } else {
+            false
+        }
+        // utils::is_relevant_for_spacing(&next_character)
+        //     && self
+        //         .output
+        //         .chars()
+        //         .last()
+        //         .filter(utils::is_relevant_for_spacing)
+        //         .is_some()
     }
 
     #[inline]
@@ -254,10 +261,21 @@ impl ReadableLuaGenerator {
         }
     }
 
-    fn write_function_parameters(&mut self, parameters: &[Identifier], is_variadic: bool) {
-        let mut parameters_length = parameters
-            .iter()
-            .fold(0, |acc, parameter| acc + parameter.get_name().len());
+    fn write_function_parameters(
+        &mut self,
+        parameters: &[nodes::TypedIdentifier],
+        is_variadic: bool,
+        variadic_type: Option<&nodes::Type>,
+    ) {
+        let mut parameters_length = parameters.iter().fold(0, |acc, parameter| {
+            acc + parameter.get_name().len()
+                + if parameter.has_type() {
+                    // put a random estimation of the type probable length
+                    10
+                } else {
+                    0
+                }
+        });
         // add a comma and a space between each parameter
         parameters_length += parameters.len() * 2;
 
@@ -274,7 +292,7 @@ impl ReadableLuaGenerator {
 
         if self.fits_on_current_line(parameters_length) {
             parameters.iter().enumerate().for_each(|(index, variable)| {
-                self.raw_push_str(variable.get_name());
+                self.write_typed_identifier(variable);
 
                 if index != last_index {
                     self.raw_push_char(',');
@@ -288,6 +306,12 @@ impl ReadableLuaGenerator {
                     self.raw_push_char(' ');
                 };
                 self.raw_push_str("...");
+
+                if let Some(variadic_type) = variadic_type {
+                    self.raw_push_char(':');
+                    self.raw_push_char(' ');
+                    self.write_type(r#variadic_type);
+                }
             };
         } else {
             self.push_indentation();
@@ -295,7 +319,7 @@ impl ReadableLuaGenerator {
             parameters.iter().enumerate().for_each(|(index, variable)| {
                 self.push_new_line();
                 self.write_indentation();
-                self.raw_push_str(variable.get_name());
+                self.write_typed_identifier(variable);
 
                 if index != last_index {
                     self.raw_push_char(',');
@@ -309,6 +333,12 @@ impl ReadableLuaGenerator {
                 self.push_new_line();
                 self.write_indentation();
                 self.raw_push_str("...");
+
+                if let Some(variadic_type) = variadic_type {
+                    self.raw_push_char(':');
+                    self.raw_push_char(' ');
+                    self.write_type(r#variadic_type);
+                }
             };
 
             self.pop_indentation();
@@ -324,6 +354,47 @@ impl ReadableLuaGenerator {
             Field(field) => self.write_field(field),
             Index(index) => self.write_index(index),
         }
+    }
+
+    fn write_typed_identifier(&mut self, typed_identifier: &nodes::TypedIdentifier) {
+        self.push_str(typed_identifier.get_name());
+
+        if let Some(r#type) = typed_identifier.get_type() {
+            self.push_char(':');
+            self.push_space();
+            self.write_type(r#type);
+        }
+    }
+
+    fn write_function_return_type(&mut self, return_type: &nodes::FunctionReturnType) {
+        match return_type {
+            nodes::FunctionReturnType::Type(r#type) => self.write_type(r#type),
+            nodes::FunctionReturnType::TypePack(type_pack) => self.write_type_pack(type_pack),
+            nodes::FunctionReturnType::VariadicTypePack(variadic_type_pack) => {
+                self.write_variadic_type_pack(variadic_type_pack);
+            }
+            nodes::FunctionReturnType::GenericTypePack(generic_type_pack) => {
+                self.write_generic_type_pack(generic_type_pack);
+            }
+        }
+    }
+
+    fn write_function_return_type_suffix(&mut self, return_type: &nodes::FunctionReturnType) {
+        self.raw_push_char(':');
+        self.raw_push_char(' ');
+        self.write_function_return_type(return_type);
+    }
+
+    fn write_expression_in_parentheses(&mut self, expression: &nodes::Expression) {
+        self.push_char('(');
+        self.write_expression(expression);
+        self.push_char(')');
+    }
+
+    fn write_type_in_parentheses(&mut self, r#type: &nodes::Type) {
+        self.push_char('(');
+        self.write_type(r#type);
+        self.push_char(')');
     }
 }
 
@@ -442,7 +513,7 @@ impl LuaGenerator for ReadableLuaGenerator {
         let last_variable_index = variables.len().saturating_sub(1);
 
         variables.iter().enumerate().for_each(|(index, variable)| {
-            self.raw_push_str(variable.get_name());
+            self.write_typed_identifier(variable);
 
             if index != last_variable_index {
                 self.raw_push_char(',');
@@ -488,8 +559,16 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.raw_push_char('(');
 
         let parameters = function.get_parameters();
-        self.write_function_parameters(parameters, function.is_variadic());
+        self.write_function_parameters(
+            parameters,
+            function.is_variadic(),
+            function.get_variadic_type(),
+        );
         self.raw_push_char(')');
+
+        if let Some(return_type) = function.get_return_type() {
+            self.write_function_return_type_suffix(return_type);
+        }
 
         let block = function.get_block();
 
@@ -511,7 +590,7 @@ impl LuaGenerator for ReadableLuaGenerator {
             .iter()
             .enumerate()
             .for_each(|(index, identifier)| {
-                self.raw_push_str(identifier.get_name());
+                self.write_typed_identifier(identifier);
 
                 if index != last_identifier_index {
                     self.raw_push_char(',');
@@ -550,8 +629,10 @@ impl LuaGenerator for ReadableLuaGenerator {
     fn write_numeric_for(&mut self, numeric_for: &nodes::NumericForStatement) {
         self.push_str("for ");
 
-        self.raw_push_str(numeric_for.get_identifier().get_name());
+        self.write_typed_identifier(numeric_for.get_identifier());
+        self.raw_push_char(' ');
         self.raw_push_char('=');
+        self.raw_push_char(' ');
         self.write_expression(numeric_for.get_start());
         self.raw_push_char(',');
         self.raw_push_char(' ');
@@ -616,8 +697,16 @@ impl LuaGenerator for ReadableLuaGenerator {
         }
 
         self.raw_push_char('(');
-        self.write_function_parameters(function.get_parameters(), function.is_variadic());
+        self.write_function_parameters(
+            function.get_parameters(),
+            function.is_variadic(),
+            function.get_variadic_type(),
+        );
         self.raw_push_char(')');
+
+        if let Some(return_type) = function.get_return_type() {
+            self.write_function_return_type_suffix(return_type);
+        }
 
         let block = function.get_block();
 
@@ -677,28 +766,78 @@ impl LuaGenerator for ReadableLuaGenerator {
         }
     }
 
-    fn write_expression(&mut self, expression: &nodes::Expression) {
-        use nodes::Expression::*;
-        match expression {
-            Binary(binary) => self.write_binary_expression(binary),
-            Call(call) => self.write_function_call(call),
-            False(_) => self.push_str("false"),
-            Field(field) => self.write_field(field),
-            Function(function) => self.write_function(function),
-            Identifier(identifier) => self.write_identifier(identifier),
-            If(if_expression) => self.write_if_expression(if_expression),
-            Index(index) => self.write_index(index),
-            Nil(_) => self.push_str("nil"),
-            Number(number) => self.write_number(number),
-            Parenthese(parenthese) => self.write_parenthese(parenthese),
-            String(string) => self.write_string(string),
-            Table(table) => self.write_table(table),
-            True(_) => self.push_str("true"),
-            Unary(unary) => self.write_unary_expression(unary),
-            VariableArguments(_) => {
-                self.push_str_and_break_if("...", utils::break_variable_arguments);
-            }
+    fn write_type_declaration_statement(&mut self, statement: &nodes::TypeDeclarationStatement) {
+        if statement.is_exported() {
+            self.push_str("export");
         }
+        self.push_can_add_new_line(false);
+        self.push_str("type");
+
+        self.write_identifier(statement.get_name());
+
+        if let Some(generic_parameters) = statement
+            .get_generic_parameters()
+            .filter(|generic_parameters| !generic_parameters.is_empty())
+        {
+            self.push_char('<');
+            let last_index = generic_parameters.len().saturating_sub(1);
+            for (i, parameter) in generic_parameters.iter().enumerate() {
+                use nodes::GenericParameterRef;
+
+                match parameter {
+                    GenericParameterRef::TypeVariable(identifier) => {
+                        self.write_identifier(identifier);
+                    }
+                    GenericParameterRef::TypeVariableWithDefault(identifier_with_default) => {
+                        self.write_identifier(identifier_with_default.get_type_variable());
+                        self.push_char('=');
+                        self.write_type(identifier_with_default.get_default_type());
+                    }
+                    GenericParameterRef::GenericTypePack(generic_type_pack) => {
+                        self.write_generic_type_pack(generic_type_pack);
+                    }
+                    GenericParameterRef::GenericTypePackWithDefault(generic_pack_with_default) => {
+                        self.write_generic_type_pack(
+                            generic_pack_with_default.get_generic_type_pack(),
+                        );
+                        self.push_char('=');
+                        self.write_generic_type_pack_default(
+                            generic_pack_with_default.get_default_type(),
+                        );
+                    }
+                }
+
+                if i != last_index {
+                    self.push_char(',');
+                    self.push_char(' ');
+                }
+            }
+            self.push_char('>');
+        }
+
+        self.push_char(' ');
+        self.push_char('=');
+        self.push_char(' ');
+
+        self.pop_can_add_new_line();
+
+        self.write_type(statement.get_type());
+    }
+
+    fn write_false_expression(&mut self, _token: &Option<nodes::Token>) {
+        self.push_str("false");
+    }
+
+    fn write_true_expression(&mut self, _token: &Option<nodes::Token>) {
+        self.push_str("true");
+    }
+
+    fn write_nil_expression(&mut self, _token: &Option<nodes::Token>) {
+        self.push_str("nil");
+    }
+
+    fn write_variable_arguments_expression(&mut self, _token: &Option<nodes::Token>) {
+        self.push_str_and_break_if("...", utils::break_variable_arguments);
     }
 
     fn write_binary_expression(&mut self, binary: &nodes::BinaryExpression) {
@@ -707,9 +846,7 @@ impl LuaGenerator for ReadableLuaGenerator {
         let right = binary.right();
 
         if operator.left_needs_parentheses(left) {
-            self.push_char('(');
-            self.write_expression(left);
-            self.push_char(')');
+            self.write_expression_in_parentheses(left);
         } else {
             self.write_expression(left);
         }
@@ -719,9 +856,7 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.push_space();
 
         if operator.right_needs_parentheses(right) {
-            self.push_char('(');
-            self.write_expression(right);
-            self.push_char(')');
+            self.write_expression_in_parentheses(right);
         } else {
             self.write_expression(right);
         }
@@ -740,9 +875,7 @@ impl LuaGenerator for ReadableLuaGenerator {
 
         match expression {
             Expression::Binary(binary) if !binary.operator().precedes_unary_expression() => {
-                self.push_char('(');
-                self.write_expression(expression);
-                self.push_char(')');
+                self.write_expression_in_parentheses(expression);
             }
             _ => self.write_expression(expression),
         }
@@ -752,8 +885,16 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.push_str("function(");
 
         let parameters = function.get_parameters();
-        self.write_function_parameters(parameters, function.is_variadic());
+        self.write_function_parameters(
+            parameters,
+            function.is_variadic(),
+            function.get_variadic_type(),
+        );
         self.raw_push_char(')');
+
+        if let Some(return_type) = function.get_return_type() {
+            self.write_function_return_type_suffix(return_type);
+        }
 
         let block = function.get_block();
 
@@ -922,7 +1063,7 @@ impl LuaGenerator for ReadableLuaGenerator {
     }
 
     fn write_string(&mut self, string: &nodes::StringExpression) {
-        let result = utils::write_string(string);
+        let result = utils::write_string(string.get_value());
         if result.starts_with('[') {
             self.push_str_and_break_if(&result, utils::break_long_string);
         } else {
@@ -942,5 +1083,246 @@ impl LuaGenerator for ReadableLuaGenerator {
 
         self.pop_can_add_new_line();
         self.push_char(')');
+    }
+
+    fn write_type_cast(&mut self, type_cast: &nodes::TypeCastExpression) {
+        let inner_expression = type_cast.get_expression();
+
+        if nodes::TypeCastExpression::needs_parentheses(inner_expression) {
+            self.push_char('(');
+            self.push_can_add_new_line(false);
+            self.write_expression(inner_expression);
+            self.pop_can_add_new_line();
+            self.push_char(')');
+        } else {
+            self.write_expression(inner_expression);
+        }
+
+        self.push_can_add_new_line(false);
+        self.push_str("::");
+        self.write_type(type_cast.get_type());
+        self.pop_can_add_new_line();
+    }
+
+    fn write_type_name(&mut self, type_name: &nodes::TypeName) {
+        self.write_identifier(type_name.get_type_name());
+        if let Some(parameters) = type_name.get_type_parameters() {
+            self.push_char('<');
+            self.push_can_add_new_line(false);
+            let last_index = parameters.len().saturating_sub(1);
+            for (index, parameter) in parameters.iter().enumerate() {
+                self.write_type_parameter(parameter);
+                if index != last_index {
+                    self.push_char(',');
+                    self.push_char(' ');
+                }
+            }
+
+            self.pop_can_add_new_line();
+            self.push_char('>');
+        }
+    }
+
+    fn write_type_field(&mut self, type_field: &nodes::TypeField) {
+        self.write_identifier(type_field.get_namespace());
+        self.push_char('.');
+        self.write_type_name(type_field.get_type_name());
+    }
+
+    fn write_true_type(&mut self, _: &Option<nodes::Token>) {
+        self.push_str("true");
+    }
+
+    fn write_false_type(&mut self, _: &Option<nodes::Token>) {
+        self.push_str("false");
+    }
+
+    fn write_nil_type(&mut self, _: &Option<nodes::Token>) {
+        self.push_str("nil");
+    }
+
+    fn write_string_type(&mut self, string_type: &nodes::StringType) {
+        let result = utils::write_string(string_type.get_value());
+        if result.starts_with('[') {
+            self.push_str_and_break_if(&result, utils::break_long_string);
+        } else {
+            self.push_str(&result);
+        }
+    }
+
+    fn write_array_type(&mut self, array: &nodes::ArrayType) {
+        self.push_char('{');
+        self.write_type(array.get_element_type());
+        self.push_char('}');
+    }
+
+    fn write_table_type(&mut self, table_type: &nodes::TableType) {
+        self.push_char('{');
+
+        let last_index = table_type.property_len().saturating_sub(1);
+        for (index, property) in table_type.iter_property_type().enumerate() {
+            self.write_identifier(property.get_identifier());
+            self.push_char(':');
+            self.write_type(property.get_type());
+            if index != last_index {
+                self.push_char(',');
+            }
+        }
+
+        if let Some(indexer) = table_type.get_indexer_type() {
+            if table_type.property_len() > 0 {
+                self.push_char(',');
+            }
+            self.push_char('[');
+            self.write_type(indexer.get_key_type());
+            self.push_char(']');
+            self.push_char(':');
+            self.write_type(indexer.get_value_type());
+        }
+
+        self.push_char('}');
+    }
+
+    fn write_expression_type(&mut self, expression_type: &nodes::ExpressionType) {
+        self.push_str("typeof(");
+        self.write_expression(expression_type.get_expression());
+        self.push_char(')');
+    }
+
+    fn write_parenthese_type(&mut self, parenthese_type: &nodes::ParentheseType) {
+        self.write_type_in_parentheses(parenthese_type.get_inner_type());
+    }
+
+    fn write_function_type(&mut self, function_type: &nodes::FunctionType) {
+        if let Some(generic_parameters) = function_type
+            .get_generic_parameters()
+            .filter(|generic_parameters| !generic_parameters.is_empty())
+        {
+            self.push_char('<');
+            let mut insert_comma = false;
+            for type_variable in generic_parameters.iter_type_variable() {
+                if insert_comma {
+                    self.push_char(',');
+                } else {
+                    insert_comma = true;
+                }
+                self.write_identifier(type_variable);
+            }
+            for generic_type_pack in generic_parameters.iter_generic_type_pack() {
+                if insert_comma {
+                    self.push_char(',');
+                } else {
+                    insert_comma = true;
+                }
+                self.write_generic_type_pack(generic_type_pack);
+            }
+            self.push_char('>');
+        }
+
+        self.push_char('(');
+
+        let last_index = function_type.argument_len().saturating_sub(1);
+
+        for (index, argument) in function_type.iter_arguments().enumerate() {
+            if let Some(name) = argument.get_name() {
+                self.write_identifier(name);
+                self.push_char(':');
+            }
+            self.write_type(argument.get_type());
+
+            if index != last_index {
+                self.push_char(',');
+                self.push_space();
+            }
+        }
+
+        if let Some(variadic_argument_type) = function_type.get_variadic_argument_type() {
+            if function_type.argument_len() > 0 {
+                self.push_char(',');
+                self.push_space();
+            }
+            self.write_variadic_argument_type(variadic_argument_type);
+        }
+
+        self.push_str(") -> ");
+        self.write_function_return_type(function_type.get_return_type());
+    }
+
+    fn write_optional_type(&mut self, optional: &nodes::OptionalType) {
+        let inner_type = optional.get_inner_type();
+        if nodes::OptionalType::needs_parentheses(inner_type) {
+            self.write_type_in_parentheses(inner_type);
+        } else {
+            self.write_type(inner_type);
+        }
+        self.push_char('?');
+    }
+
+    fn write_intersection_type(&mut self, intersection: &nodes::IntersectionType) {
+        let left = intersection.get_left();
+        if nodes::IntersectionType::left_needs_parentheses(left) {
+            self.write_type_in_parentheses(left);
+        } else {
+            self.write_type(left);
+        }
+
+        self.push_char('&');
+
+        let right = intersection.get_right();
+        if nodes::IntersectionType::right_needs_parentheses(right) {
+            self.write_type_in_parentheses(right);
+        } else {
+            self.write_type(right);
+        }
+    }
+
+    fn write_union_type(&mut self, union: &nodes::UnionType) {
+        let left = union.get_left();
+        if nodes::UnionType::left_needs_parentheses(left) {
+            self.write_type_in_parentheses(left);
+        } else {
+            self.write_type(left);
+        }
+
+        self.push_char('|');
+
+        let right = union.get_right();
+        if nodes::UnionType::right_needs_parentheses(right) {
+            self.write_type_in_parentheses(right);
+        } else {
+            self.write_type(right);
+        }
+    }
+
+    fn write_type_pack(&mut self, type_pack: &nodes::TypePack) {
+        self.push_char('(');
+
+        let last_index = type_pack.len().saturating_sub(1);
+
+        for (index, r#type) in type_pack.into_iter().enumerate() {
+            self.write_type(r#type);
+            if index != last_index {
+                self.push_char(',');
+            }
+        }
+
+        if let Some(variadic_argument_type) = type_pack.get_variadic_type() {
+            if !type_pack.is_empty() {
+                self.push_char(',');
+            }
+            self.write_variadic_argument_type(variadic_argument_type);
+        }
+
+        self.push_char(')');
+    }
+
+    fn write_variadic_type_pack(&mut self, variadic_type_pack: &nodes::VariadicTypePack) {
+        self.push_str("...");
+        self.write_type(variadic_type_pack.get_type());
+    }
+
+    fn write_generic_type_pack(&mut self, generic_type_pack: &nodes::GenericTypePack) {
+        self.write_identifier(generic_type_pack.get_name());
+        self.push_str("...");
     }
 }

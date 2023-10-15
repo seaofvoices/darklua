@@ -61,7 +61,10 @@ impl GroupLocalProcessor {
             return false;
         }
 
-        let mut find_variables = FindVariables::from(first.get_variables());
+        let mut find_variables: FindVariables = first
+            .iter_variables()
+            .map(|variable| variable.get_name())
+            .collect();
 
         next.iter_mut_values().all(|expression| {
             DefaultVisitor::visit_expression(expression, &mut find_variables);

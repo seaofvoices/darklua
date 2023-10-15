@@ -82,6 +82,10 @@ impl NodeProcessor for Processor {
         statement.shift_token_line(self.shift_amount);
     }
 
+    fn process_type_declaration(&mut self, type_declaration: &mut TypeDeclarationStatement) {
+        type_declaration.shift_token_line(self.shift_amount);
+    }
+
     fn process_expression(&mut self, expression: &mut Expression) {
         match expression {
             Expression::False(token)
@@ -103,7 +107,8 @@ impl NodeProcessor for Processor {
             | Expression::Parenthese(_)
             | Expression::String(_)
             | Expression::Table(_)
-            | Expression::Unary(_) => {}
+            | Expression::Unary(_)
+            | Expression::TypeCast(_) => {}
         }
     }
 
@@ -151,7 +156,78 @@ impl NodeProcessor for Processor {
         unary.shift_token_line(self.shift_amount);
     }
 
+    fn process_type_cast_expression(&mut self, type_cast: &mut TypeCastExpression) {
+        type_cast.shift_token_line(self.shift_amount);
+    }
+
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}
+
+    fn process_type(&mut self, r#type: &mut Type) {
+        match r#type {
+            Type::True(token) | Type::False(token) | Type::Nil(token) => {
+                if let Some(token) = token {
+                    token.shift_token_line(self.shift_amount);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn process_type_name(&mut self, type_name: &mut TypeName) {
+        type_name.shift_token_line(self.shift_amount);
+    }
+
+    fn process_type_field(&mut self, type_field: &mut TypeField) {
+        type_field.shift_token_line(self.shift_amount);
+    }
+
+    fn process_string_type(&mut self, string_type: &mut StringType) {
+        string_type.shift_token_line(self.shift_amount);
+    }
+
+    fn process_array_type(&mut self, array: &mut ArrayType) {
+        array.shift_token_line(self.shift_amount);
+    }
+
+    fn process_table_type(&mut self, table: &mut TableType) {
+        table.shift_token_line(self.shift_amount);
+    }
+
+    fn process_expression_type(&mut self, expression_type: &mut ExpressionType) {
+        expression_type.shift_token_line(self.shift_amount);
+    }
+
+    fn process_parenthese_type(&mut self, parenthese_type: &mut ParentheseType) {
+        parenthese_type.shift_token_line(self.shift_amount);
+    }
+
+    fn process_function_type(&mut self, function_type: &mut FunctionType) {
+        function_type.shift_token_line(self.shift_amount);
+    }
+
+    fn process_optional_type(&mut self, optional: &mut OptionalType) {
+        optional.shift_token_line(self.shift_amount);
+    }
+
+    fn process_intersection_type(&mut self, intersection: &mut IntersectionType) {
+        intersection.shift_token_line(self.shift_amount);
+    }
+
+    fn process_union_type(&mut self, union: &mut UnionType) {
+        union.shift_token_line(self.shift_amount);
+    }
+
+    fn process_type_pack(&mut self, type_pack: &mut TypePack) {
+        type_pack.shift_token_line(self.shift_amount);
+    }
+
+    fn process_generic_type_pack(&mut self, generic_type_pack: &mut GenericTypePack) {
+        generic_type_pack.shift_token_line(self.shift_amount);
+    }
+
+    fn process_variadic_type_pack(&mut self, variadic_type_pack: &mut VariadicTypePack) {
+        variadic_type_pack.shift_token_line(self.shift_amount);
+    }
 }
 
 pub const SHIFT_TOKEN_LINE: &str = "shift_token_line";

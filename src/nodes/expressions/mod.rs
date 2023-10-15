@@ -8,6 +8,7 @@ mod parenthese;
 mod prefix;
 mod string;
 mod table;
+mod type_cast;
 mod unary;
 
 pub use binary::*;
@@ -20,6 +21,7 @@ pub use parenthese::*;
 pub use prefix::*;
 pub use string::*;
 pub use table::*;
+pub use type_cast::*;
 pub use unary::*;
 
 use crate::nodes::{FunctionCall, Identifier, Token, Variable};
@@ -44,6 +46,7 @@ pub enum Expression {
     True(Option<Token>),
     Unary(Box<UnaryExpression>),
     VariableArguments(Option<Token>),
+    TypeCast(TypeCastExpression),
 }
 
 impl Expression {
@@ -284,12 +287,27 @@ impl From<UnaryExpression> for Expression {
     }
 }
 
+impl From<TypeCastExpression> for Expression {
+    fn from(type_cast: TypeCastExpression) -> Self {
+        Self::TypeCast(type_cast)
+    }
+}
+
 impl From<Variable> for Expression {
     fn from(variable: Variable) -> Self {
         match variable {
             Variable::Identifier(identifier) => Self::Identifier(identifier),
             Variable::Field(field) => Self::Field(field),
             Variable::Index(index) => Self::Index(index),
+        }
+    }
+}
+
+impl<T: Into<Expression>> From<Option<T>> for Expression {
+    fn from(value: Option<T>) -> Self {
+        match value {
+            None => Self::nil(),
+            Some(value) => value.into(),
         }
     }
 }

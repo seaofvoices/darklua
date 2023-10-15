@@ -20,6 +20,7 @@ pub trait NodeProcessor {
     fn process_numeric_for_statement(&mut self, _: &mut NumericForStatement) {}
     fn process_repeat_statement(&mut self, _: &mut RepeatStatement) {}
     fn process_while_statement(&mut self, _: &mut WhileStatement) {}
+    fn process_type_declaration(&mut self, _: &mut TypeDeclarationStatement) {}
 
     fn process_variable(&mut self, _: &mut Variable) {}
 
@@ -37,4 +38,23 @@ pub trait NodeProcessor {
     fn process_string_expression(&mut self, _: &mut StringExpression) {}
     fn process_table_expression(&mut self, _: &mut TableExpression) {}
     fn process_unary_expression(&mut self, _: &mut UnaryExpression) {}
+    fn process_type_cast_expression(&mut self, _: &mut TypeCastExpression) {}
+
+    fn process_type(&mut self, _: &mut Type) {}
+
+    fn process_type_name(&mut self, _: &mut TypeName) {}
+    fn process_type_field(&mut self, _: &mut TypeField) {}
+    fn process_string_type(&mut self, _: &mut StringType) {}
+    fn process_array_type(&mut self, _: &mut ArrayType) {}
+    fn process_table_type(&mut self, _: &mut TableType) {}
+    fn process_expression_type(&mut self, _: &mut ExpressionType) {}
+    fn process_parenthese_type(&mut self, _: &mut ParentheseType) {}
+    fn process_function_type(&mut self, _: &mut FunctionType) {}
+    fn process_optional_type(&mut self, _: &mut OptionalType) {}
+    fn process_intersection_type(&mut self, _: &mut IntersectionType) {}
+    fn process_union_type(&mut self, _: &mut UnionType) {}
+
+    fn process_type_pack(&mut self, _: &mut TypePack) {}
+    fn process_generic_type_pack(&mut self, _: &mut GenericTypePack) {}
+    fn process_variadic_type_pack(&mut self, _: &mut VariadicTypePack) {}
 }

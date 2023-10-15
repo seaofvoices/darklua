@@ -1,0 +1,5 @@
+---
+source: src/generator/mod.rs
+expression: generator.into_string()
+---
+type Fn<T, R...=...string> =(T)->R...

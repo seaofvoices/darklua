@@ -35,7 +35,8 @@ impl From<Expression> for Prefix {
             | Expression::Table(_)
             | Expression::True(_)
             | Expression::Unary(_)
-            | Expression::VariableArguments(_) => {}
+            | Expression::VariableArguments(_)
+            | Expression::TypeCast(_) => {}
         }
         Prefix::Parenthese(ParentheseExpression::new(expression))
     }

@@ -1,3 +1,5 @@
+use std::iter::FromIterator;
+
 use crate::{nodes::Identifier, process::NodeProcessor};
 
 /// A processor to find usage of a given set of identifiers.
@@ -10,7 +12,7 @@ use crate::{nodes::Identifier, process::NodeProcessor};
 /// # use darklua_core::process::processors::FindVariables;
 /// # use darklua_core::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 /// let variables = vec!["foo".to_owned()];
-/// let mut find_foo = FindVariables::from(&variables);
+/// let mut find_foo: FindVariables = variables.iter().collect();
 ///
 /// let mut foo_expression = Expression::identifier("foo");
 /// DefaultVisitor::visit_expression(&mut foo_expression, &mut find_foo);
@@ -24,7 +26,7 @@ use crate::{nodes::Identifier, process::NodeProcessor};
 /// # use darklua_core::process::processors::FindVariables;
 /// # use darklua_core::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 /// # let variables = vec!["foo".to_owned()];
-/// # let mut find_foo = FindVariables::from(&variables);
+/// # let mut find_foo: FindVariables = variables.iter().collect();
 /// let mut bar_expression = Expression::identifier("bar");
 /// DefaultVisitor::visit_expression(&mut bar_expression, &mut find_foo);
 ///
@@ -42,22 +44,10 @@ impl<'a> FindVariables<'a> {
     }
 }
 
-impl<'a> From<&'a Vec<String>> for FindVariables<'a> {
-    fn from(variables: &'a Vec<String>) -> Self {
+impl<'a> FromIterator<&'a String> for FindVariables<'a> {
+    fn from_iter<T: IntoIterator<Item = &'a String>>(iter: T) -> Self {
         Self {
-            variables: variables.iter().collect(),
-            usage_found: false,
-        }
-    }
-}
-
-impl<'a> From<&'a Vec<Identifier>> for FindVariables<'a> {
-    fn from(variables: &'a Vec<Identifier>) -> Self {
-        Self {
-            variables: variables
-                .iter()
-                .map(|variable| variable.get_name())
-                .collect(),
+            variables: iter.into_iter().collect(),
             usage_found: false,
         }
     }
