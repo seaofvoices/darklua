@@ -5,8 +5,8 @@ parameters: []
 examples:
   - content: "local var: number? = nil"
   - content: |
-        type Array<T> = { T }
-        local test: Array<string> = {}
+      type Array<T> = { T }
+      local test: Array<string> = {}
   - content: "return value :: string"
   - content: |
       local function getAverage(array: { string }): number
