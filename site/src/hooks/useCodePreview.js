@@ -22,16 +22,19 @@ const useCodePreview = () => {
   const defaultText = locationCode || DEFAULT_TEXT
   const { model, editor, ref } = useMonacoEditor({ defaultText })
 
-  const processCode = React.useCallback(code => {
-    try {
-      return darklua.process_code(code, darkluaConfig)
-    } catch (error) {
-      return (
-        `--[[\n\tan error happened while trying to process the code:\n${error}\n\n` +
-        `Configuration: ${darkluaConfig}]]`
-      )
-    }
-  }, [darklua, darkluaConfig])
+  const processCode = React.useCallback(
+    code => {
+      try {
+        return darklua.process_code(code, darkluaConfig)
+      } catch (error) {
+        return (
+          `--[[\n\tan error happened while trying to process the code:\n${error}\n\n` +
+          `Configuration: ${darkluaConfig}]]`
+        )
+      }
+    },
+    [darklua, darkluaConfig]
+  )
 
   React.useEffect(() => {
     if (!model || !previewModel) {
@@ -45,7 +48,7 @@ const useCodePreview = () => {
     onChange()
 
     return () => connection.dispose()
-  }, [ model, previewModel, processCode])
+  }, [model, previewModel, processCode])
 
   return { previewEditor, editor, previewRef, ref }
 }

@@ -133,9 +133,9 @@ const TryIt = ({ location }) => {
       <ThemeProvider>
         <DarkluaProvider>
           <DarkluaConfigProvider>
-              <EditorProviders>
-                <TryItLayout />
-              </EditorProviders>
+            <EditorProviders>
+              <TryItLayout />
+            </EditorProviders>
           </DarkluaConfigProvider>
         </DarkluaProvider>
       </ThemeProvider>
