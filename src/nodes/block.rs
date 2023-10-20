@@ -15,6 +15,9 @@ impl BlockTokens {
         if let Some(last_semicolon) = &mut self.last_semicolon {
             last_semicolon.clear_comments();
         }
+        if let Some(final_token) = &mut self.final_token {
+            final_token.clear_comments();
+        }
     }
 
     pub fn clear_whitespaces(&mut self) {
@@ -23,6 +26,9 @@ impl BlockTokens {
         }
         if let Some(last_semicolon) = &mut self.last_semicolon {
             last_semicolon.clear_whitespaces();
+        }
+        if let Some(final_token) = &mut self.final_token {
+            final_token.clear_whitespaces();
         }
     }
 
@@ -33,6 +39,9 @@ impl BlockTokens {
         if let Some(last_semicolon) = &mut self.last_semicolon {
             last_semicolon.replace_referenced_tokens(code);
         }
+        if let Some(final_token) = &mut self.final_token {
+            final_token.replace_referenced_tokens(code);
+        }
     }
 
     pub(crate) fn shift_token_line(&mut self, amount: usize) {
@@ -41,6 +50,9 @@ impl BlockTokens {
         }
         if let Some(last_semicolon) = &mut self.last_semicolon {
             last_semicolon.shift_token_line(amount);
+        }
+        if let Some(final_token) = &mut self.final_token {
+            final_token.shift_token_line(amount);
         }
     }
 }
