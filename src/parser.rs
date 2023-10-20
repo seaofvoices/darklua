@@ -30,7 +30,7 @@ impl Parser {
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_ast(&self, ast: Ast) -> Result<Block, ConvertError> {
-        AstConverter::new(self.hold_token_data).convert(ast.nodes())
+        AstConverter::new(self.hold_token_data).convert(&ast)
     }
 }
 
@@ -94,6 +94,7 @@ mod test {
 
     test_parse!(
         empty_string("") => Block::default(),
+        single_line_comment("-- todo") => Block::default(),
         empty_do("do end") => DoStatement::default(),
         empty_do_nested("do do end end") => DoStatement::new(DoStatement::default().into()),
         two_nested_empty_do_in_do_statement("do do end do end end") => DoStatement::new(
@@ -464,19 +465,22 @@ mod test {
                         $name($input) => Block::from($value).with_tokens(BlockTokens {
                             semicolons: vec![None],
                             last_semicolon: None,
+                            final_token: None,
                         }),
                     )*
                 );
             };
         }
 
-        macro_rules! test_parse_last_statement_with_tokens {
+        macro_rules!
+        test_parse_last_statement_with_tokens {
             ($($name:ident($input:literal) => $value:expr),* $(,)?) => {
                 test_parse_block_with_tokens!(
                     $(
                         $name($input) => Block::from($value).with_tokens(BlockTokens {
                             semicolons: Vec::new(),
                             last_semicolon: None,
+                            final_token: None,
                         }),
                     )*
                 );
@@ -542,6 +546,7 @@ mod test {
             Block::default().with_tokens(BlockTokens {
                 semicolons: Vec::new(),
                 last_semicolon: None,
+                final_token: None,
             })
         }
 
@@ -2825,6 +2830,46 @@ mod test {
         );
 
         test_parse_block_with_tokens!(
+            empty_block("") => Block::default()
+                .with_tokens(BlockTokens {
+                    semicolons: vec![],
+                    last_semicolon: None,
+                    final_token: None,
+                }),
+            single_line("\n") => Block::default()
+                .with_tokens(BlockTokens {
+                    semicolons: vec![],
+                    last_semicolon: None,
+                    final_token: Some(Token::new_with_line(1, 1, 2)
+                        .with_leading_trivia(TriviaKind::Whitespace.at(0, 1, 1))),
+                }),
+            single_line_comment("-- todo") => Block::default()
+                .with_tokens(BlockTokens {
+                    semicolons: vec![],
+                    last_semicolon: None,
+                    final_token: Some(token_at_first_line(7, 7)
+                        .with_leading_trivia(TriviaKind::Comment.at(0, 7, 1))),
+                }),
+            multiple_line_comments("-- todo\n  -- one\n") => Block::default()
+                .with_tokens(BlockTokens {
+                    semicolons: vec![],
+                    last_semicolon: None,
+                    final_token: Some(
+                        Token::new_with_line(17, 17, 3)
+                            .with_leading_trivia(TriviaKind::Comment.at(0, 7, 1))
+                            .with_leading_trivia(TriviaKind::Whitespace.at(7, 8, 1))
+                            .with_leading_trivia(TriviaKind::Whitespace.at(8, 10, 2))
+                            .with_leading_trivia(TriviaKind::Comment.at(10, 16, 2))
+                            .with_leading_trivia(TriviaKind::Whitespace.at(16, 17, 2))
+                    ),
+                }),
+            single_multiline_comment("--[[\n    todo\n]]") => Block::default()
+                .with_tokens(BlockTokens {
+                    semicolons: vec![],
+                    last_semicolon: None,
+                    final_token: Some(Token::new_with_line(16, 16, 3)
+                        .with_leading_trivia(TriviaKind::Comment.at(0, 16, 1))),
+                }),
             return_nothing_with_semicolon("return;") => Block::from(
                 ReturnStatement::default()
                     .with_tokens(ReturnTokens {
@@ -2834,6 +2879,7 @@ mod test {
             ).with_tokens(BlockTokens {
                 semicolons: vec![],
                 last_semicolon: Some(token_at_first_line(6, 7)),
+                final_token: None,
             }),
             return_nothing_with_semicolon_and_comment("return; -- return nothing") => Block::from(
                 ReturnStatement::default()
@@ -2848,6 +2894,7 @@ mod test {
                         .with_trailing_trivia(TriviaKind::Whitespace.at(7, 8, 1))
                         .with_trailing_trivia(TriviaKind::Comment.at(8, 25, 1))
                 ),
+                final_token: None,
             }),
             two_local_declarations("local a;\nlocal b;\n") => Block::from(
                 LocalAssignStatement::from_variable(create_identifier("a", 6, 0))
@@ -2871,6 +2918,7 @@ mod test {
                     Some(spaced_token_at_line(16, 17, 2)),
                 ],
                 last_semicolon: None,
+                final_token: None,
             }),
         );
     }

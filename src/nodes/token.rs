@@ -145,6 +145,11 @@ impl Token {
     }
 
     #[inline]
+    pub fn has_trivia(&self) -> bool {
+        !self.leading_trivia.is_empty() || !self.trailing_trivia.is_empty()
+    }
+
+    #[inline]
     pub fn push_leading_trivia(&mut self, trivia: Trivia) {
         self.leading_trivia.push(trivia);
     }
