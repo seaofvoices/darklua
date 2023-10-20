@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "darklua": "./darklua-wasm/pkg",
-    "@babel/eslint-parser": "^7.21.3",
+    "@babel/eslint-parser": "^7.22.15",
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
     "@mui/icons-material": "^5.11.16",
