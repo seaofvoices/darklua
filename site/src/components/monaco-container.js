@@ -39,15 +39,13 @@ const MonacoContainer = React.forwardRef(({ editor, sx, ...props }, ref) => {
 
   return (
     <Box ref={containerRef} sx={{ flexGrow: 1, ...sx }} {...props}>
-      <LoadingEditorProviders>
-        <div
-          ref={ref}
-          style={{
-            width: monacoWidth,
-            height: monacoHeight,
-          }}
-        />
-      </LoadingEditorProviders>
+      <div
+        ref={ref}
+        style={{
+          width: monacoWidth,
+          height: monacoHeight,
+        }}
+      />
     </Box>
   )
 })

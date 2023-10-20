@@ -9,7 +9,6 @@ import {
   Typography,
 } from "@mui/material"
 import DeleteIcon from "@mui/icons-material/Delete"
-import { RulesStackContext } from "../rules-stack"
 import { Box } from "@mui/system"
 
 const ALL_RULES = [
@@ -41,7 +40,7 @@ const RuleSelector = ({ selectedName, onChange }) => {
   )
 }
 
-const RuleItem = ({ rule, index, rulesStack }) => {
+const RuleItem = ({ rule, index }) => {
   return (
     <ListItem
       dense={true}
@@ -51,7 +50,9 @@ const RuleItem = ({ rule, index, rulesStack }) => {
           size="small"
           edge="end"
           aria-label="delete"
-          onClick={() => rulesStack.deleteRule(index)}
+          onClick={() => {
+            console.warn("todo")
+          }}
         >
           <DeleteIcon />
         </IconButton>
@@ -61,19 +62,13 @@ const RuleItem = ({ rule, index, rulesStack }) => {
         size="small"
         checked={!rule.disabled}
         onChange={event => {
-          rulesStack.replaceRule(index, {
-            ...rule,
-            disabled: !event.target.checked,
-          })
+          console.warn("todo")
         }}
       />
       <RuleSelector
         selectedName={rule.name}
         onChange={newRuleName => {
-          rulesStack.replaceRule(index, {
-            name: newRuleName,
-            disabled: rule.disabled,
-          })
+          console.warn("todo")
         }}
       />
     </ListItem>
@@ -81,17 +76,10 @@ const RuleItem = ({ rule, index, rulesStack }) => {
 }
 
 const UiRuleEditor = () => {
-  const rulesStack = React.useContext(RulesStackContext)
-  const generateRules = (rule, index) => (
-    <RuleItem key={index} rule={rule} index={index} rulesStack={rulesStack} />
-  )
-
   return (
     <Box>
       <Typography variant="h6">Rules</Typography>
-      <List dense={true} disablePadding={true}>
-        {rulesStack.getRules().map(generateRules)}
-      </List>
+      <List dense={true} disablePadding={true}></List>
     </Box>
   )
 }
