@@ -311,3 +311,28 @@ impl<T: Into<Expression>> From<Option<T>> for Expression {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    macro_rules! snapshot_from_expression {
+        ($($name:ident => $input:expr),+ $(,)?) => {
+            $(
+                #[test]
+                fn $name() {
+                    let result = crate::nodes::Expression::from($input);
+
+                    insta::assert_debug_snapshot!(stringify!($name), result);
+                }
+            )+
+        };
+    }
+
+    mod expression_from_floats {
+        snapshot_from_expression!(
+            f64_0 => 0_f64,
+            f64_1e42 => 1e42_f64,
+            f64_infinity => f64::INFINITY,
+            i64_minus_one => -1_i64,
+        );
+    }
+}

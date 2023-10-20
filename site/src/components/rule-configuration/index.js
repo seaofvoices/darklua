@@ -3,6 +3,8 @@ import * as React from "react"
 import { Tab, Tabs } from "@mui/material"
 import { Box } from "@mui/system"
 import TextRuleEditor from "./text-rule-editor"
+import { DarkluaContext } from "../darklua-provider"
+import LoadingEditorProviders from "../loading-editor-providers"
 
 const getTabId = index => `simple-tab-${index}`
 const getTabPanelId = index => `simple-tabpanel-${index}`
@@ -30,10 +32,16 @@ const a11yProps = index => {
 }
 
 const RuleConfiguration = () => {
+  const darklua = React.useContext(DarkluaContext)
+
   const [value, setValue] = React.useState(0)
 
   const handleChange = (_event, newValue) => {
     setValue(newValue)
+  }
+
+  if (!darklua) {
+    return
   }
 
   return (
@@ -45,15 +53,17 @@ const RuleConfiguration = () => {
           aria-label="basic tabs example"
         >
           <Tab label="Text" {...a11yProps(0)} />
-          <Tab label="Editor" disabled {...a11yProps(1)} />
+          {/* <Tab label="Editor" disabled {...a11yProps(1)} /> */}
         </Tabs>
       </Box>
       <TabPanel value={value} index={0} sx={{ overflow: "hidden" }}>
-        <TextRuleEditor />
+        <LoadingEditorProviders>
+          <TextRuleEditor />
+        </LoadingEditorProviders>
       </TabPanel>
-      <TabPanel value={value} index={1}>
-        <Box sx={{ overflow: "auto" }}>{/* <UiRuleEditor /> */}</Box>
-      </TabPanel>
+      {/* <TabPanel value={value} index={1}>
+        <Box sx={{ overflow: "auto" }}><UiRuleEditor /></Box>
+      </TabPanel> */}
     </>
   )
 }

@@ -134,3 +134,65 @@ fn deserialize_from_object_notation_with_float_value() {
     )
     .unwrap();
 }
+
+test_rule!(
+    inject_global_large_integer_e19,
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
+        rule: 'inject_global_value',
+        identifier: 'num',
+        value: 1E19,
+    }"#,
+    ).unwrap(),
+    inject_negative_integer("return _G.num") => "return 1E19",
+);
+
+test_rule!(
+    inject_global_large_integer_e20,
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
+        rule: 'inject_global_value',
+        identifier: 'num',
+        value: 1e20,
+    }"#,
+    ).unwrap(),
+    inject_negative_integer("return _G.num") => "return 1E20",
+);
+
+test_rule!(
+    inject_global_large_integer_e42,
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
+        rule: 'inject_global_value',
+        identifier: 'num',
+        value: 1e42,
+    }"#,
+    ).unwrap(),
+    inject_negative_integer("return _G.num") => "return 1E42",
+);
+
+test_rule!(
+    inject_global_large_integer_e49,
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
+        rule: 'inject_global_value',
+        identifier: 'num',
+        value: 1e49,
+    }"#,
+    ).unwrap(),
+    inject_negative_integer("return _G.num") => "return 1E49",
+);
+
+#[test]
+fn deserialize_number_value_too_large() {
+    let err = json5::from_str::<Box<dyn Rule>>(
+        r#"{
+            rule: 'inject_global_value',
+            identifier: 'num',
+            value: 1e350,
+    }"#,
+    )
+    .unwrap_err();
+
+    pretty_assertions::assert_eq!("error parsing number: too large", err.to_string())
+}

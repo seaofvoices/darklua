@@ -27,7 +27,7 @@ jobs:
           cache-dependency-path: "site/package-lock.json"
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm ci --legacy-peer-deps
 
       - name: Verify code style
         run: npm run style-check
@@ -51,7 +51,7 @@ jobs:
 
       - name: Install JavaScript wasm tests dependencies
         working-directory: site/darklua-wasm/javascript-tests
-        run: npm install
+        run: npm ci
 
       - name: Run JavaScript wasm tests dependencies
         working-directory: site/darklua-wasm/javascript-tests

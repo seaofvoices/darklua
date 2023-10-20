@@ -1,13 +1,14 @@
 import * as React from "react"
 
 import * as json5 from "json5"
-import { RulesStackContext } from "../rules-stack"
+import { DarkluaContext } from "../darklua-provider"
 import { Alert, Chip, Snackbar, Stack, Tooltip } from "@mui/material"
 import useMonacoEditor from "../../hooks/useMonacoEditor"
 import ThumbUp from "@mui/icons-material/ThumbUp"
 import ThumbDown from "@mui/icons-material/ThumbDown"
 import MonacoContainer from "../monaco-container"
 import useDarkluaConfigSchema from "../../hooks/useDarkluaConfigSchema"
+import { SetDarkluaConfigContext } from "../darklua-config-provider"
 
 const WORD_PER_MINUTE = 85
 
@@ -65,7 +66,8 @@ const EditorBar = ({ formatCode, isConfigOk }) => {
 }
 
 const TextRuleEditor = () => {
-  const rulesStack = React.useContext(RulesStackContext)
+  const darklua = React.useContext(DarkluaContext)
+  const setDarkluaConfig = React.useContext(SetDarkluaConfigContext)
 
   const configSchema = useDarkluaConfigSchema()
 
@@ -85,10 +87,12 @@ const TextRuleEditor = () => {
   })
 
   React.useEffect(() => {
-    if (!defaultConfig) {
-      setDefaultConfig(rulesStack.getDarkluaConfig())
+    if (defaultConfig === null) {
+      setDefaultConfig({
+        rules: json5.parse(darklua.get_serialized_default_rules()),
+      })
     }
-  }, [defaultConfig, rulesStack])
+  }, [defaultConfig, darklua])
 
   React.useEffect(() => {
     if (!model) {
@@ -102,9 +106,10 @@ const TextRuleEditor = () => {
       return
     }
     const connection = model.onDidChangeContent(_event => {
+      const modelValue = model.getValue()
       let config = null
       try {
-        config = json5.parse(model.getValue())
+        config = json5.parse(modelValue)
       } catch (error) {
         setIsConfigOk(false)
       }
@@ -115,13 +120,13 @@ const TextRuleEditor = () => {
           setIsConfigOk(false)
           setAlertMessage(`invalid darklua configuration: ${error.message}`)
         } else {
-          rulesStack.replaceWithDarkluaConfig(value)
+          setDarkluaConfig(modelValue)
           setIsConfigOk(true)
         }
       }
     })
     return () => connection.dispose()
-  }, [model, rulesStack, configSchema])
+  }, [model, configSchema])
 
   const formatCode = () => {
     if (!model) {
