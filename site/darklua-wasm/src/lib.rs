@@ -57,3 +57,8 @@ pub fn get_all_rule_names() -> Box<[JsValue]> {
         .collect::<Vec<_>>()
         .into_boxed_slice()
 }
+
+#[wasm_bindgen]
+pub fn get_serialized_default_rules() -> String {
+    json5::to_string(&darklua_core::rules::get_default_rules()).unwrap()
+}
