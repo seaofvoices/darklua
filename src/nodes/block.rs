@@ -4,6 +4,7 @@ use crate::nodes::{LastStatement, ReturnStatement, Statement, Token};
 pub struct BlockTokens {
     pub semicolons: Vec<Option<Token>>,
     pub last_semicolon: Option<Token>,
+    pub final_token: Option<Token>,
 }
 
 impl BlockTokens {
@@ -73,6 +74,11 @@ impl Block {
     #[inline]
     pub fn get_tokens(&self) -> Option<&BlockTokens> {
         self.tokens.as_ref().map(|tokens| tokens.as_ref())
+    }
+
+    #[inline]
+    pub fn mutate_tokens(&mut self) -> Option<&mut BlockTokens> {
+        self.tokens.as_mut().map(|tokens| tokens.as_mut())
     }
 
     pub fn push_statement<T: Into<Statement>>(&mut self, statement: T) {
@@ -428,7 +434,8 @@ mod test {
             block.get_tokens(),
             Some(&BlockTokens {
                 semicolons: vec![None],
-                last_semicolon: None
+                last_semicolon: None,
+                final_token: None,
             })
         );
     }
@@ -440,6 +447,7 @@ mod test {
             .with_tokens(BlockTokens {
                 semicolons: vec![Some(Token::from_content(";"))],
                 last_semicolon: None,
+                final_token: None,
             });
         block.clear();
 
@@ -453,6 +461,7 @@ mod test {
             .with_tokens(BlockTokens {
                 semicolons: Vec::new(),
                 last_semicolon: Some(Token::from_content(";")),
+                final_token: None,
             });
         block.clear();
 
@@ -466,6 +475,7 @@ mod test {
             .with_tokens(BlockTokens {
                 semicolons: vec![Some(Token::from_content(";"))],
                 last_semicolon: None,
+                final_token: None,
             });
         block.set_statements(Vec::new());
 
@@ -479,6 +489,7 @@ mod test {
             .with_tokens(BlockTokens {
                 semicolons: Vec::new(),
                 last_semicolon: Some(Token::from_content(";")),
+                final_token: None,
             });
 
         assert_eq!(
@@ -497,6 +508,7 @@ mod test {
             .with_tokens(BlockTokens {
                 semicolons: vec![Some(Token::from_content(";"))],
                 last_semicolon: None,
+                final_token: None,
             });
 
         block.filter_statements(|_statement| false);
@@ -506,6 +518,7 @@ mod test {
             Block::default().with_tokens(BlockTokens {
                 semicolons: Vec::new(),
                 last_semicolon: None,
+                final_token: None,
             })
         );
     }
@@ -518,6 +531,7 @@ mod test {
             .with_tokens(BlockTokens {
                 semicolons: vec![Some(Token::from_content(";"))],
                 last_semicolon: None,
+                final_token: None,
             });
 
         block.filter_mut_statements(|_statement| false);
@@ -527,6 +541,7 @@ mod test {
             Block::default().with_tokens(BlockTokens {
                 semicolons: Vec::new(),
                 last_semicolon: None,
+                final_token: None,
             })
         );
     }

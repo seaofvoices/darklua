@@ -166,8 +166,8 @@ impl<'a> AstConverter<'a> {
             .ok_or(ConvertError::InternalStack { kind: "TypePack" })
     }
 
-    pub(crate) fn convert(&mut self, block: &'a ast::Block) -> Result<Block, ConvertError> {
-        self.push_work(block);
+    pub(crate) fn convert(&mut self, ast: &'a ast::Ast) -> Result<Block, ConvertError> {
+        self.push_work(ast.nodes());
 
         while let Some(work) = self.work_stack.pop() {
             match work {
@@ -295,6 +295,7 @@ impl<'a> AstConverter<'a> {
                         new_block.set_tokens(BlockTokens {
                             semicolons,
                             last_semicolon: last_semicolon.transpose()?,
+                            final_token: None,
                         });
                     };
 
@@ -1215,7 +1216,16 @@ impl<'a> AstConverter<'a> {
             }
         }
 
-        let block = self.blocks.pop().expect("root block should be converted");
+        let mut block = self.blocks.pop().expect("root block should be converted");
+
+        if self.hold_token_data {
+            if let Some(tokens) = block.mutate_tokens() {
+                let token = self.convert_token(ast.eof())?;
+                if token.has_trivia() {
+                    tokens.final_token = Some(token);
+                }
+            }
+        }
 
         Ok(block)
     }

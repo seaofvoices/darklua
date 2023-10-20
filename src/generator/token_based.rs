@@ -60,26 +60,28 @@ impl<'a> TokenBasedLuaGenerator<'a> {
 
         let content = token.read(self.original_code);
 
-        if self.currently_commenting {
-            self.uncomment();
-        }
-
-        if let Some(line_number) = token.get_line_number() {
-            while line_number > self.current_line {
-                self.output.push('\n');
-                self.current_line += 1;
+        if !content.is_empty() {
+            if self.currently_commenting {
+                self.uncomment();
             }
-        }
 
-        if space_check {
-            if let Some(next_character) = content.chars().next() {
-                if self.needs_space(next_character) {
-                    self.output.push(' ');
+            if let Some(line_number) = token.get_line_number() {
+                while line_number > self.current_line {
+                    self.output.push('\n');
+                    self.current_line += 1;
                 }
             }
-        }
 
-        self.push_str(content);
+            if space_check {
+                if let Some(next_character) = content.chars().next() {
+                    if self.needs_space(next_character) {
+                        self.output.push(' ');
+                    }
+                }
+            }
+
+            self.push_str(content);
+        }
 
         for trivia in token.iter_trailing_trivia() {
             self.write_trivia(trivia);
@@ -105,6 +107,10 @@ impl<'a> TokenBasedLuaGenerator<'a> {
 
         if let Some(statement) = block.get_last_statement() {
             self.write_last_statement(statement);
+        }
+
+        if let Some(token) = &tokens.final_token {
+            self.write_token(token);
         }
     }
 
@@ -1110,6 +1116,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         BlockTokens {
             semicolons: Vec::new(),
             last_semicolon: None,
+            final_token: None,
         }
     }
 

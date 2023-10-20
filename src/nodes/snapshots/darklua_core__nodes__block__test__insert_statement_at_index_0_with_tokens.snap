@@ -26,6 +26,7 @@ Block {
                         BlockTokens {
                             semicolons: [],
                             last_semicolon: None,
+                            final_token: None,
                         },
                     ),
                 },
@@ -81,6 +82,7 @@ Block {
                 ),
             ],
             last_semicolon: None,
+            final_token: None,
         },
     ),
 }
