@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.0
+
 * fix lost comment or spacing tokens in empty ASTs ([#132](https://github.com/seaofvoices/darklua/pull/132))
 * add rule to remove Luau types ([#130](https://github.com/seaofvoices/darklua/pull/130))
 * add support for Luau types ([#129](https://github.com/seaofvoices/darklua/pull/129))

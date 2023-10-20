@@ -17,6 +17,22 @@ Visit https://darklua.com/docs to learn how to use darklua.
 
 You can try darklua directly into your browser! Check out https://darklua.com/try-it.
 
+# [Installation](https://darklua.com/docs/installation/)
+
+## [Foreman](https://github.com/Roblox/foreman)
+
+If you are already using Foreman, then installing darklua is as simple as adding this line in the foreman.toml file:
+
+darklua = { github = "seaofvoices/darklua", version = "=0.11.0" }
+
+## [Aftman](https://github.com/LPGhatguy/aftman)
+
+With Aftman, run:
+
+```
+aftman add seaofvoices/darklua
+```
+
 # License
 
 darklua is available under the MIT license. See [LICENSE.txt](LICENSE.txt) for details.
