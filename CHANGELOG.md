@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* fix table types to allow string literal property types ([#135](https://github.com/seaofvoices/darklua/pull/135))
+
 ## 0.11.0
 
 * fix lost comment or spacing tokens in empty ASTs ([#132](https://github.com/seaofvoices/darklua/pull/132))

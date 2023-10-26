@@ -121,6 +121,7 @@ pub enum AstFuzzerWork {
     },
     MakeTableType {
         properties: usize,
+        literal_properties: usize,
         has_indexer: bool,
     },
 }
