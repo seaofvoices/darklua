@@ -237,6 +237,31 @@ impl DenseLuaGenerator {
         self.write_type(r#type);
         self.push_char(')');
     }
+
+    fn write_function_generics(&mut self, generics: &nodes::GenericParameters) {
+        if generics.is_empty() {
+            return;
+        }
+        self.push_char('<');
+        let mut write_comma = false;
+        for type_variable in generics.iter_type_variable() {
+            if write_comma {
+                self.push_char(',');
+            } else {
+                write_comma = true;
+            }
+            self.write_identifier(type_variable);
+        }
+        for generic_pack in generics.iter_generic_type_pack() {
+            if write_comma {
+                self.push_char(',');
+            } else {
+                write_comma = true;
+            }
+            self.write_generic_type_pack(generic_pack);
+        }
+        self.push_char('>');
+    }
 }
 
 impl Default for DenseLuaGenerator {
@@ -375,6 +400,10 @@ impl LuaGenerator for DenseLuaGenerator {
             self.push_str(method.get_name());
         }
 
+        if let Some(generics) = function.get_generic_parameters() {
+            self.write_function_generics(generics);
+        }
+
         self.push_char('(');
         self.write_function_parameters(
             function.get_parameters(),
@@ -460,6 +489,11 @@ impl LuaGenerator for DenseLuaGenerator {
     fn write_local_function(&mut self, function: &nodes::LocalFunctionStatement) {
         self.push_str("local function");
         self.push_str(function.get_name());
+
+        if let Some(generics) = function.get_generic_parameters() {
+            self.write_function_generics(generics);
+        }
+
         self.push_char('(');
 
         let parameters = function.get_parameters();
@@ -652,6 +686,11 @@ impl LuaGenerator for DenseLuaGenerator {
 
     fn write_function(&mut self, function: &nodes::FunctionExpression) {
         self.push_str("function");
+
+        if let Some(generics) = function.get_generic_parameters() {
+            self.write_function_generics(generics);
+        }
+
         self.push_char('(');
 
         let parameters = function.get_parameters();
@@ -961,29 +1000,8 @@ impl LuaGenerator for DenseLuaGenerator {
     }
 
     fn write_function_type(&mut self, function_type: &nodes::FunctionType) {
-        if let Some(generic_parameters) = function_type
-            .get_generic_parameters()
-            .filter(|generic_parameters| !generic_parameters.is_empty())
-        {
-            self.push_char('<');
-            let mut insert_comma = false;
-            for type_variable in generic_parameters.iter_type_variable() {
-                if insert_comma {
-                    self.push_char(',');
-                } else {
-                    insert_comma = true;
-                }
-                self.write_identifier(type_variable);
-            }
-            for generic_type_pack in generic_parameters.iter_generic_type_pack() {
-                if insert_comma {
-                    self.push_char(',');
-                } else {
-                    insert_comma = true;
-                }
-                self.write_generic_type_pack(generic_type_pack);
-            }
-            self.push_char('>');
+        if let Some(generics) = function_type.get_generic_parameters() {
+            self.write_function_generics(generics);
         }
 
         self.push_char('(');

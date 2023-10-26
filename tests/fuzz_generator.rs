@@ -83,8 +83,6 @@ macro_rules! fuzz_test_block {
         generator.write_block(&block);
         let lua_code = generator.into_string();
 
-        println!("block written to string");
-
         // let mut temp_file = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR"));
         // temp_file.push("fuzzed-code.lua");
         // std::fs::write(&temp_file, &lua_code).expect("Unable to write file");
@@ -105,8 +103,6 @@ macro_rules! fuzz_test_block {
                 error, lua_code, block,
             ),
         };
-
-        println!("written block parsed");
 
         let mut compare_generator = darklua_core::generator::ReadableLuaGenerator::default();
         compare_generator.write_block(&generated_block);

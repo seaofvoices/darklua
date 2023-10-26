@@ -1308,6 +1308,30 @@ mod test {
                         return_type_colon: Some(spaced_token(22, 23)),
                     }
                 }),
+            empty_local_function_with_two_generic_type("local function fn<T, U>() end")
+                => LocalFunctionStatement::from_name(create_identifier("fn", 15, 0), default_block())
+                .with_generic_parameters(
+                    GenericParameters::from_type_variable(create_identifier("T", 18, 0))
+                        .with_type_variable(create_identifier("U", 21, 0))
+                        .with_tokens(GenericParametersTokens {
+                            opening_list: token_at_first_line(17, 18),
+                            closing_list: token_at_first_line(22, 23),
+                            commas: vec![spaced_token(19, 20)],
+                        })
+                )
+                .with_tokens(LocalFunctionTokens {
+                    local: spaced_token(0, 5),
+                    function_body: FunctionBodyTokens {
+                        function: spaced_token(6, 14),
+                        opening_parenthese: token_at_first_line(23, 24),
+                        closing_parenthese: spaced_token(24, 25),
+                        end: token_at_first_line(26, 29),
+                        parameter_commas: Vec::new(),
+                        variable_arguments: None,
+                        variable_arguments_colon: None,
+                        return_type_colon: None,
+                    }
+                }),
             call_function("call()") => FunctionCall::from_name(
                 create_identifier("call", 0, 0)
             ).with_arguments(TupleArguments::default().with_tokens(TupleArgumentsTokens {
@@ -2430,6 +2454,7 @@ mod test {
                 )
                     .with_generic_parameters(
                         GenericParameters::from_type_variable(create_identifier("R", 10, 0))
+                            .with_type_variable(create_identifier("R2", 13, 0))
                             .with_tokens(GenericParametersTokens {
                                 opening_list: token_at_first_line(9, 10),
                                 closing_list: token_at_first_line(15, 16),

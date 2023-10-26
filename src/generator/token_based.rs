@@ -340,6 +340,10 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             self.write_function_name_with_tokens(name, &self.generate_function_name_tokens(name));
         }
 
+        if let Some(generics) = function.get_generic_parameters() {
+            self.write_function_generics(generics);
+        }
+
         self.write_token(&tokens.opening_parenthese);
 
         let parameter_count = function.parameters_count();
@@ -566,6 +570,10 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         self.write_token(&tokens.function);
         self.write_identifier(function.get_identifier());
 
+        if let Some(generics) = function.get_generic_parameters() {
+            self.write_function_generics(generics);
+        }
+
         self.write_token(&tokens.opening_parenthese);
 
         let parameter_count = function.parameters_count();
@@ -758,6 +766,11 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         tokens: &FunctionBodyTokens,
     ) {
         self.write_token(&tokens.function);
+
+        if let Some(generics) = function.get_generic_parameters() {
+            self.write_function_generics(generics);
+        }
+
         self.write_token(&tokens.opening_parenthese);
 
         let parameter_count = function.parameters_count();
@@ -954,18 +967,8 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         function_type: &FunctionType,
         tokens: &FunctionTypeTokens,
     ) {
-        if let Some(generic_parameters) = function_type
-            .get_generic_parameters()
-            .filter(|generic_parameters| !generic_parameters.is_empty())
-        {
-            if let Some(generic_tokens) = generic_parameters.get_tokens() {
-                self.write_generic_parameters_with_tokens(generic_parameters, generic_tokens);
-            } else {
-                self.write_generic_parameters_with_tokens(
-                    generic_parameters,
-                    &self.generate_generic_parameters_tokens(generic_parameters),
-                );
-            }
+        if let Some(generic_parameters) = function_type.get_generic_parameters() {
+            self.write_function_generics(generic_parameters);
         }
 
         self.write_token(&tokens.opening_parenthese);
@@ -1009,6 +1012,20 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         self.write_token(&tokens.closing_parenthese);
         self.write_token(&tokens.arrow);
         self.write_function_return_type(function_type.get_return_type());
+    }
+
+    fn write_function_generics(&mut self, generic_parameters: &GenericParameters) {
+        if generic_parameters.is_empty() {
+            return;
+        }
+        if let Some(generic_tokens) = generic_parameters.get_tokens() {
+            self.write_generic_parameters_with_tokens(generic_parameters, generic_tokens);
+        } else {
+            self.write_generic_parameters_with_tokens(
+                generic_parameters,
+                &self.generate_generic_parameters_tokens(generic_parameters),
+            );
+        }
     }
 
     fn write_generic_parameters_with_tokens(
