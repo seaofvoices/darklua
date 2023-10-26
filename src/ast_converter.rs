@@ -2086,21 +2086,12 @@ impl<'a> AstConverter<'a> {
                 self.work_stack
                     .push(ConvertWork::MakeTableType { braces, fields });
 
-                let mut has_indexer_type = false;
-
                 for field in fields {
                     use ast::types::TypeFieldKey;
 
                     match field.key() {
                         TypeFieldKey::Name(_) => {}
                         TypeFieldKey::IndexSignature { inner, .. } => {
-                            if has_indexer_type {
-                                return Err(ConvertError::TypeInfo {
-                                    type_info: type_info.to_string(),
-                                });
-                            }
-
-                            has_indexer_type = true;
                             self.push_work(inner);
                         }
                         key => {

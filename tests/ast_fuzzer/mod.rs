@@ -5,6 +5,7 @@ mod random;
 
 pub use budget::FuzzBudget;
 use fuzzer_work::*;
+use rand::seq::SliceRandom;
 use random::RandomAst;
 
 use std::iter;
@@ -718,11 +719,13 @@ impl AstFuzzer {
                         }
                         5 => {
                             let properties = self.budget.try_take_types(self.random.table_length());
+                            let literal_properties = self.random.range(properties);
                             let has_indexer =
                                 self.budget.can_have_type(2) && self.random.table_type_indexer();
 
                             self.push_work(AstFuzzerWork::MakeTableType {
                                 properties,
+                                literal_properties,
                                 has_indexer,
                             });
 
@@ -826,24 +829,39 @@ impl AstFuzzer {
                 }
                 AstFuzzerWork::MakeTableType {
                     properties,
+                    literal_properties,
                     has_indexer,
                 } => {
                     let mut table_type = TableType::default();
 
-                    for property in self
+                    let mut table_properties: Vec<TableEntryType> = self
                         .pop_types(properties)
                         .into_iter()
-                        .map(|r#type| TablePropertyType::new(self.random.identifier(), r#type))
-                    {
+                        .enumerate()
+                        .map(|(i, r#type)| {
+                            if i < literal_properties {
+                                TableLiteralPropertyType::new(
+                                    StringType::from_value(self.random.string_content()),
+                                    r#type,
+                                )
+                                .into()
+                            } else {
+                                TablePropertyType::new(self.random.identifier(), r#type).into()
+                            }
+                        })
+                        .collect();
+
+                    if has_indexer {
+                        table_properties
+                            .push(TableIndexerType::new(self.pop_type(), self.pop_type()).into());
+                    }
+
+                    table_properties.shuffle(&mut rand::thread_rng());
+
+                    for property in table_properties {
                         table_type.push_property(property);
                     }
 
-                    if has_indexer {
-                        table_type.set_indexer_type(TableIndexerType::new(
-                            self.pop_type(),
-                            self.pop_type(),
-                        ));
-                    }
                     self.types.push(table_type.into());
                 }
                 AstFuzzerWork::FuzzFunctionReturnType => match self.random.range(3) {
