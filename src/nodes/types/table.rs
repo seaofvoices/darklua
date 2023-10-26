@@ -1,19 +1,19 @@
 use crate::nodes::{Identifier, Token};
 
-use super::Type;
+use super::{StringType, Type};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TableIndexerType {
-    key_type: Box<Type>,
-    value_type: Box<Type>,
-    tokens: Option<TableIndexerTypeTokens>,
+    key_type: Type,
+    value_type: Type,
+    tokens: Option<TableIndexTypeTokens>,
 }
 
 impl TableIndexerType {
     pub fn new(key_type: impl Into<Type>, value_type: impl Into<Type>) -> Self {
         Self {
-            key_type: Box::new(key_type.into()),
-            value_type: Box::new(value_type.into()),
+            key_type: key_type.into(),
+            value_type: value_type.into(),
             tokens: None,
         }
     }
@@ -38,18 +38,18 @@ impl TableIndexerType {
         &mut self.value_type
     }
 
-    pub fn with_tokens(mut self, token: TableIndexerTypeTokens) -> Self {
+    pub fn with_tokens(mut self, token: TableIndexTypeTokens) -> Self {
         self.tokens = Some(token);
         self
     }
 
     #[inline]
-    pub fn set_tokens(&mut self, token: TableIndexerTypeTokens) {
+    pub fn set_tokens(&mut self, token: TableIndexTypeTokens) {
         self.tokens = Some(token);
     }
 
     #[inline]
-    pub fn get_tokens(&self) -> Option<&TableIndexerTypeTokens> {
+    pub fn get_tokens(&self) -> Option<&TableIndexTypeTokens> {
         self.tokens.as_ref()
     }
 
@@ -79,13 +79,13 @@ impl TableIndexerType {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TableIndexerTypeTokens {
+pub struct TableIndexTypeTokens {
     pub opening_bracket: Token,
     pub closing_bracket: Token,
     pub colon: Token,
 }
 
-impl TableIndexerTypeTokens {
+impl TableIndexTypeTokens {
     pub fn clear_comments(&mut self) {
         self.opening_bracket.clear_comments();
         self.closing_bracket.clear_comments();
@@ -191,10 +191,148 @@ impl TablePropertyType {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TableLiteralPropertyType {
+    string: StringType,
+    r#type: Type,
+    tokens: Option<TableIndexTypeTokens>,
+}
+
+impl TableLiteralPropertyType {
+    pub fn new(string: StringType, r#type: impl Into<Type>) -> Self {
+        Self {
+            string,
+            r#type: r#type.into(),
+            tokens: None,
+        }
+    }
+
+    #[inline]
+    pub fn get_string(&self) -> &StringType {
+        &self.string
+    }
+
+    #[inline]
+    pub fn mutate_string(&mut self) -> &mut StringType {
+        &mut self.string
+    }
+
+    #[inline]
+    pub fn get_type(&self) -> &Type {
+        &self.r#type
+    }
+
+    #[inline]
+    pub fn mutate_type(&mut self) -> &mut Type {
+        &mut self.r#type
+    }
+
+    pub fn with_tokens(mut self, tokens: TableIndexTypeTokens) -> Self {
+        self.tokens = Some(tokens);
+        self
+    }
+
+    #[inline]
+    pub fn set_tokens(&mut self, tokens: TableIndexTypeTokens) {
+        self.tokens = Some(tokens);
+    }
+
+    #[inline]
+    pub fn get_tokens(&self) -> Option<&TableIndexTypeTokens> {
+        self.tokens.as_ref()
+    }
+
+    pub fn clear_comments(&mut self) {
+        self.string.clear_comments();
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        self.string.clear_whitespaces();
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.string.replace_referenced_tokens(code);
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.string.shift_token_line(amount);
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TableEntryType {
+    Property(TablePropertyType),
+    Literal(TableLiteralPropertyType),
+    Indexer(TableIndexerType),
+}
+
+impl TableEntryType {
+    pub fn clear_comments(&mut self) {
+        match self {
+            TableEntryType::Property(property) => property.clear_comments(),
+            TableEntryType::Literal(literal) => literal.clear_comments(),
+            TableEntryType::Indexer(indexer) => indexer.clear_comments(),
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        match self {
+            TableEntryType::Property(property) => property.clear_whitespaces(),
+            TableEntryType::Literal(literal) => literal.clear_whitespaces(),
+            TableEntryType::Indexer(indexer) => indexer.clear_whitespaces(),
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        match self {
+            TableEntryType::Property(property) => property.replace_referenced_tokens(code),
+            TableEntryType::Literal(literal) => literal.replace_referenced_tokens(code),
+            TableEntryType::Indexer(indexer) => indexer.replace_referenced_tokens(code),
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        match self {
+            TableEntryType::Property(property) => property.shift_token_line(amount),
+            TableEntryType::Literal(literal) => literal.shift_token_line(amount),
+            TableEntryType::Indexer(indexer) => indexer.shift_token_line(amount),
+        }
+    }
+}
+
+impl From<TablePropertyType> for TableEntryType {
+    fn from(value: TablePropertyType) -> Self {
+        Self::Property(value)
+    }
+}
+
+impl From<TableLiteralPropertyType> for TableEntryType {
+    fn from(value: TableLiteralPropertyType) -> Self {
+        Self::Literal(value)
+    }
+}
+
+impl From<TableIndexerType> for TableEntryType {
+    fn from(value: TableIndexerType) -> Self {
+        Self::Indexer(value)
+    }
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TableType {
-    properties: Vec<TablePropertyType>,
-    indexer: Option<TableIndexerType>,
+    entries: Vec<TableEntryType>,
     tokens: Option<TableTypeTokens>,
 }
 
@@ -204,64 +342,112 @@ impl TableType {
         property: impl Into<Identifier>,
         r#type: impl Into<Type>,
     ) -> Self {
-        self.properties
-            .push(TablePropertyType::new(property.into(), r#type.into()));
+        self.entries
+            .push(TablePropertyType::new(property.into(), r#type.into()).into());
         self
     }
 
-    pub fn with_property(mut self, property: TablePropertyType) -> Self {
-        self.properties.push(property);
-        self
-    }
-
-    pub fn push_property(&mut self, property: TablePropertyType) {
-        self.properties.push(property);
-    }
-
-    pub fn with_indexer_type(mut self, indexer_type: TableIndexerType) -> Self {
-        self.indexer = Some(indexer_type);
+    pub fn with_property(mut self, property: impl Into<TableEntryType>) -> Self {
+        self.push_property(property.into());
         self
     }
 
     #[inline]
-    pub fn set_indexer_type(&mut self, indexer_type: TableIndexerType) {
-        self.indexer = Some(indexer_type);
+    pub fn push_property(&mut self, property: impl Into<TableEntryType>) {
+        let property = property.into();
+        match property {
+            TableEntryType::Indexer(indexer) => {
+                self.set_indexer_type(indexer);
+            }
+            _ => {
+                self.entries.push(property);
+            }
+        }
+    }
+
+    pub fn with_indexer_type(mut self, indexer_type: TableIndexerType) -> Self {
+        self.set_indexer_type(indexer_type);
+        self
+    }
+
+    #[inline]
+    pub fn set_indexer_type(&mut self, indexer_type: TableIndexerType) -> Option<TableIndexerType> {
+        match indexer_type.key_type {
+            Type::String(string_type) => {
+                self.entries
+                    .push(TableEntryType::Literal(TableLiteralPropertyType {
+                        string: string_type,
+                        r#type: indexer_type.value_type,
+                        tokens: indexer_type.tokens,
+                    }));
+                None
+            }
+            _ => {
+                let removed = if let Some((remove_index, _)) = self
+                    .entries
+                    .iter()
+                    .enumerate()
+                    .find(|(_, entry)| matches!(entry, TableEntryType::Indexer(_)))
+                {
+                    match self.entries.remove(remove_index) {
+                        TableEntryType::Indexer(indexer) => Some(indexer),
+                        TableEntryType::Property(_) | TableEntryType::Literal(_) => unreachable!(),
+                    }
+                } else {
+                    None
+                };
+                self.entries.push(TableEntryType::Indexer(indexer_type));
+                removed
+            }
+        }
     }
 
     #[inline]
     pub fn has_indexer_type(&self) -> bool {
-        self.indexer.is_some()
+        self.entries
+            .iter()
+            .any(|entry| matches!(entry, TableEntryType::Indexer(_)))
     }
 
     #[inline]
-    pub fn properties_len(&self) -> usize {
-        self.properties.len()
+    pub fn len(&self) -> usize {
+        self.entries.len()
     }
 
     #[inline]
-    pub fn iter_property_type(&self) -> impl Iterator<Item = &TablePropertyType> {
-        self.properties.iter()
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
     }
 
     #[inline]
-    pub fn iter_mut_property_type(&mut self) -> impl Iterator<Item = &mut TablePropertyType> {
-        self.properties.iter_mut()
+    pub fn iter_entries(&self) -> impl Iterator<Item = &TableEntryType> {
+        self.entries.iter()
     }
 
     #[inline]
-    pub fn property_len(&self) -> usize {
-        self.properties.len()
+    pub fn iter_mut_entries(&mut self) -> impl Iterator<Item = &mut TableEntryType> {
+        self.entries.iter_mut()
     }
 
-    #[inline]
-    pub fn get_indexer_type(&self) -> Option<&TableIndexerType> {
-        self.indexer.as_ref()
-    }
+    // #[inline]
+    // pub fn iter_property_type(&self) -> impl Iterator<Item = &TablePropertyType> {
+    //     self.properties.iter()
+    // }
 
-    #[inline]
-    pub fn mutate_indexer_type(&mut self) -> Option<&mut TableIndexerType> {
-        self.indexer.as_mut()
-    }
+    // #[inline]
+    // pub fn iter_mut_property_type(&mut self) -> impl Iterator<Item = &mut TablePropertyType> {
+    //     self.properties.iter_mut()
+    // }
+
+    // #[inline]
+    // pub fn get_indexer_type(&self) -> Option<&TableIndexerType> {
+    //     self.indexer.as_ref()
+    // }
+
+    // #[inline]
+    // pub fn mutate_indexer_type(&mut self) -> Option<&mut TableIndexerType> {
+    //     self.indexer.as_mut()
+    // }
 
     pub fn with_tokens(mut self, tokens: TableTypeTokens) -> Self {
         self.tokens = Some(tokens);
@@ -279,11 +465,8 @@ impl TableType {
     }
 
     pub fn clear_comments(&mut self) {
-        for property in self.properties.iter_mut() {
+        for property in self.entries.iter_mut() {
             property.clear_comments();
-        }
-        if let Some(indexer) = &mut self.indexer {
-            indexer.clear_comments();
         }
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
@@ -291,11 +474,8 @@ impl TableType {
     }
 
     pub fn clear_whitespaces(&mut self) {
-        for property in self.properties.iter_mut() {
+        for property in self.entries.iter_mut() {
             property.clear_whitespaces();
-        }
-        if let Some(indexer) = &mut self.indexer {
-            indexer.clear_whitespaces();
         }
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
@@ -303,11 +483,8 @@ impl TableType {
     }
 
     pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        for property in self.properties.iter_mut() {
+        for property in self.entries.iter_mut() {
             property.replace_referenced_tokens(code);
-        }
-        if let Some(indexer) = &mut self.indexer {
-            indexer.replace_referenced_tokens(code);
         }
         if let Some(tokens) = &mut self.tokens {
             tokens.replace_referenced_tokens(code);
@@ -315,11 +492,8 @@ impl TableType {
     }
 
     pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        for property in self.properties.iter_mut() {
+        for property in self.entries.iter_mut() {
             property.shift_token_line(amount);
-        }
-        if let Some(indexer) = &mut self.indexer {
-            indexer.shift_token_line(amount);
         }
         if let Some(tokens) = &mut self.tokens {
             tokens.shift_token_line(amount);

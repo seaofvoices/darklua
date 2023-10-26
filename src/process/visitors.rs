@@ -386,12 +386,20 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Type::Table(table) => {
                 processor.process_table_type(table);
 
-                for property in table.iter_mut_property_type() {
-                    Self::visit_type(property.mutate_type(), processor);
-                }
-                if let Some(table_indexer) = table.mutate_indexer_type() {
-                    Self::visit_type(table_indexer.mutate_key_type(), processor);
-                    Self::visit_type(table_indexer.mutate_value_type(), processor);
+                for entry in table.iter_mut_entries() {
+                    match entry {
+                        TableEntryType::Property(property) => {
+                            Self::visit_type(property.mutate_type(), processor);
+                        }
+                        TableEntryType::Literal(property) => {
+                            processor.process_string_type(property.mutate_string());
+                            Self::visit_type(property.mutate_type(), processor);
+                        }
+                        TableEntryType::Indexer(indexer) => {
+                            Self::visit_type(indexer.mutate_key_type(), processor);
+                            Self::visit_type(indexer.mutate_value_type(), processor);
+                        }
+                    }
                 }
             }
             Type::TypeOf(expression_type) => {

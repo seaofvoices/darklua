@@ -2038,6 +2038,91 @@ mod test {
                 equal: spaced_token(7, 8),
                 export: None,
             }),
+            type_declaration_to_table_with_indexer_type_and_property("type T = { [number]: string, n: number }") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                TableType::default()
+                    .with_indexer_type(
+                        TableIndexerType::new(
+                            TypeName::new(create_identifier("number", 12, 0)),
+                            TypeName::new(create_identifier("string", 21, 0)),
+                        )
+                        .with_tokens(TableIndexTypeTokens {
+                            opening_bracket: token_at_first_line(11, 12),
+                            closing_bracket: token_at_first_line(18, 19),
+                            colon: spaced_token(19, 20),
+                        })
+                    )
+                    .with_property(
+                        TablePropertyType::new(
+                            create_identifier("n", 29, 0),
+                            TypeName::new(create_identifier("number", 32, 1))
+                        ).with_token(spaced_token(30, 31))
+                    )
+                    .with_tokens(TableTypeTokens {
+                        opening_brace: spaced_token(9, 10),
+                        closing_brace: token_at_first_line(39, 40),
+                        separators: vec![spaced_token(27, 28)],
+                    })
+            ).with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
+            type_declaration_to_table_with_property_and_indexer_type("type T = { n: number, [number]: string }") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                TableType::default()
+                    .with_property(
+                        TablePropertyType::new(
+                            create_identifier("n", 11, 0),
+                            TypeName::new(create_identifier("number", 14, 0))
+                        ).with_token(spaced_token(12, 13))
+                    )
+                    .with_indexer_type(
+                        TableIndexerType::new(
+                            TypeName::new(create_identifier("number", 23, 0)),
+                            TypeName::new(create_identifier("string", 32, 1)),
+                        )
+                        .with_tokens(TableIndexTypeTokens {
+                            opening_bracket: token_at_first_line(22, 23),
+                            closing_bracket: token_at_first_line(29, 30),
+                            colon: spaced_token(30, 31),
+                        })
+                    )
+                    .with_tokens(TableTypeTokens {
+                        opening_brace: spaced_token(9, 10),
+                        closing_brace: token_at_first_line(39, 40),
+                        separators: vec![spaced_token(20, 21)],
+                    })
+            ).with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
+            type_declaration_to_table_with_literal_property("type T = { ['end']: boolean }") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                TableType::default()
+                    .with_property(
+                        TableLiteralPropertyType::new(
+                            StringType::from_value("end")
+                                .with_token(token_at_first_line(12, 17)),
+                            TypeName::new(create_identifier("boolean", 20, 1)),
+                        )
+                        .with_tokens(TableIndexTypeTokens {
+                            opening_bracket: token_at_first_line(11, 12),
+                            closing_bracket: token_at_first_line(17, 18),
+                            colon: spaced_token(18, 19),
+                        })
+                    )
+                    .with_tokens(TableTypeTokens {
+                        opening_brace: spaced_token(9, 10),
+                        closing_brace: token_at_first_line(28, 29),
+                        separators: Vec::new(),
+                    })
+            ).with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
             type_declaration_to_table_with_indexer_type("type T = { [string]: boolean }") => TypeDeclarationStatement::new(
                 create_identifier("T", 5, 1),
                 TableType::default()
@@ -2046,8 +2131,8 @@ mod test {
                             TypeName::new(create_identifier("string", 12, 0)),
                             TypeName::new(create_identifier("boolean", 21, 1)),
                         )
-                        .with_tokens(TableIndexerTypeTokens {
-                            opening_bracket: token_at_first_line(11,12),
+                        .with_tokens(TableIndexTypeTokens {
+                            opening_bracket: token_at_first_line(11, 12),
                             closing_bracket: token_at_first_line(18, 19),
                             colon: spaced_token(19, 20),
                         })

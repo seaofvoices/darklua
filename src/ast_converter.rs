@@ -974,7 +974,7 @@ impl<'a> AstConverter<'a> {
                                     let (opening_bracket, closing_bracket) =
                                         self.extract_contained_span_tokens(brackets)?;
 
-                                    indexer_type.set_tokens(TableIndexerTypeTokens {
+                                    indexer_type.set_tokens(TableIndexTypeTokens {
                                         opening_bracket,
                                         closing_bracket,
                                         colon: self.convert_token(field.colon_token())?,

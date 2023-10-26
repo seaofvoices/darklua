@@ -855,20 +855,42 @@ impl<'a> TokenBasedLuaGenerator<'a> {
     fn write_table_type_with_tokens(&mut self, table_type: &TableType, tokens: &TableTypeTokens) {
         self.write_token(&tokens.opening_brace);
 
-        let last_index = table_type
-            .properties_len()
-            .saturating_sub(if table_type.has_indexer_type() { 0 } else { 1 });
+        let last_index = table_type.len().saturating_sub(1);
 
-        for (i, property) in table_type.iter_property_type().enumerate() {
-            self.write_identifier(property.get_identifier());
+        for (i, property) in table_type.iter_entries().enumerate() {
+            match property {
+                TableEntryType::Property(property) => {
+                    self.write_identifier(property.get_identifier());
 
-            if let Some(colon) = property.get_token() {
-                self.write_token(colon);
-            } else {
-                self.write_symbol(":");
+                    if let Some(colon) = property.get_token() {
+                        self.write_token(colon);
+                    } else {
+                        self.write_symbol(":");
+                    }
+
+                    self.write_type(property.get_type());
+                }
+                TableEntryType::Literal(property) => {
+                    if let Some(tokens) = property.get_tokens() {
+                        self.write_table_literal_property_type_with_tokens(property, tokens);
+                    } else {
+                        self.write_table_literal_property_type_with_tokens(
+                            property,
+                            &self.generate_table_indexer_type_tokens(),
+                        );
+                    }
+                }
+                TableEntryType::Indexer(indexer) => {
+                    if let Some(tokens) = indexer.get_tokens() {
+                        self.write_table_indexer_type_with_tokens(indexer, tokens);
+                    } else {
+                        self.write_table_indexer_type_with_tokens(
+                            indexer,
+                            &self.generate_table_indexer_type_tokens(),
+                        );
+                    }
+                }
             }
-
-            self.write_type(property.get_type());
 
             if i < last_index {
                 if let Some(comma) = tokens.separators.get(i) {
@@ -879,30 +901,31 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             }
         }
 
-        if let Some(indexer_type) = table_type.get_indexer_type() {
-            if let Some(tokens) = indexer_type.get_tokens() {
-                self.write_table_indexer_type_with_tokens(indexer_type, tokens);
-            } else {
-                self.write_table_indexer_type_with_tokens(
-                    indexer_type,
-                    &self.generate_table_indexer_type_tokens(indexer_type),
-                );
-            }
-        }
-
         self.write_token(&tokens.closing_brace);
     }
 
     fn write_table_indexer_type_with_tokens(
         &mut self,
         indexer_type: &TableIndexerType,
-        tokens: &TableIndexerTypeTokens,
+        tokens: &TableIndexTypeTokens,
     ) {
         self.write_token(&tokens.opening_bracket);
         self.write_type(indexer_type.get_key_type());
         self.write_token(&tokens.closing_bracket);
         self.write_token(&tokens.colon);
         self.write_type(indexer_type.get_value_type());
+    }
+
+    fn write_table_literal_property_type_with_tokens(
+        &mut self,
+        property: &TableLiteralPropertyType,
+        tokens: &TableIndexTypeTokens,
+    ) {
+        self.write_token(&tokens.opening_bracket);
+        self.write_string_type(property.get_string());
+        self.write_token(&tokens.closing_bracket);
+        self.write_token(&tokens.colon);
+        self.write_type(property.get_type());
     }
 
     fn write_expression_type_with_tokens(
@@ -1434,18 +1457,12 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         TableTypeTokens {
             opening_brace: Token::from_content("{"),
             closing_brace: Token::from_content("}"),
-            separators: intersect_with_token(
-                comma_token(),
-                table_type.properties_len() + usize::from(table_type.has_indexer_type()),
-            ),
+            separators: intersect_with_token(comma_token(), table_type.len()),
         }
     }
 
-    fn generate_table_indexer_type_tokens(
-        &self,
-        _table_indexer: &TableIndexerType,
-    ) -> TableIndexerTypeTokens {
-        TableIndexerTypeTokens {
+    fn generate_table_indexer_type_tokens(&self) -> TableIndexTypeTokens {
+        TableIndexTypeTokens {
             opening_bracket: Token::from_content("["),
             closing_bracket: Token::from_content("]"),
             colon: Token::from_content(":"),

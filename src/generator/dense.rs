@@ -919,24 +919,32 @@ impl LuaGenerator for DenseLuaGenerator {
     fn write_table_type(&mut self, table_type: &nodes::TableType) {
         self.push_char('{');
 
-        let last_index = table_type
-            .property_len()
-            .saturating_sub(if table_type.has_indexer_type() { 0 } else { 1 });
-        for (index, property) in table_type.iter_property_type().enumerate() {
-            self.write_identifier(property.get_identifier());
-            self.push_char(':');
-            self.write_type(property.get_type());
+        let last_index = table_type.len().saturating_sub(1);
+        for (index, property) in table_type.iter_entries().enumerate() {
+            match property {
+                nodes::TableEntryType::Property(property) => {
+                    self.write_identifier(property.get_identifier());
+                    self.push_char(':');
+                    self.write_type(property.get_type());
+                }
+                nodes::TableEntryType::Literal(property) => {
+                    self.push_char('[');
+                    self.write_string_type(property.get_string());
+                    self.push_char(']');
+                    self.push_char(':');
+                    self.write_type(property.get_type());
+                }
+                nodes::TableEntryType::Indexer(indexer) => {
+                    self.push_char('[');
+                    self.write_type(indexer.get_key_type());
+                    self.push_char(']');
+                    self.push_char(':');
+                    self.write_type(indexer.get_value_type());
+                }
+            }
             if index != last_index {
                 self.push_char(',');
             }
-        }
-
-        if let Some(indexer) = table_type.get_indexer_type() {
-            self.push_char('[');
-            self.write_type(indexer.get_key_type());
-            self.push_char(']');
-            self.push_char(':');
-            self.write_type(indexer.get_value_type());
         }
 
         self.push_char('}');
