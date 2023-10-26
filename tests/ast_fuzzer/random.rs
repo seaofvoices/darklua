@@ -264,6 +264,14 @@ impl RandomAst {
     pub fn table_type_indexer(&self) -> bool {
         thread_rng().gen_bool(0.25)
     }
+
+    pub fn function_generic_types(&self) -> usize {
+        normal_sample(0.0, 2.0)
+    }
+
+    pub fn function_generic_type_is_generic_pack(&self) -> bool {
+        thread_rng().gen_bool(0.4)
+    }
 }
 
 #[inline]

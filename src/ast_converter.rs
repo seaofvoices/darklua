@@ -1276,6 +1276,15 @@ impl<'a> AstConverter<'a> {
             .ok_or_else(|| ConvertError::GenericDeclaration {
                 generics: generics.to_string(),
             })?;
+
+        for type_variable in type_variables_iter {
+            generic_parameters.push_type_variable(type_variable);
+        }
+
+        for generic_pack in generic_type_packs_iter {
+            generic_parameters.push_generic_type_pack(generic_pack);
+        }
+
         if self.hold_token_data {
             let (opening_list, closing_list) =
                 self.extract_contained_span_tokens(generics.arrows())?;
@@ -1286,6 +1295,7 @@ impl<'a> AstConverter<'a> {
                 commas,
             });
         }
+
         Ok(generic_parameters)
     }
 

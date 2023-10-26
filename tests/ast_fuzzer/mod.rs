@@ -1024,6 +1024,10 @@ impl AstFuzzer {
                         has_variadic_type || self.random.function_is_variadic(),
                     );
 
+                    if let Some(generics) = self.generate_function_generics() {
+                        function.set_generic_parameters(generics);
+                    }
+
                     if has_return_type {
                         function.set_return_type(self.pop_return_type());
                     }
@@ -1049,6 +1053,10 @@ impl AstFuzzer {
                         has_variadic_type || self.random.function_is_variadic(),
                     );
 
+                    if let Some(generics) = self.generate_function_generics() {
+                        function.set_generic_parameters(generics);
+                    }
+
                     if has_return_type {
                         function.set_return_type(self.pop_return_type());
                     }
@@ -1072,6 +1080,10 @@ impl AstFuzzer {
                         parameters,
                         has_variadic_type || self.random.function_is_variadic(),
                     );
+
+                    if let Some(generics) = self.generate_function_generics() {
+                        function.set_generic_parameters(generics);
+                    }
 
                     if has_return_type {
                         function.set_return_type(self.pop_return_type());
@@ -1365,6 +1377,10 @@ impl AstFuzzer {
 
                     let mut function_type = FunctionType::new(self.pop_return_type());
 
+                    if let Some(generics) = self.generate_function_generics() {
+                        function_type.set_generic_parameters(generics);
+                    }
+
                     for argument in
                         arguments
                             .into_iter()
@@ -1462,6 +1478,31 @@ impl AstFuzzer {
                     );
                 }
             }
+        }
+    }
+
+    fn generate_function_generics(&mut self) -> Option<GenericParameters> {
+        let generic_types_count = self.random.function_generic_types();
+        if generic_types_count > 0 {
+            let mut generics = if self.random.function_generic_type_is_generic_pack() {
+                GenericParameters::from_generic_type_pack(GenericTypePack::new(
+                    self.random.identifier(),
+                ))
+            } else {
+                GenericParameters::from_type_variable(self.random.identifier())
+            };
+
+            for _ in 1..generic_types_count {
+                if self.random.function_generic_type_is_generic_pack() {
+                    generics.push_generic_type_pack(GenericTypePack::new(self.random.identifier()))
+                } else {
+                    generics.push_type_variable(self.random.identifier())
+                }
+            }
+
+            Some(generics)
+        } else {
+            None
         }
     }
 

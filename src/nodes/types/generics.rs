@@ -106,6 +106,10 @@ impl GenericParameters {
         self.type_variables.push(type_variable.into());
     }
 
+    pub fn push_generic_type_pack(&mut self, generic_pack: GenericTypePack) {
+        self.generic_type_packs.push(generic_pack);
+    }
+
     #[inline]
     pub fn len(&self) -> usize {
         self.type_variables.len() + self.generic_type_packs.len()
@@ -155,6 +159,54 @@ impl GenericParameters {
     #[inline]
     pub fn get_tokens(&self) -> Option<&GenericParametersTokens> {
         self.tokens.as_ref()
+    }
+
+    pub fn clear_comments(&mut self) {
+        for identifier in &mut self.type_variables {
+            identifier.clear_comments();
+        }
+        for generic_pack in &mut self.generic_type_packs {
+            generic_pack.clear_comments();
+        }
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_comments();
+        }
+    }
+
+    pub fn clear_whitespaces(&mut self) {
+        for identifier in &mut self.type_variables {
+            identifier.clear_whitespaces();
+        }
+        for generic_pack in &mut self.generic_type_packs {
+            generic_pack.clear_whitespaces();
+        }
+        if let Some(tokens) = &mut self.tokens {
+            tokens.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        for identifier in &mut self.type_variables {
+            identifier.replace_referenced_tokens(code);
+        }
+        for generic_pack in &mut self.generic_type_packs {
+            generic_pack.replace_referenced_tokens(code);
+        }
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        for identifier in &mut self.type_variables {
+            identifier.shift_token_line(amount);
+        }
+        for generic_pack in &mut self.generic_type_packs {
+            generic_pack.shift_token_line(amount);
+        }
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
+        }
     }
 }
 

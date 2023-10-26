@@ -169,8 +169,14 @@ impl LocalFunctionStatement {
         self
     }
 
+    #[inline]
     pub fn set_generic_parameters(&mut self, generic_parameters: GenericParameters) {
         self.generic_parameters = Some(generic_parameters);
+    }
+
+    #[inline]
+    pub fn get_generic_parameters(&self) -> Option<&GenericParameters> {
+        self.generic_parameters.as_ref()
     }
 
     #[inline]
@@ -257,6 +263,9 @@ impl LocalFunctionStatement {
         self.parameters
             .iter_mut()
             .for_each(TypedIdentifier::clear_comments);
+        if let Some(generics) = &mut self.generic_parameters {
+            generics.clear_comments();
+        }
         if let Some(tokens) = self.tokens.as_mut() {
             tokens.clear_comments();
         }
@@ -267,6 +276,9 @@ impl LocalFunctionStatement {
         self.parameters
             .iter_mut()
             .for_each(TypedIdentifier::clear_whitespaces);
+        if let Some(generics) = &mut self.generic_parameters {
+            generics.clear_whitespaces();
+        }
         if let Some(tokens) = self.tokens.as_mut() {
             tokens.clear_whitespaces();
         }
@@ -277,6 +289,9 @@ impl LocalFunctionStatement {
         for parameter in self.parameters.iter_mut() {
             parameter.replace_referenced_tokens(code);
         }
+        if let Some(generics) = &mut self.generic_parameters {
+            generics.replace_referenced_tokens(code);
+        }
         if let Some(tokens) = self.tokens.as_mut() {
             tokens.replace_referenced_tokens(code);
         }
@@ -286,6 +301,9 @@ impl LocalFunctionStatement {
         self.identifier.shift_token_line(amount);
         for parameter in self.parameters.iter_mut() {
             parameter.shift_token_line(amount);
+        }
+        if let Some(generics) = &mut self.generic_parameters {
+            generics.shift_token_line(amount);
         }
         if let Some(tokens) = &mut self.tokens {
             tokens.shift_token_line(amount);

@@ -180,6 +180,7 @@ impl FunctionType {
         self
     }
 
+    #[inline]
     pub fn set_generic_parameters(&mut self, generic_parameters: GenericParameters) {
         self.generic_parameters = Some(generic_parameters);
     }
@@ -276,6 +277,9 @@ impl FunctionType {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
         }
+        if let Some(generics) = &mut self.generic_parameters {
+            generics.clear_comments();
+        }
         for argument in &mut self.arguments {
             argument.clear_comments();
         }
@@ -284,6 +288,9 @@ impl FunctionType {
     pub fn clear_whitespaces(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
+        }
+        if let Some(generics) = &mut self.generic_parameters {
+            generics.clear_whitespaces();
         }
         for argument in &mut self.arguments {
             argument.clear_whitespaces();
@@ -294,6 +301,9 @@ impl FunctionType {
         if let Some(tokens) = &mut self.tokens {
             tokens.replace_referenced_tokens(code);
         }
+        if let Some(generics) = &mut self.generic_parameters {
+            generics.replace_referenced_tokens(code);
+        }
         for argument in &mut self.arguments {
             argument.replace_referenced_tokens(code);
         }
@@ -302,6 +312,9 @@ impl FunctionType {
     pub(crate) fn shift_token_line(&mut self, amount: usize) {
         if let Some(tokens) = &mut self.tokens {
             tokens.shift_token_line(amount);
+        }
+        if let Some(generics) = &mut self.generic_parameters {
+            generics.shift_token_line(amount);
         }
         for argument in &mut self.arguments {
             argument.shift_token_line(amount);
