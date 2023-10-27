@@ -265,7 +265,7 @@ impl ReadableLuaGenerator {
         &mut self,
         parameters: &[nodes::TypedIdentifier],
         is_variadic: bool,
-        variadic_type: Option<&nodes::Type>,
+        variadic_type: Option<&nodes::FunctionVariadicType>,
     ) {
         let mut parameters_length = parameters.iter().fold(0, |acc, parameter| {
             acc + parameter.get_name().len()
@@ -310,7 +310,7 @@ impl ReadableLuaGenerator {
                 if let Some(variadic_type) = variadic_type {
                     self.raw_push_char(':');
                     self.raw_push_char(' ');
-                    self.write_type(r#variadic_type);
+                    self.write_function_variadic_type(r#variadic_type);
                 }
             };
         } else {
@@ -337,7 +337,7 @@ impl ReadableLuaGenerator {
                 if let Some(variadic_type) = variadic_type {
                     self.raw_push_char(':');
                     self.raw_push_char(' ');
-                    self.write_type(r#variadic_type);
+                    self.write_function_variadic_type(r#variadic_type);
                 }
             };
 

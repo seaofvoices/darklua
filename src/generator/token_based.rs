@@ -326,6 +326,77 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         self.write_expression(assign.get_value());
     }
 
+    fn write_function_attributes<'b>(
+        &mut self,
+        tokens: &FunctionBodyTokens,
+        generic_parameters: Option<&GenericParameters>,
+        parameter_count: usize,
+        parameters: impl Iterator<Item = &'b TypedIdentifier>,
+        is_variadic: bool,
+        variadic_type: Option<&FunctionVariadicType>,
+        return_type: Option<&FunctionReturnType>,
+        block: &Block,
+    ) {
+        if let Some(generics) = generic_parameters {
+            self.write_function_generics(generics);
+        }
+
+        self.write_token(&tokens.opening_parenthese);
+
+        let last_parameter_index = parameter_count.saturating_sub(1);
+        parameters.enumerate().for_each(|(i, param)| {
+            self.write_typed_identifier(param);
+            if i < last_parameter_index {
+                if let Some(comma) = tokens.parameter_commas.get(i) {
+                    self.write_token(comma);
+                } else {
+                    self.write_symbol(",");
+                }
+            }
+        });
+
+        if is_variadic {
+            if parameter_count > 0 {
+                if let Some(comma) = tokens.parameter_commas.get(last_parameter_index) {
+                    self.write_token(comma);
+                } else {
+                    self.write_symbol(",");
+                }
+            }
+
+            if let Some(token) = &tokens.variable_arguments {
+                self.write_token(token);
+            } else {
+                self.write_symbol("...");
+            }
+
+            if let Some(variadic_type) = variadic_type {
+                if let Some(colon) = &tokens.variable_arguments_colon {
+                    self.write_token(colon);
+                } else {
+                    self.write_symbol(":")
+                }
+                self.write_function_variadic_type(variadic_type);
+            }
+        }
+
+        self.write_token(&tokens.closing_parenthese);
+
+        if let Some(return_type) = return_type {
+            if let Some(colon) = &tokens.return_type_colon {
+                self.write_token(colon);
+            } else {
+                self.write_symbol(":")
+            }
+
+            self.write_function_return_type(return_type);
+        }
+
+        self.write_block(block);
+
+        self.write_token(&tokens.end);
+    }
+
     fn write_function_statement_with_tokens(
         &mut self,
         function: &FunctionStatement,
@@ -340,68 +411,16 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             self.write_function_name_with_tokens(name, &self.generate_function_name_tokens(name));
         }
 
-        if let Some(generics) = function.get_generic_parameters() {
-            self.write_function_generics(generics);
-        }
-
-        self.write_token(&tokens.opening_parenthese);
-
-        let parameter_count = function.parameters_count();
-        let last_parameter_index = parameter_count.saturating_sub(1);
-        function
-            .iter_parameters()
-            .enumerate()
-            .for_each(|(i, param)| {
-                self.write_typed_identifier(param);
-                if i < last_parameter_index {
-                    if let Some(comma) = tokens.parameter_commas.get(i) {
-                        self.write_token(comma);
-                    } else {
-                        self.write_symbol(",");
-                    }
-                }
-            });
-
-        if function.is_variadic() {
-            if function.has_parameters() {
-                if let Some(comma) = tokens.parameter_commas.get(last_parameter_index) {
-                    self.write_token(comma);
-                } else {
-                    self.write_symbol(",");
-                }
-            }
-
-            if let Some(token) = &tokens.variable_arguments {
-                self.write_token(token);
-            } else {
-                self.write_symbol("...");
-            }
-
-            if let Some(variadic_type) = function.get_variadic_type() {
-                if let Some(colon) = &tokens.variable_arguments_colon {
-                    self.write_token(colon);
-                } else {
-                    self.write_symbol(":")
-                }
-                self.write_type(variadic_type);
-            }
-        }
-
-        self.write_token(&tokens.closing_parenthese);
-
-        if let Some(return_type) = function.get_return_type() {
-            if let Some(colon) = &tokens.return_type_colon {
-                self.write_token(colon);
-            } else {
-                self.write_symbol(":")
-            }
-
-            self.write_function_return_type(return_type);
-        }
-
-        self.write_block(function.get_block());
-
-        self.write_token(&tokens.end);
+        self.write_function_attributes(
+            tokens,
+            function.get_generic_parameters(),
+            function.parameters_count(),
+            function.iter_parameters(),
+            function.is_variadic(),
+            function.get_variadic_type(),
+            function.get_return_type(),
+            function.get_block(),
+        );
     }
 
     fn write_function_name_with_tokens(
@@ -570,67 +589,16 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         self.write_token(&tokens.function);
         self.write_identifier(function.get_identifier());
 
-        if let Some(generics) = function.get_generic_parameters() {
-            self.write_function_generics(generics);
-        }
-
-        self.write_token(&tokens.opening_parenthese);
-
-        let parameter_count = function.parameters_count();
-        let last_parameter_index = parameter_count.saturating_sub(1);
-        function
-            .iter_parameters()
-            .enumerate()
-            .for_each(|(i, param)| {
-                self.write_typed_identifier(param);
-                if i < last_parameter_index {
-                    if let Some(comma) = tokens.parameter_commas.get(i) {
-                        self.write_token(comma);
-                    } else {
-                        self.write_symbol(",");
-                    }
-                }
-            });
-
-        if function.is_variadic() {
-            if function.has_parameters() {
-                if let Some(comma) = tokens.parameter_commas.get(last_parameter_index) {
-                    self.write_token(comma);
-                } else {
-                    self.write_symbol(",");
-                }
-            }
-
-            if let Some(token) = &tokens.variable_arguments {
-                self.write_token(token);
-            } else {
-                self.write_symbol("...");
-            }
-
-            if let Some(variadic_type) = function.get_variadic_type() {
-                if let Some(colon) = &tokens.variable_arguments_colon {
-                    self.write_token(colon);
-                } else {
-                    self.write_symbol(":")
-                }
-                self.write_type(variadic_type);
-            }
-        }
-
-        self.write_token(&tokens.closing_parenthese);
-
-        if let Some(return_type) = function.get_return_type() {
-            if let Some(colon) = &tokens.return_type_colon {
-                self.write_token(colon);
-            } else {
-                self.write_symbol(":")
-            }
-
-            self.write_function_return_type(return_type);
-        }
-
-        self.write_block(function.get_block());
-        self.write_token(&tokens.end);
+        self.write_function_attributes(
+            tokens,
+            function.get_generic_parameters(),
+            function.parameters_count(),
+            function.iter_parameters(),
+            function.is_variadic(),
+            function.get_variadic_type(),
+            function.get_return_type(),
+            function.get_block(),
+        );
     }
 
     fn write_numeric_for_with_tokens(
@@ -767,67 +735,16 @@ impl<'a> TokenBasedLuaGenerator<'a> {
     ) {
         self.write_token(&tokens.function);
 
-        if let Some(generics) = function.get_generic_parameters() {
-            self.write_function_generics(generics);
-        }
-
-        self.write_token(&tokens.opening_parenthese);
-
-        let parameter_count = function.parameters_count();
-        let last_parameter_index = parameter_count.saturating_sub(1);
-        function
-            .iter_parameters()
-            .enumerate()
-            .for_each(|(i, param)| {
-                self.write_typed_identifier(param);
-                if i < last_parameter_index {
-                    if let Some(comma) = tokens.parameter_commas.get(i) {
-                        self.write_token(comma);
-                    } else {
-                        self.write_symbol(",");
-                    }
-                }
-            });
-
-        if function.is_variadic() {
-            if function.has_parameters() {
-                if let Some(comma) = tokens.parameter_commas.get(last_parameter_index) {
-                    self.write_token(comma);
-                } else {
-                    self.write_symbol(",");
-                }
-            }
-
-            if let Some(token) = &tokens.variable_arguments {
-                self.write_token(token);
-            } else {
-                self.write_symbol("...");
-            }
-
-            if let Some(variadic_type) = function.get_variadic_type() {
-                if let Some(colon) = &tokens.variable_arguments_colon {
-                    self.write_token(colon);
-                } else {
-                    self.write_symbol(":")
-                }
-                self.write_type(variadic_type);
-            }
-        }
-
-        self.write_token(&tokens.closing_parenthese);
-
-        if let Some(return_type) = function.get_return_type() {
-            if let Some(colon) = &tokens.return_type_colon {
-                self.write_token(colon);
-            } else {
-                self.write_symbol(":")
-            }
-
-            self.write_function_return_type(return_type);
-        }
-
-        self.write_block(function.get_block());
-        self.write_token(&tokens.end);
+        self.write_function_attributes(
+            tokens,
+            function.get_generic_parameters(),
+            function.parameters_count(),
+            function.iter_parameters(),
+            function.is_variadic(),
+            function.get_variadic_type(),
+            function.get_return_type(),
+            function.get_block(),
+        );
     }
 
     fn write_type_parameters_with_tokens(

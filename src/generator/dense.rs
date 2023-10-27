@@ -179,7 +179,7 @@ impl DenseLuaGenerator {
         &mut self,
         parameters: &[nodes::TypedIdentifier],
         is_variadic: bool,
-        variadic_type: Option<&nodes::Type>,
+        variadic_type: Option<&nodes::FunctionVariadicType>,
     ) {
         let last_index = parameters.len().saturating_sub(1);
 
@@ -199,7 +199,7 @@ impl DenseLuaGenerator {
 
             if let Some(variadic_type) = variadic_type {
                 self.push_char(':');
-                self.write_type(variadic_type);
+                self.write_function_variadic_type(variadic_type);
             }
         };
     }

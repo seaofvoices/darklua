@@ -1,6 +1,7 @@
 mod array;
 mod expression_type;
 mod function;
+mod function_variadic_type;
 mod generics;
 mod intersection;
 mod optional;
@@ -16,6 +17,7 @@ mod variadic_type_pack;
 pub use array::*;
 pub use expression_type::*;
 pub use function::*;
+pub use function_variadic_type::*;
 pub use generics::*;
 pub use intersection::*;
 pub use optional::*;
