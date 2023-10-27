@@ -1911,7 +1911,7 @@ impl<'a> AstConverter<'a> {
                 return_type,
             } => {
                 let (override_return_type, push_right_expression) =
-                    self.patch_return_type_tuple(&return_type);
+                    self.patch_return_type_tuple(return_type);
 
                 self.work_stack.push(ConvertWork::MakeFunctionType {
                     generics,

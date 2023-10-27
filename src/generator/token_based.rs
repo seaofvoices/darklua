@@ -326,6 +326,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         self.write_expression(assign.get_value());
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn write_function_attributes<'b>(
         &mut self,
         tokens: &FunctionBodyTokens,
