@@ -272,6 +272,10 @@ impl RandomAst {
     pub fn function_generic_type_is_generic_pack(&self) -> bool {
         thread_rng().gen_bool(0.4)
     }
+
+    pub fn function_variadic_type_is_generic_pack(&self) -> bool {
+        thread_rng().gen_bool(0.2)
+    }
 }
 
 #[inline]

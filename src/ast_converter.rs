@@ -1,4 +1,4 @@
-use std::{fmt, iter::FromIterator, str::FromStr};
+use std::{fmt, str::FromStr};
 
 use full_moon::{
     ast,
@@ -119,11 +119,6 @@ impl<'a> AstConverter<'a> {
     }
 
     #[inline]
-    fn pop_types(&mut self, n: usize) -> Result<Vec<Type>, ConvertError> {
-        std::iter::repeat_with(|| self.pop_type()).take(n).collect()
-    }
-
-    #[inline]
     fn pop_variadic_type_pack(&mut self) -> Result<VariadicTypePack, ConvertError> {
         self.variadic_type_packs
             .pop()
@@ -171,7 +166,6 @@ impl<'a> AstConverter<'a> {
 
         while let Some(work) = self.work_stack.pop() {
             match work {
-                // todo: those PushSomething variants are probably not needed
                 ConvertWork::PushVariable(variable) => {
                     self.variables.push(variable);
                 }
@@ -564,26 +558,26 @@ impl<'a> AstConverter<'a> {
 
                                     if let Some(default_type) = parameter
                                         .default_type()
-                                        .map(|default_type| match default_type {
-                                            TypeInfo::GenericPack { .. } => self
-                                                .pop_generic_type_pack()
-                                                .map(GenericTypePackDefault::from),
-                                            TypeInfo::VariadicPack { .. } => self
-                                                .pop_variadic_type_pack()
-                                                .map(GenericTypePackDefault::from),
-                                            TypeInfo::Tuple { .. } => self
-                                                .pop_type_pack()
-                                                .map(GenericTypePackDefault::from),
-                                            TypeInfo::Intersection { left, .. }
-                                            | TypeInfo::Union { left, .. }
-                                                if matches!(**left, TypeInfo::Variadic { .. }) =>
-                                            {
+                                        .map(|default_type| {
+                                            if is_variadic_type(default_type).is_some() {
                                                 self.pop_variadic_type_pack()
                                                     .map(GenericTypePackDefault::from)
+                                            } else {
+                                                match default_type {
+                                                    TypeInfo::GenericPack { .. } => self
+                                                        .pop_generic_type_pack()
+                                                        .map(GenericTypePackDefault::from),
+                                                    TypeInfo::VariadicPack { .. } => self
+                                                        .pop_variadic_type_pack()
+                                                        .map(GenericTypePackDefault::from),
+                                                    TypeInfo::Tuple { .. } => self
+                                                        .pop_type_pack()
+                                                        .map(GenericTypePackDefault::from),
+                                                    _ => Err(ConvertError::GenericDeclaration {
+                                                        generics: generics.to_string(),
+                                                    }),
+                                                }
                                             }
-                                            _ => Err(ConvertError::GenericDeclaration {
-                                                generics: generics.to_string(),
-                                            }),
                                         })
                                         .transpose()?
                                     {
@@ -873,18 +867,15 @@ impl<'a> AstConverter<'a> {
                 }
                 ConvertWork::MakeFunctionReturnType { type_info } => {
                     use ast::types::TypeInfo;
-                    let return_type = match type_info {
-                        TypeInfo::Tuple { .. } => self.pop_type_pack()?.into(),
-                        TypeInfo::Variadic { .. } => self.pop_variadic_type_pack()?.into(),
-                        TypeInfo::GenericPack { .. } => self.pop_generic_type_pack()?.into(),
-                        TypeInfo::Intersection { left: inner, .. }
-                        | TypeInfo::Union { left: inner, .. }
-                        | TypeInfo::Optional { base: inner, .. }
-                            if matches!(**inner, TypeInfo::Variadic { .. }) =>
-                        {
-                            self.pop_variadic_type_pack()?.into()
+
+                    let return_type = if is_variadic_type(type_info).is_some() {
+                        self.pop_variadic_type_pack()?.into()
+                    } else {
+                        match type_info {
+                            TypeInfo::Tuple { .. } => self.pop_type_pack()?.into(),
+                            TypeInfo::GenericPack { .. } => self.pop_generic_type_pack()?.into(),
+                            _ => self.pop_type()?.into(),
                         }
-                        _ => self.pop_type()?.into(),
                     };
 
                     self.function_return_types.push(return_type);
@@ -1034,27 +1025,33 @@ impl<'a> AstConverter<'a> {
                     for argument in arguments {
                         use ast::types::TypeInfo;
 
-                        match argument.type_info() {
-                            TypeInfo::Variadic { .. } | TypeInfo::VariadicPack { .. } => {
-                                function_type.set_variadic_type(self.pop_variadic_type_pack()?);
-                            }
-                            TypeInfo::GenericPack { .. } => {
-                                function_type.set_variadic_type(self.pop_generic_type_pack()?);
-                            }
-                            _ => {
-                                let mut argument_type = FunctionArgumentType::new(self.pop_type()?);
-
-                                if let Some((name, colon)) = argument.name() {
-                                    argument_type.set_name(self.convert_token_to_identifier(name)?);
-
-                                    if self.hold_token_data {
-                                        argument_type.set_token(self.convert_token(colon)?);
-                                    }
+                        if is_variadic_type(argument.type_info()).is_some() {
+                            function_type.set_variadic_type(self.pop_variadic_type_pack()?);
+                        } else {
+                            match argument.type_info() {
+                                TypeInfo::Variadic { .. } | TypeInfo::VariadicPack { .. } => {
+                                    function_type.set_variadic_type(self.pop_variadic_type_pack()?);
                                 }
+                                TypeInfo::GenericPack { .. } => {
+                                    function_type.set_variadic_type(self.pop_generic_type_pack()?);
+                                }
+                                _ => {
+                                    let mut argument_type =
+                                        FunctionArgumentType::new(self.pop_type()?);
 
-                                function_type.push_argument(argument_type);
-                            }
-                        };
+                                    if let Some((name, colon)) = argument.name() {
+                                        argument_type
+                                            .set_name(self.convert_token_to_identifier(name)?);
+
+                                        if self.hold_token_data {
+                                            argument_type.set_token(self.convert_token(colon)?);
+                                        }
+                                    }
+
+                                    function_type.push_argument(argument_type);
+                                }
+                            };
+                        }
                     }
 
                     if let Some(generics) = generics {
@@ -1102,29 +1099,39 @@ impl<'a> AstConverter<'a> {
 
                     let mut parameters = generics
                         .iter()
-                        .map(|type_parameter| match type_parameter {
-                            TypeInfo::GenericPack { .. } => {
-                                self.pop_generic_type_pack().map(TypeParameter::from)
-                            }
-                            TypeInfo::VariadicPack { .. } | TypeInfo::Variadic { .. } => {
+                        .map(|type_parameter| {
+                            if is_variadic_type(type_parameter).is_some() {
                                 self.pop_variadic_type_pack().map(TypeParameter::from)
+                            } else {
+                                match type_parameter {
+                                    TypeInfo::GenericPack { .. } => {
+                                        self.pop_generic_type_pack().map(TypeParameter::from)
+                                    }
+                                    TypeInfo::VariadicPack { .. } | TypeInfo::Variadic { .. } => {
+                                        self.pop_variadic_type_pack().map(TypeParameter::from)
+                                    }
+                                    TypeInfo::Tuple { .. } => {
+                                        self.pop_type_pack().map(TypeParameter::from)
+                                    }
+                                    TypeInfo::Array { .. }
+                                    | TypeInfo::Basic(_)
+                                    | TypeInfo::String(_)
+                                    | TypeInfo::Boolean(_)
+                                    | TypeInfo::Callback { .. }
+                                    | TypeInfo::Generic { .. }
+                                    | TypeInfo::Intersection { .. }
+                                    | TypeInfo::Module { .. }
+                                    | TypeInfo::Optional { .. }
+                                    | TypeInfo::Table { .. }
+                                    | TypeInfo::Typeof { .. }
+                                    | TypeInfo::Union { .. } => {
+                                        self.pop_type().map(TypeParameter::from)
+                                    }
+                                    _ => Err(ConvertError::TypeInfo {
+                                        type_info: type_parameter.to_string(),
+                                    }),
+                                }
                             }
-                            TypeInfo::Tuple { .. } => self.pop_type_pack().map(TypeParameter::from),
-                            TypeInfo::Array { .. }
-                            | TypeInfo::Basic(_)
-                            | TypeInfo::String(_)
-                            | TypeInfo::Boolean(_)
-                            | TypeInfo::Callback { .. }
-                            | TypeInfo::Generic { .. }
-                            | TypeInfo::Intersection { .. }
-                            | TypeInfo::Module { .. }
-                            | TypeInfo::Optional { .. }
-                            | TypeInfo::Table { .. }
-                            | TypeInfo::Typeof { .. }
-                            | TypeInfo::Union { .. } => self.pop_type().map(TypeParameter::from),
-                            _ => Err(ConvertError::TypeInfo {
-                                type_info: type_parameter.to_string(),
-                            }),
                         })
                         .collect::<Result<TypeParameters, ConvertError>>()?;
 
@@ -1174,31 +1181,23 @@ impl<'a> AstConverter<'a> {
                 ConvertWork::MakeTypePack { types, parentheses } => {
                     use ast::types::TypeInfo;
 
-                    let mut type_pack = match types.iter().last() {
-                        Some(TypeInfo::Variadic { .. }) | Some(TypeInfo::VariadicPack { .. }) => {
-                            TypePack::from_iter(self.pop_types(types.len().saturating_sub(1))?)
-                                .with_variadic_type(self.pop_variadic_type_pack()?)
+                    let mut type_pack = TypePack::default();
+
+                    let last_index = types.len().saturating_sub(1);
+                    for (i, r#type) in types.iter().enumerate() {
+                        if i == last_index && is_variadic_type(r#type).is_some() {
+                            type_pack.set_variadic_type(self.pop_variadic_type_pack()?);
+                        } else {
+                            match r#type {
+                                TypeInfo::GenericPack { .. } => {
+                                    type_pack.set_variadic_type(self.pop_generic_type_pack()?);
+                                }
+                                _ => {
+                                    type_pack.push_type(self.pop_type()?);
+                                }
+                            }
                         }
-                        Some(TypeInfo::GenericPack { .. }) => {
-                            TypePack::from_iter(self.pop_types(types.len().saturating_sub(1))?)
-                                .with_variadic_type(self.pop_generic_type_pack()?)
-                        }
-                        Some(TypeInfo::Array { .. })
-                        | Some(TypeInfo::Basic(_))
-                        | Some(TypeInfo::String(_))
-                        | Some(TypeInfo::Boolean(_))
-                        | Some(TypeInfo::Callback { .. })
-                        | Some(TypeInfo::Generic { .. })
-                        | Some(TypeInfo::Intersection { .. })
-                        | Some(TypeInfo::Module { .. })
-                        | Some(TypeInfo::Optional { .. })
-                        | Some(TypeInfo::Table { .. })
-                        | Some(TypeInfo::Typeof { .. })
-                        | Some(TypeInfo::Tuple { .. })
-                        | Some(TypeInfo::Union { .. })
-                        | Some(_)
-                        | None => TypePack::from_iter(self.pop_types(types.len())?),
-                    };
+                    }
 
                     if self.hold_token_data {
                         let (left_parenthese, right_parenthese) =
@@ -1456,7 +1455,7 @@ impl<'a> AstConverter<'a> {
                             self.push_type_pack_work(types, parentheses);
                         }
                         _ => {
-                            self.push_work(default_type);
+                            self.push_maybe_variadic_type(default_type);
                         }
                     }
                 }
@@ -1818,7 +1817,7 @@ impl<'a> AstConverter<'a> {
                 self.push_type_pack_work(types, parentheses);
             }
             _ => {
-                self.push_work(return_type);
+                self.push_maybe_variadic_type(return_type);
             }
         };
     }
@@ -1831,8 +1830,13 @@ impl<'a> AstConverter<'a> {
         self.work_stack
             .push(ConvertWork::MakeTypePack { types, parentheses });
 
-        for r#type in types {
-            self.push_work(r#type)
+        let last_index = types.len().saturating_sub(1);
+        for (i, r#type) in types.iter().enumerate() {
+            if i == last_index {
+                self.push_maybe_variadic_type(r#type);
+            } else {
+                self.push_work(r#type)
+            }
         }
     }
 
@@ -1906,39 +1910,8 @@ impl<'a> AstConverter<'a> {
                 arrow,
                 return_type,
             } => {
-                let mut push_right_expression = None;
-
-                let override_return_type = match return_type.as_ref() {
-                    TypeInfo::Intersection {
-                        left,
-                        right,
-                        ampersand,
-                    } if matches!(left.as_ref(), TypeInfo::GenericPack { .. }) => {
-                        // if we get a generic pack here then we are
-                        // not making a function type
-                        self.work_stack.push(ConvertWork::MakeIntersectionType {
-                            operator: ampersand,
-                        });
-
-                        push_right_expression = Some(right.as_ref());
-
-                        left
-                    }
-                    TypeInfo::Union { left, right, pipe }
-                        if matches!(left.as_ref(), TypeInfo::GenericPack { .. }) =>
-                    {
-                        // if we get a generic pack here then we are
-                        // not making a function type
-                        self.work_stack
-                            .push(ConvertWork::MakeUnionType { operator: pipe });
-
-                        push_right_expression = Some(right.as_ref());
-
-                        left
-                    }
-
-                    _ => return_type,
-                };
+                let (override_return_type, push_right_expression) =
+                    self.patch_return_type_tuple(return_type);
 
                 self.work_stack.push(ConvertWork::MakeFunctionType {
                     generics,
@@ -1953,23 +1926,18 @@ impl<'a> AstConverter<'a> {
 
                 for argument in arguments {
                     let argument_type = argument.type_info();
-                    match argument_type {
-                        TypeInfo::GenericPack { .. }
-                        | TypeInfo::Variadic { .. }
-                        | TypeInfo::VariadicPack { .. } => {
-                            if has_variadic_type {
-                                return Err(ConvertError::TypeInfo {
-                                    type_info: type_info.to_string(),
-                                });
-                            }
-                            has_variadic_type = true;
+                    if is_argument_variadic(argument_type) {
+                        if has_variadic_type {
+                            return Err(ConvertError::TypeInfo {
+                                type_info: type_info.to_string(),
+                            });
                         }
-                        _ => {}
+                        has_variadic_type = true;
                     }
-                    self.push_work(argument_type);
+                    self.push_maybe_variadic_type(argument_type);
                 }
 
-                if let Some(right) = push_right_expression {
+                for right in push_right_expression {
                     self.push_work(right);
                 }
             }
@@ -1995,45 +1963,18 @@ impl<'a> AstConverter<'a> {
                 ampersand,
                 right,
             } => {
-                match left.as_ref() {
-                    TypeInfo::Variadic { ellipse, type_info } => {
-                        self.work_stack
-                            .push(ConvertWork::MakeVariadicTypePack { ellipse });
+                self.work_stack.push(ConvertWork::MakeIntersectionType {
+                    operator: ampersand,
+                });
 
-                        self.work_stack.push(ConvertWork::MakeIntersectionType {
-                            operator: ampersand,
-                        });
-
-                        self.push_work(type_info.as_ref());
-                    }
-                    _ => {
-                        self.work_stack.push(ConvertWork::MakeIntersectionType {
-                            operator: ampersand,
-                        });
-
-                        self.push_work(left.as_ref());
-                    }
-                }
+                self.push_work(left.as_ref());
                 self.push_work(right.as_ref());
             }
             TypeInfo::Union { left, pipe, right } => {
-                match left.as_ref() {
-                    TypeInfo::Variadic { ellipse, type_info } => {
-                        self.work_stack
-                            .push(ConvertWork::MakeVariadicTypePack { ellipse });
+                self.work_stack
+                    .push(ConvertWork::MakeUnionType { operator: pipe });
 
-                        self.work_stack
-                            .push(ConvertWork::MakeUnionType { operator: pipe });
-
-                        self.push_work(type_info.as_ref());
-                    }
-                    _ => {
-                        self.work_stack
-                            .push(ConvertWork::MakeUnionType { operator: pipe });
-
-                        self.push_work(left.as_ref());
-                    }
-                }
+                self.push_work(left.as_ref());
                 self.push_work(right.as_ref());
             }
             TypeInfo::Module {
@@ -2075,23 +2016,12 @@ impl<'a> AstConverter<'a> {
             TypeInfo::Optional {
                 base,
                 question_mark,
-            } => match base.as_ref() {
-                TypeInfo::Variadic { ellipse, type_info } => {
-                    self.work_stack
-                        .push(ConvertWork::MakeVariadicTypePack { ellipse });
+            } => {
+                self.work_stack
+                    .push(ConvertWork::MakeOptionalType { question_mark });
 
-                    self.work_stack
-                        .push(ConvertWork::MakeOptionalType { question_mark });
-
-                    self.push_work(type_info.as_ref());
-                }
-                _ => {
-                    self.work_stack
-                        .push(ConvertWork::MakeOptionalType { question_mark });
-
-                    self.push_work(base.as_ref());
-                }
-            },
+                self.push_work(base.as_ref());
+            }
             TypeInfo::Table { braces, fields } => {
                 self.work_stack
                     .push(ConvertWork::MakeTableType { braces, fields });
@@ -2137,22 +2067,17 @@ impl<'a> AstConverter<'a> {
                             .expect("types should contain exactly one type at this point"),
                     );
                 } else {
-                    todo!()
+                    return Err(ConvertError::TypeInfo {
+                        type_info: type_info.to_string(),
+                    });
                 }
             }
-            TypeInfo::Variadic { ellipse, type_info } => {
-                self.work_stack
-                    .push(ConvertWork::MakeVariadicTypePack { ellipse });
-
+            TypeInfo::Variadic { type_info, .. } => {
                 self.push_work(type_info.as_ref());
             }
-            TypeInfo::VariadicPack { ellipse, name } => {
-                let mut variadic_type_pack =
-                    VariadicTypePack::new(TypeName::new(self.convert_token_to_identifier(name)?));
-                if self.hold_token_data {
-                    variadic_type_pack.set_token(self.convert_token(ellipse)?);
-                }
-                self.variadic_type_packs.push(variadic_type_pack);
+            TypeInfo::VariadicPack { name, .. } => {
+                self.types
+                    .push(TypeName::new(self.convert_token_to_identifier(name)?).into());
             }
             _ => {
                 return Err(ConvertError::TypeInfo {
@@ -2162,6 +2087,14 @@ impl<'a> AstConverter<'a> {
         }
 
         Ok(())
+    }
+
+    fn push_maybe_variadic_type(&mut self, type_info: &'a ast::types::TypeInfo) {
+        if let Some(ellipse) = is_variadic_type(type_info) {
+            self.work_stack
+                .push(ConvertWork::MakeVariadicTypePack { ellipse });
+        }
+        self.push_work(type_info);
     }
 
     fn push_generic_type_work(
@@ -2183,7 +2116,7 @@ impl<'a> AstConverter<'a> {
                     self.push_type_pack_work(types, parentheses);
                 }
                 _ => {
-                    self.push_work(parameter_type);
+                    self.push_maybe_variadic_type(parameter_type);
                 }
             }
         }
@@ -2355,7 +2288,15 @@ impl<'a> AstConverter<'a> {
                         });
                     } else {
                         if let Some(type_specifier) = type_specifier {
-                            builder.set_variadic_type(self.pop_type()?);
+                            builder.set_variadic_type(
+                                if let ast::types::TypeInfo::GenericPack { .. } =
+                                    type_specifier.type_info()
+                                {
+                                    self.pop_generic_type_pack()?.into()
+                                } else {
+                                    self.pop_type()?.into()
+                                },
+                            );
 
                             if self.hold_token_data {
                                 builder.set_variable_arguments_colon(
@@ -2570,6 +2511,124 @@ impl<'a> AstConverter<'a> {
             }
         }
         Ok(())
+    }
+
+    fn patch_return_type_tuple(
+        &mut self,
+        r#type: &'a ast::types::TypeInfo,
+    ) -> (&'a ast::types::TypeInfo, Vec<&'a ast::types::TypeInfo>) {
+        use ast::types::TypeInfo;
+        let mut current = r#type;
+        let mut additional_types = Vec::new();
+
+        loop {
+            match current {
+                TypeInfo::Tuple { types, .. } => {
+                    if types.len() == 1 {
+                        break (r#type, additional_types);
+                    } else {
+                        break (current, additional_types);
+                    }
+                }
+                TypeInfo::Optional {
+                    base,
+                    question_mark,
+                } => match base.as_ref() {
+                    TypeInfo::Tuple { types, .. } if types.len() != 1 => {
+                        self.work_stack
+                            .push(ConvertWork::MakeOptionalType { question_mark });
+
+                        current = base;
+                    }
+                    TypeInfo::GenericPack { .. } => {
+                        self.work_stack
+                            .push(ConvertWork::MakeOptionalType { question_mark });
+
+                        break (base, additional_types);
+                    }
+                    _ => break (current, additional_types),
+                },
+                TypeInfo::Intersection {
+                    left,
+                    right,
+                    ampersand,
+                } => match left.as_ref() {
+                    TypeInfo::Tuple { types, .. } if types.len() != 1 => {
+                        self.work_stack.push(ConvertWork::MakeIntersectionType {
+                            operator: ampersand,
+                        });
+                        additional_types.push(right.as_ref());
+
+                        break (left, additional_types);
+                    }
+                    TypeInfo::GenericPack { .. } => {
+                        // if we get a generic pack here then we are
+                        // not making a function type
+                        self.work_stack.push(ConvertWork::MakeIntersectionType {
+                            operator: ampersand,
+                        });
+                        additional_types.push(right.as_ref());
+
+                        break (left, additional_types);
+                    }
+                    _ => break (current, additional_types),
+                },
+                TypeInfo::Union { left, right, pipe } => match left.as_ref() {
+                    TypeInfo::Tuple { types, .. } if types.len() != 1 => {
+                        self.work_stack
+                            .push(ConvertWork::MakeUnionType { operator: pipe });
+                        additional_types.push(right.as_ref());
+
+                        break (left, additional_types);
+                    }
+                    TypeInfo::GenericPack { .. } => {
+                        // if we get a generic pack here then we are
+                        // not making a function type
+                        self.work_stack
+                            .push(ConvertWork::MakeUnionType { operator: pipe });
+                        additional_types.push(right.as_ref());
+
+                        break (left, additional_types);
+                    }
+                    _ => break (current, additional_types),
+                },
+                _ => break (current, additional_types),
+            }
+        }
+    }
+}
+
+fn is_argument_variadic(mut r#type: &ast::types::TypeInfo) -> bool {
+    use ast::types::TypeInfo;
+    loop {
+        match r#type {
+            TypeInfo::GenericPack { .. }
+            | TypeInfo::Variadic { .. }
+            | TypeInfo::VariadicPack { .. } => break true,
+            TypeInfo::Intersection { left, .. }
+            | TypeInfo::Union { left, .. }
+            | TypeInfo::Optional { base: left, .. } => {
+                r#type = left;
+            }
+            _ => break false,
+        }
+    }
+}
+
+fn is_variadic_type(mut r#type: &ast::types::TypeInfo) -> Option<&tokenizer::TokenReference> {
+    use ast::types::TypeInfo;
+    loop {
+        match r#type {
+            TypeInfo::Variadic { ellipse, .. } | TypeInfo::VariadicPack { ellipse, .. } => {
+                break Some(ellipse)
+            }
+            TypeInfo::Intersection { left, .. }
+            | TypeInfo::Union { left, .. }
+            | TypeInfo::Optional { base: left, .. } => {
+                r#type = left;
+            }
+            _ => break None,
+        }
     }
 }
 

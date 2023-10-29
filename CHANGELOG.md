@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* fix type packs, function variadic types and variadic type packs ([#137](https://github.com/seaofvoices/darklua/pull/137))
 * fix generic types on function types ([#136](https://github.com/seaofvoices/darklua/pull/136))
 * fix table types to allow string literal property types ([#135](https://github.com/seaofvoices/darklua/pull/135))
 

@@ -1,6 +1,6 @@
 use crate::nodes::{
-    Block, FunctionBodyTokens, FunctionReturnType, GenericParameters, Identifier, Token, Type,
-    TypedIdentifier,
+    Block, FunctionBodyTokens, FunctionReturnType, FunctionVariadicType, GenericParameters,
+    Identifier, Token, TypedIdentifier,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -51,7 +51,7 @@ pub struct LocalFunctionStatement {
     block: Block,
     parameters: Vec<TypedIdentifier>,
     is_variadic: bool,
-    variadic_type: Option<Type>,
+    variadic_type: Option<FunctionVariadicType>,
     return_type: Option<FunctionReturnType>,
     generic_parameters: Option<GenericParameters>,
     tokens: Option<Box<LocalFunctionTokens>>,
@@ -114,19 +114,19 @@ impl LocalFunctionStatement {
         self
     }
 
-    pub fn with_variadic_type(mut self, r#type: impl Into<Type>) -> Self {
+    pub fn with_variadic_type(mut self, r#type: impl Into<FunctionVariadicType>) -> Self {
         self.is_variadic = true;
         self.variadic_type = Some(r#type.into());
         self
     }
 
-    pub fn set_variadic_type(&mut self, r#type: impl Into<Type>) {
+    pub fn set_variadic_type(&mut self, r#type: impl Into<FunctionVariadicType>) {
         self.is_variadic = true;
         self.variadic_type = Some(r#type.into());
     }
 
     #[inline]
-    pub fn get_variadic_type(&self) -> Option<&Type> {
+    pub fn get_variadic_type(&self) -> Option<&FunctionVariadicType> {
         self.variadic_type.as_ref()
     }
 
@@ -136,7 +136,7 @@ impl LocalFunctionStatement {
     }
 
     #[inline]
-    pub fn mutate_variadic_type(&mut self) -> Option<&mut Type> {
+    pub fn mutate_variadic_type(&mut self) -> Option<&mut FunctionVariadicType> {
         self.variadic_type.as_mut()
     }
 

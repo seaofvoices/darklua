@@ -98,8 +98,8 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Self::visit_type(r#type, processor);
         }
 
-        if let Some(r#type) = function.mutate_variadic_type() {
-            Self::visit_type(r#type, processor);
+        if let Some(variadic_type) = function.mutate_variadic_type() {
+            Self::visit_function_variadic_type(variadic_type, processor);
         }
 
         if let Some(return_type) = function.mutate_return_type() {
@@ -143,8 +143,8 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Self::visit_type(r#type, processor);
         }
 
-        if let Some(r#type) = statement.mutate_variadic_type() {
-            Self::visit_type(r#type, processor);
+        if let Some(variadic_type) = statement.mutate_variadic_type() {
+            Self::visit_function_variadic_type(variadic_type, processor);
         }
 
         if let Some(return_type) = statement.mutate_return_type() {
@@ -207,12 +207,23 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Self::visit_type(r#type, processor);
         }
 
-        if let Some(r#type) = statement.mutate_variadic_type() {
-            Self::visit_type(r#type, processor);
+        if let Some(variadic_type) = statement.mutate_variadic_type() {
+            Self::visit_function_variadic_type(variadic_type, processor);
         }
 
         if let Some(return_type) = statement.mutate_return_type() {
             Self::visit_function_return_type(return_type, processor);
+        }
+    }
+
+    fn visit_function_variadic_type(variadic_type: &mut FunctionVariadicType, processor: &mut T) {
+        match variadic_type {
+            FunctionVariadicType::Type(r#type) => {
+                Self::visit_type(r#type, processor);
+            }
+            FunctionVariadicType::GenericTypePack(generic) => {
+                processor.process_generic_type_pack(generic);
+            }
         }
     }
 

@@ -1033,7 +1033,13 @@ impl AstFuzzer {
                     }
 
                     if has_variadic_type {
-                        function.set_variadic_type(self.pop_type());
+                        let variadic_type = self.pop_type();
+                        if self.random.function_variadic_type_is_generic_pack() {
+                            function
+                                .set_variadic_type(GenericTypePack::new(self.random.identifier()));
+                        } else {
+                            function.set_variadic_type(variadic_type);
+                        }
                     }
 
                     self.statements.push(function.into());

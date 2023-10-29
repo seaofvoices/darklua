@@ -200,6 +200,17 @@ pub trait LuaGenerator {
         }
     }
 
+    fn write_function_variadic_type(&mut self, variadic_type: &nodes::FunctionVariadicType) {
+        match variadic_type {
+            nodes::FunctionVariadicType::Type(r#type) => {
+                self.write_type(r#type);
+            }
+            nodes::FunctionVariadicType::GenericTypePack(generic_pack) => {
+                self.write_generic_type_pack(generic_pack);
+            }
+        }
+    }
+
     fn write_type_parameter(&mut self, type_parameter: &nodes::TypeParameter) {
         match type_parameter {
             nodes::TypeParameter::Type(r#type) => self.write_type(r#type),

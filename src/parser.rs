@@ -447,8 +447,17 @@ mod test {
                     #[test]
                     fn $name() {
                         let parser = Parser::default().preserve_tokens();
-                        let block = parser.parse($input)
-                            .expect(&format!("failed to parse `{}`", $input));
+                        let block = match parser.parse($input) {
+                            Ok(block) => block,
+                            Err(err) => {
+                                panic!(
+                                    "failed to parse `{}`: {}\nfull-moon result:\n{:#?}",
+                                    $input,
+                                    err,
+                                    full_moon::parse($input)
+                                );
+                            }
+                        };
 
                         let expect_block = $value;
 
@@ -2205,9 +2214,116 @@ mod test {
                 equal: spaced_token(7, 8),
                 export: None,
             }),
+            type_declaration_to_optional_void_callback("type T = () -> ()?") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                OptionalType::new(
+                    FunctionType::new(
+                        TypePack::default().with_tokens(TypePackTokens {
+                            left_parenthese: token_at_first_line(15, 16),
+                            right_parenthese: token_at_first_line(16, 17),
+                            commas: Vec::new(),
+                        })
+                    )
+                    .with_tokens(FunctionTypeTokens {
+                        opening_parenthese: token_at_first_line(9, 10),
+                        closing_parenthese: spaced_token(10, 11),
+                        arrow: spaced_token(12, 14),
+                        commas: Vec::new(),
+                    })
+                ).with_token(token_at_first_line(17, 18))
+            ).with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
+            type_declaration_to_intersection_of_void_callback_and_string("type T = () -> () & string") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                IntersectionType::new(
+                    FunctionType::new(
+                        TypePack::default().with_tokens(TypePackTokens {
+                            left_parenthese: token_at_first_line(15, 16),
+                            right_parenthese: spaced_token(16, 17),
+                            commas: Vec::new(),
+                        })
+                    )
+                    .with_tokens(FunctionTypeTokens {
+                        opening_parenthese: token_at_first_line(9, 10),
+                        closing_parenthese: spaced_token(10, 11),
+                        arrow: spaced_token(12, 14),
+                        commas: Vec::new(),
+                    }),
+                    TypeName::new(create_identifier("string", 20, 0))
+                ).with_token(spaced_token(18, 19))
+            ).with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
+            type_declaration_to_union_of_void_callback_and_string("type T = () -> () | string") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                UnionType::new(
+                    FunctionType::new(
+                        TypePack::default().with_tokens(TypePackTokens {
+                            left_parenthese: token_at_first_line(15, 16),
+                            right_parenthese: spaced_token(16, 17),
+                            commas: Vec::new(),
+                        })
+                    )
+                    .with_tokens(FunctionTypeTokens {
+                        opening_parenthese: token_at_first_line(9, 10),
+                        closing_parenthese: spaced_token(10, 11),
+                        arrow: spaced_token(12, 14),
+                        commas: Vec::new(),
+                    }),
+                    TypeName::new(create_identifier("string", 20, 0))
+                ).with_token(spaced_token(18, 19))
+            ).with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
             type_declaration_to_callback_returning_type("type T = () -> boolean") => TypeDeclarationStatement::new(
                 create_identifier("T", 5, 1),
                 FunctionType::new(TypeName::new(create_identifier("boolean", 15, 0)))
+                    .with_tokens(FunctionTypeTokens {
+                        opening_parenthese: token_at_first_line(9, 10),
+                        closing_parenthese: spaced_token(10, 11),
+                        arrow: spaced_token(12, 14),
+                        commas: Vec::new(),
+                    })
+            ).with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
+            type_declaration_to_callback_returning_multiple_intersected_types("type T = () -> A & B & C") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                FunctionType::new(
+                    IntersectionType::new(
+                        TypeName::new(create_identifier("A", 15, 1)),
+                        IntersectionType::new(
+                            TypeName::new(create_identifier("B", 19, 1)),
+                            TypeName::new(create_identifier("C", 23, 0)),
+                        ).with_token(spaced_token(21, 22))
+                    ).with_token(spaced_token(17, 18))
+                )
+                    .with_tokens(FunctionTypeTokens {
+                        opening_parenthese: token_at_first_line(9, 10),
+                        closing_parenthese: spaced_token(10, 11),
+                        arrow: spaced_token(12, 14),
+                        commas: Vec::new(),
+                    })
+            ).with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
+            type_declaration_to_callback_returning_optional_type("type T = () -> boolean?") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                FunctionType::new(
+                    OptionalType::new(TypeName::new(create_identifier("boolean", 15, 0)))
+                        .with_token(token_at_first_line(22, 23))
+                )
                     .with_tokens(FunctionTypeTokens {
                         opening_parenthese: token_at_first_line(9, 10),
                         closing_parenthese: spaced_token(10, 11),
@@ -2416,6 +2532,27 @@ mod test {
                         opening_parenthese: token_at_first_line(9, 10),
                         closing_parenthese: spaced_token(19, 20),
                         arrow: spaced_token(21, 23),
+                        commas: Vec::new(),
+                    })
+            ).with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
+            type_declaration_to_callback_with_variadic_optional_type_returning_type("type T = (...string?) -> boolean") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                FunctionType::new(TypeName::new(create_identifier("boolean", 25, 0)))
+                    .with_variadic_type(
+                        VariadicTypePack::new(
+                            OptionalType::new(TypeName::new(create_identifier("string", 13, 0)))
+                                .with_token(token_at_first_line(19, 20))
+                        )
+                            .with_token(token_at_first_line(10, 13))
+                    )
+                    .with_tokens(FunctionTypeTokens {
+                        opening_parenthese: token_at_first_line(9, 10),
+                        closing_parenthese: spaced_token(20, 21),
+                        arrow: spaced_token(22, 24),
                         commas: Vec::new(),
                     })
             ).with_tokens(TypeDeclarationTokens {

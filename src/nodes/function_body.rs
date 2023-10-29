@@ -1,14 +1,14 @@
 use super::{
     Block, FunctionExpression, FunctionName, FunctionReturnType, FunctionStatement,
-    GenericParameters, Identifier, LocalFunctionStatement, LocalFunctionTokens, Token, Type,
-    TypedIdentifier,
+    FunctionVariadicType, GenericParameters, Identifier, LocalFunctionStatement,
+    LocalFunctionTokens, Token, TypedIdentifier,
 };
 
 pub(crate) struct FunctionBuilder {
     block: Block,
     parameters: Vec<TypedIdentifier>,
     is_variadic: bool,
-    variadic_type: Option<Type>,
+    variadic_type: Option<FunctionVariadicType>,
     return_type: Option<FunctionReturnType>,
 
     function: Option<Token>,
@@ -189,7 +189,7 @@ impl FunctionBuilder {
         self.is_variadic = true;
     }
 
-    pub(crate) fn set_variadic_type(&mut self, r#type: Type) {
+    pub(crate) fn set_variadic_type(&mut self, r#type: FunctionVariadicType) {
         self.is_variadic = true;
         self.variadic_type = Some(r#type);
     }
