@@ -1,5 +1,6 @@
 //! A module that contains the different rules that mutates a Lua block.
 
+mod append_text_comment;
 pub mod bundle;
 mod call_parens;
 mod compute_expression;
@@ -25,6 +26,7 @@ mod shift_token_line;
 mod unused_if_branch;
 mod unused_while;
 
+pub use append_text_comment::*;
 pub use call_parens::*;
 pub use compute_expression::*;
 pub use configuration_error::RuleConfigurationError;
@@ -207,6 +209,7 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
 
 pub fn get_all_rule_names() -> Vec<&'static str> {
     vec![
+        APPEND_TEXT_COMMENT_RULE_NAME,
         COMPUTE_EXPRESSIONS_RULE_NAME,
         CONVERT_INDEX_TO_FIELD_RULE_NAME,
         CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME,
@@ -233,6 +236,7 @@ impl FromStr for Box<dyn Rule> {
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
         let rule: Box<dyn Rule> = match string {
+            APPEND_TEXT_COMMENT_RULE_NAME => Box::<AppendTextComment>::default(),
             COMPUTE_EXPRESSIONS_RULE_NAME => Box::<ComputeExpression>::default(),
             CONVERT_INDEX_TO_FIELD_RULE_NAME => Box::<ConvertIndexToField>::default(),
             CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => {
@@ -372,6 +376,19 @@ fn verify_required_properties(
         }
     }
     Ok(())
+}
+
+fn verify_required_any_properties(
+    properties: &RuleProperties,
+    names: &[&str],
+) -> Result<(), RuleConfigurationError> {
+    if names.iter().any(|name| properties.contains_key(*name)) {
+        Ok(())
+    } else {
+        Err(RuleConfigurationError::MissingAnyProperty(
+            names.iter().map(ToString::to_string).collect(),
+        ))
+    }
 }
 
 fn verify_property_collisions(

@@ -105,6 +105,11 @@ impl NumericForStatement {
     }
 
     #[inline]
+    pub fn mutate_tokens(&mut self) -> Option<&mut NumericForTokens> {
+        self.tokens.as_mut()
+    }
+
+    #[inline]
     pub fn get_block(&self) -> &Block {
         &self.block
     }

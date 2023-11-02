@@ -8,6 +8,8 @@ pub enum RuleConfigurationError {
     UnexpectedProperty(String),
     /// When a rule has a required property. The string should be the field name.
     MissingProperty(String),
+    /// When a rule must define at least one property in a given set.
+    MissingAnyProperty(Vec<String>),
     /// When a property is associated with something else than an expected boolean. The string is
     /// the property name.
     BooleanExpected(String),
@@ -62,6 +64,11 @@ impl fmt::Display for RuleConfigurationError {
         match self {
             UnexpectedProperty(property) => write!(f, "unexpected field '{}'", property),
             MissingProperty(property) => write!(f, "missing required field '{}'", property),
+            MissingAnyProperty(properties) => write!(
+                f,
+                "missing one field from {}",
+                enumerate_properties(properties)
+            ),
             BooleanExpected(property) => {
                 write!(f, "boolean value expected for field '{}'", property)
             }
@@ -82,7 +89,7 @@ impl fmt::Display for RuleConfigurationError {
             }
             PropertyCollision(properties) => write!(
                 f,
-                "the properties {} cannot be defined together",
+                "the fields {} cannot be defined together",
                 enumerate_properties(properties)
             ),
             InternalUsageOnly(rule_name) => {

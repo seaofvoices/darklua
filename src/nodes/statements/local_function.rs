@@ -101,7 +101,12 @@ impl LocalFunctionStatement {
 
     #[inline]
     pub fn get_tokens(&self) -> Option<&LocalFunctionTokens> {
-        self.tokens.as_ref().map(|tokens| tokens.as_ref())
+        self.tokens.as_deref()
+    }
+
+    #[inline]
+    pub fn mutate_tokens(&mut self) -> Option<&mut LocalFunctionTokens> {
+        self.tokens.as_deref_mut()
     }
 
     pub fn with_parameter(mut self, parameter: impl Into<TypedIdentifier>) -> Self {

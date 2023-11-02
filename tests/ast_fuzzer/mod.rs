@@ -559,7 +559,6 @@ impl AstFuzzer {
                         2 => {
                             self.budget.take_expression();
                             self.push_work(AstFuzzerWork::MakeParenthesePrefix);
-                            // todo: maybe we need a depth for prefixes too?
                             self.fuzz_nested_expression(0);
                         }
                         3 => {

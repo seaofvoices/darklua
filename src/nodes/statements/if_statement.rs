@@ -204,6 +204,11 @@ impl IfStatement {
         self.tokens.as_ref()
     }
 
+    #[inline]
+    pub fn mutate_tokens(&mut self) -> Option<&mut IfStatementTokens> {
+        self.tokens.as_mut()
+    }
+
     pub fn with_branch(mut self, branch: IfBranch) -> Self {
         self.branches.push(branch);
         self
