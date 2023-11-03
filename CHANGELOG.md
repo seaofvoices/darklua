@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* fix `remove_types` rule to handle type cast of expressions that could return multiple values ([#142](https://github.com/seaofvoices/darklua/pull/142))
+
 ## 0.11.1
 
 * fix type packs, function variadic types and variadic type packs ([#137](https://github.com/seaofvoices/darklua/pull/137))

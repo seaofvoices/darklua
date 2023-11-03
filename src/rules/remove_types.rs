@@ -1,5 +1,5 @@
 use crate::nodes::*;
-use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
+use crate::process::{DefaultVisitor, Evaluator, NodeProcessor, NodeVisitor};
 use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
 };
@@ -7,7 +7,9 @@ use crate::rules::{
 use super::verify_no_rule_properties;
 
 #[derive(Default)]
-struct RemoveTypesProcessor {}
+struct RemoveTypesProcessor {
+    evaluator: Evaluator,
+}
 
 impl NodeProcessor for RemoveTypesProcessor {
     fn process_block(&mut self, block: &mut Block) {
@@ -41,7 +43,12 @@ impl NodeProcessor for RemoveTypesProcessor {
     fn process_expression(&mut self, expression: &mut Expression) {
         match expression {
             Expression::TypeCast(type_cast) => {
-                *expression = type_cast.get_expression().clone();
+                let value = type_cast.get_expression();
+                if self.evaluator.can_return_multiple_values(value) {
+                    *expression = value.clone().in_parentheses();
+                } else {
+                    *expression = value.clone();
+                }
             }
             Expression::Function(function) => {
                 function.clear_types();

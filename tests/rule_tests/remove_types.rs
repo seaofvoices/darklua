@@ -41,6 +41,14 @@ test_rule!(
         => "return function(...) end",
     remove_types_in_function_expression_return_type("return function(): boolean end")
         => "return function() end",
+    remove_types_in_type_cast_of_function_call("return call() :: any")
+        => "return (call())",
+    remove_types_in_type_cast_of_variadic_arguments("return ... :: any")
+        => "return (...)",
+    remove_types_in_type_cast_of_identifier("return value :: any")
+        => "return value",
+    remove_types_in_type_cast_of_table("return {} :: any")
+        => "return {}",
 );
 
 #[test]
