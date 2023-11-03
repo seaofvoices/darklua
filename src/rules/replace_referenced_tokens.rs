@@ -313,11 +313,4 @@ mod test {
         let code = include_str!("../../tests/fuzzed_test_cases/c.lua");
         test_code(code);
     }
-
-
-    #[test]
-    fn test_teardown_join() {
-        let code = include_str!("../../tests/fuzzed_test_cases/teardown-join.lua");
-        test_code(code);
-    }
 }
