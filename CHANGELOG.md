@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* fix bundling to avoid token reference removal errors ([#146](https://github.com/seaofvoices/darklua/pull/146))
 * fix `remove_types` rule to handle type cast of expressions that could return multiple values ([#142](https://github.com/seaofvoices/darklua/pull/142))
 
 ## 0.11.1
