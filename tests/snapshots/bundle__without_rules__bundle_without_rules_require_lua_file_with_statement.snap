@@ -2,14 +2,26 @@
 source: tests/bundle.rs
 expression: main
 ---
-local __DARKLUA_BUNDLE_MODULES = {}
+local __DARKLUA_BUNDLE_MODULES = {
+    cache = {},
+    load = function(m)
+        if not __DARKLUA_BUNDLE_MODULES.cache[m] then
+            __DARKLUA_BUNDLE_MODULES.cache[m] = {
+                c = __DARKLUA_BUNDLE_MODULES[m](),
+            }
+        end
+
+        return __DARKLUA_BUNDLE_MODULES.cache[m].c
+    end,
+}
 
 do
-    print('run')
+    function __DARKLUA_BUNDLE_MODULES.a()
+        print('run')
 
-    __DARKLUA_BUNDLE_MODULES.a = nil
+        return nil
+    end
 end
-do
-    local _ = __DARKLUA_BUNDLE_MODULES.a
-end
+
+__DARKLUA_BUNDLE_MODULES.load('a')
 
