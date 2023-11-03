@@ -3,8 +3,10 @@ use std::path::{Path, PathBuf};
 use crate::frontend::DarkluaResult;
 use crate::nodes::{
     Arguments, AssignStatement, Block, DoStatement, Expression, FieldExpression, FunctionCall,
-    FunctionReturnType, Identifier, LastStatement, LocalAssignStatement, Position, ReturnStatement,
-    Statement, TableExpression, Token, Type,
+    FunctionExpression, FunctionName, FunctionReturnType, FunctionStatement, Identifier,
+    IfStatement, IndexExpression, LastStatement, LocalAssignStatement, Prefix, ReturnStatement,
+    Statement, StringExpression, TableEntry, TableExpression, Token, TupleArguments,
+    TupleArgumentsTokens, Type, UnaryExpression, UnaryOperator,
 };
 use crate::process::utils::{generate_identifier, identifier_permutator, CharPermutator};
 use crate::rules::{Context, FlawlessRule, ShiftTokenLine};
@@ -15,6 +17,8 @@ use super::RequiredResource;
 #[derive(Debug)]
 pub(crate) struct BuildModuleDefinitions {
     modules_identifier: String,
+    module_cache_field: &'static str,
+    module_load_field: &'static str,
     module_definitions: Vec<(String, Block, PathBuf)>,
     module_name_permutator: CharPermutator,
 }
@@ -23,6 +27,8 @@ impl BuildModuleDefinitions {
     pub(crate) fn new(modules_identifier: impl Into<String>) -> Self {
         Self {
             modules_identifier: modules_identifier.into(),
+            module_cache_field: "cache",
+            module_load_field: "load",
             module_definitions: Vec::new(),
             module_name_permutator: identifier_permutator(),
         }
@@ -56,28 +62,76 @@ impl BuildModuleDefinitions {
             }
         };
 
-        let module_name = generate_identifier(&mut self.module_name_permutator);
+        let module_name = self.generate_module_name();
 
         self.module_definitions
             .push((module_name.clone(), block, require_path.to_path_buf()));
 
-        let token_for_trivia = match call.get_arguments() {
-            Arguments::Tuple(tuple) => tuple.get_tokens().map(|tokens| &tokens.closing_parenthese),
-            Arguments::String(string) => string.get_token(),
-            Arguments::Table(table) => table.get_tokens().map(|tokens| &tokens.closing_brace),
+        let token_trivia_identifier = match call.get_prefix() {
+            Prefix::Identifier(require_identifier) => require_identifier.get_token(),
+            _ => None,
         };
 
-        let field = if let Some(token_for_trivia) = token_for_trivia {
-            let mut field_token = Token::from_content(module_name.clone());
-            for trivia in token_for_trivia.iter_trailing_trivia() {
+        let load_field = if let Some(token_trivia_identifier) = token_trivia_identifier {
+            let mut field_token = Token::from_content(self.module_load_field);
+            for trivia in token_trivia_identifier.iter_trailing_trivia() {
                 field_token.push_trailing_trivia(trivia.clone());
             }
-            Identifier::new(module_name).with_token(field_token)
+            Identifier::new(self.module_load_field).with_token(field_token)
         } else {
-            Identifier::new(module_name)
+            Identifier::new(self.module_load_field)
         };
 
-        Ok(FieldExpression::new(Identifier::from(&self.modules_identifier), field).into())
+        let arguments = match call.get_arguments() {
+            Arguments::Tuple(original_args) => {
+                if let Some(original_tokens) = original_args.get_tokens() {
+                    TupleArguments::default().with_tokens(TupleArgumentsTokens {
+                        opening_parenthese: transfer_trivia(
+                            Token::from_content("("),
+                            &original_tokens.opening_parenthese,
+                        ),
+                        closing_parenthese: transfer_trivia(
+                            Token::from_content(")"),
+                            &original_tokens.closing_parenthese,
+                        ),
+                        commas: Vec::new(),
+                    })
+                } else {
+                    TupleArguments::default()
+                }
+            }
+            Arguments::String(string_expression) => {
+                if let Some(string_token) = string_expression.get_token() {
+                    TupleArguments::default().with_tokens(TupleArgumentsTokens {
+                        opening_parenthese: Token::from_content("("),
+                        closing_parenthese: transfer_trivia(Token::from_content(")"), string_token),
+                        commas: Vec::new(),
+                    })
+                } else {
+                    TupleArguments::default()
+                }
+            }
+            Arguments::Table(_) => TupleArguments::default(),
+        };
+
+        let new_require_call = FunctionCall::from_prefix(FieldExpression::new(
+            Identifier::from(&self.modules_identifier),
+            load_field,
+        ))
+        .with_arguments(arguments.with_argument(StringExpression::from_value(module_name)))
+        .into();
+
+        Ok(new_require_call)
+    }
+
+    fn generate_module_name(&mut self) -> String {
+        loop {
+            let name = generate_identifier(&mut self.module_name_permutator);
+
+            if name != self.module_cache_field && name != self.module_load_field {
+                break name;
+            }
+        }
     }
 
     pub(crate) fn apply(mut self, block: &mut Block, context: &Context) {
@@ -88,41 +142,8 @@ impl BuildModuleDefinitions {
         let modules_identifier = Identifier::from(&self.modules_identifier);
 
         let mut shift_lines = 0;
-        for (module_name, module_block, _module_path) in self.module_definitions.iter_mut() {
+        for (_module_name, module_block, _module_path) in self.module_definitions.iter_mut() {
             let inserted_lines = total_lines(module_block);
-
-            let return_statement = module_block
-                .take_last_statement()
-                .map(|last| {
-                    if let LastStatement::Return(statement) = last {
-                        statement
-                    } else {
-                        unreachable!("module last statement should be a return statement")
-                    }
-                })
-                .expect("module should have a last statement");
-
-            let modules_prefix =
-                if let Some(return_line_number) = return_statement
-                    .get_tokens()
-                    .and_then(|return_tokens| return_tokens.r#return.get_line_number())
-                {
-                    modules_identifier.clone().with_token(Token::from_position(
-                        Position::line_number(self.modules_identifier.clone(), return_line_number),
-                    ))
-                } else {
-                    modules_identifier.clone()
-                };
-
-            let return_value = return_statement
-                .into_iter_expressions()
-                .next()
-                .expect("return statement should have one expression");
-
-            module_block.push_statement(AssignStatement::from_variable(
-                FieldExpression::new(modules_prefix, module_name.clone()),
-                return_value,
-            ));
 
             ShiftTokenLine::new(shift_lines).flawless_process(module_block, context);
 
@@ -131,15 +152,78 @@ impl BuildModuleDefinitions {
 
         ShiftTokenLine::new(shift_lines).flawless_process(block, context);
 
-        for (_, module_block, _) in self.module_definitions.drain(..).rev() {
-            block.insert_statement(0, DoStatement::new(module_block));
-        }
+        let statements = self
+            .module_definitions
+            .drain(..)
+            .map(|(module_name, module_block, _)| {
+                let function_name =
+                    FunctionName::from_name(modules_identifier.clone()).with_field(module_name);
+                FunctionStatement::new(function_name, module_block, Vec::new(), false)
+            })
+            .map(Statement::from)
+            .collect();
+        block.insert_statement(0, DoStatement::new(Block::new(statements, None)));
+
+        let modules_table = self.build_modules_table();
         block.insert_statement(
             0,
-            LocalAssignStatement::from_variable(self.modules_identifier)
-                .with_value(TableExpression::default()),
+            LocalAssignStatement::from_variable(self.modules_identifier).with_value(modules_table),
         );
     }
+
+    fn build_modules_table(&self) -> TableExpression {
+        let module_content_entry = "c";
+        let parameter_name = "m";
+        let index_cache = IndexExpression::new(
+            FieldExpression::new(
+                Identifier::from(&self.modules_identifier),
+                self.module_cache_field,
+            ),
+            Identifier::from(parameter_name),
+        );
+        let load_function = FunctionExpression::from_block(
+            Block::default()
+                .with_statement(IfStatement::create(
+                    UnaryExpression::new(UnaryOperator::Not, index_cache.clone()),
+                    AssignStatement::from_variable(
+                        index_cache.clone(),
+                        TableExpression::default().append_entry(
+                            TableEntry::from_string_key_and_value(
+                                module_content_entry,
+                                FunctionCall::from_prefix(IndexExpression::new(
+                                    Identifier::from(&self.modules_identifier),
+                                    Identifier::from(parameter_name),
+                                )),
+                            ),
+                        ),
+                    ),
+                ))
+                .with_last_statement(ReturnStatement::one(FieldExpression::new(
+                    index_cache,
+                    module_content_entry,
+                ))),
+        )
+        .with_parameter(parameter_name);
+
+        TableExpression::default()
+            .append_entry(TableEntry::from_string_key_and_value(
+                self.module_cache_field,
+                TableExpression::default(),
+            ))
+            .append_field(self.module_load_field, load_function)
+    }
+}
+
+fn transfer_trivia(mut receiving_token: Token, take_token: &Token) -> Token {
+    for (content, kind) in take_token.iter_trailing_trivia().filter_map(|trivia| {
+        trivia
+            .try_read()
+            .map(str::to_owned)
+            .zip(Some(trivia.kind()))
+    }) {
+        receiving_token.push_trailing_trivia(kind.with_content(content));
+    }
+    receiving_token
 }
 
 fn total_lines(block: &Block) -> usize {
@@ -165,13 +249,18 @@ fn total_lines(block: &Block) -> usize {
 
 fn last_block_token(block: &Block) -> Option<&Token> {
     block
-        .get_last_statement()
-        .and_then(last_last_statement_token)
+        .get_tokens()
+        .and_then(|tokens| tokens.final_token.as_ref())
         .or_else(|| {
             block
-                .iter_statements()
-                .last()
-                .and_then(last_statement_token)
+                .get_last_statement()
+                .and_then(last_last_statement_token)
+                .or_else(|| {
+                    block
+                        .iter_statements()
+                        .last()
+                        .and_then(last_statement_token)
+                })
         })
 }
 
@@ -360,7 +449,7 @@ mod test {
             local_assign_with_field_expression("local var =\n\tobject.prop\n-- end") => 3,
             local_assign_with_index_expression("local var =\n\tobject['prop']\n-- end") => 3,
             local_function_definition("local function fn()\nend\n") => 3,
-            function_definition("function fn()\nend\n --comment\n") => 3,
+            function_definition("function fn()\nend\n --comment\n") => 4,
             generic_for("for k, v in pairs({}) do\nend\n --comment") => 3,
             numeric_for("for i = 1, 10 do\n-- comment\nend\n") => 4,
             repeat_statement("\nrepeat\n-- do\nuntil condition\n") => 5,
