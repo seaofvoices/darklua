@@ -207,19 +207,8 @@ impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> 
                         parser_timer.duration_label()
                     );
 
-                    let current_source = mem::replace(&mut self.source, path.to_path_buf());
-
-                    let apply_processor_timer = Timer::now();
-                    DefaultVisitor::visit_block(&mut block, self);
-                    log::debug!(
-                        "processed `{}` into bundle in {}",
-                        path.display(),
-                        apply_processor_timer.duration_label()
-                    );
-
-                    self.source = current_source;
-
                     if self.options.parser().is_preserving_tokens() {
+                        log::trace!("replacing token references of {}", path.display());
                         let context = ContextBuilder::new(path, self.resources, &content).build();
                         // run `replace_referenced_tokens` rule to avoid generating invalid code
                         // when using the token-based generator
@@ -235,6 +224,20 @@ impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> 
                             apply_replace_tokens_timer.duration_label()
                         );
                     }
+
+                    let current_source = mem::replace(&mut self.source, path.to_path_buf());
+
+                    let apply_processor_timer = Timer::now();
+                    DefaultVisitor::visit_block(&mut block, self);
+
+                    log::debug!(
+                        "processed `{}` into bundle in {}",
+                        path.display(),
+                        apply_processor_timer.duration_label()
+                    );
+
+                    self.source = current_source;
+
                     Ok(RequiredResource::Block(block))
                 }
                 "json" | "json5" => {
