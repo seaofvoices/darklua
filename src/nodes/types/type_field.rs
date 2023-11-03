@@ -51,7 +51,6 @@ impl TypeField {
 
     pub fn clear_comments(&mut self) {
         self.namespace.clear_comments();
-        self.name.clear_comments();
         if let Some(token) = &mut self.token {
             token.clear_comments();
         }
@@ -59,7 +58,6 @@ impl TypeField {
 
     pub fn clear_whitespaces(&mut self) {
         self.namespace.clear_whitespaces();
-        self.name.clear_whitespaces();
         if let Some(token) = &mut self.token {
             token.clear_whitespaces();
         }
@@ -67,7 +65,6 @@ impl TypeField {
 
     pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
         self.namespace.replace_referenced_tokens(code);
-        self.name.replace_referenced_tokens(code);
         if let Some(token) = &mut self.token {
             token.replace_referenced_tokens(code);
         }
@@ -75,7 +72,6 @@ impl TypeField {
 
     pub(crate) fn shift_token_line(&mut self, amount: usize) {
         self.namespace.shift_token_line(amount);
-        self.name.shift_token_line(amount);
         if let Some(token) = &mut self.token {
             token.shift_token_line(amount);
         }

@@ -181,7 +181,7 @@ impl IfStatement {
         }
     }
 
-    pub fn create<E: Into<Expression>, B: Into<Block>>(condition: E, block: B) -> Self {
+    pub fn create(condition: impl Into<Expression>, block: impl Into<Block>) -> Self {
         Self {
             branches: vec![IfBranch::new(condition, block)],
             else_block: None,
@@ -214,10 +214,10 @@ impl IfStatement {
         self
     }
 
-    pub fn with_new_branch<E: Into<Expression>, B: Into<Block>>(
+    pub fn with_new_branch(
         mut self,
-        condition: E,
-        block: B,
+        condition: impl Into<Expression>,
+        block: impl Into<Block>,
     ) -> Self {
         self.branches.push(IfBranch::new(condition, block));
         self
@@ -263,7 +263,7 @@ impl IfStatement {
     }
 
     #[inline]
-    pub fn push_new_branch<E: Into<Expression>, B: Into<Block>>(&mut self, condition: E, block: B) {
+    pub fn push_new_branch(&mut self, condition: impl Into<Expression>, block: impl Into<Block>) {
         self.branches
             .push(IfBranch::new(condition.into(), block.into()));
     }
@@ -284,7 +284,7 @@ impl IfStatement {
     }
 
     #[inline]
-    pub fn set_else_block<B: Into<Block>>(&mut self, block: B) {
+    pub fn set_else_block(&mut self, block: impl Into<Block>) {
         self.else_block = Some(block.into());
     }
 

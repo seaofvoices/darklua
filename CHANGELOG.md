@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.11.2
+
+* fix bundling to handle modules with early return calls. This change also makes the bundled code preserve the module require ordering ([#147](https://github.com/seaofvoices/darklua/pull/147))
+* fix bundling to avoid token reference removal errors ([#146](https://github.com/seaofvoices/darklua/pull/146))
+* fix `remove_types` rule to handle type cast of expressions that could return multiple values ([#142](https://github.com/seaofvoices/darklua/pull/142))
+
 ## 0.11.1
 
 * fix type packs, function variadic types and variadic type packs ([#137](https://github.com/seaofvoices/darklua/pull/137))

@@ -1,4 +1,9 @@
-use crate::nodes::{Expression, Identifier, Token};
+use crate::{
+    nodes::{Expression, Identifier, Token},
+    process::utils::is_valid_identifier,
+};
+
+use super::StringExpression;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TableFieldEntry {
@@ -198,6 +203,26 @@ pub enum TableEntry {
 }
 
 impl TableEntry {
+    /// Creates a field entry if the provided key is a valid identifier, otherwise it
+    /// creates an index entry.
+    pub fn from_string_key_and_value(key: impl Into<String>, value: impl Into<Expression>) -> Self {
+        let key = key.into();
+        let value = value.into();
+        if is_valid_identifier(&key) {
+            Self::Field(TableFieldEntry {
+                field: Identifier::new(key),
+                value,
+                token: None,
+            })
+        } else {
+            Self::Index(TableIndexEntry {
+                key: Expression::String(StringExpression::from_value(key)),
+                value,
+                tokens: None,
+            })
+        }
+    }
+
     pub fn clear_comments(&mut self) {
         match self {
             TableEntry::Field(entry) => entry.clear_comments(),
