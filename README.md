@@ -23,7 +23,7 @@ You can try darklua directly into your browser! Check out https://darklua.com/tr
 
 If you are already using Foreman, then installing darklua is as simple as adding this line in the foreman.toml file:
 
-darklua = { github = "seaofvoices/darklua", version = "=0.11.1" }
+darklua = { github = "seaofvoices/darklua", version = "=0.11.3" }
 
 ## [Aftman](https://github.com/LPGhatguy/aftman)
 
