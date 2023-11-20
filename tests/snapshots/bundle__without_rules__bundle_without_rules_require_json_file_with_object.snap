@@ -2,7 +2,9 @@
 source: tests/bundle.rs
 expression: main
 ---
-local __DARKLUA_BUNDLE_MODULES = {
+local __DARKLUA_BUNDLE_MODULES
+
+__DARKLUA_BUNDLE_MODULES = {
     cache = {},
     load = function(m)
         if not __DARKLUA_BUNDLE_MODULES.cache[m] then

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.11.3
+
+* fix undeclared modules variable when bundling ([#151](https://github.com/seaofvoices/darklua/pull/151))
+
 ## 0.11.2
 
 * fix bundling to handle modules with early return calls. This change also makes the bundled code preserve the module require ordering ([#147](https://github.com/seaofvoices/darklua/pull/147))

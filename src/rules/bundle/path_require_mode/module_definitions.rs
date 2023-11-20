@@ -167,7 +167,11 @@ impl BuildModuleDefinitions {
         let modules_table = self.build_modules_table();
         block.insert_statement(
             0,
-            LocalAssignStatement::from_variable(self.modules_identifier).with_value(modules_table),
+            AssignStatement::from_variable(modules_identifier, modules_table),
+        );
+        block.insert_statement(
+            0,
+            LocalAssignStatement::from_variable(self.modules_identifier),
         );
     }
 
