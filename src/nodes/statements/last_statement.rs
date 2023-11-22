@@ -107,6 +107,11 @@ impl ReturnStatement {
         self.tokens.as_ref()
     }
 
+    #[inline]
+    pub fn mutate_tokens(&mut self) -> Option<&mut ReturnTokens> {
+        self.tokens.as_mut()
+    }
+
     pub fn clear_comments(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();

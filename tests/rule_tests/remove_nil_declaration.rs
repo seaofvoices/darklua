@@ -22,7 +22,7 @@ test_rule!(
     assign_to_call_and_true_and_variable("local a = call(), true, var") => "local a = call()",
 );
 
-test_rule_wihout_effects!(
+test_rule_without_effects!(
     RemoveNilDeclaration::default(),
     assign_to_true("local a = true"),
     assign_to_nil_and_extra_call("local a = nil, call()"),

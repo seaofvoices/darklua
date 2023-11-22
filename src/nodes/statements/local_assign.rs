@@ -99,6 +99,11 @@ impl LocalAssignStatement {
         self.tokens.as_ref()
     }
 
+    #[inline]
+    pub fn mutate_tokens(&mut self) -> Option<&mut LocalAssignTokens> {
+        self.tokens.as_mut()
+    }
+
     pub fn with_variable<S: Into<TypedIdentifier>>(mut self, variable: S) -> Self {
         self.variables.push(variable.into());
         self

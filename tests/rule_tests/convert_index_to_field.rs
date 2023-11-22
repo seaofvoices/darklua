@@ -19,7 +19,7 @@ test_rule!(
         => "return { 'one', 'two', a = true, b = false, c = 0, [{}] = {} }",
 );
 
-test_rule_wihout_effects!(
+test_rule_without_effects!(
     ConvertIndexToField::default(),
     key_is_empty_string("return var[\"\"]"),
     key_starts_with_space("return var[' bar']"),
