@@ -219,7 +219,7 @@ impl<'a> AstConverter<'a> {
                     ast::Prefix::Expression(expression) => {
                         self.work_stack
                             .push(ConvertWork::MakePrefixFromExpression { prefix });
-                        self.push_work(expression);
+                        self.push_work(expression.as_ref());
                     }
                     ast::Prefix::Name(name) => {
                         self.prefixes
@@ -1789,127 +1789,113 @@ impl<'a> AstConverter<'a> {
                     .push(ConvertWork::MakeUnaryExpression { operator: unop });
                 self.work_stack.push(ConvertWork::Expression(expression));
             }
-            ast::Expression::Value {
-                value,
+            ast::Expression::TypeAssertion {
+                expression,
                 type_assertion,
             } => {
-                if let Some(type_assertion) = type_assertion {
-                    self.work_stack
-                        .push(ConvertWork::MakeTypeCast { type_assertion });
-                    self.push_work(type_assertion.cast_to());
-                }
-                match value.as_ref() {
-                    ast::Value::Function((token, body)) => {
-                        self.work_stack
-                            .push(ConvertWork::MakeFunctionExpression { body, token });
+                self.work_stack
+                    .push(ConvertWork::MakeTypeCast { type_assertion });
+                self.push_work(type_assertion.cast_to());
+                self.push_work(expression.as_ref());
+            }
+            ast::Expression::Function((token, body)) => {
+                self.work_stack
+                    .push(ConvertWork::MakeFunctionExpression { body, token });
 
-                        self.push_function_body_work(body);
-                    }
-                    ast::Value::FunctionCall(call) => {
-                        self.work_stack
-                            .push(ConvertWork::MakeFunctionCallExpression { call });
-                        self.convert_function_call(call)?;
-                    }
-                    ast::Value::TableConstructor(table) => {
-                        self.work_stack
-                            .push(ConvertWork::MakeTableExpression { table });
-                        self.convert_table(table)?;
-                    }
-                    ast::Value::Number(number) => {
-                        let mut expression = NumberExpression::from_str(
-                            &number.token().to_string(),
-                        )
-                        .map_err(|err| ConvertError::Number {
-                            number: number.to_string(),
-                            parsing_error: err.to_string(),
-                        })?;
-                        if self.hold_token_data {
-                            expression.set_token(self.convert_token(number)?);
-                        }
-                        self.work_stack
-                            .push(ConvertWork::PushExpression(expression.into()));
-                    }
-                    ast::Value::ParenthesesExpression(expression) => {
-                        self.push_work(expression);
-                    }
-                    ast::Value::String(token_ref) => {
-                        self.work_stack.push(ConvertWork::PushExpression(
-                            self.convert_string_expression(token_ref)?.into(),
-                        ));
-                    }
-                    ast::Value::Symbol(symbol_token) => match symbol_token.token().token_type() {
-                        TokenType::Symbol { symbol } => {
-                            let token = if self.hold_token_data {
-                                Some(self.convert_token(symbol_token)?)
-                            } else {
-                                None
-                            };
-                            let expression = match symbol {
-                                Symbol::True => Expression::True(token),
-                                Symbol::False => Expression::False(token),
-                                Symbol::Nil => Expression::Nil(token),
-                                Symbol::Ellipse => Expression::VariableArguments(token),
-                                _ => {
-                                    return Err(ConvertError::Expression {
-                                        expression: expression.to_string(),
-                                    })
-                                }
-                            };
-                            self.work_stack
-                                .push(ConvertWork::PushExpression(expression));
-                        }
+                self.push_function_body_work(body);
+            }
+            ast::Expression::FunctionCall(call) => {
+                self.work_stack
+                    .push(ConvertWork::MakeFunctionCallExpression { call });
+                self.convert_function_call(call)?;
+            }
+            ast::Expression::TableConstructor(table) => {
+                self.work_stack
+                    .push(ConvertWork::MakeTableExpression { table });
+                self.convert_table(table)?;
+            }
+            ast::Expression::Number(number) => {
+                let mut expression = NumberExpression::from_str(&number.token().to_string())
+                    .map_err(|err| ConvertError::Number {
+                        number: number.to_string(),
+                        parsing_error: err.to_string(),
+                    })?;
+                if self.hold_token_data {
+                    expression.set_token(self.convert_token(number)?);
+                }
+                self.work_stack
+                    .push(ConvertWork::PushExpression(expression.into()));
+            }
+            ast::Expression::String(token_ref) => {
+                self.work_stack.push(ConvertWork::PushExpression(
+                    self.convert_string_expression(token_ref)?.into(),
+                ));
+            }
+            ast::Expression::Symbol(symbol_token) => match symbol_token.token().token_type() {
+                TokenType::Symbol { symbol } => {
+                    let token = if self.hold_token_data {
+                        Some(self.convert_token(symbol_token)?)
+                    } else {
+                        None
+                    };
+                    let expression = match symbol {
+                        Symbol::True => Expression::True(token),
+                        Symbol::False => Expression::False(token),
+                        Symbol::Nil => Expression::Nil(token),
+                        Symbol::Ellipse => Expression::VariableArguments(token),
                         _ => {
                             return Err(ConvertError::Expression {
                                 expression: expression.to_string(),
                             })
                         }
-                    },
-                    ast::Value::Var(var) => match var {
-                        ast::Var::Expression(var_expression) => {
-                            self.work_stack.push(ConvertWork::MakePrefixExpression {
-                                variable: var_expression,
-                            });
-                            self.push_work(var_expression.prefix());
-                            self.convert_suffixes(var_expression.suffixes())?;
-                        }
-                        ast::Var::Name(token_ref) => {
-                            self.work_stack.push(ConvertWork::PushExpression(
-                                Expression::Identifier(
-                                    self.convert_token_to_identifier(token_ref)?,
-                                ),
-                            ));
-                        }
-                        _ => {
-                            return Err(ConvertError::Expression {
-                                expression: expression.to_string(),
-                            })
-                        }
-                    },
-                    ast::Value::IfExpression(if_expression) => {
-                        self.push_work(ConvertWork::MakeIfExpression { if_expression });
-                        self.push_work(if_expression.condition());
-                        self.push_work(if_expression.if_expression());
-                        self.push_work(if_expression.else_expression());
-                        if let Some(elseif_expressions) = if_expression.else_if_expressions() {
-                            for elseif in elseif_expressions {
-                                self.push_work(elseif.condition());
-                                self.push_work(elseif.expression());
-                            }
-                        }
+                    };
+                    self.work_stack
+                        .push(ConvertWork::PushExpression(expression));
+                }
+                _ => {
+                    return Err(ConvertError::Expression {
+                        expression: expression.to_string(),
+                    })
+                }
+            },
+            ast::Expression::Var(var) => match var {
+                ast::Var::Expression(var_expression) => {
+                    self.work_stack.push(ConvertWork::MakePrefixExpression {
+                        variable: var_expression,
+                    });
+                    self.push_work(var_expression.prefix());
+                    self.convert_suffixes(var_expression.suffixes())?;
+                }
+                ast::Var::Name(token_ref) => {
+                    self.work_stack
+                        .push(ConvertWork::PushExpression(Expression::Identifier(
+                            self.convert_token_to_identifier(token_ref)?,
+                        )));
+                }
+                _ => {
+                    return Err(ConvertError::Expression {
+                        expression: expression.to_string(),
+                    })
+                }
+            },
+            ast::Expression::IfExpression(if_expression) => {
+                self.push_work(ConvertWork::MakeIfExpression { if_expression });
+                self.push_work(if_expression.condition());
+                self.push_work(if_expression.if_expression());
+                self.push_work(if_expression.else_expression());
+                if let Some(elseif_expressions) = if_expression.else_if_expressions() {
+                    for elseif in elseif_expressions {
+                        self.push_work(elseif.condition());
+                        self.push_work(elseif.expression());
                     }
-                    ast::Value::InterpolatedString(interpolated_string) => {
-                        self.push_work(ConvertWork::MakeInterpolatedString {
-                            interpolated_string,
-                        });
-                        for segment in interpolated_string.segments() {
-                            self.push_work(&segment.expression);
-                        }
-                    }
-                    _ => {
-                        return Err(ConvertError::Expression {
-                            expression: expression.to_string(),
-                        })
-                    }
+                }
+            }
+            ast::Expression::InterpolatedString(interpolated_string) => {
+                self.push_work(ConvertWork::MakeInterpolatedString {
+                    interpolated_string,
+                });
+                for segment in interpolated_string.segments() {
+                    self.push_work(&segment.expression);
                 }
             }
             _ => {

@@ -155,10 +155,9 @@ mod test {
         return_backtick_string_escape_backslash("return `\\\\`") => ReturnStatement::one(InterpolatedStringExpression::new(
             vec![StringSegment::from_value("\\").into()]
         )),
-        // todo: the test can be enabled once full-moon fixes the parse issue
-        // return_backtick_string_with_table_value("return `{ {} }`") => ReturnStatement::one(InterpolatedStringExpression::new(
-        //     vec![ValueSegment::new(TableExpression::default()).into()]
-        // )),
+        return_backtick_string_with_table_value("return `{ {} }`") => ReturnStatement::one(InterpolatedStringExpression::new(
+            vec![ValueSegment::new(TableExpression::default()).into()]
+        )),
         empty_while_true_do("while true do end") => WhileStatement::new(Block::default(), true),
         while_false_do_break("while false do break end") => WhileStatement::new(
             LastStatement::new_break(),
