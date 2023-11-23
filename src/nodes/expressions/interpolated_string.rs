@@ -35,6 +35,15 @@ impl StringSegment {
         self.token.as_ref()
     }
 
+    pub fn get_value(&self) -> &str {
+        self.value.as_str()
+    }
+
+    fn append(&mut self, mut other: Self) {
+        self.value.extend(other.value.drain(..));
+        self.token = None;
+    }
+
     pub fn clear_comments(&mut self) {
         if let Some(token) = &mut self.token {
             token.clear_comments();
@@ -47,8 +56,16 @@ impl StringSegment {
         }
     }
 
-    pub fn get_value(&self) -> &str {
-        self.value.as_str()
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(token) = &mut self.token {
+            token.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(token) = &mut self.token {
+            token.shift_token_line(amount);
+        }
     }
 }
 
@@ -79,6 +96,14 @@ impl ValueSegment {
         self.tokens.as_ref()
     }
 
+    pub fn get_expression(&self) -> &Expression {
+        &self.value
+    }
+
+    pub fn mutate_expression(&mut self) -> &mut Expression {
+        &mut self.value
+    }
+
     pub fn clear_comments(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
@@ -91,12 +116,16 @@ impl ValueSegment {
         }
     }
 
-    pub fn get_expression(&self) -> &Expression {
-        &self.value
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
     }
 
-    pub fn mutate_expression(&mut self) -> &mut Expression {
-        &mut self.value
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
+        }
     }
 }
 
@@ -115,6 +144,16 @@ impl ValueSegmentTokens {
     pub fn clear_whitespaces(&mut self) {
         self.opening_brace.clear_whitespaces();
         self.closing_brace.clear_whitespaces();
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.opening_brace.replace_referenced_tokens(code);
+        self.closing_brace.replace_referenced_tokens(code);
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.opening_brace.shift_token_line(amount);
+        self.closing_brace.shift_token_line(amount);
     }
 }
 
@@ -136,6 +175,20 @@ impl InterpolationSegment {
         match self {
             InterpolationSegment::String(segment) => segment.clear_whitespaces(),
             InterpolationSegment::Value(segment) => segment.clear_whitespaces(),
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        match self {
+            InterpolationSegment::String(segment) => segment.replace_referenced_tokens(code),
+            InterpolationSegment::Value(segment) => segment.replace_referenced_tokens(code),
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        match self {
+            InterpolationSegment::String(segment) => segment.shift_token_line(amount),
+            InterpolationSegment::Value(segment) => segment.shift_token_line(amount),
         }
     }
 }
@@ -204,11 +257,35 @@ impl InterpolatedStringExpression {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
         }
+        for segment in &mut self.segments {
+            segment.clear_comments();
+        }
     }
 
     pub fn clear_whitespaces(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
+        }
+        for segment in &mut self.segments {
+            segment.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+        for segment in &mut self.segments {
+            segment.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
+        }
+        for segment in &mut self.segments {
+            segment.shift_token_line(amount);
         }
     }
 
@@ -222,15 +299,21 @@ impl InterpolatedStringExpression {
 
     pub fn push_segment(&mut self, segment: impl Into<InterpolationSegment>) {
         let new_segment = segment.into();
-        match &new_segment {
+        match new_segment {
             InterpolationSegment::String(string_segment) => {
                 if string_segment.get_value().is_empty() {
                     return;
                 }
+                if let Some(InterpolationSegment::String(last)) = self.segments.last_mut() {
+                    last.append(string_segment);
+                } else {
+                    self.segments.push(string_segment.into());
+                }
             }
-            InterpolationSegment::Value(_) => {}
+            InterpolationSegment::Value(_) => {
+                self.segments.push(new_segment);
+            }
         }
-        self.segments.push(new_segment);
     }
 }
 
@@ -258,6 +341,16 @@ impl InterpolatedStringTokens {
     pub fn clear_whitespaces(&mut self) {
         self.opening_tick.clear_whitespaces();
         self.closing_tick.clear_whitespaces();
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.opening_tick.replace_referenced_tokens(code);
+        self.closing_tick.replace_referenced_tokens(code);
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.opening_tick.shift_token_line(amount);
+        self.closing_tick.shift_token_line(amount);
     }
 }
 

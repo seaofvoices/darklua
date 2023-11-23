@@ -62,6 +62,9 @@ pub enum AstFuzzerWork {
     MakeParentheseExpression,
     MakeUnaryExpression,
     MakeTypeCastExpression,
+    MakeInterpolatedString {
+        segment_is_expression: Vec<bool>,
+    },
     MakeFunctionExpression {
         parameters: usize,
         has_return_type: bool,

@@ -2490,7 +2490,7 @@ impl<'a> AstConverter<'a> {
         string: &tokenizer::TokenReference,
     ) -> Result<StringExpression, ConvertError> {
         let mut expression =
-            StringExpression::new(&string.token().to_string()).ok_or_else(|| {
+            StringExpression::new(&string.token().to_string()).map_err(|_err| {
                 ConvertError::String {
                     string: string.to_string(),
                 }
@@ -2508,7 +2508,7 @@ impl<'a> AstConverter<'a> {
         string: &tokenizer::TokenReference,
     ) -> Result<StringType, ConvertError> {
         let mut expression =
-            StringType::new(&string.token().to_string()).ok_or_else(|| ConvertError::String {
+            StringType::new(&string.token().to_string()).map_err(|_err| ConvertError::String {
                 string: string.to_string(),
             })?;
         if self.hold_token_data {

@@ -324,6 +324,9 @@ fn last_expression_token(expression: &Expression) -> Option<&Token> {
             .get_tokens()
             .map(|tokens| &tokens.right_parenthese),
         Expression::String(string) => string.get_token(),
+        Expression::InterpolatedString(string) => {
+            string.get_tokens().map(|tokens| &tokens.closing_tick)
+        }
         Expression::Table(table) => table.get_tokens().map(|tokens| &tokens.closing_brace),
         Expression::Nil(token)
         | Expression::False(token)

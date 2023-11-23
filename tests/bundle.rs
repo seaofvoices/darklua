@@ -529,10 +529,10 @@ data:
 
             result
                 .map_err(|err| {
-                    std::fs::write("fuzz_bundle_failure.repro.txt", block_file).unwrap();
+                    std::fs::write("fuzz_bundle_failure.repro.lua", block_file).unwrap();
 
                     let out = resources.get("out.lua").unwrap();
-                    std::fs::write("fuzz_bundle_failure.txt", out).unwrap();
+                    std::fs::write("fuzz_bundle_failure.lua", out).unwrap();
 
                     err
                 })
