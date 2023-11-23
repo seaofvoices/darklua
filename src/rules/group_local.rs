@@ -61,7 +61,10 @@ impl GroupLocalProcessor {
             return false;
         }
 
-        let mut find_variables = FindVariables::from(first.get_variables());
+        let mut find_variables: FindVariables = first
+            .iter_variables()
+            .map(|variable| variable.get_name())
+            .collect();
 
         next.iter_mut_values().all(|expression| {
             DefaultVisitor::visit_expression(expression, &mut find_variables);
@@ -101,7 +104,7 @@ pub const GROUP_LOCAL_ASSIGNMENT_RULE_NAME: &str = "group_local_assignment";
 pub struct GroupLocalAssignment {}
 
 impl FlawlessRule for GroupLocalAssignment {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = GroupLocalProcessor::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }

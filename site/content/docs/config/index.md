@@ -31,7 +31,34 @@ Any missing field will be replaced with its default value.
 ```json5
 {
   // Output code in different ways depending on the given generator
-  generator: "retain-lines", // default value
+  generator: "retain_lines", // default value
+
+  bundle: {
+    // Identifier used by darklua to store the bundled modules
+    modules_identifier: "__DARKLUA_BUNDLE_MODULES",
+
+    // To avoid bundling certain paths, insert patterns into the list to exclude
+    // them (see https://github.com/olson-sean-k/wax/blob/master/README.md#patterns
+    // for details about the syntax)
+    excludes: [],
+
+    // Configure how requires are interpreted
+    require_mode: {
+      // Currently, the only supported require mode is `path`
+      name: "path",
+
+      // When requiring folders, require the file named like this value inside of it
+      module_folder_name: "init",
+
+      // Provide paths that can be required with a specific prefix
+      sources: {
+        // Map strings to paths relative to the configuration files itself
+        // for example, to support requires of Wally packages as `pkg/PackageName`,
+        // map `pkg` to a path to the `Packages` folder created by Wally:
+        pkg: "./Packages",
+      },
+    },
+  },
 
   // Define the rules that will transform the Lua code.
   // If you do not provide this field, the default list of rules is

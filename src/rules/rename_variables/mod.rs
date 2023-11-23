@@ -81,7 +81,7 @@ impl RenameVariables {
             result.push("$roblox".to_owned());
         }
 
-        result.extend(globals_set.into_iter());
+        result.extend(globals_set);
         result.sort();
         result
     }
@@ -94,7 +94,7 @@ impl Default for RenameVariables {
 }
 
 impl FlawlessRule for RenameVariables {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let avoid_identifiers = if self.include_functions {
             Vec::new()
         } else {
@@ -115,16 +115,12 @@ impl RuleConfiguration for RenameVariables {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, value) in properties {
             match key.as_str() {
-                "globals" => match value {
-                    RulePropertyValue::StringList(globals) => self.set_globals(globals)?,
-                    _ => return Err(RuleConfigurationError::StringListExpected(key)),
-                },
-                "include_functions" => match value {
-                    RulePropertyValue::Boolean(value) => {
-                        self.include_functions = value;
-                    }
-                    _ => return Err(RuleConfigurationError::BooleanExpected(key)),
-                },
+                "globals" => {
+                    self.set_globals(value.expect_string_list(&key)?)?;
+                }
+                "include_functions" => {
+                    self.include_functions = value.expect_bool(&key)?;
+                }
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }
         }

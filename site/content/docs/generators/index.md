@@ -7,7 +7,7 @@ order: 3
 
 When outputting code, darklua uses a generator to convert its internal representation of code into actual Lua code in text. You can configure how the code is written by choosing which generator to use.
 
-## retain-lines
+## retain_lines
 
 This is the **default generator** and the most useful one. This generator will attempt to keep the line numbers from the original code in the generated code.
 
@@ -25,7 +25,7 @@ local function giveReason(message)
 end
 ```
 
-If darklua processes this code and inline the `_G.DEBUG_MODE` as `true`, remove the if statement and the spaces, the `retain-lines` generator will keep what's left to fit on the same line. It will produce the following code:
+If darklua processes this code and inline the `_G.DEBUG_MODE` as `true`, remove the if statement and the spaces, the `retain_lines` generator will keep what's left to fit on the same line. It will produce the following code:
 
 ```lua
 local function giveReason(message)
@@ -41,7 +41,7 @@ You can specify this generator in the configuration file with:
 
 ```json5
 {
-  generator: "retain-lines",
+  generator: "retain_lines",
 }
 ```
 
@@ -71,7 +71,7 @@ To configure the maximum column width parameter, use the object notation for the
 
 This generator will produce Lua code that is, as the name suggest, readable at best. Darklua does not aim to be used as a formatter, so the results may not be optimal.
 
-Compared to the retain-lines generator, this one will completely re-generate the code and will not even attempt to keep the line numbers.
+Compared to the retain_lines generator, this one will completely re-generate the code and will not even attempt to keep the line numbers.
 
 The readable generator does not output comments from the original code.
 

@@ -16,6 +16,16 @@ pub enum Position {
     },
 }
 
+impl Position {
+    #[inline]
+    pub fn line_number(content: impl Into<Cow<'static, str>>, line_number: usize) -> Position {
+        Self::LineNumber {
+            content: content.into(),
+            line_number,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TriviaKind {
     Comment,
@@ -53,15 +63,32 @@ pub struct Trivia {
 impl Trivia {
     pub fn read<'a: 'b, 'b>(&'a self, code: &'b str) -> &'b str {
         match &self.position {
-            Position::LineNumberReference { start, end, .. } => code
-                .get(*start..*end)
-                .expect("unable to extract code from position"),
+            Position::LineNumberReference { start, end, .. } => {
+                code.get(*start..*end).unwrap_or_else(|| {
+                    panic!("unable to extract code from position: {} - {}", start, end);
+                })
+            }
             Position::LineNumber { content, .. } | Position::Any { content } => content,
+        }
+    }
+
+    pub fn try_read(&self) -> Option<&str> {
+        match &self.position {
+            Position::LineNumberReference { .. } => None,
+            Position::LineNumber { content, .. } | Position::Any { content } => Some(content),
         }
     }
 
     pub fn kind(&self) -> TriviaKind {
         self.kind.clone()
+    }
+
+    pub fn get_line_number(&self) -> Option<usize> {
+        match &self.position {
+            Position::LineNumber { line_number, .. }
+            | Position::LineNumberReference { line_number, .. } => Some(*line_number),
+            Position::Any { .. } => None,
+        }
     }
 }
 
@@ -115,6 +142,11 @@ impl Token {
     pub fn with_trailing_trivia(mut self, trivia: Trivia) -> Self {
         self.trailing_trivia.push(trivia);
         self
+    }
+
+    #[inline]
+    pub fn has_trivia(&self) -> bool {
+        !self.leading_trivia.is_empty() || !self.trailing_trivia.is_empty()
     }
 
     #[inline]
@@ -183,6 +215,53 @@ impl Token {
             .retain(|trivia| trivia.kind() != TriviaKind::Whitespace);
         self.trailing_trivia
             .retain(|trivia| trivia.kind() != TriviaKind::Whitespace);
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Position::LineNumberReference {
+            start,
+            end,
+            line_number,
+        } = self.position
+        {
+            self.position = Position::LineNumber {
+                line_number,
+                content: code
+                    .get(start..end)
+                    .expect("unable to extract code from position")
+                    .to_owned()
+                    .into(),
+            }
+        };
+        for trivia in self
+            .leading_trivia
+            .iter_mut()
+            .chain(self.trailing_trivia.iter_mut())
+        {
+            if let Position::LineNumberReference {
+                start,
+                end,
+                line_number,
+            } = trivia.position
+            {
+                trivia.position = Position::LineNumber {
+                    line_number,
+                    content: code
+                        .get(start..end)
+                        .expect("unable to extract code from position")
+                        .to_owned()
+                        .into(),
+                }
+            };
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        match &mut self.position {
+            Position::LineNumberReference { line_number, .. }
+            | Position::LineNumber { line_number, .. } => *line_number += amount,
+            Position::Any { .. } => {}
+        }
     }
 }
 

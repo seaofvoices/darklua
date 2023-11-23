@@ -74,6 +74,10 @@ impl NodeProcessor for RemoveCommentProcessor {
         statement.clear_comments();
     }
 
+    fn process_type_declaration(&mut self, type_declaration: &mut TypeDeclarationStatement) {
+        type_declaration.clear_comments();
+    }
+
     fn process_expression(&mut self, expression: &mut Expression) {
         match expression {
             Expression::False(token)
@@ -96,7 +100,8 @@ impl NodeProcessor for RemoveCommentProcessor {
             | Expression::String(_)
             | Expression::InterpolatedString(_)
             | Expression::Table(_)
-            | Expression::Unary(_) => {}
+            | Expression::Unary(_)
+            | Expression::TypeCast(_) => {}
         }
     }
 
@@ -151,7 +156,78 @@ impl NodeProcessor for RemoveCommentProcessor {
         string.clear_comments();
     }
 
+    fn process_type_cast_expression(&mut self, type_cast: &mut TypeCastExpression) {
+        type_cast.clear_comments();
+    }
+
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}
+
+    fn process_type(&mut self, r#type: &mut Type) {
+        match r#type {
+            Type::True(token) | Type::False(token) | Type::Nil(token) => {
+                if let Some(token) = token {
+                    token.clear_comments();
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn process_type_name(&mut self, type_name: &mut TypeName) {
+        type_name.clear_comments();
+    }
+
+    fn process_type_field(&mut self, type_field: &mut TypeField) {
+        type_field.clear_comments();
+    }
+
+    fn process_string_type(&mut self, string_type: &mut StringType) {
+        string_type.clear_comments();
+    }
+
+    fn process_array_type(&mut self, array: &mut ArrayType) {
+        array.clear_comments();
+    }
+
+    fn process_table_type(&mut self, table: &mut TableType) {
+        table.clear_comments();
+    }
+
+    fn process_expression_type(&mut self, expression_type: &mut ExpressionType) {
+        expression_type.clear_comments();
+    }
+
+    fn process_parenthese_type(&mut self, parenthese_type: &mut ParentheseType) {
+        parenthese_type.clear_comments();
+    }
+
+    fn process_function_type(&mut self, function_type: &mut FunctionType) {
+        function_type.clear_comments();
+    }
+
+    fn process_optional_type(&mut self, optional: &mut OptionalType) {
+        optional.clear_comments();
+    }
+
+    fn process_intersection_type(&mut self, intersection: &mut IntersectionType) {
+        intersection.clear_comments();
+    }
+
+    fn process_union_type(&mut self, union: &mut UnionType) {
+        union.clear_comments();
+    }
+
+    fn process_type_pack(&mut self, type_pack: &mut TypePack) {
+        type_pack.clear_comments();
+    }
+
+    fn process_generic_type_pack(&mut self, generic_type_pack: &mut GenericTypePack) {
+        generic_type_pack.clear_comments();
+    }
+
+    fn process_variadic_type_pack(&mut self, variadic_type_pack: &mut VariadicTypePack) {
+        variadic_type_pack.clear_comments();
+    }
 }
 
 pub const REMOVE_COMMENTS_RULE_NAME: &str = "remove_comments";
@@ -161,7 +237,7 @@ pub const REMOVE_COMMENTS_RULE_NAME: &str = "remove_comments";
 pub struct RemoveComments {}
 
 impl FlawlessRule for RemoveComments {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = RemoveCommentProcessor::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }
@@ -185,7 +261,11 @@ impl RuleConfiguration for RemoveComments {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::rules::Rule;
+    use crate::{
+        generator::{LuaGenerator, TokenBasedLuaGenerator},
+        rules::{ContextBuilder, Rule},
+        Parser, Resources,
+    };
 
     use insta::assert_json_snapshot;
 
@@ -208,11 +288,28 @@ mod test {
             prop: "something",
         }"#,
         );
-        let err_message = match result {
-            Ok(_) => panic!("expected error when deserializing rule"),
-            Err(e) => e,
-        }
-        .to_string();
-        pretty_assertions::assert_eq!(err_message, "unexpected field 'prop'");
+        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+    }
+
+    #[test]
+    fn remove_comments_in_code() {
+        let code = include_str!("../../tests/test_cases/spaces_and_comments.lua");
+
+        let parser = Parser::default().preserve_tokens();
+
+        let mut block = parser.parse(code).expect("unable to parse code");
+
+        RemoveComments::default().flawless_process(
+            &mut block,
+            &ContextBuilder::new(".", &Resources::from_memory(), code).build(),
+        );
+
+        let mut generator = TokenBasedLuaGenerator::new(code);
+
+        generator.write_block(&block);
+
+        let code_output = &generator.into_string();
+
+        insta::assert_snapshot!("remove_comments_in_code", code_output);
     }
 }

@@ -99,6 +99,7 @@ impl Processor {
                     | Expression::Index(_)
                     | Expression::Parenthese(_)
                     | Expression::Table(_)
+                    | Expression::TypeCast(_)
                     | Expression::Unary(_) => Some(self.generate_variable()),
                 };
 
@@ -295,7 +296,7 @@ pub const REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME: &str = "remove_compound_assignme
 pub struct RemoveCompoundAssignment {}
 
 impl FlawlessRule for RemoveCompoundAssignment {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = Processor::default();
         ScopeVisitor::visit_block(block, &mut processor);
     }
@@ -343,11 +344,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        let err_message = match result {
-            Ok(_) => panic!("expected error when deserializing rule"),
-            Err(e) => e,
-        }
-        .to_string();
-        pretty_assertions::assert_eq!(err_message, "unexpected field 'prop'");
+        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
     }
 }

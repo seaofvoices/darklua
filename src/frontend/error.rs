@@ -2,11 +2,15 @@ use std::{
     borrow::Cow,
     cmp::Ordering,
     collections::HashSet,
+    ffi::{OsStr, OsString},
     fmt::{self, Display},
     path::PathBuf,
 };
 
-use crate::{rules::Rule, ParserError};
+use crate::{
+    rules::{bundle::LuaSerializerError, Rule},
+    ParserError,
+};
 
 use super::{
     resources::ResourceError,
@@ -38,11 +42,29 @@ enum ErrorKind {
     RuleError {
         path: PathBuf,
         rule_name: String,
-        rule_number: usize,
+        rule_number: Option<usize>,
         error: String,
     },
     CyclicWork {
         work: Vec<(WorkData, Vec<PathBuf>)>,
+    },
+    Deserialization {
+        message: String,
+        data_type: &'static str,
+    },
+    Serialization {
+        message: String,
+        data_type: &'static str,
+    },
+    InvalidResourcePath {
+        location: String,
+        message: String,
+    },
+    InvalidResourceExtension {
+        location: PathBuf,
+    },
+    OsStringConversion {
+        os_string: OsString,
     },
     Custom {
         message: Cow<'static, str>,
@@ -113,7 +135,20 @@ impl DarkluaError {
         Self::new(ErrorKind::RuleError {
             path: path.into(),
             rule_name: rule.get_name().to_owned(),
-            rule_number: rule_index,
+            rule_number: Some(rule_index),
+            error: rule_error.into(),
+        })
+    }
+
+    pub(crate) fn orphan_rule_error(
+        path: impl Into<PathBuf>,
+        rule: &dyn Rule,
+        rule_error: impl Into<String>,
+    ) -> Self {
+        Self::new(ErrorKind::RuleError {
+            path: path.into(),
+            rule_name: rule.get_name().to_owned(),
+            rule_number: None,
             error: rule_error.into(),
         })
     }
@@ -166,6 +201,28 @@ impl DarkluaError {
         })
     }
 
+    pub(crate) fn invalid_resource_path(
+        path: impl Into<String>,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::new(ErrorKind::InvalidResourcePath {
+            location: path.into(),
+            message: message.into(),
+        })
+    }
+
+    pub(crate) fn invalid_resource_extension(path: impl Into<PathBuf>) -> Self {
+        Self::new(ErrorKind::InvalidResourceExtension {
+            location: path.into(),
+        })
+    }
+
+    pub(crate) fn os_string_conversion(os_string: impl Into<OsString>) -> Self {
+        Self::new(ErrorKind::OsStringConversion {
+            os_string: os_string.into(),
+        })
+    }
+
     pub(crate) fn custom(message: impl Into<Cow<'static, str>>) -> Self {
         Self::new(ErrorKind::Custom {
             message: message.into(),
@@ -179,6 +236,60 @@ impl From<ResourceError> for DarkluaError {
             ResourceError::NotFound(path) => DarkluaError::resource_not_found(path),
             ResourceError::IO { path, error } => DarkluaError::io_error(path, error),
         }
+    }
+}
+
+impl From<json5::Error> for DarkluaError {
+    fn from(error: json5::Error) -> Self {
+        Self::new(ErrorKind::Deserialization {
+            message: error.to_string(),
+            data_type: "json",
+        })
+    }
+}
+
+impl From<serde_json::Error> for DarkluaError {
+    fn from(error: serde_json::Error) -> Self {
+        Self::new(ErrorKind::Deserialization {
+            message: error.to_string(),
+            data_type: "json",
+        })
+    }
+}
+
+impl From<serde_yaml::Error> for DarkluaError {
+    fn from(error: serde_yaml::Error) -> Self {
+        Self::new(ErrorKind::Deserialization {
+            message: error.to_string(),
+            data_type: "yaml",
+        })
+    }
+}
+
+impl From<toml::de::Error> for DarkluaError {
+    fn from(error: toml::de::Error) -> Self {
+        Self::new(ErrorKind::Deserialization {
+            message: error.to_string(),
+            data_type: "toml",
+        })
+    }
+}
+
+impl From<toml::ser::Error> for DarkluaError {
+    fn from(error: toml::ser::Error) -> Self {
+        Self::new(ErrorKind::Serialization {
+            message: error.to_string(),
+            data_type: "toml",
+        })
+    }
+}
+
+impl From<LuaSerializerError> for DarkluaError {
+    fn from(error: LuaSerializerError) -> Self {
+        Self::new(ErrorKind::Serialization {
+            message: error.to_string(),
+            data_type: "lua",
+        })
     }
 }
 
@@ -217,14 +328,26 @@ impl Display for DarkluaError {
                 rule_number,
                 error,
             } => {
-                write!(
-                    f,
-                    "error processing `{}` ({} [#{}]): {}",
-                    path.display(),
-                    rule_name,
-                    rule_number,
-                    error,
-                )?;
+                if let Some(rule_number) = rule_number {
+                    write!(
+                        f,
+                        "error processing `{}` ({} [#{}]):{}{}",
+                        path.display(),
+                        rule_name,
+                        rule_number,
+                        if error.contains('\n') { '\n' } else { ' ' },
+                        error,
+                    )?;
+                } else {
+                    write!(
+                        f,
+                        "error processing `{}` ({}):{}{}",
+                        path.display(),
+                        rule_name,
+                        if error.contains('\n') { '\n' } else { ' ' },
+                        error,
+                    )?;
+                }
             }
             ErrorKind::CyclicWork { work } => {
                 const MAX_PRINTED_WORK: usize = 12;
@@ -258,6 +381,42 @@ impl Display for DarkluaError {
                     } else {
                         format!("\n    and {} more", total - MAX_PRINTED_WORK)
                     }
+                )?;
+            }
+            ErrorKind::Deserialization { message, data_type } => {
+                write!(f, "unable to read {} data: {}", data_type, message)?;
+            }
+            ErrorKind::Serialization { message, data_type } => {
+                write!(f, "unable to serialize {} data: {}", data_type, message)?;
+            }
+            ErrorKind::InvalidResourcePath { location, message } => {
+                write!(
+                    f,
+                    "unable to require resource at `{}`: {}",
+                    location, message
+                )?;
+            }
+            ErrorKind::InvalidResourceExtension { location } => {
+                if let Some(extension) = location.extension().map(OsStr::to_string_lossy) {
+                    write!(
+                        f,
+                        "unable to require resource with extension `{}` at `{}`",
+                        extension,
+                        location.display()
+                    )?;
+                } else {
+                    write!(
+                        f,
+                        "unable to require resource without an extension at `{}`",
+                        location.display()
+                    )?;
+                }
+            }
+            ErrorKind::OsStringConversion { os_string } => {
+                write!(
+                    f,
+                    "unable to convert operating system string (`{}`) into a utf-8 string",
+                    os_string.to_string_lossy(),
                 )?;
             }
             ErrorKind::Custom { message } => {

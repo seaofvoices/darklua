@@ -16,6 +16,16 @@ impl ParentheseTokens {
         self.left_parenthese.clear_whitespaces();
         self.right_parenthese.clear_whitespaces();
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.left_parenthese.replace_referenced_tokens(code);
+        self.right_parenthese.replace_referenced_tokens(code);
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.left_parenthese.shift_token_line(amount);
+        self.right_parenthese.shift_token_line(amount);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -71,6 +81,18 @@ impl ParentheseExpression {
     pub fn clear_whitespaces(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
         }
     }
 }

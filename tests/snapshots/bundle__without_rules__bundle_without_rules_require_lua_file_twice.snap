@@ -1,0 +1,46 @@
+---
+source: tests/bundle.rs
+expression: main
+---
+local __DARKLUA_BUNDLE_MODULES
+
+__DARKLUA_BUNDLE_MODULES = {
+    cache = {},
+    load = function(m)
+        if not __DARKLUA_BUNDLE_MODULES.cache[m] then
+            __DARKLUA_BUNDLE_MODULES.cache[m] = {
+                c = __DARKLUA_BUNDLE_MODULES[m](),
+            }
+        end
+
+        return __DARKLUA_BUNDLE_MODULES.cache[m].c
+    end,
+}
+
+do
+    function __DARKLUA_BUNDLE_MODULES.a()
+        print('load constant module')
+
+        return 2
+    end
+    function __DARKLUA_BUNDLE_MODULES.b()
+        print('load value a')
+
+        local constant_a = __DARKLUA_BUNDLE_MODULES.load('a')
+
+        return constant_a
+    end
+    function __DARKLUA_BUNDLE_MODULES.c()
+        print('load value b')
+
+        local constant_b = __DARKLUA_BUNDLE_MODULES.load('a')
+
+        return constant_b
+    end
+end
+
+local value_a = __DARKLUA_BUNDLE_MODULES.load('b')
+local value_b = __DARKLUA_BUNDLE_MODULES.load('c')
+
+print(value_a + value_b)
+

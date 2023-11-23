@@ -18,6 +18,16 @@ impl IfBranchTokens {
         self.elseif.clear_whitespaces();
         self.then.clear_whitespaces();
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.elseif.replace_referenced_tokens(code);
+        self.then.replace_referenced_tokens(code);
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.elseif.shift_token_line(amount);
+        self.then.shift_token_line(amount);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -95,6 +105,18 @@ impl IfBranch {
             tokens.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -123,6 +145,24 @@ impl IfStatementTokens {
             token.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.r#if.replace_referenced_tokens(code);
+        self.then.replace_referenced_tokens(code);
+        self.end.replace_referenced_tokens(code);
+        if let Some(token) = &mut self.r#else {
+            token.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.r#if.shift_token_line(amount);
+        self.then.shift_token_line(amount);
+        self.end.shift_token_line(amount);
+        if let Some(token) = &mut self.r#else {
+            token.shift_token_line(amount);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -141,7 +181,7 @@ impl IfStatement {
         }
     }
 
-    pub fn create<E: Into<Expression>, B: Into<Block>>(condition: E, block: B) -> Self {
+    pub fn create(condition: impl Into<Expression>, block: impl Into<Block>) -> Self {
         Self {
             branches: vec![IfBranch::new(condition, block)],
             else_block: None,
@@ -169,10 +209,10 @@ impl IfStatement {
         self
     }
 
-    pub fn with_new_branch<E: Into<Expression>, B: Into<Block>>(
+    pub fn with_new_branch(
         mut self,
-        condition: E,
-        block: B,
+        condition: impl Into<Expression>,
+        block: impl Into<Block>,
     ) -> Self {
         self.branches.push(IfBranch::new(condition, block));
         self
@@ -218,7 +258,7 @@ impl IfStatement {
     }
 
     #[inline]
-    pub fn push_new_branch<E: Into<Expression>, B: Into<Block>>(&mut self, condition: E, block: B) {
+    pub fn push_new_branch(&mut self, condition: impl Into<Expression>, block: impl Into<Block>) {
         self.branches
             .push(IfBranch::new(condition.into(), block.into()));
     }
@@ -239,7 +279,7 @@ impl IfStatement {
     }
 
     #[inline]
-    pub fn set_else_block<B: Into<Block>>(&mut self, block: B) {
+    pub fn set_else_block(&mut self, block: impl Into<Block>) {
         self.else_block = Some(block.into());
     }
 
@@ -262,6 +302,24 @@ impl IfStatement {
         self.branches
             .iter_mut()
             .for_each(IfBranch::clear_whitespaces);
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+        for branch in self.branches.iter_mut() {
+            branch.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
+        }
+        for branch in self.branches.iter_mut() {
+            branch.shift_token_line(amount);
+        }
     }
 
     pub fn retain_branches_mut(&mut self, filter: impl FnMut(&mut IfBranch) -> bool) -> bool {

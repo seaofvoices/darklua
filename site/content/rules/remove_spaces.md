@@ -13,4 +13,4 @@ examples:
       end
 ---
 
-It is important to note that when generating code with the `dense` or `readable` generator (e.g. `darklua process src --format dense`), all the spacing (whitespaces, tabs, new lines) will not be considered. The only way to retain the spacing information is to use the `retain-lines` format and avoid this rule.
+It is important to note that when generating code with the `dense` or `readable` generator (e.g. `darklua process src --format dense`), all the spacing (whitespaces, tabs, new lines) will not be considered. The only way to retain the spacing information is to use the `retain_lines` format and avoid this rule.

@@ -92,7 +92,7 @@ pub const CONVERT_INDEX_TO_FIELD_RULE_NAME: &str = "convert_index_to_field";
 pub struct ConvertIndexToField {}
 
 impl FlawlessRule for ConvertIndexToField {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = Converter::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }
@@ -140,11 +140,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        let err_message = match result {
-            Ok(_) => panic!("expected error when deserializing rule"),
-            Err(e) => e,
-        }
-        .to_string();
-        pretty_assertions::assert_eq!(err_message, "unexpected field 'prop'");
+        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
     }
 }

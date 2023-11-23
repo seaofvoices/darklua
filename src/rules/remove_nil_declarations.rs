@@ -87,7 +87,7 @@ pub const REMOVE_NIL_DECLARATION_RULE_NAME: &str = "remove_nil_declaration";
 pub struct RemoveNilDeclaration {}
 
 impl FlawlessRule for RemoveNilDeclaration {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = Processor::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }
@@ -135,11 +135,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        let err_message = match result {
-            Ok(_) => panic!("expected error when deserializing rule"),
-            Err(e) => e,
-        }
-        .to_string();
-        pretty_assertions::assert_eq!(err_message, "unexpected field 'prop'");
+        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
     }
 }

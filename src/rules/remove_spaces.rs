@@ -74,6 +74,10 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
         statement.clear_whitespaces();
     }
 
+    fn process_type_declaration(&mut self, type_declaration: &mut TypeDeclarationStatement) {
+        type_declaration.clear_whitespaces();
+    }
+
     fn process_expression(&mut self, expression: &mut Expression) {
         match expression {
             Expression::False(token)
@@ -96,7 +100,8 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
             | Expression::String(_)
             | Expression::InterpolatedString(_)
             | Expression::Table(_)
-            | Expression::Unary(_) => {}
+            | Expression::Unary(_)
+            | Expression::TypeCast(_) => {}
         }
     }
 
@@ -151,7 +156,78 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
         string.clear_whitespaces();
     }
 
+    fn process_type_cast_expression(&mut self, type_cast: &mut TypeCastExpression) {
+        type_cast.clear_whitespaces();
+    }
+
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}
+
+    fn process_type(&mut self, r#type: &mut Type) {
+        match r#type {
+            Type::True(token) | Type::False(token) | Type::Nil(token) => {
+                if let Some(token) = token {
+                    token.clear_whitespaces();
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn process_type_name(&mut self, type_name: &mut TypeName) {
+        type_name.clear_whitespaces();
+    }
+
+    fn process_type_field(&mut self, type_field: &mut TypeField) {
+        type_field.clear_whitespaces();
+    }
+
+    fn process_string_type(&mut self, string_type: &mut StringType) {
+        string_type.clear_whitespaces();
+    }
+
+    fn process_array_type(&mut self, array: &mut ArrayType) {
+        array.clear_whitespaces();
+    }
+
+    fn process_table_type(&mut self, table: &mut TableType) {
+        table.clear_whitespaces();
+    }
+
+    fn process_expression_type(&mut self, expression_type: &mut ExpressionType) {
+        expression_type.clear_whitespaces();
+    }
+
+    fn process_parenthese_type(&mut self, parenthese_type: &mut ParentheseType) {
+        parenthese_type.clear_whitespaces();
+    }
+
+    fn process_function_type(&mut self, function_type: &mut FunctionType) {
+        function_type.clear_whitespaces();
+    }
+
+    fn process_optional_type(&mut self, optional: &mut OptionalType) {
+        optional.clear_whitespaces();
+    }
+
+    fn process_intersection_type(&mut self, intersection: &mut IntersectionType) {
+        intersection.clear_whitespaces();
+    }
+
+    fn process_union_type(&mut self, union: &mut UnionType) {
+        union.clear_whitespaces();
+    }
+
+    fn process_type_pack(&mut self, type_pack: &mut TypePack) {
+        type_pack.clear_whitespaces();
+    }
+
+    fn process_generic_type_pack(&mut self, generic_type_pack: &mut GenericTypePack) {
+        generic_type_pack.clear_whitespaces();
+    }
+
+    fn process_variadic_type_pack(&mut self, variadic_type_pack: &mut VariadicTypePack) {
+        variadic_type_pack.clear_whitespaces();
+    }
 }
 
 pub const REMOVE_SPACES_RULE_NAME: &str = "remove_spaces";
@@ -161,7 +237,7 @@ pub const REMOVE_SPACES_RULE_NAME: &str = "remove_spaces";
 pub struct RemoveSpaces {}
 
 impl FlawlessRule for RemoveSpaces {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = RemoveWhitespacesProcessor::default();
         DefaultVisitor::visit_block(block, &mut processor);
     }
@@ -185,7 +261,11 @@ impl RuleConfiguration for RemoveSpaces {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::rules::Rule;
+    use crate::{
+        generator::{LuaGenerator, TokenBasedLuaGenerator},
+        rules::{ContextBuilder, Rule},
+        Parser, Resources,
+    };
 
     use insta::assert_json_snapshot;
 
@@ -208,11 +288,28 @@ mod test {
             prop: "something",
         }"#,
         );
-        let err_message = match result {
-            Ok(_) => panic!("expected error when deserializing rule"),
-            Err(e) => e,
-        }
-        .to_string();
-        pretty_assertions::assert_eq!(err_message, "unexpected field 'prop'");
+        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+    }
+
+    #[test]
+    fn remove_spaces_in_code() {
+        let code = include_str!("../../tests/test_cases/spaces_and_comments.lua");
+
+        let parser = Parser::default().preserve_tokens();
+
+        let mut block = parser.parse(code).expect("unable to parse code");
+
+        RemoveSpaces::default().flawless_process(
+            &mut block,
+            &ContextBuilder::new(".", &Resources::from_memory(), code).build(),
+        );
+
+        let mut generator = TokenBasedLuaGenerator::new(code);
+
+        generator.write_block(&block);
+
+        let code_output = &generator.into_string();
+
+        insta::assert_snapshot!("remove_spaces_in_code", code_output);
     }
 }

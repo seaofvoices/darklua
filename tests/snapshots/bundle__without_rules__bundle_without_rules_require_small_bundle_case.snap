@@ -1,0 +1,37 @@
+---
+source: tests/bundle.rs
+expression: main
+---
+local __DARKLUA_BUNDLE_MODULES __DARKLUA_BUNDLE_MODULES={cache={}, load=function(m)if not __DARKLUA_BUNDLE_MODULES.cache[m]then __DARKLUA_BUNDLE_MODULES.cache[m]={c=__DARKLUA_BUNDLE_MODULES[m]()}end return __DARKLUA_BUNDLE_MODULES.cache[m].c end}do function __DARKLUA_BUNDLE_MODULES.a()local function initialize()
+end
+
+return initialize
+end function __DARKLUA_BUNDLE_MODULES.b()
+local function generateNumber()
+    return math.random(1, 9999)
+end
+
+return {
+    zero = 0,
+    one = 1,
+    hex = 0x10,
+    binary = 0b1010,
+    number1 = generateNumber(),
+    number2 = generateNumber(),
+    number3 = generateNumber(),
+}
+end function __DARKLUA_BUNDLE_MODULES.c()
+local function format(value)
+    return '[' .. tostring(value) .. ']'
+end
+
+return format -- comment after returning format function
+end end
+local initialize = __DARKLUA_BUNDLE_MODULES.load('a') -- import initialize module
+
+local value = __DARKLUA_BUNDLE_MODULES.load('b') -- import value module
+
+local format = __DARKLUA_BUNDLE_MODULES.load('c') --[[ import format module ]]
+
+print(format(value.number1 + value.number2))
+

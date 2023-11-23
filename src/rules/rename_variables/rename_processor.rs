@@ -5,6 +5,7 @@ use crate::process::{utils::KEYWORDS, NodeProcessor, Scope};
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
+use std::mem;
 
 #[derive(Debug)]
 pub struct RenameProcessor {
@@ -66,7 +67,7 @@ impl RenameProcessor {
     }
 
     fn replace_identifier(&mut self, identifier: &mut String) {
-        let original = identifier.drain(..).collect();
+        let original = mem::take(identifier);
         let obfuscated_name = self.generate_identifier();
 
         identifier.push_str(&obfuscated_name);
@@ -159,7 +160,7 @@ mod test {
     use super::*;
 
     fn new_scope() -> RenameProcessor {
-        RenameProcessor::new(Vec::new().into_iter(), true)
+        RenameProcessor::new(Vec::new(), true)
     }
 
     #[test]

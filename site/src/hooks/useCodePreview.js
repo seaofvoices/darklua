@@ -1,16 +1,15 @@
 import * as React from "react"
 
-import * as json5 from "json5"
 import useMonacoEditor from "./useMonacoEditor"
 import { DarkluaContext } from "../components/darklua-provider"
-import { RulesStackContext } from "../components/rules-stack"
 import { useLocation } from "../components/location-context"
+import { DarkluaConfigContext } from "../components/darklua-config-provider"
 
 const DEFAULT_TEXT = "-- paste code here to preview the darklua transform"
 
 const useCodePreview = () => {
   const darklua = React.useContext(DarkluaContext)
-  const rulesStack = React.useContext(RulesStackContext)
+  const darkluaConfig = React.useContext(DarkluaConfigContext)
   const location = useLocation()
 
   const {
@@ -23,23 +22,23 @@ const useCodePreview = () => {
   const defaultText = locationCode || DEFAULT_TEXT
   const { model, editor, ref } = useMonacoEditor({ defaultText })
 
-  React.useEffect(() => {
-    if (!model || !previewModel) {
-      return
-    }
-    const processCode = code => {
+  const processCode = React.useCallback(
+    code => {
       try {
-        return darklua.process_code(code, rulesStack.getDarkluaConfig())
+        return darklua.process_code(code, darkluaConfig)
       } catch (error) {
         return (
           `--[[\n\tan error happened while trying to process the code:\n${error}\n\n` +
-          `Configuration: ${json5.stringify(
-            rulesStack.getDarkluaConfig(),
-            null,
-            2
-          )}]]`
+          `Configuration: ${darkluaConfig}]]`
         )
       }
+    },
+    [darklua, darkluaConfig]
+  )
+
+  React.useEffect(() => {
+    if (!model || !previewModel) {
+      return
     }
     const onChange = _event => {
       const newCode = processCode(model.getValue())
@@ -49,7 +48,7 @@ const useCodePreview = () => {
     onChange()
 
     return () => connection.dispose()
-  }, [darklua, model, previewModel, rulesStack])
+  }, [model, previewModel, processCode])
 
   return { previewEditor, editor, previewRef, ref }
 }

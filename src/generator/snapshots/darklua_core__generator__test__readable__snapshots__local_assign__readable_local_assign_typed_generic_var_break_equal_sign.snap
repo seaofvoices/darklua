@@ -1,0 +1,5 @@
+---
+source: src/generator/mod.rs
+expression: generator.into_string()
+---
+local var: List<string> = false

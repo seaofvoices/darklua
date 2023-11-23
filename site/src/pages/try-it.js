@@ -1,6 +1,5 @@
 import * as React from "react"
 
-import { RulesStackProvider } from "../components/rules-stack"
 import EditorProviders from "../components/editor-providers"
 import Seo from "../components/seo"
 import NavBar, { NavBarFiller } from "../components/nav-bar"
@@ -22,6 +21,7 @@ import ThemeProvider from "../components/theme-provider"
 import LoadingEditorProviders from "../components/loading-editor-providers"
 import { LocationContext } from "../components/location-context"
 import DarkluaProvider from "../components/darklua-provider"
+import { DarkluaConfigProvider } from "../components/darklua-config-provider"
 
 const drawerWidth = 500
 
@@ -132,11 +132,11 @@ const TryIt = ({ location }) => {
     <LocationContext.Provider value={location}>
       <ThemeProvider>
         <DarkluaProvider>
-          <RulesStackProvider>
+          <DarkluaConfigProvider>
             <EditorProviders>
               <TryItLayout />
             </EditorProviders>
-          </RulesStackProvider>
+          </DarkluaConfigProvider>
         </DarkluaProvider>
       </ThemeProvider>
     </LocationContext.Provider>

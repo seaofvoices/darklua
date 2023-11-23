@@ -6,13 +6,12 @@ use std::{
 
 use assert_cmd::Command;
 use insta::assert_snapshot;
-use regex::Regex;
 use tempfile::{tempdir_in, TempDir};
 
 struct Context {
     command: Command,
     working_directory: TempDir,
-    snapshot_replace: Vec<(Regex, String)>,
+    snapshot_replace: Vec<(String, String)>,
 }
 
 impl Default for Context {
@@ -83,23 +82,15 @@ impl Context {
             self.working_directory.path().display(),
             std::path::MAIN_SEPARATOR
         );
-        let mut content = content
-            .replace(&working_directory_display, "{{CWD}}")
-            .replace("darklua.exe", "darklua");
+        let content = content.replace(&working_directory_display, "{{CWD}}");
 
-        for (replace_regex, replace_with) in self.snapshot_replace.iter() {
-            let mut ranges: Vec<_> = replace_regex
-                .find_iter(&content)
-                .map(|occurence| occurence.range())
-                .collect();
-            ranges.reverse();
-
-            for range in ranges {
-                content.replace_range(range, replace_with);
-            }
+        let mut settings = insta::Settings::clone_current();
+        settings.set_prepend_module_to_snapshot(false);
+        settings.add_filter("darklua\\.exe", "darklua");
+        for (matcher, replacement) in self.snapshot_replace.iter() {
+            settings.add_filter(matcher, replacement);
         }
-
-        insta::with_settings!({prepend_module_to_snapshot => false}, {
+        settings.bind(|| {
             assert_snapshot!(snapshot_name, content);
         });
     }
@@ -155,15 +146,13 @@ impl Context {
         self
     }
 
-    pub fn replace_snapshot_content<S: Into<String>>(
+    pub fn replace_snapshot_content(
         mut self,
-        matcher: impl AsRef<str>,
-        replace_with: S,
+        matcher: impl Into<String>,
+        replace_with: impl Into<String>,
     ) -> Self {
-        self.snapshot_replace.push((
-            Regex::new(matcher.as_ref()).expect("regex should be valid"),
-            replace_with.into(),
-        ));
+        self.snapshot_replace
+            .push((matcher.into(), replace_with.into()));
         self
     }
 

@@ -1,7 +1,6 @@
 import * as React from "react"
 
 import { Box } from "@mui/system"
-import LoadingEditorProviders from "./loading-editor-providers"
 
 const REFRESH_RATE = 0.05
 
@@ -39,15 +38,13 @@ const MonacoContainer = React.forwardRef(({ editor, sx, ...props }, ref) => {
 
   return (
     <Box ref={containerRef} sx={{ flexGrow: 1, ...sx }} {...props}>
-      <LoadingEditorProviders>
-        <div
-          ref={ref}
-          style={{
-            width: monacoWidth,
-            height: monacoHeight,
-          }}
-        />
-      </LoadingEditorProviders>
+      <div
+        ref={ref}
+        style={{
+          width: monacoWidth,
+          height: monacoHeight,
+        }}
+      />
     </Box>
   )
 })

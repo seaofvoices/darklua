@@ -11,7 +11,6 @@ use std::mem;
 
 use super::verify_no_rule_properties;
 
-#[derive(Default)]
 struct Processor;
 
 impl Processor {
@@ -43,7 +42,7 @@ impl NodeProcessor for Processor {
                 mem::swap(statement, &mut assign)
             } else {
                 let identifiers = vec![name.to_owned()];
-                let mut find_usage = FindVariables::from(&identifiers);
+                let mut find_usage: FindVariables = identifiers.iter().collect();
                 DefaultVisitor::visit_block(local_function.mutate_block(), &mut find_usage);
 
                 if !find_usage.has_found_usage() {
@@ -62,8 +61,8 @@ pub const CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME: &str = "convert_local_func
 pub struct ConvertLocalFunctionToAssign {}
 
 impl FlawlessRule for ConvertLocalFunctionToAssign {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
-        let mut processor = Processor::default();
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
+        let mut processor = Processor;
         DefaultVisitor::visit_block(block, &mut processor);
     }
 }
@@ -115,11 +114,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        let err_message = match result {
-            Ok(_) => panic!("expected error when deserializing rule"),
-            Err(e) => e,
-        }
-        .to_string();
-        pretty_assertions::assert_eq!(err_message, "unexpected field 'prop'");
+        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
     }
 }

@@ -1,4 +1,4 @@
-use crate::nodes::{Block, Expression, Identifier, Token};
+use crate::nodes::{Block, Expression, Token, TypedIdentifier};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NumericForTokens {
@@ -32,11 +32,33 @@ impl NumericForTokens {
             token.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.r#for.replace_referenced_tokens(code);
+        self.equal.replace_referenced_tokens(code);
+        self.r#do.replace_referenced_tokens(code);
+        self.end.replace_referenced_tokens(code);
+        self.end_comma.replace_referenced_tokens(code);
+        if let Some(token) = &mut self.step_comma {
+            token.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.r#for.shift_token_line(amount);
+        self.equal.shift_token_line(amount);
+        self.r#do.shift_token_line(amount);
+        self.end.shift_token_line(amount);
+        self.end_comma.shift_token_line(amount);
+        if let Some(token) = &mut self.step_comma {
+            token.shift_token_line(amount);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NumericForStatement {
-    identifier: Identifier,
+    identifier: TypedIdentifier,
     start: Expression,
     end: Expression,
     step: Option<Expression>,
@@ -45,7 +67,12 @@ pub struct NumericForStatement {
 }
 
 impl NumericForStatement {
-    pub fn new<S: Into<Identifier>, E1: Into<Expression>, E2: Into<Expression>, B: Into<Block>>(
+    pub fn new<
+        S: Into<TypedIdentifier>,
+        E1: Into<Expression>,
+        E2: Into<Expression>,
+        B: Into<Block>,
+    >(
         identifier: S,
         start: E1,
         end: E2,
@@ -118,29 +145,49 @@ impl NumericForStatement {
     }
 
     #[inline]
-    pub fn get_identifier(&self) -> &Identifier {
+    pub fn get_identifier(&self) -> &TypedIdentifier {
         &self.identifier
     }
 
     #[inline]
-    pub fn mutate_identifier(&mut self) -> &mut Identifier {
+    pub fn mutate_identifier(&mut self) -> &mut TypedIdentifier {
         &mut self.identifier
     }
 
     #[inline]
-    pub fn set_identifier<S: Into<Identifier>>(&mut self, identifier: S) {
+    pub fn set_identifier<S: Into<TypedIdentifier>>(&mut self, identifier: S) {
         self.identifier = identifier.into();
     }
 
+    pub fn clear_types(&mut self) {
+        self.identifier.remove_type();
+    }
+
     pub fn clear_comments(&mut self) {
+        self.identifier.clear_comments();
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
         }
     }
 
     pub fn clear_whitespaces(&mut self) {
+        self.identifier.clear_whitespaces();
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.identifier.replace_referenced_tokens(code);
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.identifier.shift_token_line(amount);
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
         }
     }
 }

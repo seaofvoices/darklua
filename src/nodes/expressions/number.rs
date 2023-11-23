@@ -80,6 +80,18 @@ impl DecimalNumber {
             token.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(token) = &mut self.token {
+            token.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(token) = &mut self.token {
+            token.shift_token_line(amount);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -164,6 +176,18 @@ impl HexNumber {
             token.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(token) = &mut self.token {
+            token.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(token) = &mut self.token {
+            token.shift_token_line(amount);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -224,6 +248,18 @@ impl BinaryNumber {
     pub fn clear_whitespaces(&mut self) {
         if let Some(token) = &mut self.token {
             token.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(token) = &mut self.token {
+            token.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(token) = &mut self.token {
+            token.shift_token_line(amount);
         }
     }
 }
@@ -294,6 +330,22 @@ impl NumberExpression {
             NumberExpression::Binary(number) => number.clear_whitespaces(),
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        match self {
+            NumberExpression::Decimal(number) => number.replace_referenced_tokens(code),
+            NumberExpression::Hex(number) => number.replace_referenced_tokens(code),
+            NumberExpression::Binary(number) => number.replace_referenced_tokens(code),
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        match self {
+            NumberExpression::Decimal(number) => number.shift_token_line(amount),
+            NumberExpression::Hex(number) => number.shift_token_line(amount),
+            NumberExpression::Binary(number) => number.shift_token_line(amount),
+        }
+    }
 }
 
 impl From<DecimalNumber> for NumberExpression {
@@ -345,99 +397,89 @@ impl FromStr for NumberExpression {
     type Err = NumberParsingError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        let number = if value.starts_with("0x") || value.starts_with("0X") {
-            let is_x_uppercase = value
-                .chars()
-                .nth(1)
-                .map(char::is_uppercase)
-                .unwrap_or(false);
+        let notation_prefix = value
+            .char_indices()
+            .filter(|(_, c)| *c != '_')
+            .take(2)
+            .nth(1);
+        let starts_with_zero = value.starts_with('0');
 
-            if let Some(index) = value.find('p') {
-                let exponent = value
-                    .get(index + 1..)
-                    .and_then(|string| string.parse().ok())
-                    .ok_or(Self::Err::InvalidHexadecimalExponent)?;
-                let number = u64::from_str_radix(value.get(2..index).unwrap(), 16)
-                    .map_err(|_| Self::Err::InvalidHexadecimalNumber)?;
+        let number = match (starts_with_zero, notation_prefix) {
+            (true, Some((position, notation))) if matches!(notation, 'x' | 'X' | 'b' | 'B') => {
+                let is_uppercase = notation.is_uppercase();
 
-                HexNumber::new(number, is_x_uppercase).with_exponent(exponent, false)
-            } else if let Some(index) = value.find('P') {
-                let exponent = value
-                    .get(index + 1..)
-                    .map(filter_underscore)
-                    .and_then(|string| string.parse().ok())
-                    .ok_or(Self::Err::InvalidHexadecimalExponent)?;
-                let filtered = filter_underscore(value.get(2..index).unwrap());
-                let number = u64::from_str_radix(&filtered, 16)
-                    .map_err(|_| Self::Err::InvalidHexadecimalNumber)?;
+                if notation == 'x' || notation == 'X' {
+                    if let Some((exponent_is_uppercase, index)) = value
+                        .find('p')
+                        .map(|index| (false, index))
+                        .or_else(|| value.find('P').map(|index| (true, index)))
+                    {
+                        let exponent = value
+                            .get(index + 1..)
+                            .and_then(|string| string.parse().ok())
+                            .ok_or(Self::Err::InvalidHexadecimalExponent)?;
+                        let before_exponent = value.get(position + 1..index).unwrap();
+                        let number = u64::from_str_radix(before_exponent, 16)
+                            .map_err(|_| Self::Err::InvalidHexadecimalNumber)?;
 
-                HexNumber::new(number, is_x_uppercase).with_exponent(exponent, true)
-            } else {
-                let filtered = filter_underscore(value.get(2..).unwrap());
-                let number = u64::from_str_radix(&filtered, 16)
-                    .map_err(|_| Self::Err::InvalidHexadecimalNumber)?;
+                        HexNumber::new(number, is_uppercase)
+                            .with_exponent(exponent, exponent_is_uppercase)
+                    } else {
+                        let filtered = filter_underscore(value.get(position + 1..).unwrap());
+                        let number = u64::from_str_radix(&filtered, 16)
+                            .map_err(|_| Self::Err::InvalidHexadecimalNumber)?;
 
-                HexNumber::new(number, is_x_uppercase)
+                        HexNumber::new(number, is_uppercase)
+                    }
+                    .into()
+                } else if notation == 'b' || notation == 'B' {
+                    let filtered = filter_underscore(value.get(position + 1..).unwrap());
+                    let number = u64::from_str_radix(&filtered, 2)
+                        .map_err(|_| Self::Err::InvalidBinaryNumber)?;
+
+                    BinaryNumber::new(number, is_uppercase).into()
+                } else {
+                    unreachable!()
+                }
             }
-            .into()
-        } else if value.starts_with("0b") || value.starts_with("0B") {
-            let is_b_uppercase = value
-                .chars()
-                .nth(1)
-                .map(char::is_uppercase)
-                .unwrap_or(false);
-
-            let filtered = filter_underscore(value);
-            let number = u64::from_str_radix(filtered.get(2..).unwrap(), 2)
-                .map_err(|_| Self::Err::InvalidBinaryNumber)?;
-
-            BinaryNumber::new(number, is_b_uppercase).into()
-        } else {
-            // in Luau, underscores are valid everywhere in a number except
-            // after a `.`
-            if value.contains("._") {
-                return Err(Self::Err::InvalidDecimalNumber);
-            }
-
-            if let Some(index) = value.find('e') {
-                // in Luau, underscores are not valid before the exponent sign
-                if value.contains("_-") || value.contains("_+") {
-                    return Err(Self::Err::InvalidDecimalExponent);
+            _ => {
+                // in Luau, underscores are valid everywhere in a number except
+                // after a `.`
+                if value.starts_with("._") {
+                    return Err(Self::Err::InvalidDecimalNumber);
                 }
 
-                let exponent = value
-                    .get(index + 1..)
-                    .map(filter_underscore)
-                    .and_then(|string| string.parse().ok())
-                    .ok_or(Self::Err::InvalidDecimalExponent)?;
-                let number = value
-                    .get(0..index)
-                    .map(filter_underscore)
-                    .and_then(|string| string.parse().ok())
-                    .ok_or(Self::Err::InvalidDecimalNumber)?;
+                if let Some((exponent_is_uppercase, index)) = value
+                    .find('e')
+                    .map(|index| (false, index))
+                    .or_else(|| value.find('E').map(|index| (true, index)))
+                {
+                    // in Luau, underscores are not valid before the exponent sign
+                    if value.contains("_-") || value.contains("_+") {
+                        return Err(Self::Err::InvalidDecimalExponent);
+                    }
 
-                DecimalNumber::new(number).with_exponent(exponent, false)
-            } else if let Some(index) = value.find('E') {
-                let exponent: i64 = value
-                    .get(index + 1..)
-                    .map(filter_underscore)
-                    .and_then(|string| string.parse().ok())
-                    .ok_or(Self::Err::InvalidDecimalExponent)?;
-                let number = value
-                    .get(0..index)
-                    .map(filter_underscore)
-                    .and_then(|string| string.parse().ok())
-                    .ok_or(Self::Err::InvalidDecimalNumber)?;
+                    let exponent = value
+                        .get(index + 1..)
+                        .map(filter_underscore)
+                        .and_then(|string| string.parse().ok())
+                        .ok_or(Self::Err::InvalidDecimalExponent)?;
+                    let number = value
+                        .get(0..index)
+                        .map(filter_underscore)
+                        .and_then(|string| string.parse().ok())
+                        .ok_or(Self::Err::InvalidDecimalNumber)?;
 
-                DecimalNumber::new(number).with_exponent(exponent, true)
-            } else {
-                let number = filter_underscore(value)
-                    .parse::<f64>()
-                    .map_err(|_| Self::Err::InvalidDecimalNumber)?;
+                    DecimalNumber::new(number).with_exponent(exponent, exponent_is_uppercase)
+                } else {
+                    let number = filter_underscore(value)
+                        .parse::<f64>()
+                        .map_err(|_| Self::Err::InvalidDecimalNumber)?;
 
-                DecimalNumber::new(number)
+                    DecimalNumber::new(number)
+                }
+                .into()
             }
-            .into()
         };
 
         Ok(number)
@@ -541,6 +583,7 @@ mod test {
             parse_integer_with_underscore_delimiter("123_456") => DecimalNumber::new(123_456_f64),
             parse_multiple_decimal("123.24") => DecimalNumber::new(123.24_f64),
             parse_multiple_decimal_with_underscore("123.245_6") => DecimalNumber::new(123.245_6_f64),
+            parse_multiple_decimal_with_underscore_after_point("0._24") => DecimalNumber::new(0.24_f64),
             parse_float_with_trailing_dot("123.") => DecimalNumber::new(123_f64),
             parse_starting_with_dot(".123") => DecimalNumber::new(0.123_f64),
             parse_digit_with_exponent("1e10") => DecimalNumber::new(1_f64).with_exponent(10, false),
@@ -554,28 +597,42 @@ mod test {
             parse_float_with_exponent_and_underscores("10_0.12_e_8") => DecimalNumber::new(100.12_f64).with_exponent(8, false),
             parse_trailing_dot_with_exponent("10.e8") => DecimalNumber::new(10_f64).with_exponent(8, false),
             parse_hex_number("0x12") => HexNumber::new(18, false),
+            parse_hex_number_with_underscore_before_x("0_x12") => HexNumber::new(18, false),
+            parse_hex_number_with_underscores_around_x("0_x_12") => HexNumber::new(18, false),
             parse_hex_number_with_underscore("0x12_13") => HexNumber::new(0x1213, false),
             parse_uppercase_hex_number("0X12") => HexNumber::new(18, true),
+            parse_uppercase_hex_number_with_underscore_before_x("0_X13") => HexNumber::new(19, true),
             parse_hex_number_with_lowercase("0x12a") => HexNumber::new(298, false),
             parse_hex_number_with_uppercase("0x12A") => HexNumber::new(298, false),
             parse_hex_number_with_mixed_case("0x1bF2A") => HexNumber::new(114_474, false),
             parse_hex_with_exponent("0x12p4") => HexNumber::new(18, false).with_exponent(4, false),
             parse_hex_with_exponent_uppercase("0xABP3") => HexNumber::new(171, false).with_exponent(3, true),
             parse_binary_zero("0b0") => BinaryNumber::new(0, false),
+            parse_binary_zero_with_underscore_before_b("0_b1") => BinaryNumber::new(1, false),
             parse_binary_zero_with_underscore("0b1010_1100") => BinaryNumber::new(0b1010_1100, false),
             parse_binary_zero_uppercase("0B0") => BinaryNumber::new(0, true),
+            parse_binary_zero_uppercase_with_underscore_before_b("0_B1") => BinaryNumber::new(1, true),
         );
 
         test_parse_errors!(
             parse_empty_string("") => NumberParsingError::InvalidDecimalNumber,
             missing_exponent_value("1e") => NumberParsingError::InvalidDecimalExponent,
-            invalid_underscore_position("1._1") => NumberParsingError::InvalidDecimalNumber,
+            missing_exponent_value_uppercase("1E") => NumberParsingError::InvalidDecimalExponent,
+            invalid_underscore_position("._1") => NumberParsingError::InvalidDecimalNumber,
             missing_negative_exponent_value("1e-") => NumberParsingError::InvalidDecimalExponent,
+            missing_negative_exponent_value_uppercase("1E-") => NumberParsingError::InvalidDecimalExponent,
             invalid_underscore_before_negative_exponent("1e_-1") => NumberParsingError::InvalidDecimalExponent,
             invalid_underscore_before_positive_exponent("1e_+1") => NumberParsingError::InvalidDecimalExponent,
+            invalid_underscore_before_negative_exponent_uppercase("1E_-1") => NumberParsingError::InvalidDecimalExponent,
+            invalid_underscore_before_positive_exponent_uppercase("1E_+1") => NumberParsingError::InvalidDecimalExponent,
             missing_hex_exponent_value("0x1p") => NumberParsingError::InvalidHexadecimalExponent,
             negative_hex_exponent_value("0x1p-3") => NumberParsingError::InvalidHexadecimalExponent,
+            missing_hex_exponent_value_uppercase("0x1P") => NumberParsingError::InvalidHexadecimalExponent,
+            invalid_hex_exponent_value("0x1p1Z") => NumberParsingError::InvalidHexadecimalExponent,
+            invalid_hex_exponent_value_uppercase("0x1P1Z") => NumberParsingError::InvalidHexadecimalExponent,
+            negative_hex_exponent_value_uppercase("0x1P-3") => NumberParsingError::InvalidHexadecimalExponent,
             invalid_digit_in_binary("0b190") => NumberParsingError::InvalidBinaryNumber,
+            invalid_digit_in_binary_uppercase("0B190") => NumberParsingError::InvalidBinaryNumber,
         );
     }
 

@@ -1,9 +1,11 @@
 //! A module that contains the different rules that mutates a Lua block.
 
+pub mod bundle;
 mod call_parens;
 mod compute_expression;
 mod configuration_error;
 mod convert_index_to_field;
+mod convert_require;
 mod empty_do;
 mod filter_early_return;
 mod group_local;
@@ -14,8 +16,12 @@ mod remove_comments;
 mod remove_compound_assign;
 mod remove_nil_declarations;
 mod remove_spaces;
+mod remove_types;
 mod rename_variables;
+mod replace_referenced_tokens;
+pub(crate) mod require;
 mod rule_property;
+mod shift_token_line;
 mod unused_if_branch;
 mod unused_while;
 
@@ -23,6 +29,7 @@ pub use call_parens::*;
 pub use compute_expression::*;
 pub use configuration_error::RuleConfigurationError;
 pub use convert_index_to_field::*;
+pub use convert_require::*;
 pub use empty_do::*;
 pub use filter_early_return::*;
 pub use group_local::*;
@@ -33,12 +40,16 @@ pub use remove_comments::*;
 pub use remove_compound_assign::*;
 pub use remove_nil_declarations::*;
 pub use remove_spaces::*;
+pub use remove_types::*;
 pub use rename_variables::*;
+pub(crate) use replace_referenced_tokens::*;
 pub use rule_property::*;
+pub(crate) use shift_token_line::*;
 pub use unused_if_branch::*;
 pub use unused_while::*;
 
 use crate::nodes::Block;
+use crate::Resources;
 
 use serde::de::{self, MapAccess, Visitor};
 use serde::ser::SerializeMap;
@@ -49,39 +60,60 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 #[derive(Debug, Clone)]
-pub struct ContextBuilder<'a> {
+pub struct ContextBuilder<'a, 'resources, 'code> {
     path: PathBuf,
+    resources: &'resources Resources,
+    original_code: &'code str,
     blocks: HashMap<PathBuf, &'a Block>,
+    project_location: Option<PathBuf>,
 }
 
-impl<'a> ContextBuilder<'a> {
-    pub fn new(path: impl Into<PathBuf>) -> Self {
+impl<'a, 'resources, 'code> ContextBuilder<'a, 'resources, 'code> {
+    pub fn new(
+        path: impl Into<PathBuf>,
+        resources: &'resources Resources,
+        original_code: &'code str,
+    ) -> Self {
         Self {
             path: path.into(),
+            resources,
+            original_code,
             blocks: Default::default(),
+            project_location: None,
         }
     }
 
-    pub fn build(self) -> Context<'a> {
+    pub fn with_project_location(mut self, path: impl Into<PathBuf>) -> Self {
+        self.project_location = Some(path.into());
+        self
+    }
+
+    pub fn build(self) -> Context<'a, 'resources, 'code> {
         Context {
             path: self.path,
+            resources: self.resources,
+            original_code: self.original_code,
             blocks: self.blocks,
+            project_location: self.project_location,
         }
     }
 
-    pub fn insert_block<'b: 'a>(&mut self, path: impl Into<PathBuf>, block: &'b Block) {
+    pub fn insert_block<'block: 'a>(&mut self, path: impl Into<PathBuf>, block: &'block Block) {
         self.blocks.insert(path.into(), block);
     }
 }
 
 /// The intent of this struct is to hold data shared across all rules applied to a file.
-#[derive(Debug, Clone, Default)]
-pub struct Context<'a> {
+#[derive(Debug, Clone)]
+pub struct Context<'a, 'resources, 'code> {
     path: PathBuf,
+    resources: &'resources Resources,
+    original_code: &'code str,
     blocks: HashMap<PathBuf, &'a Block>,
+    project_location: Option<PathBuf>,
 }
 
-impl<'a> Context<'a> {
+impl<'a, 'resources, 'code> Context<'a, 'resources, 'code> {
     pub fn block(&self, path: impl AsRef<Path>) -> Option<&Block> {
         self.blocks.get(path.as_ref()).copied()
     }
@@ -89,15 +121,36 @@ impl<'a> Context<'a> {
     pub fn current_path(&self) -> &Path {
         self.path.as_ref()
     }
+
+    fn resources(&self) -> &Resources {
+        self.resources
+    }
+
+    fn original_code(&self) -> &str {
+        self.original_code
+    }
+
+    fn project_location(&self) -> &Path {
+        self.project_location.as_deref().unwrap_or_else(|| {
+            let source = self.current_path();
+            source.parent().unwrap_or_else(|| {
+                log::warn!(
+                    "unexpected file path `{}` (unable to extract parent path)",
+                    source.display()
+                );
+                source
+            })
+        })
+    }
 }
 
 pub type RuleProcessResult = Result<(), String>;
 
 /// Defines an interface that will be used to mutate blocks and how to serialize and deserialize
 /// the rule configuration.
-pub trait Rule: RuleConfiguration {
+pub trait Rule: RuleConfiguration + fmt::Debug {
     /// This method should mutate the given block to apply the rule
-    fn process(&self, block: &mut Block, context: &mut Context) -> RuleProcessResult;
+    fn process(&self, block: &mut Block, context: &Context) -> RuleProcessResult;
 
     /// Return the list of paths to Lua files that is necessary to apply this rule. This will load
     /// each AST block from these files into the context object.
@@ -122,11 +175,11 @@ pub trait RuleConfiguration {
 }
 
 pub trait FlawlessRule {
-    fn flawless_process(&self, block: &mut Block, context: &mut Context);
+    fn flawless_process(&self, block: &mut Block, context: &Context);
 }
 
-impl<T: FlawlessRule + RuleConfiguration> Rule for T {
-    fn process(&self, block: &mut Block, context: &mut Context) -> RuleProcessResult {
+impl<T: FlawlessRule + RuleConfiguration + fmt::Debug> Rule for T {
+    fn process(&self, block: &mut Block, context: &Context) -> RuleProcessResult {
         self.flawless_process(block, context);
         Ok(())
     }
@@ -157,6 +210,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         COMPUTE_EXPRESSIONS_RULE_NAME,
         CONVERT_INDEX_TO_FIELD_RULE_NAME,
         CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME,
+        CONVERT_REQUIRE_RULE_NAME,
         FILTER_AFTER_EARLY_RETURN_RULE_NAME,
         GROUP_LOCAL_ASSIGNMENT_RULE_NAME,
         INJECT_GLOBAL_VALUE_RULE_NAME,
@@ -167,6 +221,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         REMOVE_METHOD_DEFINITION_RULE_NAME,
         REMOVE_NIL_DECLARATION_RULE_NAME,
         REMOVE_SPACES_RULE_NAME,
+        REMOVE_TYPES_RULE_NAME,
         REMOVE_UNUSED_IF_BRANCH_RULE_NAME,
         REMOVE_UNUSED_WHILE_RULE_NAME,
         RENAME_VARIABLES_RULE_NAME,
@@ -183,6 +238,7 @@ impl FromStr for Box<dyn Rule> {
             CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => {
                 Box::<ConvertLocalFunctionToAssign>::default()
             }
+            CONVERT_REQUIRE_RULE_NAME => Box::<ConvertRequire>::default(),
             FILTER_AFTER_EARLY_RETURN_RULE_NAME => Box::<FilterAfterEarlyReturn>::default(),
             GROUP_LOCAL_ASSIGNMENT_RULE_NAME => Box::<GroupLocalAssignment>::default(),
             INJECT_GLOBAL_VALUE_RULE_NAME => Box::<InjectGlobalValue>::default(),
@@ -193,6 +249,7 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_METHOD_DEFINITION_RULE_NAME => Box::<RemoveMethodDefinition>::default(),
             REMOVE_NIL_DECLARATION_RULE_NAME => Box::<RemoveNilDeclaration>::default(),
             REMOVE_SPACES_RULE_NAME => Box::<RemoveSpaces>::default(),
+            REMOVE_TYPES_RULE_NAME => Box::<RemoveTypes>::default(),
             REMOVE_UNUSED_IF_BRANCH_RULE_NAME => Box::<RemoveUnusedIfBranch>::default(),
             REMOVE_UNUSED_WHILE_RULE_NAME => Box::<RemoveUnusedWhile>::default(),
             RENAME_VARIABLES_RULE_NAME => Box::<RenameVariables>::default(),

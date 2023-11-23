@@ -12,18 +12,38 @@ impl AssignTokens {
         self.equal.clear_comments();
         self.variable_commas
             .iter_mut()
+            .chain(self.value_commas.iter_mut())
             .for_each(Token::clear_comments);
-        self.value_commas.iter_mut().for_each(Token::clear_comments);
     }
 
     pub fn clear_whitespaces(&mut self) {
         self.equal.clear_whitespaces();
         self.variable_commas
             .iter_mut()
+            .chain(self.value_commas.iter_mut())
             .for_each(Token::clear_whitespaces);
-        self.value_commas
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.equal.replace_referenced_tokens(code);
+        for comma in self
+            .variable_commas
             .iter_mut()
-            .for_each(Token::clear_whitespaces);
+            .chain(self.value_commas.iter_mut())
+        {
+            comma.replace_referenced_tokens(code);
+        }
+    }
+
+    fn shift_token_line(&mut self, amount: usize) {
+        self.equal.shift_token_line(amount);
+        for comma in self
+            .variable_commas
+            .iter_mut()
+            .chain(self.value_commas.iter_mut())
+        {
+            comma.shift_token_line(amount);
+        }
     }
 }
 
@@ -125,6 +145,18 @@ impl AssignStatement {
     pub fn clear_whitespaces(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
         }
     }
 }

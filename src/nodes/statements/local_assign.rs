@@ -1,4 +1,4 @@
-use crate::nodes::{Expression, Identifier, Token};
+use crate::nodes::{Expression, Token, TypedIdentifier};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LocalAssignTokens {
@@ -32,17 +32,43 @@ impl LocalAssignTokens {
             token.clear_whitespaces();
         }
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.local.replace_referenced_tokens(code);
+        for comma in self.variable_commas.iter_mut() {
+            comma.replace_referenced_tokens(code);
+        }
+        for comma in self.value_commas.iter_mut() {
+            comma.replace_referenced_tokens(code);
+        }
+        if let Some(token) = &mut self.equal {
+            token.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.local.shift_token_line(amount);
+        for comma in self.variable_commas.iter_mut() {
+            comma.shift_token_line(amount);
+        }
+        for comma in self.value_commas.iter_mut() {
+            comma.shift_token_line(amount);
+        }
+        if let Some(token) = &mut self.equal {
+            token.shift_token_line(amount);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LocalAssignStatement {
-    variables: Vec<Identifier>,
+    variables: Vec<TypedIdentifier>,
     values: Vec<Expression>,
     tokens: Option<LocalAssignTokens>,
 }
 
 impl LocalAssignStatement {
-    pub fn new(variables: Vec<Identifier>, values: Vec<Expression>) -> Self {
+    pub fn new(variables: Vec<TypedIdentifier>, values: Vec<Expression>) -> Self {
         Self {
             variables,
             values,
@@ -50,7 +76,7 @@ impl LocalAssignStatement {
         }
     }
 
-    pub fn from_variable<S: Into<Identifier>>(variable: S) -> Self {
+    pub fn from_variable<S: Into<TypedIdentifier>>(variable: S) -> Self {
         Self {
             variables: vec![variable.into()],
             values: Vec::new(),
@@ -73,7 +99,7 @@ impl LocalAssignStatement {
         self.tokens.as_ref()
     }
 
-    pub fn with_variable<S: Into<Identifier>>(mut self, variable: S) -> Self {
+    pub fn with_variable<S: Into<TypedIdentifier>>(mut self, variable: S) -> Self {
         self.variables.push(variable.into());
         self
     }
@@ -83,18 +109,18 @@ impl LocalAssignStatement {
         self
     }
 
-    pub fn into_assignments(self) -> (Vec<Identifier>, Vec<Expression>) {
+    pub fn into_assignments(self) -> (Vec<TypedIdentifier>, Vec<Expression>) {
         (self.variables, self.values)
     }
 
-    pub fn append_assignment<S: Into<Identifier>>(&mut self, variable: S, value: Expression) {
+    pub fn append_assignment<S: Into<TypedIdentifier>>(&mut self, variable: S, value: Expression) {
         self.variables.push(variable.into());
         self.values.push(value);
     }
 
     pub fn for_each_assignment<F>(&mut self, mut callback: F)
     where
-        F: FnMut(&mut Identifier, Option<&mut Expression>),
+        F: FnMut(&mut TypedIdentifier, Option<&mut Expression>),
     {
         let mut values = self.values.iter_mut();
         self.variables
@@ -103,17 +129,22 @@ impl LocalAssignStatement {
     }
 
     #[inline]
-    pub fn get_variables(&self) -> &Vec<Identifier> {
+    pub fn get_variables(&self) -> &Vec<TypedIdentifier> {
         &self.variables
     }
 
     #[inline]
-    pub fn iter_variables(&self) -> impl Iterator<Item = &Identifier> {
+    pub fn iter_variables(&self) -> impl Iterator<Item = &TypedIdentifier> {
         self.variables.iter()
     }
 
     #[inline]
-    pub fn append_variables(&mut self, variables: &mut Vec<Identifier>) {
+    pub fn iter_mut_variables(&mut self) -> impl Iterator<Item = &mut TypedIdentifier> {
+        self.variables.iter_mut()
+    }
+
+    #[inline]
+    pub fn append_variables(&mut self, variables: &mut Vec<TypedIdentifier>) {
         self.variables.append(variables);
     }
 
@@ -133,7 +164,7 @@ impl LocalAssignStatement {
     }
 
     #[inline]
-    pub fn push_variable(&mut self, variable: impl Into<Identifier>) {
+    pub fn push_variable(&mut self, variable: impl Into<TypedIdentifier>) {
         self.variables.push(variable.into());
     }
 
@@ -189,7 +220,7 @@ impl LocalAssignStatement {
         }
     }
 
-    pub fn remove_variable(&mut self, index: usize) -> Option<Identifier> {
+    pub fn remove_variable(&mut self, index: usize) -> Option<TypedIdentifier> {
         let len = self.variables.len();
 
         if len > 1 && index < len {
@@ -222,10 +253,16 @@ impl LocalAssignStatement {
         !self.values.is_empty()
     }
 
+    pub fn clear_types(&mut self) {
+        for variable in &mut self.variables {
+            variable.remove_type();
+        }
+    }
+
     pub fn clear_comments(&mut self) {
         self.variables
             .iter_mut()
-            .for_each(Identifier::clear_comments);
+            .for_each(TypedIdentifier::clear_comments);
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
         }
@@ -234,9 +271,27 @@ impl LocalAssignStatement {
     pub fn clear_whitespaces(&mut self) {
         self.variables
             .iter_mut()
-            .for_each(Identifier::clear_whitespaces);
+            .for_each(TypedIdentifier::clear_whitespaces);
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        for variable in self.variables.iter_mut() {
+            variable.replace_referenced_tokens(code);
+        }
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        for variable in self.variables.iter_mut() {
+            variable.shift_token_line(amount);
+        }
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
         }
     }
 }
@@ -361,7 +416,7 @@ mod test {
                 .with_value(true)
                 .with_value(false);
 
-            assert_eq!(assign.remove_variable(0), Some(Identifier::new("var")));
+            assert_eq!(assign.remove_variable(0), Some(TypedIdentifier::new("var")));
 
             pretty_assertions::assert_eq!(
                 assign,
@@ -378,7 +433,10 @@ mod test {
                 .with_value(true)
                 .with_value(false);
 
-            assert_eq!(assign.remove_variable(1), Some(Identifier::new("var2")));
+            assert_eq!(
+                assign.remove_variable(1),
+                Some(TypedIdentifier::new("var2"))
+            );
 
             pretty_assertions::assert_eq!(
                 assign,

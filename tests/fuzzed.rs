@@ -1,3 +1,5 @@
+#![cfg(not(coverage))]
+
 // this test file is for collecting fuzzed Lua code that were causing issues that have been fixed
 
 macro_rules! generate_tests {
@@ -21,4 +23,5 @@ macro_rules! generate_tests {
 
 generate_tests!(
     ast_conversion_stackoverflow_in_debug => "./fuzzed_test_cases/a.lua",
+    full_moon_parser_stackoverflow => "./fuzzed_test_cases/full_moon_stackoverflow.lua",
 );

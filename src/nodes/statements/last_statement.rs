@@ -16,6 +16,20 @@ impl ReturnTokens {
         self.r#return.clear_whitespaces();
         self.commas.iter_mut().for_each(Token::clear_whitespaces);
     }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.r#return.replace_referenced_tokens(code);
+        for comma in self.commas.iter_mut() {
+            comma.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.r#return.shift_token_line(amount);
+        for comma in self.commas.iter_mut() {
+            comma.shift_token_line(amount);
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -102,6 +116,18 @@ impl ReturnStatement {
     pub fn clear_whitespaces(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
         }
     }
 }

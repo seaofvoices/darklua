@@ -37,6 +37,21 @@ const cards = [
     title: "Process Roblox Luau",
     content: "darklua can parse and process Roblox Luau.",
   },
+  {
+    title: "Minify Lua source",
+    content: "Compress Lua text source to its limits",
+  },
+  {
+    title: "Bundle code",
+    content:
+      "Generate a single file from an entire project. Darklua can even load data " +
+      "files (json, yaml, toml) and convert them into Lua code.",
+  },
+  {
+    title: "Use path require for Roblox development",
+    content:
+      "Darklua can convert path requires into Roblox requires. No more confusing 'script.Parent' chains.",
+  },
 ]
 
 const Home = () => {

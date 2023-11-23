@@ -2,6 +2,51 @@
 
 ## Unreleased
 
+## 0.11.3
+
+* fix undeclared modules variable when bundling ([#151](https://github.com/seaofvoices/darklua/pull/151))
+
+## 0.11.2
+
+* fix bundling to handle modules with early return calls. This change also makes the bundled code preserve the module require ordering ([#147](https://github.com/seaofvoices/darklua/pull/147))
+* fix bundling to avoid token reference removal errors ([#146](https://github.com/seaofvoices/darklua/pull/146))
+* fix `remove_types` rule to handle type cast of expressions that could return multiple values ([#142](https://github.com/seaofvoices/darklua/pull/142))
+
+## 0.11.1
+
+* fix type packs, function variadic types and variadic type packs ([#137](https://github.com/seaofvoices/darklua/pull/137))
+* fix generic types on function types ([#136](https://github.com/seaofvoices/darklua/pull/136))
+* fix table types to allow string literal property types ([#135](https://github.com/seaofvoices/darklua/pull/135))
+
+## 0.11.0
+
+* fix lost comment or spacing tokens in empty ASTs ([#132](https://github.com/seaofvoices/darklua/pull/132))
+* add rule to remove Luau types ([#130](https://github.com/seaofvoices/darklua/pull/130))
+* add support for Luau types ([#129](https://github.com/seaofvoices/darklua/pull/129))
+
+## 0.10.3
+
+* add watch argument (`--watch` or `-w`) to process command to automatically re-run darklua on file changes ([#123](https://github.com/seaofvoices/darklua/pull/123))
+
+## 0.10.2
+
+* fix crashes when bundling code and fix `remove_spaces` and `remove_comments` rule for missing cases (if expressions and numeric for) ([#119](https://github.com/seaofvoices/darklua/pull/119))
+
+## 0.10.1
+
+* make rojo sourcemap paths relative to its file location ([#117](https://github.com/seaofvoices/darklua/pull/117))
+
+## 0.10.0
+
+* convert configuration to snake case (this renames the `retain-lines` generator to `retain_lines`) ([#114](https://github.com/seaofvoices/darklua/pull/114))
+* fix dense and readable string generator to escape extended ascii using backslashes ([#111](https://github.com/seaofvoices/darklua/pull/111))
+* fix number parsing to support underscore after decimal point (like `0._123`) ([#110](https://github.com/seaofvoices/darklua/pull/110))
+* add rule to convert require modes (from paths to Roblox instances) ([#107](https://github.com/seaofvoices/darklua/pull/107))
+* fix number parsing to support underscores before `x` in hexadecimal number and before `b` in binary numbers ([#103](https://github.com/seaofvoices/darklua/pull/103))
+* add bundling with path require mode ([#97](https://github.com/seaofvoices/darklua/pull/97))
+* upgrade full-moon parser to 0.18.1 ([#100](https://github.com/seaofvoices/darklua/pull/100))
+* enable stacker feature on full-moon to avoid stack overflows on large input ([#109](https://github.com/seaofvoices/darklua/pull/109))
+
 ## 0.9.0
 
 * improve `convert_index_to_field` to refactor table entries ([#88](https://github.com/seaofvoices/darklua/pull/88))

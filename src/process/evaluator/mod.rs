@@ -68,6 +68,7 @@ impl Evaluator {
                 }
                 LuaValue::String(result)
             }
+            Expression::TypeCast(type_cast) => self.evaluate(type_cast.get_expression()),
             Expression::Call(_)
             | Expression::Field(_)
             | Expression::Identifier(_)
@@ -76,6 +77,7 @@ impl Evaluator {
         }
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     pub fn can_return_multiple_values(&self, expression: &Expression) -> bool {
         match expression {
             Expression::Binary(_)
@@ -95,6 +97,9 @@ impl Evaluator {
             | Expression::InterpolatedString(_)
             | Expression::Table(_)
             | Expression::True(_) => false,
+            Expression::TypeCast(type_cast) => {
+                self.can_return_multiple_values(type_cast.get_expression())
+            }
         }
     }
 
@@ -171,6 +176,7 @@ impl Evaluator {
                         self.has_side_effects(value.get_expression())
                     }
                 }),
+            Expression::TypeCast(type_cast) => self.has_side_effects(type_cast.get_expression()),
         }
     }
 

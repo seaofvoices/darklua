@@ -23,7 +23,10 @@ Options:
           Sets verbosity level (can be specified multiple times)
 
       --format <FORMAT>
-          Choose how Lua code is formatted ('dense', 'readable' or 'retain-lines'). This will override the format given by the configuration file
+          Choose how Lua code is formatted ('dense', 'readable' or 'retain_lines'). This will override the format given by the configuration file
+
+  -w, --watch
+          Watch files and directories for changes and automatically re-run
 
   -h, --help
           Print help (see a summary with '-h')

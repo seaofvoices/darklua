@@ -3,7 +3,7 @@
     [
       "prismjs",
       {
-        "languages": ["lua", "json", "json5"],
+        "languages": ["lua", "json", "json5", "toml", "yaml"],
         "plugins": ["toolbar"],
         "theme": "okaidia",
         "css": true

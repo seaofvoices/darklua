@@ -1,4 +1,4 @@
-use crate::nodes::{Block, Expression, Identifier, Token};
+use crate::nodes::{Block, Expression, Token, TypedIdentifier};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GenericForTokens {
@@ -18,8 +18,8 @@ impl GenericForTokens {
         self.end.clear_comments();
         self.identifier_commas
             .iter_mut()
+            .chain(self.value_commas.iter_mut())
             .for_each(Token::clear_comments);
-        self.value_commas.iter_mut().for_each(Token::clear_comments);
     }
 
     pub fn clear_whitespaces(&mut self) {
@@ -29,16 +29,42 @@ impl GenericForTokens {
         self.end.clear_whitespaces();
         self.identifier_commas
             .iter_mut()
+            .chain(self.value_commas.iter_mut())
             .for_each(Token::clear_whitespaces);
-        self.value_commas
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        self.r#for.replace_referenced_tokens(code);
+        self.r#in.replace_referenced_tokens(code);
+        self.r#do.replace_referenced_tokens(code);
+        self.end.replace_referenced_tokens(code);
+        for comma in self
+            .identifier_commas
             .iter_mut()
-            .for_each(Token::clear_whitespaces);
+            .chain(self.value_commas.iter_mut())
+        {
+            comma.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        self.r#for.shift_token_line(amount);
+        self.r#in.shift_token_line(amount);
+        self.r#do.shift_token_line(amount);
+        self.end.shift_token_line(amount);
+        for comma in self
+            .identifier_commas
+            .iter_mut()
+            .chain(self.value_commas.iter_mut())
+        {
+            comma.shift_token_line(amount);
+        }
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GenericForStatement {
-    identifiers: Vec<Identifier>,
+    identifiers: Vec<TypedIdentifier>,
     expressions: Vec<Expression>,
     block: Block,
     tokens: Option<GenericForTokens>,
@@ -46,7 +72,7 @@ pub struct GenericForStatement {
 
 impl GenericForStatement {
     pub fn new<B: Into<Block>>(
-        identifiers: Vec<Identifier>,
+        identifiers: Vec<TypedIdentifier>,
         expressions: Vec<Expression>,
         block: B,
     ) -> Self {
@@ -79,12 +105,12 @@ impl GenericForStatement {
     }
 
     #[inline]
-    pub fn get_identifiers(&self) -> &Vec<Identifier> {
+    pub fn get_identifiers(&self) -> &Vec<TypedIdentifier> {
         &self.identifiers
     }
 
     #[inline]
-    pub fn iter_identifiers(&self) -> impl Iterator<Item = &Identifier> {
+    pub fn iter_identifiers(&self) -> impl Iterator<Item = &TypedIdentifier> {
         self.identifiers.iter()
     }
 
@@ -99,7 +125,7 @@ impl GenericForStatement {
     }
 
     #[inline]
-    pub fn iter_mut_identifiers(&mut self) -> impl Iterator<Item = &mut Identifier> {
+    pub fn iter_mut_identifiers(&mut self) -> impl Iterator<Item = &mut TypedIdentifier> {
         self.identifiers.iter_mut()
     }
 
@@ -123,15 +149,45 @@ impl GenericForStatement {
         self.expressions.len()
     }
 
+    pub fn clear_types(&mut self) {
+        for identifier in &mut self.identifiers {
+            identifier.remove_type();
+        }
+    }
+
     pub fn clear_comments(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_comments();
         }
+        self.identifiers
+            .iter_mut()
+            .for_each(TypedIdentifier::clear_comments);
     }
 
     pub fn clear_whitespaces(&mut self) {
         if let Some(tokens) = &mut self.tokens {
             tokens.clear_whitespaces();
+        }
+        self.identifiers
+            .iter_mut()
+            .for_each(TypedIdentifier::clear_whitespaces);
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.replace_referenced_tokens(code);
+        }
+        for identifier in self.identifiers.iter_mut() {
+            identifier.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(tokens) = &mut self.tokens {
+            tokens.shift_token_line(amount);
+        }
+        for identifier in self.identifiers.iter_mut() {
+            identifier.shift_token_line(amount);
         }
     }
 }

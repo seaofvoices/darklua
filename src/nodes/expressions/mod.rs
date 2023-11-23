@@ -10,6 +10,7 @@ mod prefix;
 mod string;
 pub(crate) mod string_utils;
 mod table;
+mod type_cast;
 mod unary;
 
 pub use binary::*;
@@ -24,6 +25,7 @@ pub use prefix::*;
 pub use string::*;
 pub use string_utils::StringError;
 pub use table::*;
+pub use type_cast::*;
 pub use unary::*;
 
 use crate::nodes::{FunctionCall, Identifier, Token, Variable};
@@ -49,6 +51,7 @@ pub enum Expression {
     True(Option<Token>),
     Unary(Box<UnaryExpression>),
     VariableArguments(Option<Token>),
+    TypeCast(TypeCastExpression),
 }
 
 impl Expression {
@@ -295,6 +298,12 @@ impl From<UnaryExpression> for Expression {
     }
 }
 
+impl From<TypeCastExpression> for Expression {
+    fn from(type_cast: TypeCastExpression) -> Self {
+        Self::TypeCast(type_cast)
+    }
+}
+
 impl From<Variable> for Expression {
     fn from(variable: Variable) -> Self {
         match variable {
@@ -302,5 +311,39 @@ impl From<Variable> for Expression {
             Variable::Field(field) => Self::Field(field),
             Variable::Index(index) => Self::Index(index),
         }
+    }
+}
+
+impl<T: Into<Expression>> From<Option<T>> for Expression {
+    fn from(value: Option<T>) -> Self {
+        match value {
+            None => Self::nil(),
+            Some(value) => value.into(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    macro_rules! snapshot_from_expression {
+        ($($name:ident => $input:expr),+ $(,)?) => {
+            $(
+                #[test]
+                fn $name() {
+                    let result = crate::nodes::Expression::from($input);
+
+                    insta::assert_debug_snapshot!(stringify!($name), result);
+                }
+            )+
+        };
+    }
+
+    mod expression_from_floats {
+        snapshot_from_expression!(
+            f64_0 => 0_f64,
+            f64_1e42 => 1e42_f64,
+            f64_infinity => f64::INFINITY,
+            i64_minus_one => -1_i64,
+        );
     }
 }

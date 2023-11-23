@@ -81,8 +81,14 @@ impl StringExpression {
         self.token.as_ref()
     }
 
+    #[inline]
     pub fn get_value(&self) -> &str {
         &self.value
+    }
+
+    #[inline]
+    pub fn into_value(self) -> String {
+        self.value
     }
 
     pub fn is_multiline(&self) -> bool {
@@ -134,6 +140,18 @@ impl StringExpression {
     pub fn clear_whitespaces(&mut self) {
         if let Some(token) = &mut self.token {
             token.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(token) = &mut self.token {
+            token.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(token) = &mut self.token {
+            token.shift_token_line(amount);
         }
     }
 }
@@ -310,14 +328,14 @@ mod test {
 
     #[test]
     fn has_single_quote_is_true_if_unescaped_single_quotes_with_escaped_backslash() {
-        let string = StringExpression::from_value(r#"don\\'t"#);
+        let string = StringExpression::from_value(r"don\\'t");
 
         assert!(string.has_single_quote());
     }
 
     #[test]
     fn has_single_quote_is_false_if_escaped_single_quotes() {
-        let string = StringExpression::from_value(r#"don\'t"#);
+        let string = StringExpression::from_value(r"don\'t");
 
         assert!(!string.has_single_quote());
     }

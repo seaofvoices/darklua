@@ -154,7 +154,7 @@ impl Default for InjectGlobalValue {
 }
 
 impl FlawlessRule for InjectGlobalValue {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = ValueInjection::new(&self.identifier, self.value.clone());
         ScopeVisitor::visit_block(block, &mut processor);
     }
@@ -167,12 +167,9 @@ impl RuleConfiguration for InjectGlobalValue {
 
         for (key, value) in properties {
             match key.as_str() {
-                "identifier" => match value {
-                    RulePropertyValue::String(identifier) => {
-                        self.identifier = identifier;
-                    }
-                    _ => return Err(RuleConfigurationError::StringExpected(key)),
-                },
+                "identifier" => {
+                    self.identifier = value.expect_string(&key)?;
+                }
                 "value" => match value {
                     RulePropertyValue::None => {}
                     RulePropertyValue::String(value) => {
@@ -189,30 +186,28 @@ impl RuleConfiguration for InjectGlobalValue {
                     }
                     _ => return Err(RuleConfigurationError::UnexpectedValueType(key)),
                 },
-                "env" => match value {
-                    RulePropertyValue::String(variable_name) => {
-                        if let Some(os_value) = env::var_os(&variable_name) {
-                            if let Some(value) = os_value.to_str() {
-                                self.value = StringExpression::from_value(value).into();
-                            } else {
-                                return Err(RuleConfigurationError::UnexpectedValue {
-                                    property: key,
-                                    message: format!(
-                                        "invalid string assigned to the `{}` environment variable",
-                                        &variable_name,
-                                    ),
-                                });
-                            }
+                "env" => {
+                    let variable_name = value.expect_string(&key)?;
+                    if let Some(os_value) = env::var_os(&variable_name) {
+                        if let Some(value) = os_value.to_str() {
+                            self.value = StringExpression::from_value(value).into();
                         } else {
-                            log::warn!(
-                                "environment variable `{}` is not defined. The rule `{}` will use `nil`",
-                                variable_name,
-                                INJECT_GLOBAL_VALUE_RULE_NAME,
-                            );
+                            return Err(RuleConfigurationError::UnexpectedValue {
+                                property: key,
+                                message: format!(
+                                    "invalid string assigned to the `{}` environment variable",
+                                    &variable_name,
+                                ),
+                            });
                         }
-                    }
-                    _ => return Err(RuleConfigurationError::UnexpectedValueType(key)),
-                },
+                    } else {
+                        log::warn!(
+                            "environment variable `{}` is not defined. The rule `{}` will use `nil`",
+                            variable_name,
+                            INJECT_GLOBAL_VALUE_RULE_NAME,
+                        );
+                    };
+                }
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }
         }

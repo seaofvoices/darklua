@@ -1,5 +1,7 @@
 use crate::nodes::Token;
 
+use super::{Type, TypedIdentifier};
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Identifier {
     name: String,
@@ -12,6 +14,10 @@ impl Identifier {
             name: name.into(),
             token: None,
         }
+    }
+
+    pub fn with_type(self, r#type: impl Into<Type>) -> TypedIdentifier {
+        TypedIdentifier::from(self).with_type(r#type.into())
     }
 
     pub fn with_token(mut self, token: Token) -> Self {
@@ -62,6 +68,18 @@ impl Identifier {
     pub fn clear_whitespaces(&mut self) {
         if let Some(token) = &mut self.token {
             token.clear_whitespaces();
+        }
+    }
+
+    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
+        if let Some(token) = &mut self.token {
+            token.replace_referenced_tokens(code);
+        }
+    }
+
+    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        if let Some(token) = &mut self.token {
+            token.shift_token_line(amount);
         }
     }
 }

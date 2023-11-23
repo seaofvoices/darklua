@@ -37,7 +37,8 @@ impl Processor {
                 | Statement::LocalFunction(_)
                 | Statement::NumericFor(_)
                 | Statement::Repeat(_)
-                | Statement::While(_) => None,
+                | Statement::While(_)
+                | Statement::TypeDeclaration(_) => None,
             })
     }
 }
@@ -59,7 +60,7 @@ pub const FILTER_AFTER_EARLY_RETURN_RULE_NAME: &str = "filter_after_early_return
 pub struct FilterAfterEarlyReturn {}
 
 impl FlawlessRule for FilterAfterEarlyReturn {
-    fn flawless_process(&self, block: &mut Block, _: &mut Context) {
+    fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor = Processor::default();
 
         DefaultVisitor::visit_block(block, &mut processor);
@@ -106,11 +107,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        let err_message = match result {
-            Ok(_) => panic!("expected error when deserializing rule"),
-            Err(e) => e,
-        }
-        .to_string();
-        pretty_assertions::assert_eq!(err_message, "unexpected field 'prop'");
+        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
     }
 }

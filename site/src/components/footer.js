@@ -26,7 +26,7 @@ const THEME_MAPPING = {
 const Footer = () => {
   const color = useThemeMode(THEME_MAPPING)
   return (
-    <Toolbar>
+    <Toolbar variant="dense">
       <Box
         component={"footer"}
         sx={{
