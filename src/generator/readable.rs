@@ -166,13 +166,6 @@ impl ReadableLuaGenerator {
         } else {
             false
         }
-        // utils::is_relevant_for_spacing(&next_character)
-        //     && self
-        //         .output
-        //         .chars()
-        //         .last()
-        //         .filter(utils::is_relevant_for_spacing)
-        //         .is_some()
     }
 
     #[inline]

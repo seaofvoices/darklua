@@ -429,26 +429,6 @@ impl TableType {
         self.entries.iter_mut()
     }
 
-    // #[inline]
-    // pub fn iter_property_type(&self) -> impl Iterator<Item = &TablePropertyType> {
-    //     self.properties.iter()
-    // }
-
-    // #[inline]
-    // pub fn iter_mut_property_type(&mut self) -> impl Iterator<Item = &mut TablePropertyType> {
-    //     self.properties.iter_mut()
-    // }
-
-    // #[inline]
-    // pub fn get_indexer_type(&self) -> Option<&TableIndexerType> {
-    //     self.indexer.as_ref()
-    // }
-
-    // #[inline]
-    // pub fn mutate_indexer_type(&mut self) -> Option<&mut TableIndexerType> {
-    //     self.indexer.as_mut()
-    // }
-
     pub fn with_tokens(mut self, tokens: TableTypeTokens) -> Self {
         self.tokens = Some(tokens);
         self
