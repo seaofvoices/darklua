@@ -16,7 +16,7 @@ test_rule!(
     ) => "if condition then do return 1 end end return 3",
 );
 
-test_rule_wihout_effects!(
+test_rule_without_effects!(
     FilterAfterEarlyReturn::default(),
     return_nil("return nil"),
     return_in_condition("if condition then return 'ok' end return nil"),

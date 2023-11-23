@@ -239,7 +239,12 @@ impl FunctionStatement {
 
     #[inline]
     pub fn get_tokens(&self) -> Option<&FunctionBodyTokens> {
-        self.tokens.as_ref().map(|tokens| tokens.as_ref())
+        self.tokens.as_deref()
+    }
+
+    #[inline]
+    pub fn mutate_tokens(&mut self) -> Option<&mut FunctionBodyTokens> {
+        self.tokens.as_deref_mut()
     }
 
     pub fn with_parameter(mut self, parameter: impl Into<TypedIdentifier>) -> Self {

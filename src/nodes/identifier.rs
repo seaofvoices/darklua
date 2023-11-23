@@ -36,6 +36,11 @@ impl Identifier {
     }
 
     #[inline]
+    pub fn mutate_token(&mut self) -> Option<&mut Token> {
+        self.token.as_mut()
+    }
+
+    #[inline]
     pub fn get_name(&self) -> &String {
         &self.name
     }

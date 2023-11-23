@@ -200,6 +200,16 @@ impl Block {
         self.statements.iter_mut()
     }
 
+    #[inline]
+    pub fn first_statement(&self) -> Option<&Statement> {
+        self.statements.first()
+    }
+
+    #[inline]
+    pub fn first_mut_statement(&mut self) -> Option<&mut Statement> {
+        self.statements.first_mut()
+    }
+
     pub fn take_statements(&mut self) -> Vec<Statement> {
         if let Some(tokens) = &mut self.tokens {
             tokens.semicolons.clear();

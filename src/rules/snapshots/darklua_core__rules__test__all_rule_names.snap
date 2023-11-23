@@ -3,6 +3,7 @@ source: src/rules/mod.rs
 expression: rule_names
 ---
 [
+  "append_text_comment",
   "compute_expression",
   "convert_index_to_field",
   "convert_local_function_to_assign",

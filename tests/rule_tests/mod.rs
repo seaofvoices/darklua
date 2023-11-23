@@ -69,6 +69,79 @@ macro_rules! test_rule_with_generator {
     };
 }
 
+macro_rules! test_rule_with_tokens {
+    (
+        $rule_name:ident,
+        $rule:expr,
+        resources = $resources:expr,
+        test_file_name = $test_file_name:literal,
+        $($name:ident ($input:literal) => $output:literal),* $(,)?
+    ) => {
+        paste::paste! {
+
+        mod [<$rule_name _with_token_based_generator>] {
+            use super::*;
+
+        $(
+            test_rule_with_generator!(
+                $rule,
+                $resources,
+                |input| darklua_core::generator::TokenBasedLuaGenerator::new(input),
+                darklua_core::Parser::default().preserve_tokens(),
+                true,
+                $test_file_name,
+                $name,
+                $input,
+                $output
+            );
+        )*
+
+        }
+
+        }
+    };
+
+    (
+        $rule_name:ident,
+        $rule:expr,
+        resources = $resources:expr,
+        $($name:ident ($input:literal) => $output:literal),* $(,)?
+    ) => {
+        test_rule_with_tokens!(
+            $rule_name,
+            $rule,
+            resources = $resources,
+            test_file_name = "src/test.lua",
+            $( $name ($input) => $output, )*
+        );
+    };
+
+    (
+        $rule_name:ident,
+        $rule:expr,
+        test_file_name = $test_file_name:literal,
+        $($name:ident ($input:literal) => $output:literal),* $(,)?
+    ) => {
+        test_rule_with_tokens!(
+            $rule_name,
+            $rule,
+            resources = darklua_core::Resources::from_memory(),
+            test_file_name = $test_file_name,
+            $( $name ($input) => $output, )*
+        );
+    };
+
+    ($rule_name:ident, $rule:expr, $($name:ident ($input:literal) => $output:literal),* $(,)?) => {
+        test_rule_with_tokens!(
+            $rule_name,
+            $rule,
+            resources = darklua_core::Resources::from_memory(),
+            test_file_name = "src/test.lua",
+            $( $name ($input) => $output, )*
+        );
+    };
+}
+
 macro_rules! test_rule {
     (
         $rule_name:ident,
@@ -176,7 +249,7 @@ macro_rules! test_rule {
     };
 }
 
-macro_rules! test_rule_wihout_effects {
+macro_rules! test_rule_without_effects {
     ($rule:expr, $($name:ident ($input:literal)),* $(,)?) => {
         $(
             #[test]
@@ -210,6 +283,7 @@ macro_rules! test_rule_wihout_effects {
     };
 }
 
+mod append_text_comment;
 mod compute_expression;
 mod convert_index_to_field;
 mod convert_require;

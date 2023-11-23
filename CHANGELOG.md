@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* add rule to append text comments ([#141](https://github.com/seaofvoices/darklua/pull/141))
+
 ## 0.11.3
 
 * fix undeclared modules variable when bundling ([#151](https://github.com/seaofvoices/darklua/pull/151))

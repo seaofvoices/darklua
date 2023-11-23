@@ -76,7 +76,7 @@ test_rule!(
     recycle_previous_identifiers("do local foo end local foo") => "do local a end local a",
 );
 
-test_rule_wihout_effects!(
+test_rule_without_effects!(
     RenameVariables::default(),
     local_function_name("local function foo() end"),
     does_not_rename_functions("local function foo() end return foo()"),

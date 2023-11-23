@@ -36,7 +36,7 @@ test_rule!(
         => "return nil",
 );
 
-test_rule_wihout_effects!(if_expression_unknown_condition(
+test_rule_without_effects!(if_expression_unknown_condition(
     "return if condition then func() else func2()"
 ),);
 
