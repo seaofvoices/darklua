@@ -1008,9 +1008,11 @@ mod $mod_name {
             with_single_and_double_quotes => InterpolatedStringExpression::empty()
                 .with_segment(r#"Say: "Don't""#),
             with_true_value => InterpolatedStringExpression::empty()
-                .with_segment(Expression::from(true)),
+                .with_segment(true),
             with_empty_table => InterpolatedStringExpression::empty()
-                .with_segment(Expression::from(TableExpression::default())),
+                .with_segment(TableExpression::default()),
+            with_empty_table_in_type_cast => InterpolatedStringExpression::empty()
+                .with_segment(TypeCastExpression::new(TableExpression::default(), TypeName::new("any"))),
         ));
 
         snapshot_node!($mod_name, $generator, number, write_expression => (

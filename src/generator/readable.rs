@@ -1128,7 +1128,7 @@ impl LuaGenerator for ReadableLuaGenerator {
                     self.raw_push_char('{');
                     // add space when value segment is a table
                     let expression = value.get_expression();
-                    if matches!(expression, nodes::Expression::Table(_)) {
+                    if utils::starts_with_table(expression).is_some() {
                         self.raw_push_char(' ');
                     }
                     self.write_expression(expression);

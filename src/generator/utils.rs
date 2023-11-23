@@ -3,7 +3,7 @@
 
 use crate::nodes::{
     Expression, FieldExpression, FunctionCall, IndexExpression, NumberExpression, Prefix,
-    Statement, StringSegment, Variable,
+    Statement, StringSegment, TableExpression, Variable,
 };
 
 const QUOTED_STRING_MAX_LENGTH: usize = 60;
@@ -90,6 +90,35 @@ pub fn ends_with_prefix(statement: &Statement) -> bool {
             }
         }
         _ => false,
+    }
+}
+
+pub fn starts_with_table(mut expression: &Expression) -> Option<&TableExpression> {
+    loop {
+        match expression {
+            Expression::Table(table) => break Some(table),
+            Expression::Binary(binary) => {
+                expression = binary.left();
+            }
+            Expression::Call(_)
+            | Expression::False(_)
+            | Expression::Field(_)
+            | Expression::Function(_)
+            | Expression::Identifier(_)
+            | Expression::If(_)
+            | Expression::Index(_)
+            | Expression::Nil(_)
+            | Expression::Number(_)
+            | Expression::Parenthese(_)
+            | Expression::String(_)
+            | Expression::InterpolatedString(_)
+            | Expression::True(_)
+            | Expression::Unary(_)
+            | Expression::VariableArguments(_) => break None,
+            Expression::TypeCast(type_cast) => {
+                expression = type_cast.get_expression();
+            }
+        }
     }
 }
 

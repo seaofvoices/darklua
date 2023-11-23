@@ -205,15 +205,27 @@ impl From<ValueSegment> for InterpolationSegment {
     }
 }
 
-impl From<Expression> for InterpolationSegment {
-    fn from(value: Expression) -> Self {
-        Self::Value(ValueSegment::new(value))
+impl<T: Into<Expression>> From<T> for InterpolationSegment {
+    fn from(value: T) -> Self {
+        Self::Value(ValueSegment::new(value.into()))
     }
 }
 
-impl<T: AsRef<str>> From<T> for InterpolationSegment {
-    fn from(string: T) -> Self {
-        Self::String(StringSegment::from_value(string.as_ref()))
+impl From<&str> for InterpolationSegment {
+    fn from(string: &str) -> Self {
+        Self::String(StringSegment::from_value(string))
+    }
+}
+
+impl From<&String> for InterpolationSegment {
+    fn from(string: &String) -> Self {
+        Self::String(StringSegment::from_value(string))
+    }
+}
+
+impl From<String> for InterpolationSegment {
+    fn from(string: String) -> Self {
+        Self::String(StringSegment::from_value(string))
     }
 }
 
