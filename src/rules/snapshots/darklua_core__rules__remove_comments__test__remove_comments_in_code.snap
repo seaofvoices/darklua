@@ -57,3 +57,5 @@ object : method  ({ key  = [[true]], [ true ] = ( nil )
 object .  field : method 
 { if   value   then    ok   else   err, {  },  }
 
+local string = `-{ true }-{ object  }={ c + 8 }` 
+

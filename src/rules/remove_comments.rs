@@ -98,6 +98,7 @@ impl NodeProcessor for RemoveCommentProcessor {
             | Expression::Number(_)
             | Expression::Parenthese(_)
             | Expression::String(_)
+            | Expression::InterpolatedString(_)
             | Expression::Table(_)
             | Expression::Unary(_)
             | Expression::TypeCast(_) => {}
@@ -146,6 +147,13 @@ impl NodeProcessor for RemoveCommentProcessor {
 
     fn process_unary_expression(&mut self, unary: &mut UnaryExpression) {
         unary.clear_comments();
+    }
+
+    fn process_interpolated_string_expression(
+        &mut self,
+        string: &mut InterpolatedStringExpression,
+    ) {
+        string.clear_comments();
     }
 
     fn process_type_cast_expression(&mut self, type_cast: &mut TypeCastExpression) {

@@ -20,11 +20,11 @@ impl Prefix {
 impl From<Expression> for Prefix {
     fn from(expression: Expression) -> Self {
         match expression {
-            Expression::Call(call) => return Prefix::Call(*call),
-            Expression::Field(field) => return Prefix::Field(field),
-            Expression::Identifier(identifier) => return Prefix::Identifier(identifier),
-            Expression::Index(index) => return Prefix::Index(index),
-            Expression::Parenthese(parenthese) => return Prefix::Parenthese(*parenthese),
+            Expression::Call(call) => Prefix::Call(*call),
+            Expression::Field(field) => Prefix::Field(field),
+            Expression::Identifier(identifier) => Prefix::Identifier(identifier),
+            Expression::Index(index) => Prefix::Index(index),
+            Expression::Parenthese(parenthese) => Prefix::Parenthese(*parenthese),
             Expression::Binary(_)
             | Expression::False(_)
             | Expression::Function(_)
@@ -32,13 +32,15 @@ impl From<Expression> for Prefix {
             | Expression::Nil(_)
             | Expression::Number(_)
             | Expression::String(_)
+            | Expression::InterpolatedString(_)
             | Expression::Table(_)
             | Expression::True(_)
+            | Expression::TypeCast(_)
             | Expression::Unary(_)
-            | Expression::VariableArguments(_)
-            | Expression::TypeCast(_) => {}
+            | Expression::VariableArguments(_) => {
+                Prefix::Parenthese(ParentheseExpression::new(expression))
+            }
         }
-        Prefix::Parenthese(ParentheseExpression::new(expression))
     }
 }
 

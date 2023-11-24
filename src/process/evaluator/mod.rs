@@ -37,6 +37,37 @@ impl Evaluator {
                 self.evaluate(parenthese.inner_expression())
             }
             Expression::If(if_expression) => self.evaluate_if(if_expression),
+            Expression::InterpolatedString(interpolated_string) => {
+                let mut result = String::new();
+                for segment in interpolated_string.iter_segments() {
+                    match segment {
+                        InterpolationSegment::String(string) => {
+                            result.push_str(string.get_value());
+                        }
+                        InterpolationSegment::Value(value) => {
+                            match self.evaluate(value.get_expression()) {
+                                LuaValue::False => {
+                                    result.push_str("false");
+                                }
+                                LuaValue::True => {
+                                    result.push_str("true");
+                                }
+                                LuaValue::Nil => {
+                                    result.push_str("nil");
+                                }
+                                LuaValue::String(string) => {
+                                    result.push_str(&string);
+                                }
+                                LuaValue::Function
+                                | LuaValue::Number(_)
+                                | LuaValue::Table
+                                | LuaValue::Unknown => return LuaValue::Unknown,
+                            }
+                        }
+                    }
+                }
+                LuaValue::String(result)
+            }
             Expression::TypeCast(type_cast) => self.evaluate(type_cast.get_expression()),
             Expression::Call(_)
             | Expression::Field(_)
@@ -63,6 +94,7 @@ impl Evaluator {
             | Expression::Number(_)
             | Expression::Parenthese(_)
             | Expression::String(_)
+            | Expression::InterpolatedString(_)
             | Expression::Table(_)
             | Expression::True(_) => false,
             Expression::TypeCast(type_cast) => {
@@ -136,6 +168,14 @@ impl Evaluator {
                 .iter()
                 .any(|entry| self.table_entry_has_side_effects(entry)),
             Expression::Call(call) => self.call_has_side_effects(call),
+            Expression::InterpolatedString(interpolated_string) => interpolated_string
+                .iter_segments()
+                .any(|segment| match segment {
+                    InterpolationSegment::String(_) => false,
+                    InterpolationSegment::Value(value) => {
+                        self.has_side_effects(value.get_expression())
+                    }
+                }),
             Expression::TypeCast(type_cast) => self.has_side_effects(type_cast.get_expression()),
         }
     }
@@ -435,6 +475,36 @@ mod test {
         nil_expression(Expression::nil()) => LuaValue::Nil,
         number_expression(DecimalNumber::new(0.0)) => LuaValue::Number(0.0),
         string_expression(StringExpression::from_value("foo")) => LuaValue::String("foo".to_owned()),
+        empty_interpolated_string_expression(InterpolatedStringExpression::empty()) => LuaValue::String("".to_owned()),
+        interpolated_string_expression_with_one_string(InterpolatedStringExpression::empty().with_segment("hello"))
+            => LuaValue::String("hello".to_owned()),
+        interpolated_string_expression_with_multiple_string_segments(
+            InterpolatedStringExpression::empty()
+                .with_segment("hello")
+                .with_segment("-")
+                .with_segment("bye")
+        ) => LuaValue::String("hello-bye".to_owned()),
+        interpolated_string_expression_with_true_segment(
+            InterpolatedStringExpression::empty().with_segment(Expression::from(true))
+        ) => LuaValue::String("true".to_owned()),
+        interpolated_string_expression_with_false_segment(
+            InterpolatedStringExpression::empty().with_segment(Expression::from(false))
+        ) => LuaValue::String("false".to_owned()),
+        interpolated_string_expression_with_nil_segment(
+            InterpolatedStringExpression::empty().with_segment(Expression::nil())
+        ) => LuaValue::String("nil".to_owned()),
+        interpolated_string_expression_with_mixed_segments(
+            InterpolatedStringExpression::empty()
+                .with_segment("variable = ")
+                .with_segment(Expression::from(true))
+                .with_segment("?")
+        ) => LuaValue::String("variable = true?".to_owned()),
+        interpolated_string_expression_with_mixed_segments_unknown(
+            InterpolatedStringExpression::empty()
+                .with_segment("variable = ")
+                .with_segment(Expression::identifier("test"))
+                .with_segment("!")
+        ) => LuaValue::Unknown,
         true_wrapped_in_parens(ParentheseExpression::new(true)) => LuaValue::True,
         false_wrapped_in_parens(ParentheseExpression::new(false)) => LuaValue::False,
         nil_wrapped_in_parens(ParentheseExpression::new(Expression::nil())) => LuaValue::Nil,
@@ -994,6 +1064,9 @@ mod test {
         field_index => FieldExpression::new(Identifier::new("var"), "field"),
         table_value_with_call_in_entry => TableExpression::default()
             .append_array_value(FunctionCall::from_name("call")),
+
+        interpolated_string_with_function_call => InterpolatedStringExpression::empty()
+            .with_segment(Expression::from(FunctionCall::from_name("foo"))),
     );
 
     has_no_side_effects!(
@@ -1003,6 +1076,9 @@ mod test {
         table_value => TableExpression::default(),
         number_value => Expression::Number(DecimalNumber::new(0.0).into()),
         string_value => StringExpression::from_value(""),
+        empty_interpolated_string_value => InterpolatedStringExpression::empty(),
+        interpolated_string_with_true_value => InterpolatedStringExpression::empty()
+            .with_segment(Expression::from(true)),
         identifier => Expression::identifier("foo"),
         identifier_in_parentheses => Expression::identifier("foo").in_parentheses(),
         binary_false_and_call => BinaryExpression::new(

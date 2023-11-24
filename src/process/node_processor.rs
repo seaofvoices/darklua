@@ -36,6 +36,7 @@ pub trait NodeProcessor {
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}
     fn process_parenthese_expression(&mut self, _: &mut ParentheseExpression) {}
     fn process_string_expression(&mut self, _: &mut StringExpression) {}
+    fn process_interpolated_string_expression(&mut self, _: &mut InterpolatedStringExpression) {}
     fn process_table_expression(&mut self, _: &mut TableExpression) {}
     fn process_unary_expression(&mut self, _: &mut UnaryExpression) {}
     fn process_type_cast_expression(&mut self, _: &mut TypeCastExpression) {}

@@ -21,6 +21,9 @@ pub struct RandomAst {
     return_length_std_dev: f64,
     numeric_for_step_prob: f64,
     function_type_argument_name_prob: f64,
+    interpolated_string_segments_mean: f64,
+    interpolated_string_segments_std_def: f64,
+    interpolated_segment_is_expression_prob: f64,
 }
 
 impl Default for RandomAst {
@@ -43,6 +46,9 @@ impl Default for RandomAst {
             return_length_std_dev: 2.5,
             numeric_for_step_prob: 0.3,
             function_type_argument_name_prob: 0.4,
+            interpolated_string_segments_mean: 1.5,
+            interpolated_string_segments_std_def: 2.5,
+            interpolated_segment_is_expression_prob: 0.5,
         }
     }
 }
@@ -92,6 +98,17 @@ impl RandomAst {
 
     pub fn string_content(&self) -> String {
         generate_string_content(3.0)
+    }
+
+    pub fn interpolated_string_segments(&self) -> usize {
+        1 + normal_sample(
+            self.interpolated_string_segments_mean,
+            self.interpolated_string_segments_std_def,
+        )
+    }
+
+    pub fn interpolated_segment_is_expression(&self) -> bool {
+        thread_rng().gen_bool(self.interpolated_segment_is_expression_prob)
     }
 
     pub fn table_length(&self) -> usize {

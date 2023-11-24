@@ -1070,6 +1070,66 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         }
     }
 
+    fn write_interpolated_string_with_tokens(
+        &mut self,
+        interpolated_string: &InterpolatedStringExpression,
+        tokens: &InterpolatedStringTokens,
+    ) {
+        self.write_token(&tokens.opening_tick);
+
+        for segment in interpolated_string.iter_segments() {
+            match segment {
+                InterpolationSegment::String(string_segment) => {
+                    if let Some(token) = string_segment.get_token() {
+                        self.write_token(token);
+                    } else {
+                        self.write_symbol(&utils::write_interpolated_string_segment(string_segment))
+                    }
+                }
+                InterpolationSegment::Value(value) => {
+                    if let Some(tokens) = value.get_tokens() {
+                        self.write_string_value_segment_with_tokens(value, tokens);
+                    } else {
+                        self.write_string_value_segment_with_tokens(
+                            value,
+                            &self.generate_string_value_segment_tokens(value),
+                        );
+                    }
+                }
+            }
+        }
+
+        self.write_token(&tokens.closing_tick);
+    }
+
+    fn write_string_value_segment_with_tokens(
+        &mut self,
+        value: &ValueSegment,
+        tokens: &ValueSegmentTokens,
+    ) {
+        self.write_token(&tokens.opening_brace);
+        let expression = value.get_expression();
+        if self.output.ends_with('{') {
+            if let Some(table) = utils::starts_with_table(expression) {
+                if table
+                    .get_tokens()
+                    .and_then(|tokens| {
+                        tokens
+                            .opening_brace
+                            .iter_leading_trivia()
+                            .next()
+                            .filter(|trivia| !trivia.read(self.original_code).is_empty())
+                    })
+                    .is_none()
+                {
+                    self.output.push(' ');
+                }
+            }
+        }
+        self.write_expression(expression);
+        self.write_token(&tokens.closing_brace);
+    }
+
     fn generate_block_tokens(&self, _block: &Block) -> BlockTokens {
         BlockTokens {
             semicolons: Vec::new(),
@@ -1480,6 +1540,26 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             opening_list: Token::from_content("<"),
             closing_list: Token::from_content(">"),
             commas: intersect_with_token(comma_token(), generic_parameters.len()),
+        }
+    }
+
+    fn generate_interpolated_string_tokens(
+        &self,
+        _interpolated_string: &InterpolatedStringExpression,
+    ) -> InterpolatedStringTokens {
+        InterpolatedStringTokens {
+            opening_tick: Token::from_content("`"),
+            closing_tick: Token::from_content("`"),
+        }
+    }
+
+    fn generate_string_value_segment_tokens(
+        &self,
+        _value_segment: &ValueSegment,
+    ) -> ValueSegmentTokens {
+        ValueSegmentTokens {
+            opening_brace: Token::from_content("{"),
+            closing_brace: Token::from_content("}"),
         }
     }
 
@@ -1901,6 +1981,17 @@ impl<'a> LuaGenerator for TokenBasedLuaGenerator<'a> {
         }
     }
 
+    fn write_interpolated_string(&mut self, interpolated_string: &InterpolatedStringExpression) {
+        if let Some(tokens) = interpolated_string.get_tokens() {
+            self.write_interpolated_string_with_tokens(interpolated_string, tokens);
+        } else {
+            self.write_interpolated_string_with_tokens(
+                interpolated_string,
+                &self.generate_interpolated_string_tokens(interpolated_string),
+            );
+        }
+    }
+
     fn write_identifier(&mut self, identifier: &Identifier) {
         if let Some(token) = identifier.get_token() {
             let name_in_token = token.read(self.original_code);
@@ -2213,6 +2304,13 @@ mod test {
         return_double_quote_string => "return \"ok\"",
         return_identifier => "return var",
         return_bracket_string => "return [[   [ok]   ]]",
+        return_empty_interpolated_string => "return ``",
+        return_interpolated_string_escape_curly_brace => "return `Open: \\{`",
+        return_interpolated_string_followed_by_comment => "return `ok` -- comment",
+        return_interpolated_string_with_true_value => "return `{ true }`",
+        return_interpolated_string_with_true_value_and_prefix => "return `Result = { true }`",
+        return_interpolated_string_with_true_value_and_suffix => "return `{ variable } !`",
+        return_interpolated_string_with_various_segments => "return `Variable = { variable } ({ --[[len]] #variable })` -- display",
         return_empty_table => "return { }",
         return_table_with_field => "return { field = {} }",
         return_table_with_index => "return { [field] = {} }",

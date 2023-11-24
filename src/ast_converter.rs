@@ -2,7 +2,7 @@ use std::{fmt, str::FromStr};
 
 use full_moon::{
     ast,
-    tokenizer::{self, Symbol, TokenType},
+    tokenizer::{self, InterpolatedStringKind, Symbol, TokenType},
 };
 
 use crate::nodes::*;
@@ -219,7 +219,7 @@ impl<'a> AstConverter<'a> {
                     ast::Prefix::Expression(expression) => {
                         self.work_stack
                             .push(ConvertWork::MakePrefixFromExpression { prefix });
-                        self.push_work(expression);
+                        self.push_work(expression.as_ref());
                     }
                     ast::Prefix::Name(name) => {
                         self.prefixes
@@ -377,6 +377,121 @@ impl<'a> AstConverter<'a> {
                             then: self.convert_token(if_expression.then_token())?,
                             r#else: self.convert_token(if_expression.else_token())?,
                         });
+                    }
+
+                    self.expressions.push(value.into());
+                }
+                ConvertWork::MakeInterpolatedString {
+                    interpolated_string,
+                } => {
+                    let mut segments = Vec::new();
+                    let mut segments_iter = interpolated_string.segments().peekable();
+
+                    while let Some(segment) = segments_iter.next() {
+                        let literal = &segment.literal;
+                        if let Some(segment) = self.convert_string_interpolation_segment(literal)? {
+                            segments.push(segment.into());
+                        }
+
+                        let expression = self.pop_expression()?;
+                        let mut value_segment = ValueSegment::new(expression);
+
+                        if self.hold_token_data {
+                            let mut opening_brace = Token::new_with_line(
+                                literal.end_position().bytes().saturating_sub(1),
+                                literal.end_position().bytes(),
+                                literal.end_position().line(),
+                            );
+
+                            for trivia_token in literal.trailing_trivia() {
+                                opening_brace
+                                    .push_trailing_trivia(self.convert_trivia(trivia_token)?);
+                            }
+
+                            let next_literal = segments_iter
+                                .peek()
+                                .map(|next_segment| &next_segment.literal)
+                                .unwrap_or(interpolated_string.last_string());
+
+                            let start_position = next_literal.start_position().bytes();
+                            let closing_brace = Token::new_with_line(
+                                start_position,
+                                start_position + 1,
+                                next_literal.start_position().line(),
+                            );
+
+                            value_segment.set_tokens(ValueSegmentTokens {
+                                opening_brace,
+                                closing_brace,
+                            });
+                        }
+
+                        segments.push(value_segment.into());
+                    }
+
+                    if let Some(segment) = self
+                        .convert_string_interpolation_segment(interpolated_string.last_string())?
+                    {
+                        segments.push(segment.into());
+                    }
+
+                    let mut value = InterpolatedStringExpression::new(segments);
+
+                    if self.hold_token_data {
+                        let last = interpolated_string.last_string();
+                        let first = interpolated_string
+                            .segments()
+                            .next()
+                            .map(|segment| &segment.literal)
+                            .unwrap_or(last);
+
+                        let (opening_tick, closing_tick) = match first.token_type() {
+                            TokenType::InterpolatedString { literal: _, kind } => match kind {
+                                InterpolatedStringKind::Begin | InterpolatedStringKind::Simple => {
+                                    let start_position = first.start_position().bytes();
+                                    let mut start_token = Token::new_with_line(
+                                        start_position,
+                                        start_position + 1,
+                                        first.start_position().line(),
+                                    );
+                                    let end_position = last.end_position().bytes();
+                                    let mut end_token = Token::new_with_line(
+                                        end_position.saturating_sub(1),
+                                        end_position,
+                                        last.end_position().line(),
+                                    );
+
+                                    for trivia_token in first.leading_trivia() {
+                                        start_token.push_leading_trivia(
+                                            self.convert_trivia(trivia_token)?,
+                                        );
+                                    }
+
+                                    for trivia_token in last.trailing_trivia() {
+                                        end_token.push_trailing_trivia(
+                                            self.convert_trivia(trivia_token)?,
+                                        );
+                                    }
+                                    (start_token, end_token)
+                                }
+                                InterpolatedStringKind::Middle | InterpolatedStringKind::End => {
+                                    return Err(ConvertError::InterpolatedString {
+                                        string: interpolated_string.to_string(),
+                                    })
+                                }
+                            },
+                            _ => {
+                                return Err(ConvertError::InterpolatedString {
+                                    string: interpolated_string.to_string(),
+                                })
+                            }
+                        };
+
+                        let tokens = InterpolatedStringTokens {
+                            opening_tick,
+                            closing_tick,
+                        };
+                        value.set_tokens(tokens);
                     }
 
                     self.expressions.push(value.into());
@@ -1674,119 +1789,113 @@ impl<'a> AstConverter<'a> {
                     .push(ConvertWork::MakeUnaryExpression { operator: unop });
                 self.work_stack.push(ConvertWork::Expression(expression));
             }
-            ast::Expression::Value {
-                value,
+            ast::Expression::TypeAssertion {
+                expression,
                 type_assertion,
             } => {
-                if let Some(type_assertion) = type_assertion {
-                    self.work_stack
-                        .push(ConvertWork::MakeTypeCast { type_assertion });
-                    self.push_work(type_assertion.cast_to());
-                }
-                match value.as_ref() {
-                    ast::Value::Function((token, body)) => {
-                        self.work_stack
-                            .push(ConvertWork::MakeFunctionExpression { body, token });
+                self.work_stack
+                    .push(ConvertWork::MakeTypeCast { type_assertion });
+                self.push_work(type_assertion.cast_to());
+                self.push_work(expression.as_ref());
+            }
+            ast::Expression::Function((token, body)) => {
+                self.work_stack
+                    .push(ConvertWork::MakeFunctionExpression { body, token });
 
-                        self.push_function_body_work(body);
-                    }
-                    ast::Value::FunctionCall(call) => {
-                        self.work_stack
-                            .push(ConvertWork::MakeFunctionCallExpression { call });
-                        self.convert_function_call(call)?;
-                    }
-                    ast::Value::TableConstructor(table) => {
-                        self.work_stack
-                            .push(ConvertWork::MakeTableExpression { table });
-                        self.convert_table(table)?;
-                    }
-                    ast::Value::Number(number) => {
-                        let mut expression = NumberExpression::from_str(
-                            &number.token().to_string(),
-                        )
-                        .map_err(|err| ConvertError::Number {
-                            number: number.to_string(),
-                            parsing_error: err.to_string(),
-                        })?;
-                        if self.hold_token_data {
-                            expression.set_token(self.convert_token(number)?);
-                        }
-                        self.work_stack
-                            .push(ConvertWork::PushExpression(expression.into()));
-                    }
-                    ast::Value::ParenthesesExpression(expression) => {
-                        self.push_work(expression);
-                    }
-                    ast::Value::String(token_ref) => {
-                        self.work_stack.push(ConvertWork::PushExpression(
-                            self.convert_string_expression(token_ref)?.into(),
-                        ));
-                    }
-                    ast::Value::Symbol(symbol_token) => match symbol_token.token().token_type() {
-                        TokenType::Symbol { symbol } => {
-                            let token = if self.hold_token_data {
-                                Some(self.convert_token(symbol_token)?)
-                            } else {
-                                None
-                            };
-                            let expression = match symbol {
-                                Symbol::True => Expression::True(token),
-                                Symbol::False => Expression::False(token),
-                                Symbol::Nil => Expression::Nil(token),
-                                Symbol::Ellipse => Expression::VariableArguments(token),
-                                _ => {
-                                    return Err(ConvertError::Expression {
-                                        expression: expression.to_string(),
-                                    })
-                                }
-                            };
-                            self.work_stack
-                                .push(ConvertWork::PushExpression(expression));
-                        }
+                self.push_function_body_work(body);
+            }
+            ast::Expression::FunctionCall(call) => {
+                self.work_stack
+                    .push(ConvertWork::MakeFunctionCallExpression { call });
+                self.convert_function_call(call)?;
+            }
+            ast::Expression::TableConstructor(table) => {
+                self.work_stack
+                    .push(ConvertWork::MakeTableExpression { table });
+                self.convert_table(table)?;
+            }
+            ast::Expression::Number(number) => {
+                let mut expression = NumberExpression::from_str(&number.token().to_string())
+                    .map_err(|err| ConvertError::Number {
+                        number: number.to_string(),
+                        parsing_error: err.to_string(),
+                    })?;
+                if self.hold_token_data {
+                    expression.set_token(self.convert_token(number)?);
+                }
+                self.work_stack
+                    .push(ConvertWork::PushExpression(expression.into()));
+            }
+            ast::Expression::String(token_ref) => {
+                self.work_stack.push(ConvertWork::PushExpression(
+                    self.convert_string_expression(token_ref)?.into(),
+                ));
+            }
+            ast::Expression::Symbol(symbol_token) => match symbol_token.token().token_type() {
+                TokenType::Symbol { symbol } => {
+                    let token = if self.hold_token_data {
+                        Some(self.convert_token(symbol_token)?)
+                    } else {
+                        None
+                    };
+                    let expression = match symbol {
+                        Symbol::True => Expression::True(token),
+                        Symbol::False => Expression::False(token),
+                        Symbol::Nil => Expression::Nil(token),
+                        Symbol::Ellipse => Expression::VariableArguments(token),
                         _ => {
                             return Err(ConvertError::Expression {
                                 expression: expression.to_string(),
                             })
                         }
-                    },
-                    ast::Value::Var(var) => match var {
-                        ast::Var::Expression(var_expression) => {
-                            self.work_stack.push(ConvertWork::MakePrefixExpression {
-                                variable: var_expression,
-                            });
-                            self.push_work(var_expression.prefix());
-                            self.convert_suffixes(var_expression.suffixes())?;
-                        }
-                        ast::Var::Name(token_ref) => {
-                            self.work_stack.push(ConvertWork::PushExpression(
-                                Expression::Identifier(
-                                    self.convert_token_to_identifier(token_ref)?,
-                                ),
-                            ));
-                        }
-                        _ => {
-                            return Err(ConvertError::Expression {
-                                expression: expression.to_string(),
-                            })
-                        }
-                    },
-                    ast::Value::IfExpression(if_expression) => {
-                        self.push_work(ConvertWork::MakeIfExpression { if_expression });
-                        self.push_work(if_expression.condition());
-                        self.push_work(if_expression.if_expression());
-                        self.push_work(if_expression.else_expression());
-                        if let Some(elseif_expressions) = if_expression.else_if_expressions() {
-                            for elseif in elseif_expressions {
-                                self.push_work(elseif.condition());
-                                self.push_work(elseif.expression());
-                            }
-                        }
+                    };
+                    self.work_stack
+                        .push(ConvertWork::PushExpression(expression));
+                }
+                _ => {
+                    return Err(ConvertError::Expression {
+                        expression: expression.to_string(),
+                    })
+                }
+            },
+            ast::Expression::Var(var) => match var {
+                ast::Var::Expression(var_expression) => {
+                    self.work_stack.push(ConvertWork::MakePrefixExpression {
+                        variable: var_expression,
+                    });
+                    self.push_work(var_expression.prefix());
+                    self.convert_suffixes(var_expression.suffixes())?;
+                }
+                ast::Var::Name(token_ref) => {
+                    self.work_stack
+                        .push(ConvertWork::PushExpression(Expression::Identifier(
+                            self.convert_token_to_identifier(token_ref)?,
+                        )));
+                }
+                _ => {
+                    return Err(ConvertError::Expression {
+                        expression: expression.to_string(),
+                    })
+                }
+            },
+            ast::Expression::IfExpression(if_expression) => {
+                self.push_work(ConvertWork::MakeIfExpression { if_expression });
+                self.push_work(if_expression.condition());
+                self.push_work(if_expression.if_expression());
+                self.push_work(if_expression.else_expression());
+                if let Some(elseif_expressions) = if_expression.else_if_expressions() {
+                    for elseif in elseif_expressions {
+                        self.push_work(elseif.condition());
+                        self.push_work(elseif.expression());
                     }
-                    _ => {
-                        return Err(ConvertError::Expression {
-                            expression: expression.to_string(),
-                        })
-                    }
+                }
+            }
+            ast::Expression::InterpolatedString(interpolated_string) => {
+                self.push_work(ConvertWork::MakeInterpolatedString {
+                    interpolated_string,
+                });
+                for segment in interpolated_string.segments() {
+                    self.push_work(&segment.expression);
                 }
             }
             _ => {
@@ -2367,7 +2476,7 @@ impl<'a> AstConverter<'a> {
         string: &tokenizer::TokenReference,
     ) -> Result<StringExpression, ConvertError> {
         let mut expression =
-            StringExpression::new(&string.token().to_string()).ok_or_else(|| {
+            StringExpression::new(&string.token().to_string()).map_err(|_err| {
                 ConvertError::String {
                     string: string.to_string(),
                 }
@@ -2385,7 +2494,7 @@ impl<'a> AstConverter<'a> {
         string: &tokenizer::TokenReference,
     ) -> Result<StringType, ConvertError> {
         let mut expression =
-            StringType::new(&string.token().to_string()).ok_or_else(|| ConvertError::String {
+            StringType::new(&string.token().to_string()).map_err(|_err| ConvertError::String {
                 string: string.to_string(),
             })?;
         if self.hold_token_data {
@@ -2511,6 +2620,35 @@ impl<'a> AstConverter<'a> {
             }
         }
         Ok(())
+    }
+
+    fn convert_string_interpolation_segment(
+        &self,
+        token: &tokenizer::TokenReference,
+    ) -> Result<Option<StringSegment>, ConvertError> {
+        match token.token_type() {
+            TokenType::InterpolatedString { literal, kind: _ } => {
+                if !literal.is_empty() {
+                    let mut segment = StringSegment::new(literal.as_str())
+                        .expect("unable to convert interpolated string segment");
+
+                    if self.hold_token_data {
+                        let segment_token = Token::new_with_line(
+                            token.start_position().bytes() + 1,
+                            token.end_position().bytes().saturating_sub(1),
+                            token.start_position().line(),
+                        );
+                        // no trivia since it is grabbing a substring of the token
+                        segment.set_token(segment_token);
+                    }
+
+                    Ok(Some(segment))
+                } else {
+                    Ok(None)
+                }
+            }
+            _ => unreachable!(),
+        }
     }
 
     fn patch_return_type_tuple(
@@ -2728,6 +2866,9 @@ enum ConvertWork<'a> {
     MakePrefixExpression {
         variable: &'a ast::VarExpression,
     },
+    MakeInterpolatedString {
+        interpolated_string: &'a ast::types::InterpolatedString,
+    },
     MakeFunctionReturnType {
         type_info: &'a ast::types::TypeInfo,
     },
@@ -2873,6 +3014,9 @@ pub(crate) enum ConvertError {
     UnaryOperator {
         operator: String,
     },
+    InterpolatedString {
+        string: String,
+    },
     String {
         string: String,
     },
@@ -2913,6 +3057,7 @@ impl fmt::Display for ConvertError {
                     number, parsing_error
                 )
             }
+            ConvertError::InterpolatedString { string } => ("interpolated string", string),
             ConvertError::Expression { expression } => ("expression", expression),
             ConvertError::FunctionParameter { parameter } => ("parameter", parameter),
             ConvertError::FunctionParameters { parameters } => ("parameters", parameters),

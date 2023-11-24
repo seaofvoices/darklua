@@ -530,6 +530,23 @@ impl AstFuzzer {
                             self.push_work(AstFuzzerWork::MakeTableExpression);
                             self.push_work(AstFuzzerWork::FuzzTable);
                         }
+                        16 => {
+                            let length = self.random.interpolated_string_segments();
+                            let segment_is_expression: Vec<_> = iter::repeat_with(|| {
+                                self.random.interpolated_segment_is_expression()
+                                    && self.budget.take_expression()
+                            })
+                            .take(length)
+                            .collect();
+
+                            let expression_count =
+                                segment_is_expression.iter().filter(|v| **v).count();
+
+                            self.push_work(AstFuzzerWork::MakeInterpolatedString {
+                                segment_is_expression,
+                            });
+                            self.fuzz_multiple_nested_expression(depth, expression_count);
+                        }
                         _ => {
                             self.budget.try_take_expressions(1);
 
@@ -1252,6 +1269,21 @@ impl AstFuzzer {
                     self.expressions.push(
                         UnaryExpression::new(self.random.unary_operator(), expression).into(),
                     );
+                }
+                AstFuzzerWork::MakeInterpolatedString {
+                    segment_is_expression,
+                } => {
+                    let mut string = InterpolatedStringExpression::empty();
+
+                    for is_expression in segment_is_expression {
+                        if is_expression {
+                            string.push_segment(self.pop_expression());
+                        } else {
+                            string.push_segment(self.random.string_content());
+                        }
+                    }
+
+                    self.expressions.push(string.into());
                 }
                 AstFuzzerWork::MakeTypeCastExpression => {
                     let mut expression = self.pop_expression();

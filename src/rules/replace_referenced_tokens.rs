@@ -106,6 +106,7 @@ impl<'a> NodeProcessor for Processor<'a> {
             | Expression::Number(_)
             | Expression::Parenthese(_)
             | Expression::String(_)
+            | Expression::InterpolatedString(_)
             | Expression::Table(_)
             | Expression::Unary(_)
             | Expression::TypeCast(_) => {}
@@ -145,6 +146,13 @@ impl<'a> NodeProcessor for Processor<'a> {
     }
 
     fn process_string_expression(&mut self, string: &mut StringExpression) {
+        string.replace_referenced_tokens(self.code);
+    }
+
+    fn process_interpolated_string_expression(
+        &mut self,
+        string: &mut InterpolatedStringExpression,
+    ) {
         string.replace_referenced_tokens(self.code);
     }
 

@@ -3,7 +3,7 @@
 
 use crate::nodes::{
     Expression, FieldExpression, FunctionCall, IndexExpression, NumberExpression, Prefix,
-    Statement, Variable,
+    Statement, StringSegment, TableExpression, Variable,
 };
 
 const QUOTED_STRING_MAX_LENGTH: usize = 60;
@@ -93,6 +93,35 @@ pub fn ends_with_prefix(statement: &Statement) -> bool {
     }
 }
 
+pub fn starts_with_table(mut expression: &Expression) -> Option<&TableExpression> {
+    loop {
+        match expression {
+            Expression::Table(table) => break Some(table),
+            Expression::Binary(binary) => {
+                expression = binary.left();
+            }
+            Expression::Call(_)
+            | Expression::False(_)
+            | Expression::Field(_)
+            | Expression::Function(_)
+            | Expression::Identifier(_)
+            | Expression::If(_)
+            | Expression::Index(_)
+            | Expression::Nil(_)
+            | Expression::Number(_)
+            | Expression::Parenthese(_)
+            | Expression::String(_)
+            | Expression::InterpolatedString(_)
+            | Expression::True(_)
+            | Expression::Unary(_)
+            | Expression::VariableArguments(_) => break None,
+            Expression::TypeCast(type_cast) => {
+                expression = type_cast.get_expression();
+            }
+        }
+    }
+}
+
 pub fn starts_with_parenthese(statement: &Statement) -> bool {
     match statement {
         Statement::Assign(assign) => {
@@ -133,6 +162,7 @@ fn expression_ends_with_prefix(expression: &Expression) -> bool {
         | Expression::Nil(_)
         | Expression::Number(_)
         | Expression::String(_)
+        | Expression::InterpolatedString(_)
         | Expression::Table(_)
         | Expression::True(_)
         | Expression::VariableArguments(_)
@@ -282,6 +312,35 @@ pub fn write_string(value: &str) -> String {
     } else {
         write_quoted(value)
     }
+}
+
+pub fn write_interpolated_string_segment(segment: &StringSegment) -> String {
+    let value = segment.get_value();
+
+    if value.is_empty() {
+        return "".to_owned();
+    }
+
+    let mut result = String::new();
+
+    result.reserve(value.len());
+
+    for character in value.chars() {
+        match character {
+            '`' | '{' => {
+                result.push('\\');
+                result.push(character);
+            }
+            _ if needs_escaping(character) => {
+                result.push_str(&escape(character));
+            }
+            _ => {
+                result.push(character);
+            }
+        }
+    }
+
+    result
 }
 
 fn write_long_bracket(value: &str) -> String {

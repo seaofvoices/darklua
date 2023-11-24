@@ -21,6 +21,7 @@ pub struct NodeCounter {
     pub return_count: usize,
     pub expression_count: usize,
     pub variable_count: usize,
+    pub interpolated_string_count: usize,
 }
 
 impl NodeCounter {
@@ -96,5 +97,9 @@ impl NodeProcessor for NodeCounter {
 
     fn process_variable_expression(&mut self, _: &mut Identifier) {
         self.variable_count += 1;
+    }
+
+    fn process_interpolated_string_expression(&mut self, _: &mut InterpolatedStringExpression) {
+        self.interpolated_string_count += 1;
     }
 }

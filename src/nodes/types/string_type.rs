@@ -1,4 +1,4 @@
-use crate::nodes::{StringExpression, Token};
+use crate::nodes::{StringError, StringExpression, Token};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StringType {
@@ -6,7 +6,7 @@ pub struct StringType {
 }
 
 impl StringType {
-    pub fn new(string: &str) -> Option<Self> {
+    pub fn new(string: &str) -> Result<Self, StringError> {
         StringExpression::new(string).map(|value| Self { value })
     }
 

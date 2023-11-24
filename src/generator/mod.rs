@@ -78,6 +78,7 @@ pub trait LuaGenerator {
             Number(number) => self.write_number(number),
             Parenthese(parenthese) => self.write_parenthese(parenthese),
             String(string) => self.write_string(string),
+            InterpolatedString(string) => self.write_interpolated_string(string),
             Table(table) => self.write_table(table),
             True(token) => self.write_true_expression(token),
             Unary(unary) => self.write_unary_expression(unary),
@@ -129,6 +130,8 @@ pub trait LuaGenerator {
     fn write_tuple_arguments(&mut self, arguments: &nodes::TupleArguments);
 
     fn write_string(&mut self, string: &nodes::StringExpression);
+
+    fn write_interpolated_string(&mut self, string: &nodes::InterpolatedStringExpression);
 
     fn write_type(&mut self, r#type: &nodes::Type) {
         match r#type {
@@ -989,8 +992,27 @@ mod $mod_name {
         snapshot_node!($mod_name, $generator, string, write_expression => (
             only_letters => StringExpression::from_value("hello"),
             with_single_quotes => StringExpression::from_value("I'm cool"),
-            with_dougle_quotes => StringExpression::from_value(r#"Say: "Hi""#),
+            with_double_quotes => StringExpression::from_value(r#"Say: "Hi""#),
             with_single_and_double_quotes => StringExpression::from_value(r#"Say: "Don't""#),
+        ));
+
+        snapshot_node!($mod_name, $generator, interpolated_string, write_expression => (
+            only_letters => InterpolatedStringExpression::empty()
+                .with_segment("hello"),
+            with_single_quotes => InterpolatedStringExpression::empty()
+                .with_segment("I'm cool"),
+            with_double_quotes => InterpolatedStringExpression::empty()
+                .with_segment(r#"Say: "Hi""#),
+            with_backticks => InterpolatedStringExpression::empty()
+                .with_segment("Say: `Hi`"),
+            with_single_and_double_quotes => InterpolatedStringExpression::empty()
+                .with_segment(r#"Say: "Don't""#),
+            with_true_value => InterpolatedStringExpression::empty()
+                .with_segment(true),
+            with_empty_table => InterpolatedStringExpression::empty()
+                .with_segment(TableExpression::default()),
+            with_empty_table_in_type_cast => InterpolatedStringExpression::empty()
+                .with_segment(TypeCastExpression::new(TableExpression::default(), TypeName::new("any"))),
         ));
 
         snapshot_node!($mod_name, $generator, number, write_expression => (

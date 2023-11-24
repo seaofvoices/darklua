@@ -3,10 +3,12 @@ mod field;
 mod function;
 mod if_expression;
 mod index;
+mod interpolated_string;
 mod number;
 mod parenthese;
 mod prefix;
 mod string;
+pub(crate) mod string_utils;
 mod table;
 mod type_cast;
 mod unary;
@@ -16,10 +18,12 @@ pub use field::*;
 pub use function::*;
 pub use if_expression::*;
 pub use index::*;
+pub use interpolated_string::*;
 pub use number::*;
 pub use parenthese::*;
 pub use prefix::*;
 pub use string::*;
+pub use string_utils::StringError;
 pub use table::*;
 pub use type_cast::*;
 pub use unary::*;
@@ -42,6 +46,7 @@ pub enum Expression {
     Number(NumberExpression),
     Parenthese(Box<ParentheseExpression>),
     String(StringExpression),
+    InterpolatedString(InterpolatedStringExpression),
     Table(TableExpression),
     True(Option<Token>),
     Unary(Box<UnaryExpression>),
@@ -272,6 +277,12 @@ impl From<ParentheseExpression> for Expression {
 impl From<StringExpression> for Expression {
     fn from(string: StringExpression) -> Self {
         Self::String(string)
+    }
+}
+
+impl From<InterpolatedStringExpression> for Expression {
+    fn from(interpolated_string: InterpolatedStringExpression) -> Self {
+        Self::InterpolatedString(interpolated_string)
     }
 }
 

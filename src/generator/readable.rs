@@ -166,13 +166,6 @@ impl ReadableLuaGenerator {
         } else {
             false
         }
-        // utils::is_relevant_for_spacing(&next_character)
-        //     && self
-        //         .output
-        //         .chars()
-        //         .last()
-        //         .filter(utils::is_relevant_for_spacing)
-        //         .is_some()
     }
 
     #[inline]
@@ -1111,6 +1104,33 @@ impl LuaGenerator for ReadableLuaGenerator {
         } else {
             self.push_str(&result);
         }
+    }
+
+    fn write_interpolated_string(
+        &mut self,
+        interpolated_string: &nodes::InterpolatedStringExpression,
+    ) {
+        self.push_char('`');
+
+        for segment in interpolated_string.iter_segments() {
+            match segment {
+                nodes::InterpolationSegment::String(string_segment) => {
+                    self.raw_push_str(&utils::write_interpolated_string_segment(string_segment));
+                }
+                nodes::InterpolationSegment::Value(value) => {
+                    self.raw_push_char('{');
+                    // add space when value segment is a table
+                    let expression = value.get_expression();
+                    if utils::starts_with_table(expression).is_some() {
+                        self.raw_push_char(' ');
+                    }
+                    self.write_expression(expression);
+                    self.push_char('}');
+                }
+            }
+        }
+
+        self.raw_push_char('`');
     }
 
     fn write_identifier(&mut self, identifier: &nodes::Identifier) {

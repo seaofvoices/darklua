@@ -1,9 +1,8 @@
-use std::{
-    iter::Peekable,
-    str::{CharIndices, Chars},
-};
+use std::str::CharIndices;
 
-use crate::nodes::Token;
+use crate::nodes::{StringError, Token};
+
+use super::string_utils;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StringExpression {
@@ -12,13 +11,14 @@ pub struct StringExpression {
 }
 
 impl StringExpression {
-    pub fn new(string: &str) -> Option<Self> {
+    pub fn new(string: &str) -> Result<Self, StringError> {
         if string.starts_with('[') {
             return string
                 .chars()
                 .skip(1)
                 .enumerate()
                 .find_map(|(indice, character)| if character == '[' { Some(indice) } else { None })
+                .ok_or_else(|| StringError::invalid("unable to find `[` delimiter"))
                 .and_then(|indice| {
                     let length = 2 + indice;
                     let start = if string
@@ -30,120 +30,26 @@ impl StringExpression {
                     } else {
                         length
                     };
-                    string.get(start..string.len() - length).map(str::to_owned)
+                    string
+                        .get(start..string.len() - length)
+                        .map(str::to_owned)
+                        .ok_or_else(|| StringError::invalid(""))
                 })
-                .map(|value| Self { value, token: None });
+                .map(Self::from_value);
         }
 
-        let mut chars = string.chars().peekable();
-        chars.next();
-        chars.next_back();
-        let mut value = String::new();
-        value.reserve(string.as_bytes().len());
+        let mut chars = string.char_indices();
 
-        while let Some(char) = chars.next() {
-            if char == '\\' {
-                if let Some(next_char) = chars.next() {
-                    let escaped = match next_char {
-                        'n' | '\n' => Some('\n'),
-                        '"' => Some('"'),
-                        '\'' => Some('\''),
-                        '\\' => Some('\\'),
-                        't' => Some('\t'),
-                        'a' => Some('\u{7}'),
-                        'b' => Some('\u{8}'),
-                        'v' => Some('\u{B}'),
-                        'f' => Some('\u{C}'),
-                        'r' => Some('\r'),
-                        first_digit if first_digit.is_ascii_digit() => {
-                            let number = read_number(&mut chars, Some(first_digit), 10, 3);
-
-                            if number < 256 {
-                                value.push(number as u8 as char);
-                            } else {
-                                // malformed string sequence: cannot escape ascii character
-                                // with a number >= 256
-                                return None;
-                            }
-
-                            None
-                        }
-                        'x' => {
-                            if let (Some(first_digit), Some(second_digit)) = (
-                                chars.next().filter(char::is_ascii_hexdigit),
-                                chars.next().filter(char::is_ascii_hexdigit),
-                            ) {
-                                let number = 16 * first_digit.to_digit(16).unwrap()
-                                    + second_digit.to_digit(16).unwrap();
-
-                                if number < 256 {
-                                    value.push(number as u8 as char);
-                                } else {
-                                    unreachable!(
-                                        "malformed string sequence: cannot escape ascii character >= 256",
-                                    );
-                                }
-                            } else {
-                                // malformed string sequence: missing one or both hex digits
-                                return None;
-                            }
-                            None
-                        }
-                        'u' => {
-                            if !contains(&chars.next(), &'{') {
-                                // malformed string sequence: missing opening curly brace `{`
-                                return None;
-                            }
-
-                            let number = read_number(&mut chars, None, 16, 8);
-
-                            if !contains(&chars.next(), &'}') {
-                                // malformed string sequence: missing closing curly brace `}`
-                                return None;
-                            }
-
-                            if number > 0x10FFFF {
-                                // malformed string sequence: invalid unicode value (too large)
-                                return None;
-                            }
-
-                            value.push(
-                                char::from_u32(number).expect("unable to convert u32 to char"),
-                            );
-
-                            None
-                        }
-                        'z' => {
-                            while chars
-                                .peek()
-                                .filter(|char| char.is_ascii_whitespace())
-                                .is_some()
-                            {
-                                chars.next();
-                            }
-                            None
-                        }
-                        _ => {
-                            // malformed string sequence: invalid character after `\`
-                            return None;
-                        }
-                    };
-
-                    if let Some(escaped) = escaped {
-                        value.push(escaped);
-                    }
-                } else {
-                    // malformed string sequence: string ended after `\`
-                    return None;
-                }
-            } else {
-                value.push(char);
+        match (chars.next(), chars.next_back()) {
+            (Some((_, first_char)), Some((_, last_char))) if first_char == last_char => {
+                string_utils::read_escaped_string(chars, Some(string.as_bytes().len()))
+                    .map(Self::from_value)
             }
+            (None, None) | (None, Some(_)) | (Some(_), None) => {
+                Err(StringError::invalid("missing quotes"))
+            }
+            (Some(_), Some(_)) => Err(StringError::invalid("quotes do not match")),
         }
-
-        value.shrink_to_fit();
-
-        Some(Self::from_value(value))
     }
 
     pub fn empty() -> Self {
@@ -250,46 +156,6 @@ impl StringExpression {
     }
 }
 
-fn read_number(
-    chars: &mut Peekable<Chars>,
-    first_digit: Option<char>,
-    radix: u32,
-    max: usize,
-) -> u32 {
-    let filter = match radix {
-        10 => char::is_ascii_digit,
-        16 => char::is_ascii_hexdigit,
-        _ => panic!("unsupported radix {}", radix),
-    };
-    let mut amount = first_digit
-        .map(|char| char.to_digit(radix).unwrap())
-        .unwrap_or(0);
-    let mut iteration_count: usize = first_digit.is_some().into();
-
-    while let Some(next_digit) = chars.peek().cloned().filter(filter) {
-        chars.next();
-
-        amount = amount * radix + next_digit.to_digit(radix).unwrap();
-        iteration_count += 1;
-
-        if iteration_count >= max {
-            break;
-        }
-    }
-
-    amount
-}
-
-fn contains<T, U>(option: &Option<T>, x: &U) -> bool
-where
-    U: PartialEq<T>,
-{
-    match option {
-        Some(y) => x == y,
-        None => false,
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -364,7 +230,7 @@ mod test {
                     #[test]
                     fn $name() {
                         let quoted = format!("'{}'", $input);
-                        assert!(StringExpression::new(&quoted).is_none());
+                        assert!(StringExpression::new(&quoted).is_err());
                     }
                 )*
             }
@@ -375,7 +241,7 @@ mod test {
                     #[test]
                     fn $name() {
                         let quoted = format!("\"{}\"", $input);
-                        assert!(StringExpression::new(&quoted).is_none());
+                        assert!(StringExpression::new(&quoted).is_err());
                     }
                 )*
             }
@@ -388,7 +254,6 @@ mod test {
         escaped_too_large_unicode => "\\u{110000}",
         escaped_missing_opening_brace_unicode => "\\uAB",
         escaped_missing_closing_brace_unicode => "\\u{0p",
-        invalid_escape => "\\o",
     );
 
     #[test]
@@ -431,6 +296,20 @@ mod test {
         let string = StringExpression::new("[==[hello]==]").unwrap();
 
         assert_eq!(string.get_value(), "hello");
+    }
+
+    #[test]
+    fn new_skip_invalid_escape_in_double_quoted_string() {
+        let string = StringExpression::new("'\\oo'").unwrap();
+
+        assert_eq!(string.get_value(), "oo");
+    }
+
+    #[test]
+    fn new_skip_invalid_escape_in_single_quoted_string() {
+        let string = StringExpression::new("\"\\oo\"").unwrap();
+
+        assert_eq!(string.get_value(), "oo");
     }
 
     #[test]
