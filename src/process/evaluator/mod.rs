@@ -308,6 +308,7 @@ impl Evaluator {
             BinaryOperator::Minus => self.evaluate_math(expression, |a, b| a - b),
             BinaryOperator::Asterisk => self.evaluate_math(expression, |a, b| a * b),
             BinaryOperator::Slash => self.evaluate_math(expression, |a, b| a / b),
+            BinaryOperator::DoubleSlash => self.evaluate_math(expression, |a, b| (a / b).floor()),
             BinaryOperator::Caret => self.evaluate_math(expression, |a, b| a.powf(b)),
             BinaryOperator::Percent => {
                 self.evaluate_math(expression, |a, b| a - b * (a / b).floor())
@@ -666,6 +667,31 @@ mod test {
             ) => LuaValue::Number(std::f64::INFINITY),
             zero_divided_by_zero(
                 BinaryOperator::Slash,
+                Expression::from(0.0),
+                Expression::from(0.0)
+            ) => LuaValue::Number(std::f64::NAN),
+            twelve_floor_division_by_four(
+                BinaryOperator::DoubleSlash,
+                Expression::from(12.0),
+                Expression::from(4.0)
+            ) => LuaValue::Number(3.0),
+            eleven_floor_division_by_three(
+                BinaryOperator::DoubleSlash,
+                Expression::from(11.0),
+                Expression::from(3.0)
+            ) => LuaValue::Number(3.0),
+            one_floor_division_by_zero(
+                BinaryOperator::DoubleSlash,
+                Expression::from(1.0),
+                Expression::from(0.0)
+            ) => LuaValue::Number(std::f64::INFINITY),
+            minus_one_floor_division_by_zero(
+                BinaryOperator::DoubleSlash,
+                Expression::from(-1.0),
+                Expression::from(0.0)
+            ) => LuaValue::Number(std::f64::NEG_INFINITY),
+            zero_floor_division_by_zero(
+                BinaryOperator::DoubleSlash,
                 Expression::from(0.0),
                 Expression::from(0.0)
             ) => LuaValue::Number(std::f64::NAN),

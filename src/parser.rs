@@ -189,6 +189,9 @@ mod test {
         return_binary_and("return true and false") => ReturnStatement::one(
             BinaryExpression::new(BinaryOperator::And, true, false),
         ),
+        return_binary_floor_division("return 10 // 3") => ReturnStatement::one(
+            BinaryExpression::new(BinaryOperator::DoubleSlash, 10, 3),
+        ),
         return_zero("return 0") => ReturnStatement::one(
             NumberExpression::from_str("0").unwrap(),
         ),
@@ -481,6 +484,13 @@ mod test {
             Variable::new("var"),
             Expression::identifier("amount"),
         ),
+        // todo: once full-moon fixes this issue and the change is in a new release
+        // https://github.com/Kampfkarren/full-moon/issues/292
+        // compound_floor_division("var //= divider") => CompoundAssignStatement::new(
+        //     CompoundOperator::Plus,
+        //     Variable::new("var"),
+        //     Expression::identifier("divider"),
+        // ),
     );
 
     mod parse_with_tokens {

@@ -183,7 +183,7 @@ impl RandomAst {
     }
 
     pub fn binary_operator(&self) -> BinaryOperator {
-        match self.range(14) {
+        match self.range(15) {
             0 => BinaryOperator::And,
             1 => BinaryOperator::Or,
             2 => BinaryOperator::Equal,
@@ -196,8 +196,9 @@ impl RandomAst {
             9 => BinaryOperator::Minus,
             10 => BinaryOperator::Asterisk,
             11 => BinaryOperator::Slash,
-            12 => BinaryOperator::Percent,
-            13 => BinaryOperator::Caret,
+            12 => BinaryOperator::DoubleSlash,
+            13 => BinaryOperator::Percent,
+            14 => BinaryOperator::Caret,
             _ => BinaryOperator::Concat,
         }
     }
@@ -211,13 +212,16 @@ impl RandomAst {
     }
 
     pub fn compound_operator(&self) -> CompoundOperator {
-        match self.range(6) {
+        match self.range(7) {
             0 => CompoundOperator::Plus,
             1 => CompoundOperator::Minus,
             2 => CompoundOperator::Asterisk,
             3 => CompoundOperator::Slash,
-            4 => CompoundOperator::Percent,
-            5 => CompoundOperator::Caret,
+            // todo: once full-moon fixes this issue and the change is in a new release
+            // https://github.com/Kampfkarren/full-moon/issues/292
+            // 4 => CompoundOperator::DoubleSlash,
+            5 => CompoundOperator::Percent,
+            6 => CompoundOperator::Caret,
             _ => CompoundOperator::Concat,
         }
     }
