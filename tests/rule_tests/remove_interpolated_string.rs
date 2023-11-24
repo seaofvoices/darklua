@@ -8,6 +8,7 @@ test_rule!(
     string_with_single_quote("return `'`") => "return \"'\"",
     string_with_double_quote("return `\"`") => "return '\"'",
     string_with_variable("return `{object}`") => "return tostring(object)",
+    nested_interpolated_string("return `{'+' .. `{object}`}`") => "return tostring('+' .. tostring(object))",
     string_prefix_with_variable("return `-{object}`") => "return string.format('-%s', tostring(object))",
     string_prefix_need_escaping_with_variable("return `%{object}`") => "return string.format('%%%s', tostring(object))",
     string_suffix_with_variable("return `{object}-`") => "return string.format('%s-', tostring(object))",
@@ -19,6 +20,8 @@ test_rule!(
         => "local __DARKLUA_STR_FMT = string.format local string return __DARKLUA_STR_FMT('%%%s', tostring(object))",
     string_prefix_need_escaping_with_variable_shadowing_string_and_tostring("local string, tostring return `%{object}`")
         => "local __DARKLUA_STR_FMT, __DARKLUA_TO_STR = string.format, tostring local string, tostring return __DARKLUA_STR_FMT('%%%s', __DARKLUA_TO_STR(object))",
+    two_strings_with_variable_shadowing_tostring("local tostring local a, b = `{object}`, `{var}`")
+    => "local __DARKLUA_TO_STR = tostring local tostring local a, b = __DARKLUA_TO_STR(object), __DARKLUA_TO_STR(var)",
 );
 
 test_rule!(
@@ -35,6 +38,7 @@ test_rule!(
     string_with_single_quote("return `'`") => "return \"'\"",
     string_with_double_quote("return `\"`") => "return '\"'",
     string_with_variable("return `{object}`") => "return tostring(object)",
+    nested_interpolated_string("return `{'+' .. `{object}`}`") => "return tostring('+' .. tostring(object))",
     string_prefix_with_variable("return `-{object}`") => "return string.format('-%*', object)",
     string_prefix_need_escaping_with_variable("return `%{object}`") => "return string.format('%%%*', object)",
     string_suffix_with_variable("return `{object}-`") => "return string.format('%*-', object)",
@@ -46,6 +50,8 @@ test_rule!(
         => "local __DARKLUA_STR_FMT = string.format local string return __DARKLUA_STR_FMT('%%%*', object)",
     string_prefix_need_escaping_with_variable_shadowing_string_and_tostring("local string, tostring return `%{object}`")
         => "local __DARKLUA_STR_FMT = string.format local string, tostring return __DARKLUA_STR_FMT('%%%*', object)",
+    two_strings_with_variable_shadowing_tostring("local tostring local a, b = `{object}`, `{var}`")
+        => "local __DARKLUA_TO_STR = tostring local tostring local a, b = __DARKLUA_TO_STR(object), __DARKLUA_TO_STR(var)",
 );
 
 #[test]
