@@ -1,3 +1,5 @@
+use std::iter;
+
 use crate::nodes::{Expression, StringExpression, TableExpression, Token};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -127,6 +129,15 @@ impl From<Arguments> for TupleArguments {
             Arguments::Tuple(tuple) => tuple,
             Arguments::String(string) => TupleArguments::default().with_argument(string),
             Arguments::Table(table) => TupleArguments::default().with_argument(table),
+        }
+    }
+}
+
+impl iter::FromIterator<Expression> for TupleArguments {
+    fn from_iter<T: IntoIterator<Item = Expression>>(iter: T) -> Self {
+        Self {
+            values: iter.into_iter().collect(),
+            tokens: None,
         }
     }
 }

@@ -151,7 +151,7 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub(crate) struct IdentifierTracker {
     identifiers: Vec<HashSet<String>>,
 }
