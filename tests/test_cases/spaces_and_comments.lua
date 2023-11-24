@@ -52,3 +52,5 @@ object : method --[[call]] ({ key --[[]] = [[true]], [ true --[[key]]] = ( nil )
 
 object . --[[get field]] field : method --
 { if --[[condition]]  value   then --[[true]]   ok   else --[[false]]  err, { --[[empty table]] }, --[[trailing comma]] }
+
+local string = `-{ true }-{ object --[[ok]] }={ c + 8 }` -- interpolated string
