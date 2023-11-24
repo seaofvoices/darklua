@@ -14,6 +14,7 @@ pub enum BinaryOperator {
     Minus,
     Asterisk,
     Slash,
+    DoubleSlash,
     Percent,
     Caret,
     Concat,
@@ -173,6 +174,7 @@ impl BinaryOperator {
             Self::Minus => "-",
             Self::Asterisk => "*",
             Self::Slash => "/",
+            Self::DoubleSlash => "//",
             Self::Percent => "%",
             Self::Caret => "^",
             Self::Concat => "..",
@@ -191,7 +193,7 @@ impl BinaryOperator {
             | Self::GreaterOrEqualThan => 2,
             Self::Concat => 3,
             Self::Plus | Self::Minus => 4,
-            Self::Asterisk | Self::Slash | Self::Percent => 5,
+            Self::Asterisk | Self::Slash | Self::DoubleSlash | Self::Percent => 5,
             Self::Caret => 7,
         }
     }
@@ -307,6 +309,7 @@ mod test {
             assert!(Caret.precedes(Minus));
             assert!(Caret.precedes(Asterisk));
             assert!(Caret.precedes(Slash));
+            assert!(Caret.precedes(DoubleSlash));
             assert!(Caret.precedes(Percent));
             assert!(Caret.precedes(Concat));
             assert!(!Caret.precedes(Caret));
@@ -327,6 +330,7 @@ mod test {
             assert!(Asterisk.precedes(Minus));
             assert!(!Asterisk.precedes(Asterisk));
             assert!(!Asterisk.precedes(Slash));
+            assert!(!Asterisk.precedes(DoubleSlash));
             assert!(!Asterisk.precedes(Percent));
             assert!(Asterisk.precedes(Concat));
             assert!(!Asterisk.precedes(Caret));
@@ -347,6 +351,7 @@ mod test {
             assert!(Slash.precedes(Minus));
             assert!(!Slash.precedes(Asterisk));
             assert!(!Slash.precedes(Slash));
+            assert!(!Slash.precedes(DoubleSlash));
             assert!(!Slash.precedes(Percent));
             assert!(Slash.precedes(Concat));
             assert!(!Slash.precedes(Caret));
@@ -367,6 +372,7 @@ mod test {
             assert!(Percent.precedes(Minus));
             assert!(!Percent.precedes(Asterisk));
             assert!(!Percent.precedes(Slash));
+            assert!(!Percent.precedes(DoubleSlash));
             assert!(!Percent.precedes(Percent));
             assert!(Percent.precedes(Concat));
             assert!(!Percent.precedes(Caret));
@@ -387,6 +393,7 @@ mod test {
             assert!(!Plus.precedes(Minus));
             assert!(!Plus.precedes(Asterisk));
             assert!(!Plus.precedes(Slash));
+            assert!(!Plus.precedes(DoubleSlash));
             assert!(!Plus.precedes(Percent));
             assert!(Plus.precedes(Concat));
             assert!(!Plus.precedes(Caret));
@@ -407,6 +414,7 @@ mod test {
             assert!(!Minus.precedes(Minus));
             assert!(!Minus.precedes(Asterisk));
             assert!(!Minus.precedes(Slash));
+            assert!(!Minus.precedes(DoubleSlash));
             assert!(!Minus.precedes(Percent));
             assert!(Minus.precedes(Concat));
             assert!(!Minus.precedes(Caret));
@@ -427,6 +435,7 @@ mod test {
             assert!(!Concat.precedes(Minus));
             assert!(!Concat.precedes(Asterisk));
             assert!(!Concat.precedes(Slash));
+            assert!(!Concat.precedes(DoubleSlash));
             assert!(!Concat.precedes(Percent));
             assert!(!Concat.precedes(Concat));
             assert!(!Concat.precedes(Caret));
@@ -447,6 +456,7 @@ mod test {
             assert!(!And.precedes(Minus));
             assert!(!And.precedes(Asterisk));
             assert!(!And.precedes(Slash));
+            assert!(!And.precedes(DoubleSlash));
             assert!(!And.precedes(Percent));
             assert!(!And.precedes(Concat));
             assert!(!And.precedes(Caret));

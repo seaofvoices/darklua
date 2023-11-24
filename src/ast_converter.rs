@@ -2517,6 +2517,7 @@ impl<'a> AstConverter<'a> {
             ast::BinOp::Percent(_) => BinaryOperator::Percent,
             ast::BinOp::Plus(_) => BinaryOperator::Plus,
             ast::BinOp::Slash(_) => BinaryOperator::Slash,
+            ast::BinOp::DoubleSlash(_) => BinaryOperator::DoubleSlash,
             ast::BinOp::Star(_) => BinaryOperator::Asterisk,
             ast::BinOp::TildeEqual(_) => BinaryOperator::NotEqual,
             ast::BinOp::TwoDots(_) => BinaryOperator::Concat,
@@ -2553,6 +2554,9 @@ impl<'a> AstConverter<'a> {
             ast::types::CompoundOp::MinusEqual(_) => CompoundOperator::Minus,
             ast::types::CompoundOp::StarEqual(_) => CompoundOperator::Asterisk,
             ast::types::CompoundOp::SlashEqual(_) => CompoundOperator::Slash,
+            // todo: once full-moon fixes this issue and the change is in a new release
+            // https://github.com/Kampfkarren/full-moon/issues/292
+            // ast::types::CompoundOp::DoubleSlashEqual(_) => CompoundOperator::DoubleSlash,
             ast::types::CompoundOp::PercentEqual(_) => CompoundOperator::Percent,
             ast::types::CompoundOp::CaretEqual(_) => CompoundOperator::Caret,
             ast::types::CompoundOp::TwoDotsEqual(_) => CompoundOperator::Concat,
@@ -3108,11 +3112,12 @@ fn get_binary_operator_token(
         | BinOp::Percent(token)
         | BinOp::Plus(token)
         | BinOp::Slash(token)
+        | BinOp::DoubleSlash(token)
         | BinOp::Star(token)
         | BinOp::TildeEqual(token)
         | BinOp::TwoDots(token)
         | BinOp::TwoEqual(token) => Ok(token),
-        _ => Err(ConvertError::CompoundOperator {
+        _ => Err(ConvertError::BinaryOperator {
             operator: operator.to_string(),
         }),
     }
@@ -3125,7 +3130,7 @@ fn get_unary_operator_token(
 
     match operator {
         UnOp::Minus(token) | UnOp::Not(token) | UnOp::Hash(token) => Ok(token),
-        _ => Err(ConvertError::CompoundOperator {
+        _ => Err(ConvertError::UnaryOperator {
             operator: operator.to_string(),
         }),
     }
@@ -3141,6 +3146,9 @@ fn get_compound_operator_token(
         | CompoundOp::MinusEqual(token)
         | CompoundOp::StarEqual(token)
         | CompoundOp::SlashEqual(token)
+        // todo: once full-moon fixes this issue and the change is in a new release
+        // https://github.com/Kampfkarren/full-moon/issues/292
+        // | CompoundOp::DoubleSlashEqual(token)
         | CompoundOp::PercentEqual(token)
         | CompoundOp::CaretEqual(token)
         | CompoundOp::TwoDotsEqual(token) => Ok(token),

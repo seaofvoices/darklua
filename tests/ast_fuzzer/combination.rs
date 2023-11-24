@@ -15,6 +15,7 @@ pub fn binary_operators() -> impl Iterator<Item = BinaryOperator> {
         BinaryOperator::Minus,
         BinaryOperator::Asterisk,
         BinaryOperator::Slash,
+        BinaryOperator::DoubleSlash,
         BinaryOperator::Percent,
         BinaryOperator::Caret,
         BinaryOperator::Concat,

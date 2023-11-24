@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* add support for floor division (`//`) operator in binary expressions ([#155](https://github.com/seaofvoices/darklua/pull/155))
 * add support for Luau interpolated strings ([#94](https://github.com/seaofvoices/darklua/pull/94))
 * add rule to append text comments ([#141](https://github.com/seaofvoices/darklua/pull/141))
 
