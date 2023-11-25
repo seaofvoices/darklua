@@ -5,6 +5,7 @@ use full_moon::ast::Ast;
 use crate::{
     ast_converter::{AstConverter, ConvertError},
     nodes::*,
+    utils::Timer,
 };
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -14,9 +15,22 @@ pub struct Parser {
 
 impl Parser {
     pub fn parse(&self, code: &str) -> Result<Block, ParserError> {
-        full_moon::parse(code)
-            .map_err(ParserError::parsing)
-            .and_then(|ast| self.convert_ast(ast).map_err(ParserError::converting))
+        let full_moon_parse_timer = Timer::now();
+        let parse_result = full_moon::parse(code);
+        log::trace!(
+            "full-moon parsing done in {}",
+            full_moon_parse_timer.duration_label()
+        );
+        parse_result.map_err(ParserError::parsing).and_then(|ast| {
+            log::trace!("start converting full-moon AST");
+            let conversion_timer = Timer::now();
+            let block = self.convert_ast(ast).map_err(ParserError::converting);
+            log::trace!(
+                " ⨽ completed AST conversion in {}",
+                conversion_timer.duration_label()
+            );
+            block
+        })
     }
 
     pub fn preserve_tokens(mut self) -> Self {
