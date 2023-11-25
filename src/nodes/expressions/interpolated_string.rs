@@ -44,6 +44,16 @@ impl StringSegment {
         self.token = None;
     }
 
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.value.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.value.is_empty()
+    }
+
     pub fn clear_comments(&mut self) {
         if let Some(token) = &mut self.token {
             token.clear_comments();
@@ -307,6 +317,19 @@ impl InterpolatedStringExpression {
 
     pub fn iter_mut_segments(&mut self) -> impl Iterator<Item = &mut InterpolationSegment> {
         self.segments.iter_mut()
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.segments.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.segments.iter().all(|segment| match segment {
+            InterpolationSegment::String(string_segment) => string_segment.is_empty(),
+            InterpolationSegment::Value(_) => false,
+        })
     }
 
     pub fn push_segment(&mut self, segment: impl Into<InterpolationSegment>) {

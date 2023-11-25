@@ -678,6 +678,21 @@ mod test {
                 r#return: spaced_token(0, 6),
                 commas: Vec::new(),
             }),
+            return_backtick_string_with_escaped_backtick("return `\\``") => ReturnStatement::one(
+                InterpolatedStringExpression::empty()
+                .with_segment(
+                    StringSegment::from_value('`').with_token(token_at_first_line(8, 10))
+                )
+                .with_tokens(
+                    InterpolatedStringTokens {
+                        opening_tick: token_at_first_line(7, 8),
+                        closing_tick: token_at_first_line(10, 11),
+                    }
+                )
+            ).with_tokens(ReturnTokens {
+                r#return: spaced_token(0, 6),
+                commas: Vec::new(),
+            }),
             return_backtick_string_hello("return `hello`") => ReturnStatement::one(
                 InterpolatedStringExpression::new(vec![
                     StringSegment::from_value("hello")

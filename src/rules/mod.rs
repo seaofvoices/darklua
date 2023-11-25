@@ -15,6 +15,7 @@ mod method_def;
 mod no_local_function;
 mod remove_comments;
 mod remove_compound_assign;
+mod remove_interpolated_string;
 mod remove_nil_declarations;
 mod remove_spaces;
 mod remove_types;
@@ -40,6 +41,7 @@ pub use method_def::*;
 pub use no_local_function::*;
 pub use remove_comments::*;
 pub use remove_compound_assign::*;
+pub use remove_interpolated_string::*;
 pub use remove_nil_declarations::*;
 pub use remove_spaces::*;
 pub use remove_types::*;
@@ -221,6 +223,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME,
         REMOVE_EMPTY_DO_RULE_NAME,
         REMOVE_FUNCTION_CALL_PARENS_RULE_NAME,
+        REMOVE_INTERPOLATED_STRING_RULE_NAME,
         REMOVE_METHOD_DEFINITION_RULE_NAME,
         REMOVE_NIL_DECLARATION_RULE_NAME,
         REMOVE_SPACES_RULE_NAME,
@@ -250,6 +253,7 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME => Box::<RemoveCompoundAssignment>::default(),
             REMOVE_EMPTY_DO_RULE_NAME => Box::<RemoveEmptyDo>::default(),
             REMOVE_FUNCTION_CALL_PARENS_RULE_NAME => Box::<RemoveFunctionCallParens>::default(),
+            REMOVE_INTERPOLATED_STRING_RULE_NAME => Box::<RemoveInterpolatedString>::default(),
             REMOVE_METHOD_DEFINITION_RULE_NAME => Box::<RemoveMethodDefinition>::default(),
             REMOVE_NIL_DECLARATION_RULE_NAME => Box::<RemoveNilDeclaration>::default(),
             REMOVE_SPACES_RULE_NAME => Box::<RemoveSpaces>::default(),

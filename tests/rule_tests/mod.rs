@@ -295,6 +295,7 @@ mod remove_call_parens;
 mod remove_comments;
 mod remove_compound_assignment;
 mod remove_empty_do;
+mod remove_interpolated_string;
 mod remove_method_definition;
 mod remove_nil_declaration;
 mod remove_types;
