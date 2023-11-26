@@ -13,8 +13,10 @@ mod group_local;
 mod inject_value;
 mod method_def;
 mod no_local_function;
+mod remove_call_match;
 mod remove_comments;
 mod remove_compound_assign;
+mod remove_debug_profiling;
 mod remove_interpolated_string;
 mod remove_nil_declarations;
 mod remove_spaces;
@@ -41,6 +43,7 @@ pub use method_def::*;
 pub use no_local_function::*;
 pub use remove_comments::*;
 pub use remove_compound_assign::*;
+pub use remove_debug_profiling::*;
 pub use remove_interpolated_string::*;
 pub use remove_nil_declarations::*;
 pub use remove_spaces::*;
@@ -221,6 +224,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         INJECT_GLOBAL_VALUE_RULE_NAME,
         REMOVE_COMMENTS_RULE_NAME,
         REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME,
+        REMOVE_DEBUG_PROFILING_RULE_NAME,
         REMOVE_EMPTY_DO_RULE_NAME,
         REMOVE_FUNCTION_CALL_PARENS_RULE_NAME,
         REMOVE_INTERPOLATED_STRING_RULE_NAME,
@@ -251,6 +255,7 @@ impl FromStr for Box<dyn Rule> {
             INJECT_GLOBAL_VALUE_RULE_NAME => Box::<InjectGlobalValue>::default(),
             REMOVE_COMMENTS_RULE_NAME => Box::<RemoveComments>::default(),
             REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME => Box::<RemoveCompoundAssignment>::default(),
+            REMOVE_DEBUG_PROFILING_RULE_NAME => Box::<RemoveDebugProfiling>::default(),
             REMOVE_EMPTY_DO_RULE_NAME => Box::<RemoveEmptyDo>::default(),
             REMOVE_FUNCTION_CALL_PARENS_RULE_NAME => Box::<RemoveFunctionCallParens>::default(),
             REMOVE_INTERPOLATED_STRING_RULE_NAME => Box::<RemoveInterpolatedString>::default(),
