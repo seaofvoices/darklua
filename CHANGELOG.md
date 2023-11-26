@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* add rule to remove Roblox profiling function calls (`remove_debug_profiling`) ([#162](https://github.com/seaofvoices/darklua/pull/162))
 * add rule to remove interpolated strings (`remove_interpolated_string`) ([#156](https://github.com/seaofvoices/darklua/pull/156))
 * add support for floor division (`//`) operator in binary expressions ([#155](https://github.com/seaofvoices/darklua/pull/155))
 * add support for Luau interpolated strings ([#94](https://github.com/seaofvoices/darklua/pull/94))
