@@ -4,7 +4,7 @@ added_in: "unreleased"
 parameters:
   - name: preserve_arguments_side_effects
     type: boolean
-    description: Defines how darklua converts the interpolated strings into `string.format` calls. The "string" strategy will make the rule use the `%s` specifier and the "tostring" strategy will use the `%*` specifier.
+    description: Defines how darklua handle arguments passed to the functions. If true, darklua will inspect each argument and preserve any potential side effects. When false, darklua will not perform any verification and simply erase any arguments passed.
     default: true
 examples:
   - content: |
