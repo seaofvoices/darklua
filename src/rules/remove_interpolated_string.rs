@@ -231,7 +231,16 @@ impl RuleConfiguration for RemoveInterpolatedString {
     }
 
     fn serialize_to_properties(&self) -> RuleProperties {
-        RuleProperties::new()
+        let mut properties = RuleProperties::new();
+
+        match self.strategy {
+            ReplacementStrategy::StringSpecifier => {}
+            ReplacementStrategy::ToStringSpecifier => {
+                properties.insert("strategy".to_owned(), "tostring".into());
+            }
+        }
+
+        properties
     }
 }
 
@@ -251,6 +260,15 @@ mod test {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
         assert_json_snapshot!("default_remove_interpolated_string", rule);
+    }
+
+    #[test]
+    fn serialize_rule_with_tostring_strategy() {
+        let rule: Box<dyn Rule> = Box::new(RemoveInterpolatedString {
+            strategy: ReplacementStrategy::ToStringSpecifier,
+        });
+
+        assert_json_snapshot!("remove_interpolated_string_tostring_strategy", rule);
     }
 
     #[test]
