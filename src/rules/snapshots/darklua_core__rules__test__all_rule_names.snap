@@ -11,6 +11,7 @@ expression: rule_names
   "filter_after_early_return",
   "group_local_assignment",
   "inject_global_value",
+  "remove_assertions",
   "remove_comments",
   "remove_compound_assignment",
   "remove_debug_profiling",
