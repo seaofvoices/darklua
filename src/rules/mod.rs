@@ -13,6 +13,7 @@ mod group_local;
 mod inject_value;
 mod method_def;
 mod no_local_function;
+mod remove_assertions;
 mod remove_call_match;
 mod remove_comments;
 mod remove_compound_assign;
@@ -41,6 +42,7 @@ pub use group_local::*;
 pub use inject_value::*;
 pub use method_def::*;
 pub use no_local_function::*;
+pub use remove_assertions::*;
 pub use remove_comments::*;
 pub use remove_compound_assign::*;
 pub use remove_debug_profiling::*;
@@ -222,6 +224,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         FILTER_AFTER_EARLY_RETURN_RULE_NAME,
         GROUP_LOCAL_ASSIGNMENT_RULE_NAME,
         INJECT_GLOBAL_VALUE_RULE_NAME,
+        REMOVE_ASSERTIONS_RULE_NAME,
         REMOVE_COMMENTS_RULE_NAME,
         REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME,
         REMOVE_DEBUG_PROFILING_RULE_NAME,
@@ -253,6 +256,7 @@ impl FromStr for Box<dyn Rule> {
             FILTER_AFTER_EARLY_RETURN_RULE_NAME => Box::<FilterAfterEarlyReturn>::default(),
             GROUP_LOCAL_ASSIGNMENT_RULE_NAME => Box::<GroupLocalAssignment>::default(),
             INJECT_GLOBAL_VALUE_RULE_NAME => Box::<InjectGlobalValue>::default(),
+            REMOVE_ASSERTIONS_RULE_NAME => Box::<RemoveAssertions>::default(),
             REMOVE_COMMENTS_RULE_NAME => Box::<RemoveComments>::default(),
             REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME => Box::<RemoveCompoundAssignment>::default(),
             REMOVE_DEBUG_PROFILING_RULE_NAME => Box::<RemoveDebugProfiling>::default(),
