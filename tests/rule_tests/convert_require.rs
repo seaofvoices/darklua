@@ -282,7 +282,6 @@ mod sourcemap {
         );
     }
 
-
     #[test]
     fn convert_sibling_module_from_init_module_in_nested_sourcemap() {
         let resources = memory_resources!(
