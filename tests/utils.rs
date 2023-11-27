@@ -87,7 +87,7 @@ macro_rules! memory_resources {
     ($($path:literal => $content:expr),+$(,)?) => ({
         let resources = Resources::from_memory();
         $(
-            resources.write($path, $content).unwrap();
+            resources.write($path, &$content).unwrap();
         )*
         resources
     });

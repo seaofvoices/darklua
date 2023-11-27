@@ -206,26 +206,30 @@ fn convert_parent_init_module_from_init_module() {
 mod sourcemap {
     use super::*;
 
-    const CONVERT_PATH_TO_ROJO_SOURCEMAP_CONFIG: &str = r#"{
-        generator: 'retain_lines',
-        rules: [
-            {
-                rule: 'convert_require',
-                current: {
-                    name: 'path',
-                    sources: {
-                        '@pkg': './Packages'
-                    }
-                },
-                target: {
-                    name: 'roblox',
-                    rojo_sourcemap: './sourcemap.json',
-                }
-            }
-        ]
-    }"#;
+    fn get_darklua_config_with_sourcemap(sourcemap_path: &str) -> String {
+        format!(
+            r#"{{
+                generator: 'retain_lines',
+                rules: [
+                    {{
+                        rule: 'convert_require',
+                        current: {{
+                            name: 'path',
+                            sources: {{
+                                '@pkg': './Packages'
+                            }}
+                        }},
+                        target: {{
+                            name: 'roblox',
+                            rojo_sourcemap: '{sourcemap_path}',
+                        }}
+                    }}
+                ]
+            }}"#
+        )
+    }
 
-    fn get_resources_for_sourcemap(datamodel_case: bool) -> Resources {
+    fn get_resources_for_sourcemap(datamodel_case: bool, sourcemap_path: &str) -> Resources {
         memory_resources!(
             "src/init.lua" => include_str!("../test_cases/sourcemap/src/init.lua"),
             "src/a.lua" => include_str!("../test_cases/sourcemap/src/a.lua"),
@@ -241,7 +245,7 @@ mod sourcemap {
 
             "main.server.lua" => include_str!("../test_cases/sourcemap/main.server.lua"),
 
-            ".darklua.json" => CONVERT_PATH_TO_ROJO_SOURCEMAP_CONFIG,
+            ".darklua.json" => get_darklua_config_with_sourcemap(sourcemap_path),
             "sourcemap.json" => if datamodel_case {
                 include_str!("../test_cases/sourcemap/place-sourcemap.json")
             } else {
@@ -254,7 +258,7 @@ mod sourcemap {
     fn invalid_sourcemap() {
         let resources = memory_resources!(
             "src/init.lua" => "return nil",
-            ".darklua.json" => CONVERT_PATH_TO_ROJO_SOURCEMAP_CONFIG,
+            ".darklua.json" => get_darklua_config_with_sourcemap("./sourcemap.json"),
             "sourcemap.json" => "",
         );
         utils::snapshot_file_process_file_errors(&resources, "src/init.lua", "invalid_sourcemap")
@@ -263,11 +267,21 @@ mod sourcemap {
     #[test]
     fn convert_sibling_module_from_init_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(false),
+            &get_resources_for_sourcemap(false, "./sourcemap.json"),
             "src/d/init.lua",
             "convert_sibling_module_from_init_module",
         );
     }
+
+    #[test]
+    fn convert_sibling_module_from_init_module_with_sourcemap_without_current_dir() {
+        snapshot_file_process(
+            &get_resources_for_sourcemap(false, "sourcemap.json"),
+            "src/d/init.lua",
+            "convert_sibling_module_from_init_module",
+        );
+    }
+
 
     #[test]
     fn convert_sibling_module_from_init_module_in_nested_sourcemap() {
@@ -301,7 +315,7 @@ mod sourcemap {
     #[test]
     fn in_datamodel_convert_sibling_module_from_init_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(true),
+            &get_resources_for_sourcemap(true, "./sourcemap.json"),
             "src/d/init.lua",
             "convert_sibling_module_from_init_module",
         );
@@ -310,7 +324,7 @@ mod sourcemap {
     #[test]
     fn convert_module_from_child_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(false),
+            &get_resources_for_sourcemap(false, "./sourcemap.json"),
             "src/d/d2.lua",
             "convert_module_from_child_module",
         );
@@ -319,7 +333,7 @@ mod sourcemap {
     #[test]
     fn in_datamodel_convert_module_from_child_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(true),
+            &get_resources_for_sourcemap(true, "./sourcemap.json"),
             "src/d/d2.lua",
             "convert_module_from_child_module",
         );
@@ -328,7 +342,7 @@ mod sourcemap {
     #[test]
     fn convert_multiple_sibling_modules_from_root_init_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(false),
+            &get_resources_for_sourcemap(false, "./sourcemap.json"),
             "src/init.lua",
             "convert_multiple_sibling_modules_from_root_init_module",
         );
@@ -337,7 +351,7 @@ mod sourcemap {
     #[test]
     fn in_datamodel_convert_multiple_sibling_modules_from_root_init_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(true),
+            &get_resources_for_sourcemap(true, "./sourcemap.json"),
             "src/init.lua",
             "convert_multiple_sibling_modules_from_root_init_module",
         );
@@ -346,7 +360,7 @@ mod sourcemap {
     #[test]
     fn convert_sibling_module_from_sibling_module() {
         expect_file_process(
-            &get_resources_for_sourcemap(false),
+            &get_resources_for_sourcemap(false, "./sourcemap.json"),
             "src/b.lua",
             "local a = require(script.Parent:FindFirstChild('a'))\n\nreturn a\n",
         );
@@ -355,7 +369,7 @@ mod sourcemap {
     #[test]
     fn in_datamodel_convert_sibling_module_from_sibling_module() {
         expect_file_process(
-            &get_resources_for_sourcemap(true),
+            &get_resources_for_sourcemap(true, "./sourcemap.json"),
             "src/b.lua",
             "local a = require(script.Parent:FindFirstChild('a'))\n\nreturn a\n",
         );
@@ -364,7 +378,7 @@ mod sourcemap {
     #[test]
     fn convert_package_module_from_nested_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(false),
+            &get_resources_for_sourcemap(false, "./sourcemap.json"),
             "src/d/d1.lua",
             "convert_package_module_from_nested_module",
         );
@@ -373,7 +387,7 @@ mod sourcemap {
     #[test]
     fn in_datamodel_convert_package_module_from_nested_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(true),
+            &get_resources_for_sourcemap(true, "./sourcemap.json"),
             "src/d/d1.lua",
             "convert_package_module_from_nested_module",
         );
@@ -382,7 +396,7 @@ mod sourcemap {
     #[test]
     fn convert_nested_package_module_from_sibling_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(false),
+            &get_resources_for_sourcemap(false, "./sourcemap.json"),
             "Packages/Package1/init.lua",
             "convert_nested_package_module_from_sibling_module",
         );
@@ -391,7 +405,7 @@ mod sourcemap {
     #[test]
     fn in_datamodel_convert_nested_package_module_from_sibling_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(true),
+            &get_resources_for_sourcemap(true, "./sourcemap.json"),
             "Packages/Package1/init.lua",
             "convert_nested_package_module_from_sibling_module",
         );
@@ -401,7 +415,7 @@ mod sourcemap {
     #[test]
     fn in_datamodel_convert_module_require_across_service_instance() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(true),
+            &get_resources_for_sourcemap(true, "./sourcemap.json"),
             "main.server.lua",
             "convert_module_require_across_service_instance",
         );
