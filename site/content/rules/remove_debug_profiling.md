@@ -1,6 +1,6 @@
 ---
 description: Removes call to debug.profilebegin and debug.profileend
-added_in: "unreleased"
+added_in: "0.12.0"
 parameters:
   - name: preserve_arguments_side_effects
     type: boolean

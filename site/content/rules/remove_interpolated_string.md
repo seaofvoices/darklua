@@ -1,6 +1,6 @@
 ---
 description: Removes interpolated strings (backtick strings)
-added_in: "unreleased"
+added_in: "0.12.0"
 parameters:
   - name: strategy
     type: '"string" or "tostring"'
