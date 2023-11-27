@@ -31,9 +31,7 @@ impl RobloxRequireMode {
             .as_ref()
             .map(|rojo_sourcemap_path| context.project_location().join(rojo_sourcemap_path))
         {
-            let sourcemap_parent_location = rojo_sourcemap_path
-                .parent()
-                .unwrap_or_else(|| Path::new("."));
+            let sourcemap_parent_location = get_relative_parent_path(rojo_sourcemap_path);
             let sourcemap = RojoSourcemap::parse(
                 &context
                     .resources()
@@ -83,7 +81,7 @@ impl RobloxRequireMode {
         {
             if let Some(require_relative_to_sourcemap) = get_relative_path(
                 require_path,
-                sourcemap_path.parent().unwrap_or_else(|| Path::new("")),
+                get_relative_parent_path(sourcemap_path),
                 false,
             )? {
                 log::trace!(
@@ -214,26 +212,33 @@ fn get_relative_path(
     source_path: &Path,
     use_current_dir_prefix: bool,
 ) -> Result<Option<PathBuf>, DarkluaError> {
-    Ok(pathdiff::diff_paths(
-        require_path,
-        source_path.parent().ok_or_else(|| {
-            DarkluaError::custom(format!(
-                "unable to get parent directory from `{}`",
-                source_path.display()
-            ))
-        })?,
+    Ok(
+        pathdiff::diff_paths(require_path, get_relative_parent_path(source_path))
+            .map(|path| {
+                if use_current_dir_prefix && !path.starts_with(".") && !path.starts_with("..") {
+                    Path::new(".").join(path)
+                } else if !use_current_dir_prefix && path.starts_with(".") {
+                    path.strip_prefix(".")
+                        .map(Path::to_path_buf)
+                        .ok()
+                        .unwrap_or(path)
+                } else {
+                    path
+                }
+            })
+            .map(utils::normalize_path_with_current_dir),
     )
-    .map(|path| {
-        if use_current_dir_prefix && !path.starts_with(".") && !path.starts_with("..") {
-            Path::new(".").join(path)
-        } else if !use_current_dir_prefix && path.starts_with(".") {
-            path.strip_prefix(".")
-                .map(Path::to_path_buf)
-                .ok()
-                .unwrap_or(path)
-        } else {
-            path
+}
+
+fn get_relative_parent_path(path: &Path) -> &Path {
+    match path.parent() {
+        Some(parent) => {
+            if parent == Path::new("") {
+                Path::new(".")
+            } else {
+                parent
+            }
         }
-    })
-    .map(utils::normalize_path_with_current_dir))
+        None => Path::new(".."),
+    }
 }

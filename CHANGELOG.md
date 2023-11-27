@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* fix relative parent paths when working with sourcemaps ([#164](https://github.com/seaofvoices/darklua/pull/164))
 * add rule to remove assertions (`remove_assertions`) ([#163](https://github.com/seaofvoices/darklua/pull/163))
 * add rule to remove Roblox profiling function calls (`remove_debug_profiling`) ([#162](https://github.com/seaofvoices/darklua/pull/162))
 * add rule to remove interpolated strings (`remove_interpolated_string`) ([#156](https://github.com/seaofvoices/darklua/pull/156))
