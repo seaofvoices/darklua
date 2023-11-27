@@ -1,6 +1,6 @@
 ---
 description: Append a comment at the start or end of a file
-added_in: "unreleased"
+added_in: "0.12.0"
 parameters:
   - name: text
     type: string
