@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.12.1
+
 * fix `append_text_comment` rule to support multiline comments ([#167](https://github.com/seaofvoices/darklua/pull/167))
 
 ## 0.12.0
