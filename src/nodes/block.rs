@@ -137,8 +137,18 @@ impl Block {
     }
 
     #[inline]
+    pub fn statements_len(&self) -> usize {
+        self.statements.len()
+    }
+
+    #[inline]
     pub fn iter_statements(&self) -> impl Iterator<Item = &Statement> {
         self.statements.iter()
+    }
+
+    #[inline]
+    pub fn reverse_iter_statements(&self) -> impl Iterator<Item = &Statement> {
+        self.statements.iter().rev()
     }
 
     #[inline]

@@ -5,8 +5,9 @@ test_rule!(
     RemoveAssertions::default(),
     remove_variable_condition("assert(condition)") => "do end",
     remove_variable_condition_with_message("assert(condition, 'message')") => "do end",
-    remove_function_call_condition("assert(validate(value))") => "do local _ = validate(value) end",
-    remove_variable_condition_with_function_call_message("assert(condition, formatter(condition))") => "do local _ = formatter(condition) end",
+    remove_function_call_condition("assert(validate(value))") => "validate(value)",
+    remove_variable_condition_with_function_call_message("assert(condition, formatter(condition))") => "formatter(condition)",
+    remove_function_call_condition_and_function_call_message("assert(validate(value), formatter(value))") => "do validate(value) formatter(value) end",
 );
 
 test_rule!(

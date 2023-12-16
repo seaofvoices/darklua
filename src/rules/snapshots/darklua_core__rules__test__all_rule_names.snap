@@ -23,6 +23,7 @@ expression: rule_names
   "remove_spaces",
   "remove_types",
   "remove_unused_if_branch",
+  "remove_unused_variable",
   "remove_unused_while",
   "rename_variables"
 ]

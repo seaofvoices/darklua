@@ -35,14 +35,13 @@ impl Processor {
 impl NodeProcessor for Processor {
     fn process_statement(&mut self, statement: &mut Statement) {
         if let Statement::LocalFunction(local_function) = statement {
-            let name = local_function.get_name();
+            let name = local_function.get_name().to_owned();
 
-            if local_function.has_parameter(name) {
+            if local_function.has_parameter(&name) {
                 let mut assign = self.convert(local_function);
                 mem::swap(statement, &mut assign)
             } else {
-                let identifiers = vec![name.to_owned()];
-                let mut find_usage: FindVariables = identifiers.iter().collect();
+                let mut find_usage = FindVariables::new(&name);
                 DefaultVisitor::visit_block(local_function.mutate_block(), &mut find_usage);
 
                 if !find_usage.has_found_usage() {

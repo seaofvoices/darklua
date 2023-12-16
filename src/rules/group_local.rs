@@ -63,7 +63,7 @@ impl GroupLocalProcessor {
 
         let mut find_variables: FindVariables = first
             .iter_variables()
-            .map(|variable| variable.get_name())
+            .map(|variable| variable.get_name().as_str())
             .collect();
 
         next.iter_mut_values().all(|expression| {

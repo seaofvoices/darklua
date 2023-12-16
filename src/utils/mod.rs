@@ -1,10 +1,11 @@
+mod expressions_as_statement;
 mod serde_string_or_struct;
-
 #[cfg(not(target_arch = "wasm32"))]
 mod timer;
 #[cfg(target_arch = "wasm32")]
 mod wasm_timer;
 
+pub(crate) use expressions_as_statement::{expressions_as_expression, expressions_as_statement};
 pub(crate) use serde_string_or_struct::string_or_struct;
 #[cfg(not(target_arch = "wasm32"))]
 pub use timer::Timer;

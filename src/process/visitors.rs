@@ -13,13 +13,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
             .for_each(|statement| Self::visit_statement(statement, processor));
 
         if let Some(last_statement) = block.mutate_last_statement() {
-            processor.process_last_statement(last_statement);
-
-            if let LastStatement::Return(expressions) = last_statement {
-                expressions
-                    .iter_mut_expressions()
-                    .for_each(|expression| Self::visit_expression(expression, processor));
-            };
+            Self::visit_last_statement(last_statement, processor);
         };
     }
 
@@ -44,6 +38,16 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Statement::TypeDeclaration(statement) => {
                 Self::visit_type_declaration(statement, processor)
             }
+        };
+    }
+
+    fn visit_last_statement(last_statement: &mut LastStatement, processor: &mut T) {
+        processor.process_last_statement(last_statement);
+
+        if let LastStatement::Return(expressions) = last_statement {
+            expressions
+                .iter_mut_expressions()
+                .for_each(|expression| Self::visit_expression(expression, processor));
         };
     }
 
