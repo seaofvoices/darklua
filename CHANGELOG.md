@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* fix `append_text_comment` rule to support multiline comments ([#167](https://github.com/seaofvoices/darklua/pull/167))
+
 ## 0.12.0
 
 * fix relative parent paths when working with sourcemaps ([#164](https://github.com/seaofvoices/darklua/pull/164))
