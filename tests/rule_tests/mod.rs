@@ -19,7 +19,9 @@ macro_rules! test_rule_with_generator {
             // $crate::utils::setup_logger(log::LevelFilter::Trace);
 
             let expect_block = if $compare_with_tokens {
-                darklua_core::Parser::default().preserve_tokens().parse($output)
+                darklua_core::Parser::default()
+                    .preserve_tokens()
+                    .parse($output)
                     .expect("unable to parse expected code")
             } else {
                 $crate::utils::parse_input($output)
@@ -47,10 +49,7 @@ macro_rules! test_rule_with_generator {
             let lua_code = generator.into_string();
 
             if $compare_with_tokens {
-                pretty_assertions::assert_eq!(
-                    $output,
-                    lua_code,
-                );
+                pretty_assertions::assert_eq!($output, lua_code,);
             } else {
                 pretty_assertions::assert_eq!(
                     $crate::utils::parse_input(&lua_code),
