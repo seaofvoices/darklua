@@ -6,7 +6,7 @@ test_rule_with_tokens!(
         rule: 'append_text_comment',
         text: 'hello',
     }"#).unwrap(),
-    empty_function("do end") => "-- hello\ndo end",
+    empty_do("do end") => "-- hello\ndo end",
     local_assign("local a") => "-- hello\nlocal a",
     local_assign_with_value("local var = true") => "-- hello\nlocal var = true",
     assign_variable("var = true") => "-- hello\nvar = true",
@@ -27,6 +27,15 @@ test_rule_with_tokens!(
     continue_statement("continue") => "-- hello\ncontinue",
     empty_return_statement("return") => "-- hello\nreturn",
     return_one_value_statement("return 1") => "-- hello\nreturn 1",
+);
+
+test_rule_with_tokens!(
+    append_text_comment_multiline,
+    json5::from_str::<Box<dyn Rule>>(r#"{
+        rule: 'append_text_comment',
+        text: '1\n2',
+    }"#).unwrap(),
+    empty_do("do end") => "--[[\n1\n2\n]]\ndo end",
 );
 
 test_rule_without_effects!(
