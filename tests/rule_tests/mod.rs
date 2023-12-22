@@ -6,7 +6,7 @@ macro_rules! test_rule_with_generator {
         $resources:expr,
         $generator:expr,
         $parser:expr,
-        $parsing_tokens:expr,
+        $compare_with_tokens:expr,
         $test_file_name:literal,
         $name:ident,
         $input:literal,
@@ -18,7 +18,14 @@ macro_rules! test_rule_with_generator {
 
             // $crate::utils::setup_logger(log::LevelFilter::Trace);
 
-            let expect_block = $crate::utils::parse_input($output);
+            let expect_block = if $compare_with_tokens {
+                darklua_core::Parser::default()
+                    .preserve_tokens()
+                    .parse($output)
+                    .expect("unable to parse expected code")
+            } else {
+                $crate::utils::parse_input($output)
+            };
 
             let parser = $parser;
             let mut block = parser.parse($input).unwrap_or_else(|error| {
@@ -41,17 +48,17 @@ macro_rules! test_rule_with_generator {
             generator.write_block(&block);
             let lua_code = generator.into_string();
 
-            pretty_assertions::assert_eq!(
-                if $parsing_tokens {
-                    $crate::utils::parse_input(&lua_code)
-                } else {
-                    block
-                },
-                expect_block,
-                "\nexpected code:\n{}\nbut received:\n{}",
-                $output,
-                lua_code
-            );
+            if $compare_with_tokens {
+                pretty_assertions::assert_eq!($output, lua_code,);
+            } else {
+                pretty_assertions::assert_eq!(
+                    $crate::utils::parse_input(&lua_code),
+                    expect_block,
+                    "\nexpected code:\n{}\nbut received:\n{}",
+                    $output,
+                    lua_code
+                );
+            }
         }
     };
     ($rule:expr, $resources:expr, $generator:expr, $test_file_name:literal, $name:ident, $input:literal, $output:literal) => {
@@ -195,7 +202,7 @@ macro_rules! test_rule {
                 $resources,
                 |input| darklua_core::generator::TokenBasedLuaGenerator::new(input),
                 darklua_core::Parser::default().preserve_tokens(),
-                true,
+                false,
                 $test_file_name,
                 $name,
                 $input,

@@ -75,8 +75,9 @@ impl AppendTextComment {
                         };
 
                         format!(
-                            "--[{}[\ncontent\n{}",
+                            "--[{}[\n{}\n{}",
                             "=".repeat(equal_count),
+                            content,
                             close_comment
                         )
                     } else {
