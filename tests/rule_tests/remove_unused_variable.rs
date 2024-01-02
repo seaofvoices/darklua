@@ -86,16 +86,17 @@ test_rule_without_effects!(
     keep_if_variable_is_called_in_assignment(
         "local a = {} local function b() print() return a end b().a = true"
     ),
-    keep_if_variable_is_used_in_index_assignment(
-        "local a, b = {}, true a[b] = false return a"
-    ),
+    keep_if_variable_is_used_in_index_assignment("local a, b = {}, true a[b] = false return a"),
 );
 
 #[test]
 fn deserialize_from_object_notation() {
-    json5::from_str::<Box<dyn Rule>>(r#"{
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
         rule: 'remove_unused_variable',
-    }"#).unwrap();
+    }"#,
+    )
+    .unwrap();
 }
 
 #[test]

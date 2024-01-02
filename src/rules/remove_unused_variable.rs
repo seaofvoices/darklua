@@ -79,10 +79,15 @@ impl NodeProcessor for RemoveUnusedVariableProcessor {
         block.filter_mut_statements(|statement| {
             let filter = if let Some((find_next_index, usages)) = &next_usage {
                 let found = i == *find_next_index;
-                let assign = found.then_some(()).and_then(|()| match statement {
-                    Statement::LocalAssign(assign) => Some(assign),
-                    _ => None,
-                });
+                let assign = if found {
+                    if let Statement::LocalAssign(assign) = statement {
+                        Some(assign)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
 
                 let filter = if let Some(assign) = assign {
                     if usages.iter().all(|used| !used) {
@@ -101,19 +106,17 @@ impl NodeProcessor for RemoveUnusedVariableProcessor {
                     } else if usages.iter().any(|used| !used) {
                         let mut assignments: Vec<_> = assign
                             .iter_variables()
-                            .zip(usages.into_iter())
+                            .zip(usages)
                             .map(|identifier| vec![identifier])
                             .zip(assign.iter_values())
                             .collect();
 
                         let length = assignments.len();
-                        assignments.last_mut().map(|(last, value)| {
+                        if let Some((last, value)) = assignments.last_mut() {
                             if self.evaluator.can_return_multiple_values(value) {
-                                last.extend(
-                                    assign.iter_variables().zip(usages.into_iter()).skip(length),
-                                );
+                                last.extend(assign.iter_variables().zip(usages).skip(length));
                             }
-                        });
+                        }
 
                         let mut variables = Vec::new();
                         let mut values = Vec::new();

@@ -29,9 +29,8 @@ pub(crate) fn expressions_as_statement(expressions: Vec<Expression>) -> Statemen
     }
 
     if statements.len() == 1 {
-        match statements.pop().unwrap() {
-            Statement::Call(call) => return call.into(),
-            _ => {}
+        if let Statement::Call(call) = statements.pop().unwrap() {
+            return call.into();
         }
     }
 

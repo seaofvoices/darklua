@@ -44,7 +44,7 @@ impl<'a> FindUsage<'a> {
 impl<'a> NodeProcessor for FindUsage<'a> {
     fn process_variable_expression(&mut self, variable: &mut Identifier) {
         if !self.usage_found && variable.get_name() == self.variable {
-            self.usage_found = !self.is_identifier_used(&self.variable);
+            self.usage_found = !self.is_identifier_used(self.variable);
         }
     }
 }
