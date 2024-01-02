@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* add rule to remove unused variable (`remove_unused_variable`) ([#172](https://github.com/seaofvoices/darklua/pull/172))
+
 ## 0.12.1
 
 * fix `append_text_comment` rule to support multiline comments ([#167](https://github.com/seaofvoices/darklua/pull/167))
