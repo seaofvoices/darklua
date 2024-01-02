@@ -1,6 +1,6 @@
 use crate::nodes::*;
-use crate::process::processors::FindVariables;
-use crate::process::{DefaultVisitor, Evaluator, NodeProcessor, NodeVisitor};
+use crate::process::processors::FindUsage;
+use crate::process::{DefaultVisitor, Evaluator, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
 };
@@ -45,20 +45,20 @@ impl NodeProcessor for RemoveUnusedVariableProcessor {
                 let usages = identifiers
                     .into_iter()
                     .map(|identifier| {
-                        let mut find_usage = FindVariables::new(&identifier);
+                        let mut find_usage = FindUsage::new(&identifier);
 
                         block
                             .iter_mut_statements()
                             .skip(index + 1)
                             .any(|next_statement| {
-                                DefaultVisitor::visit_statement(next_statement, &mut find_usage);
+                                ScopeVisitor::visit_statement(next_statement, &mut find_usage);
                                 find_usage.has_found_usage()
                             })
                             || block
                                 .mutate_last_statement()
                                 .into_iter()
                                 .any(|last_statement| {
-                                    DefaultVisitor::visit_last_statement(
+                                    ScopeVisitor::visit_last_statement(
                                         last_statement,
                                         &mut find_usage,
                                     );

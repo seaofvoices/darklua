@@ -42,9 +42,15 @@ test_rule!(
     keep_variable_before_tuple_extract_and_remove_after_last_used(
         "local a, b, c, d = true, ... return a and c"
     ) => "local a, b, c = true, ... return a and c",
-    remove_variable_if_shado(
+    remove_variable_if_shadowed_variable_is_used(
         "local a = true do local a = 1 print(a) end"
     ) => "do local a = 1 print(a) end",
+    remove_variable_if_shadowed_self_variable_is_used(
+        "local self = true function class:method() return self:_method() end"
+    ) => "function class:method() return self:_method() end",
+    remove_variable_if_shadowed_undeclared_variable_is_used(
+        "local a = true do local a print(a) end"
+    ) => "do local a print(a) end",
     // remove variables that are used more than once, but never read
     // remove_if_only_assigned("local a = true a = false") => "",
     // remove_if_only_field_assigned("local a = {} a.foo = false") => "",

@@ -36,13 +36,7 @@ impl ScopeVisitor {
             .for_each(|statement| Self::visit_statement(statement, scope));
 
         if let Some(last_statement) = block.mutate_last_statement() {
-            scope.process_last_statement(last_statement);
-
-            if let LastStatement::Return(expressions) = last_statement {
-                expressions
-                    .iter_mut_expressions()
-                    .for_each(|expression| Self::visit_expression(expression, scope));
-            };
+            Self::visit_last_statement(last_statement, scope);
         };
     }
 }
@@ -61,6 +55,13 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
             .iter_mut_values()
             .for_each(|value| Self::visit_expression(value, scope));
 
+        for r#type in statement
+            .iter_mut_variables()
+            .filter_map(TypedIdentifier::mutate_type)
+        {
+            Self::visit_type(r#type, scope);
+        }
+
         statement.for_each_assignment(|variable, expression| {
             scope.insert_local(variable.mutate_name(), expression)
         });
@@ -68,6 +69,21 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
 
     fn visit_function_expression(function: &mut FunctionExpression, scope: &mut T) {
         scope.process_function_expression(function);
+
+        for r#type in function
+            .iter_mut_parameters()
+            .filter_map(TypedIdentifier::mutate_type)
+        {
+            Self::visit_type(r#type, scope);
+        }
+
+        if let Some(variadic_type) = function.mutate_variadic_type() {
+            Self::visit_function_variadic_type(variadic_type, scope);
+        }
+
+        if let Some(return_type) = function.mutate_return_type() {
+            Self::visit_function_return_type(return_type, scope);
+        }
 
         scope.push();
         function
@@ -83,7 +99,25 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
         scope.process_function_statement(statement);
         scope.process_variable_expression(statement.mutate_function_name().mutate_identifier());
 
+        for r#type in statement
+            .iter_mut_parameters()
+            .filter_map(TypedIdentifier::mutate_type)
+        {
+            Self::visit_type(r#type, scope);
+        }
+
+        if let Some(variadic_type) = statement.mutate_variadic_type() {
+            Self::visit_function_variadic_type(variadic_type, scope);
+        }
+
+        if let Some(return_type) = statement.mutate_return_type() {
+            Self::visit_function_return_type(return_type, scope);
+        }
+
         scope.push();
+        if statement.get_name().has_method() {
+            scope.insert(&mut String::from("self"));
+        }
         statement
             .mutate_parameters()
             .iter_mut()
@@ -97,6 +131,21 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
         scope.process_local_function_statement(statement);
 
         scope.insert_local_function(statement);
+
+        for r#type in statement
+            .iter_mut_parameters()
+            .filter_map(TypedIdentifier::mutate_type)
+        {
+            Self::visit_type(r#type, scope);
+        }
+
+        if let Some(variadic_type) = statement.mutate_variadic_type() {
+            Self::visit_function_variadic_type(variadic_type, scope);
+        }
+
+        if let Some(return_type) = statement.mutate_return_type() {
+            Self::visit_function_return_type(return_type, scope);
+        }
 
         scope.push();
         statement
@@ -119,6 +168,13 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
             .iter_mut_identifiers()
             .for_each(|identifier| scope.insert(identifier.mutate_name()));
 
+        for r#type in statement
+            .iter_mut_identifiers()
+            .filter_map(TypedIdentifier::mutate_type)
+        {
+            Self::visit_type(r#type, scope);
+        }
+
         Self::visit_block(statement.mutate_block(), scope);
     }
 
@@ -131,6 +187,10 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
         if let Some(step) = statement.mutate_step() {
             Self::visit_expression(step, scope);
         };
+
+        if let Some(r#type) = statement.mutate_identifier().mutate_type() {
+            Self::visit_type(r#type, scope);
+        }
 
         scope.push();
         scope.insert(statement.mutate_identifier().mutate_name());

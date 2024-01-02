@@ -4,4 +4,4 @@ mod find_identifier;
 mod find_usage;
 
 pub use find_identifier::*;
-pub use find_usage::*;
+pub(crate) use find_usage::*;

@@ -115,6 +115,11 @@ impl FunctionName {
     }
 
     #[inline]
+    pub fn has_method(&self) -> bool {
+        self.method.is_some()
+    }
+
+    #[inline]
     pub fn get_name(&self) -> &Identifier {
         &self.name
     }
