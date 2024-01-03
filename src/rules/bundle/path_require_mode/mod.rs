@@ -48,7 +48,7 @@ struct RequirePathProcessor<'a, 'b, 'resources, 'code> {
 
 impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> {
     fn new<'context>(
-        context: &'context Context<'b, 'resources, 'code>,
+        context: &'context Context<'b, 'code>,
         options: &'a BundleOptions,
         path_require_mode: &'b PathRequireMode,
     ) -> Self
@@ -188,7 +188,7 @@ impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> 
     fn require_resource(&mut self, path: impl AsRef<Path>) -> DarkluaResult<RequiredResource> {
         let path = path.as_ref();
         log::trace!("look for resource `{}`", path.display());
-        let content = self.resources.get(path).map_err(DarkluaError::from)?;
+        let content = self.resources.get_blocking(path).map_err(DarkluaError::from)?;
 
         match path.extension() {
             Some(extension) => match extension.to_string_lossy().as_ref() {

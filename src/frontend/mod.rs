@@ -1,3 +1,4 @@
+mod async_worker;
 mod configuration;
 mod error;
 mod options;
@@ -20,21 +21,21 @@ use worker::Worker;
 
 use crate::utils::normalize_path;
 
-pub fn process(resources: &Resources, options: Options) -> ProcessResult {
-    match private_process(resources, options) {
+pub async fn process(resources: &Resources, options: Options) -> ProcessResult {
+    match private_process(resources, options).await {
         Ok(result) | Err(result) => result,
     }
 }
 
-fn private_process(
+async fn private_process(
     resources: &Resources,
     options: Options,
 ) -> Result<ProcessResult, ProcessResult> {
     let worker = Worker::new(resources);
 
     if let Some(output) = options.output().map(Path::to_path_buf) {
-        if resources.is_file(options.input())? {
-            if resources.is_directory(&output)? {
+        if resources.is_file(options.input()).await? {
+            if resources.is_directory(&output).await? {
                 let file_name = options.input().file_name().ok_or_else(|| {
                     DarkluaError::custom(format!(
                         "unable to extract file name from `{}`",
@@ -42,12 +43,16 @@ fn private_process(
                     ))
                 })?;
 
-                worker.process(
-                    once_ok(WorkItem::new(options.input(), output.join(file_name))),
-                    options,
-                )
-            } else if resources.is_file(&output)? || output.extension().is_some() {
-                worker.process(once_ok(WorkItem::new(options.input(), output)), options)
+                worker
+                    .process(
+                        once_ok(WorkItem::new(options.input(), output.join(file_name))),
+                        options,
+                    )
+                    .await
+            } else if resources.is_file(&output).await? || output.extension().is_some() {
+                worker
+                    .process(once_ok(WorkItem::new(options.input(), output)), options)
+                    .await
             } else {
                 let file_name = options.input().file_name().ok_or_else(|| {
                     DarkluaError::custom(format!(
@@ -56,40 +61,46 @@ fn private_process(
                     ))
                 })?;
 
-                worker.process(
-                    once_ok(WorkItem::new(options.input(), output.join(file_name))),
-                    options,
-                )
+                worker
+                    .process(
+                        once_ok(WorkItem::new(options.input(), output.join(file_name))),
+                        options,
+                    )
+                    .await
             }
         } else {
             let input = options.input().to_path_buf();
 
-            worker.process(
-                resources.collect_work(&input).map(|source| {
-                    let source = normalize_path(source);
-                    source
-                        .strip_prefix(&input)
-                        .map(|relative| WorkItem::new(&source, output.join(relative)))
-                        .map_err(|err| {
-                            DarkluaError::custom(format!(
-                                "unable to remove path prefix `{}` from `{}`: {}",
-                                input.display(),
-                                source.display(),
-                                err
-                            ))
-                        })
-                }),
-                options,
-            )
+            worker
+                .process(
+                    resources.collect_work(&input).map(|source| {
+                        let source = normalize_path(source);
+                        source
+                            .strip_prefix(&input)
+                            .map(|relative| WorkItem::new(&source, output.join(relative)))
+                            .map_err(|err| {
+                                DarkluaError::custom(format!(
+                                    "unable to remove path prefix `{}` from `{}`: {}",
+                                    input.display(),
+                                    source.display(),
+                                    err
+                                ))
+                            })
+                    }),
+                    options,
+                )
+                .await
         }
     } else {
         let input = options.input().to_path_buf();
-        worker.process(
-            resources
-                .collect_work(input)
-                .map(|source| Ok(WorkItem::new_in_place(source))),
-            options,
-        )
+        worker
+            .process(
+                resources
+                    .collect_work(input)
+                    .map(|source| Ok(WorkItem::new_in_place(source))),
+                options,
+            )
+            .await
     }
 }
 

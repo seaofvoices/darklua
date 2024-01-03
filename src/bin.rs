@@ -10,14 +10,15 @@ use env_logger::{
 };
 use log::Level;
 
-fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     let darklua = Darklua::parse();
 
     let filter = darklua.get_log_level_filter();
 
     formatted_logger().filter_module("darklua", filter).init();
 
-    match darklua.run() {
+    match darklua.run().await {
         Ok(()) => {}
         Err(err) => {
             process::exit(err.exit_code());

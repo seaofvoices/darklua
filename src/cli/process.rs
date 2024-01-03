@@ -57,10 +57,13 @@ impl FromStr for LuaFormat {
     }
 }
 
-fn process(resources: Resources, process_options: darklua_core::Options) -> Result<(), CliError> {
+async fn process(
+    resources: Resources,
+    process_options: darklua_core::Options,
+) -> Result<(), CliError> {
     let process_start_time = Instant::now();
 
-    let result = darklua_core::process(&resources, process_options);
+    let result = darklua_core::process(&resources, process_options).await;
 
     let process_duration = durationfmt::to_string(process_start_time.elapsed());
 
@@ -106,7 +109,7 @@ fn process(resources: Resources, process_options: darklua_core::Options) -> Resu
 }
 
 impl Options {
-    fn process(&self) -> Result<(), CliError> {
+    async fn process(&self) -> Result<(), CliError> {
         let resources = Resources::from_file_system();
 
         let mut process_options =
@@ -124,18 +127,18 @@ impl Options {
             })
         }
 
-        process(resources, process_options)
+        process(resources, process_options).await
     }
 }
 
 const DEFAULT_CONFIG_PATHS: [&str; 2] = [".darklua.json", ".darklua.json5"];
 
-pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
+pub async fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
     log::debug!("running `process`: {:?}", options);
 
     if cfg!(not(target_arch = "wasm32")) && options.watch {
         // run process once initially
-        if let Err(_cli_err) = options.process() {
+        if let Err(_cli_err) = options.process().await {
             // ignore error darklua need to setup watch mode
         }
 
@@ -151,7 +154,10 @@ pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
                             .any(|event| matches!(event.kind, DebouncedEventKind::Any))
                         {
                             log::debug!("changes detected, re-running process");
-                            if let Err(_cli_err) = watcher_options.process() {
+
+                            if let Err(_cli_err) =
+                                futures::executor::block_on(watcher_options.process())
+                            {
                                 // ignore error since it already has been printed
                             }
                         }
@@ -232,6 +238,6 @@ pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
 
         Ok(())
     } else {
-        options.process()
+        options.process().await
     }
 }

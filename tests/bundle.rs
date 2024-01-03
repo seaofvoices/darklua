@@ -11,31 +11,32 @@ const DARKLUA_BUNDLE_ONLY_READABLE_CONFIG: &str =
 const DARKLUA_BUNDLE_ONLY_RETAIN_LINES_CONFIG: &str =
     "{ \"rules\": [], \"generator\": \"retain_lines\", \"bundle\": { \"require_mode\": \"path\" } }";
 
-fn process_main_unchanged(resources: &Resources, main_code: &'static str) {
-    resources.write("src/main.lua", main_code).unwrap();
+async fn process_main_unchanged(resources: &Resources, main_code: &'static str) {
+    resources.write("src/main.lua", main_code).await.unwrap();
     process(
         resources,
         Options::new("src/main.lua").with_output("out.lua"),
     )
+    .await
     .result()
     .unwrap();
 
-    let main = resources.get("out.lua").unwrap();
+    let main = resources.get("out.lua").await.unwrap();
 
     pretty_assertions::assert_eq!(main, main_code);
 }
 
-#[test]
-fn skip_require_call_without_a_string() {
+#[tokio::test]
+async fn skip_require_call_without_a_string() {
     let resources = memory_resources!(
         ".darklua.json" => DARKLUA_BUNDLE_ONLY_RETAIN_LINES_CONFIG,
     );
 
-    process_main_unchanged(&resources, "local library = require( {} )");
+    process_main_unchanged(&resources, "local library = require( {} )").await;
 }
 
-#[test]
-fn skip_require_call_with_method() {
+#[tokio::test]
+async fn skip_require_call_with_method() {
     let resources = memory_resources!(
         ".darklua.json" => DARKLUA_BUNDLE_ONLY_RETAIN_LINES_CONFIG,
     );
@@ -43,11 +44,12 @@ fn skip_require_call_with_method() {
     process_main_unchanged(
         &resources,
         "local library = require:method('./library.luau')",
-    );
+    )
+    .await;
 }
 
-#[test]
-fn skip_require_call_with_2_arguments() {
+#[tokio::test]
+async fn skip_require_call_with_2_arguments() {
     let resources = memory_resources!(
         ".darklua.json" => DARKLUA_BUNDLE_ONLY_RETAIN_LINES_CONFIG,
     );
@@ -55,7 +57,8 @@ fn skip_require_call_with_2_arguments() {
     process_main_unchanged(
         &resources,
         "local library = require('./example', 'argument')",
-    );
+    )
+    .await;
 }
 
 mod without_rules {
@@ -70,24 +73,26 @@ mod without_rules {
 
     use super::*;
 
-    fn process_main(resources: &Resources, snapshot_name: &'static str) {
+    async fn process_main(resources: &Resources, snapshot_name: &'static str) {
         process(
             resources,
             Options::new("src/main.lua").with_output("out.lua"),
         )
+        .await
         .result()
         .unwrap();
 
-        let main = resources.get("out.lua").unwrap();
+        let main = resources.get("out.lua").await.unwrap();
 
         insta::assert_snapshot!(format!("bundle_without_rules_{}", snapshot_name), main);
     }
 
-    fn process_main_with_errors(resources: &Resources, snapshot_name: &str) {
+    async fn process_main_with_errors(resources: &Resources, snapshot_name: &str) {
         let errors = process(
             resources,
             Options::new("src/main.lua").with_output("out.lua"),
         )
+        .await
         .result()
         .unwrap_err();
 
@@ -103,142 +108,153 @@ mod without_rules {
     mod module_locations {
         use super::*;
 
-        fn process_main_require_value(resources: Resources) {
+        async fn process_main_require_value(resources: Resources) {
             // we can re-use the same snapshot because the output file should
             // resolve to the same code
-            process_main(&resources, "require_lua_file");
+            process_main(&resources, "require_lua_file").await;
         }
 
-        #[test]
-        fn require_lua_file() {
+        #[tokio::test]
+        async fn require_lua_file() {
             process_main_require_value(memory_resources!(
                 "src/value.lua" => "return true",
                 "src/main.lua" => "local value = require('./value.lua')",
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
-            ));
+            ))
+            .await;
         }
 
-        #[test]
-        fn require_lua_file_with_string_call() {
+        #[tokio::test]
+        async fn require_lua_file_with_string_call() {
             process_main_require_value(memory_resources!(
                 "src/value.lua" => "return true",
                 "src/main.lua" => "local value = require './value.lua'",
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
-            ));
+            ))
+            .await;
         }
 
-        #[test]
-        fn require_lua_file_in_sibling_nested_file() {
+        #[tokio::test]
+        async fn require_lua_file_in_sibling_nested_file() {
             process_main_require_value(memory_resources!(
                 "src/constants/value.lua" => "return true",
                 "src/main.lua" => "local value = require('./constants/value.lua')",
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
-            ));
+            ))
+            .await;
         }
 
-        #[test]
-        fn require_lua_file_in_parent_directory() {
+        #[tokio::test]
+        async fn require_lua_file_in_parent_directory() {
             process_main_require_value(memory_resources!(
                 "value.lua" => "return true",
                 "src/main.lua" => "local value = require('../value.lua')",
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
-            ));
+            ))
+            .await;
         }
-        #[test]
-        fn require_lua_file_without_extension() {
+        #[tokio::test]
+        async fn require_lua_file_without_extension() {
             process_main_require_value(memory_resources!(
                 "src/value.lua" => "return true",
                 "src/main.lua" => "local value = require('./value')",
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
-            ));
+            ))
+            .await;
         }
 
-        #[test]
-        fn require_lua_file_in_parent_directory_without_extension() {
+        #[tokio::test]
+        async fn require_lua_file_in_parent_directory_without_extension() {
             process_main_require_value(memory_resources!(
                 "value.lua" => "return true",
                 "src/main.lua" => "local value = require('../value')",
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
-            ));
+            ))
+            .await;
         }
 
-        #[test]
-        fn require_luau_file_in_parent_directory_without_extension() {
+        #[tokio::test]
+        async fn require_luau_file_in_parent_directory_without_extension() {
             process_main_require_value(memory_resources!(
                 "value.luau" => "return true",
                 "src/main.lua" => "local value = require('../value')",
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
-            ));
+            ))
+            .await;
         }
 
-        #[test]
-        fn require_luau_file_without_extension() {
+        #[tokio::test]
+        async fn require_luau_file_without_extension() {
             process_main_require_value(memory_resources!(
                 "src/value.luau" => "return true",
                 "src/main.lua" => "local value = require('./value')",
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
-            ));
+            ))
+            .await;
         }
 
-        #[test]
-        fn require_directory_with_init_lua_file() {
+        #[tokio::test]
+        async fn require_directory_with_init_lua_file() {
             process_main_require_value(memory_resources!(
                 "src/value/init.lua" => "return true",
                 "src/main.lua" => "local value = require('./value')",
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
-            ));
+            ))
+            .await;
         }
 
-        #[test]
-        fn require_directory_with_init_luau_file() {
+        #[tokio::test]
+        async fn require_directory_with_init_luau_file() {
             process_main_require_value(memory_resources!(
                 "src/value/init.luau" => "return true",
                 "src/main.lua" => "local value = require('./value')",
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
-            ));
+            ))
+            .await;
         }
 
-        #[test]
-        fn require_in_parent_directory() {
+        #[tokio::test]
+        async fn require_in_parent_directory() {
             process_main_require_value(memory_resources!(
                 "value.lua" => "return true",
                 "src/main.lua" => "local value = require('../value.lua')",
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
-            ));
+            ))
+            .await;
         }
 
-        #[test]
-        fn require_in_packages_directory() {
+        #[tokio::test]
+        async fn require_in_packages_directory() {
             process_main_require_value(memory_resources!(
                 "packages/value.lua" => "return true",
                 "src/main.lua" => "local value = require('Packages/value.lua')",
                 ".darklua.json" => "{ \"rules\": [], \"generator\": \"readable\", \"bundle\": { \"require_mode\": { \"name\": \"path\", \"sources\": { \"Packages\": \"./packages\" } } } }",
-            ));
+            )).await;
         }
 
-        #[test]
-        fn require_directory_with_custom_init_file() {
+        #[tokio::test]
+        async fn require_directory_with_custom_init_file() {
             process_main_require_value(memory_resources!(
                 "src/value/__init__.lua" => "return true",
                 "src/main.lua" => "local value = require('./value')",
                 ".darklua.json" => "{ \"rules\": [], \"generator\": \"readable\", \"bundle\": { \"require_mode\": { \"name\": \"path\", \"module_folder_name\": \"__init__.lua\" } } }",
-            ));
+            )).await;
         }
     }
 
-    #[test]
-    fn require_lua_file_after_declaration() {
+    #[tokio::test]
+    async fn require_lua_file_after_declaration() {
         let resources = memory_resources!(
             "src/value.lua" => "return true",
             "src/main.lua" => "local const = 1\nlocal value = require('./value.lua')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main(&resources, "require_lua_file_after_declaration");
+        process_main(&resources, "require_lua_file_after_declaration").await;
     }
 
-    #[test]
-    fn require_lua_file_nested() {
+    #[tokio::test]
+    async fn require_lua_file_nested() {
         let resources = memory_resources!(
             "src/constant.lua" => "return 2",
             "src/value.lua" => "local constant = require('./constant.lua')\nreturn constant + constant",
@@ -246,11 +262,11 @@ mod without_rules {
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main(&resources, "require_lua_file_nested");
+        process_main(&resources, "require_lua_file_nested").await;
     }
 
-    #[test]
-    fn require_lua_file_twice() {
+    #[tokio::test]
+    async fn require_lua_file_twice() {
         let resources = memory_resources!(
             "src/constant.lua" => "print('load constant module') return 2",
             "src/value_a.lua" => "print('load value a')\nlocal constant_a = require('./constant.lua')\nreturn constant_a",
@@ -263,11 +279,11 @@ mod without_rules {
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main(&resources, "require_lua_file_twice");
+        process_main(&resources, "require_lua_file_twice").await;
     }
 
-    #[test]
-    fn require_lua_file_twice_with_different_paths() {
+    #[tokio::test]
+    async fn require_lua_file_twice_with_different_paths() {
         let resources = memory_resources!(
             "src/constant.lua" => "print('load constant module') return 2",
             "src/a/value_a.lua" => "print('load value a')\nlocal constant_a = require('../constant.lua')\nreturn constant_a",
@@ -280,77 +296,77 @@ mod without_rules {
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main(&resources, "require_lua_file_twice_with_different_paths");
+        process_main(&resources, "require_lua_file_twice_with_different_paths").await;
     }
 
-    #[test]
-    fn require_lua_file_with_field_expression() {
+    #[tokio::test]
+    async fn require_lua_file_with_field_expression() {
         let resources = memory_resources!(
             "src/value.lua" => "return { value = 'oof' }",
             "src/main.lua" => "local value = require('./value.lua').value",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main(&resources, "require_lua_file_with_field_expression");
+        process_main(&resources, "require_lua_file_with_field_expression").await;
     }
 
-    #[test]
-    fn require_lua_file_with_statement() {
+    #[tokio::test]
+    async fn require_lua_file_with_statement() {
         let resources = memory_resources!(
             "src/run.lua" => "print('run')\nreturn nil",
             "src/main.lua" => "require('./run.lua')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main(&resources, "require_lua_file_with_statement");
+        process_main(&resources, "require_lua_file_with_statement").await;
     }
 
-    #[test]
-    fn require_json_file_with_object() {
+    #[tokio::test]
+    async fn require_json_file_with_object() {
         let resources = memory_resources!(
             "src/value.json" => "{ \"value\": true }",
             "src/main.lua" => "local value = require('./value.json')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main(&resources, "require_json_file_with_object");
+        process_main(&resources, "require_json_file_with_object").await;
     }
 
-    #[test]
-    fn require_json5_file_with_object() {
+    #[tokio::test]
+    async fn require_json5_file_with_object() {
         let resources = memory_resources!(
             "src/value.json5" => "{ value: true }",
             "src/main.lua" => "local value = require('./value.json5')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main(&resources, "require_json_file_with_object");
+        process_main(&resources, "require_json_file_with_object").await;
     }
 
-    #[test]
-    fn require_json5_file_as_json_with_object() {
+    #[tokio::test]
+    async fn require_json5_file_as_json_with_object() {
         let resources = memory_resources!(
             "src/value.json" => "{ value: true }",
             "src/main.lua" => "local value = require('./value.json')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main(&resources, "require_json_file_with_object");
+        process_main(&resources, "require_json_file_with_object").await;
     }
 
-    #[test]
-    fn require_toml_with_object() {
+    #[tokio::test]
+    async fn require_toml_with_object() {
         let resources = memory_resources!(
             "src/value.toml" => "name = 'darklua'\nvalue = 10",
             "src/main.lua" => "local value = require('./value.toml')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main(&resources, "require_toml_with_object");
+        process_main(&resources, "require_toml_with_object").await;
     }
 
-    #[test]
-    fn require_yaml_with_array() {
+    #[tokio::test]
+    async fn require_yaml_with_array() {
         let resources = memory_resources!(
             "src/value.yaml" => r#"
 - 0
@@ -360,11 +376,11 @@ mod without_rules {
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main(&resources, "require_yaml_with_array");
+        process_main(&resources, "require_yaml_with_array").await;
     }
 
-    #[test]
-    fn require_yml_with_object() {
+    #[tokio::test]
+    async fn require_yml_with_object() {
         let resources = memory_resources!(
             "src/value.yml" => r#"
 name: darklua
@@ -378,115 +394,115 @@ data:
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main(&resources, "require_yml_with_object");
+        process_main(&resources, "require_yml_with_object").await;
     }
 
-    #[test]
-    fn require_txt_file() {
+    #[tokio::test]
+    async fn require_txt_file() {
         let resources = memory_resources!(
             "src/value.txt" => "Hello from txt file!\n\nThis is written on another line.\n",
             "src/main.lua" => "local value = require('./value.txt')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main(&resources, "require_txt_file");
+        process_main(&resources, "require_txt_file").await;
     }
 
-    #[test]
-    fn require_value_and_override_require_function() {
+    #[tokio::test]
+    async fn require_value_and_override_require_function() {
         let resources = memory_resources!(
             "src/value.lua" => "return 1",
             "src/main.lua" => "local value = require('./value') local require = function()end local v = require('v')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main(&resources, "override_require");
+        process_main(&resources, "override_require").await;
     }
 
-    #[test]
-    fn require_unknown_module() {
+    #[tokio::test]
+    async fn require_unknown_module() {
         let resources = memory_resources!(
             "src/main.lua" => "local library = require('@lune/library')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main_with_errors(&resources, "require_unknown_module");
+        process_main_with_errors(&resources, "require_unknown_module").await;
     }
 
-    #[test]
-    fn require_unknown_relative_file() {
+    #[tokio::test]
+    async fn require_unknown_relative_file() {
         let resources = memory_resources!(
             "src/main.lua" => "local library = require('./library')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main_with_errors(&resources, "require_unknown_relative_file");
+        process_main_with_errors(&resources, "require_unknown_relative_file").await;
     }
 
-    #[test]
-    fn require_unknown_relative_file_with_extension() {
+    #[tokio::test]
+    async fn require_unknown_relative_file_with_extension() {
         let resources = memory_resources!(
             "src/main.lua" => "local library = require('./library.luau')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main_with_errors(&resources, "require_unknown_relative_file_with_extension");
+        process_main_with_errors(&resources, "require_unknown_relative_file_with_extension").await;
     }
 
-    #[test]
-    fn require_empty_path_errors() {
+    #[tokio::test]
+    async fn require_empty_path_errors() {
         let resources = memory_resources!(
             "src/main.lua" => "local library = require('')",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main_with_errors(&resources, "require_empty_path_errors");
+        process_main_with_errors(&resources, "require_empty_path_errors").await;
     }
 
-    #[test]
-    fn require_lua_file_with_parser_error() {
+    #[tokio::test]
+    async fn require_lua_file_with_parser_error() {
         let resources = memory_resources!(
             "src/main.lua" => "local library = require('./value.lua')",
             "src/value.lua" => "returnone",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main_with_errors(&resources, "require_lua_file_with_parser_error");
+        process_main_with_errors(&resources, "require_lua_file_with_parser_error").await;
     }
 
-    #[test]
-    fn require_lua_file_with_unsupported_extension() {
+    #[tokio::test]
+    async fn require_lua_file_with_unsupported_extension() {
         let resources = memory_resources!(
             "src/main.lua" => "local library = require('./value.error')",
             "src/value.error" => "",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main_with_errors(&resources, "require_lua_file_with_unsupported_extension");
+        process_main_with_errors(&resources, "require_lua_file_with_unsupported_extension").await;
     }
 
-    #[test]
-    fn require_own_lua_file() {
+    #[tokio::test]
+    async fn require_own_lua_file() {
         let resources = memory_resources!(
             "src/main.lua" => "local library = require('./main.lua') return nil",
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
         );
 
-        process_main_with_errors(&resources, "require_own_lua_file");
+        process_main_with_errors(&resources, "require_own_lua_file").await;
     }
 
-    #[test]
-    fn require_skip_unknown_module() {
+    #[tokio::test]
+    async fn require_skip_unknown_module() {
         let resources = memory_resources!(
             "src/main.lua" => "local library = require('@lune/library')",
             ".darklua.json" => "{ \"rules\": [], \"bundle\": { \"require_mode\": \"path\", \"excludes\": [\"@lune/**\"] } }",
         );
 
-        process_main(&resources, "require_skip_unknown_module");
+        process_main(&resources, "require_skip_unknown_module").await;
     }
 
-    #[test]
-    fn require_small_bundle_case() {
+    #[tokio::test]
+    async fn require_small_bundle_case() {
         let resources = memory_resources!(
             "src/initialize.lua" => include_str!("./test_cases/small_bundle/initialize.lua"),
             "src/value.lua" => include_str!("./test_cases/small_bundle/value.lua"),
@@ -495,12 +511,12 @@ data:
             ".darklua.json" => DARKLUA_BUNDLE_ONLY_RETAIN_LINES_CONFIG,
         );
 
-        process_main(&resources, "require_small_bundle_case");
+        process_main(&resources, "require_small_bundle_case").await;
     }
 
-    #[test]
-    fn fuzz_bundle() {
-        utils::run_for_minimum_time(Duration::from_millis(250), || {
+    #[tokio::test]
+    async fn fuzz_bundle() {
+        utils::async_run_for_minimum_time(Duration::from_millis(250), || async {
             let fuzz_budget = FuzzBudget::new(20, 40).with_types(25);
             let mut block = AstFuzzer::new(fuzz_budget).fuzz_block();
             block.set_last_statement(ReturnStatement::one(Expression::nil()));
@@ -518,37 +534,38 @@ data:
             );
             let resource_ref = &resources;
 
-            let result = std::panic::catch_unwind(|| {
-                process(
-                    resource_ref,
-                    Options::new("src/main.lua").with_output("out.lua"),
-                )
-                .result()
-                .unwrap();
-            });
+            let result = process(
+                resource_ref,
+                Options::new("src/main.lua").with_output("out.lua"),
+            )
+            .await
+            .result();
 
-            result
-                .map_err(|err| {
+            match result {
+                Ok(_) => {}
+                Err(err) => {
                     std::fs::write("fuzz_bundle_failure.repro.lua", block_file).unwrap();
 
-                    let out = resources.get("out.lua").unwrap();
+                    let out = resources.get("out.lua").await.unwrap();
                     std::fs::write("fuzz_bundle_failure.lua", out).unwrap();
 
-                    err
-                })
-                .unwrap();
+                    panic!("{:#?}", err);
+                }
+            }
         })
+        .await
     }
 
     mod cyclic_requires {
         use super::*;
 
-        fn process_main_with_error(resources: &Resources, snapshot_name: &str) {
-            process_main_with_errors(resources, &format!("cyclic_requires__{}", snapshot_name));
+        async fn process_main_with_error(resources: &Resources, snapshot_name: &str) {
+            process_main_with_errors(resources, &format!("cyclic_requires__{}", snapshot_name))
+                .await;
         }
 
-        #[test]
-        fn simple_direct_cycle() {
+        #[tokio::test]
+        async fn simple_direct_cycle() {
             let resources = memory_resources!(
                 "src/value1.lua" => "return require('./value2')",
                 "src/value2.lua" => "return require('./value1')",
@@ -556,11 +573,11 @@ data:
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
             );
 
-            process_main_with_error(&resources, "simple_direct_cycle");
+            process_main_with_error(&resources, "simple_direct_cycle").await;
         }
 
-        #[test]
-        fn simple_direct_cycle_in_required_file() {
+        #[tokio::test]
+        async fn simple_direct_cycle_in_required_file() {
             let resources = memory_resources!(
                 "src/value1.lua" => "return require('./value2')",
                 "src/value2.lua" => "return require('./value1')",
@@ -569,11 +586,11 @@ data:
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
             );
 
-            process_main_with_error(&resources, "simple_direct_cycle_in_required_file");
+            process_main_with_error(&resources, "simple_direct_cycle_in_required_file").await;
         }
 
-        #[test]
-        fn simple_transitive_cycle() {
+        #[tokio::test]
+        async fn simple_transitive_cycle() {
             let resources = memory_resources!(
                 "src/value1.lua" => "return require('./constant')",
                 "src/value2.lua" => "return require('./value1')",
@@ -582,11 +599,11 @@ data:
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
             );
 
-            process_main_with_error(&resources, "simple_transitive_cycle");
+            process_main_with_error(&resources, "simple_transitive_cycle").await;
         }
 
-        #[test]
-        fn direct_cycle_in_required_file_with_ok_require() {
+        #[tokio::test]
+        async fn direct_cycle_in_required_file_with_ok_require() {
             let resources = memory_resources!(
                 "src/value1.lua" => "return require('./value2')",
                 "src/value2.lua" => "return require('./value1')",
@@ -595,11 +612,12 @@ data:
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
             );
 
-            process_main_with_error(&resources, "direct_cycle_in_required_file_with_ok_require");
+            process_main_with_error(&resources, "direct_cycle_in_required_file_with_ok_require")
+                .await;
         }
 
-        #[test]
-        fn two_different_direct_cycles() {
+        #[tokio::test]
+        async fn two_different_direct_cycles() {
             let resources = memory_resources!(
                 "src/value1.lua" => "return require('./value2')",
                 "src/value2.lua" => "return require('./value1')",
@@ -609,7 +627,7 @@ data:
                 ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
             );
 
-            process_main_with_error(&resources, "two_different_direct_cycles");
+            process_main_with_error(&resources, "two_different_direct_cycles").await;
         }
     }
 }

@@ -12,8 +12,8 @@ macro_rules! test_rule_with_generator {
         $input:literal,
         $output:literal
     ) => {
-        #[test]
-        fn $name() {
+        #[tokio::test]
+        async fn $name() {
             use darklua_core::generator::LuaGenerator;
 
             // $crate::utils::setup_logger(log::LevelFilter::Trace);
@@ -33,7 +33,7 @@ macro_rules! test_rule_with_generator {
             });
 
             let resources = $resources;
-            resources.write($test_file_name, $input).unwrap();
+            resources.write($test_file_name, $input).await.unwrap();
 
             let context =
                 darklua_core::rules::ContextBuilder::new($test_file_name, &resources, $input)

@@ -138,22 +138,23 @@ test_rule!(
         => "local module = require(script.Parent['a module'])",
 );
 
-fn process_file(resources: &Resources, file_name: &str) -> String {
+async fn process_file(resources: &Resources, file_name: &str) -> String {
     darklua_core::process(resources, Options::new(file_name))
+        .await
         .result()
         .unwrap();
 
-    resources.get(file_name).unwrap()
+    resources.get(file_name).await.unwrap()
 }
 
-fn expect_file_process(resources: &Resources, file_name: &str, expect_content: &str) {
-    pretty_assertions::assert_eq!(process_file(resources, file_name), expect_content);
+async fn expect_file_process(resources: &Resources, file_name: &str, expect_content: &str) {
+    pretty_assertions::assert_eq!(process_file(resources, file_name).await, expect_content);
 }
 
-fn snapshot_file_process(resources: &Resources, file_name: &str, snapshot_name: &str) {
+async fn snapshot_file_process(resources: &Resources, file_name: &str, snapshot_name: &str) {
     insta::assert_snapshot!(
         snapshot_name,
-        process_file(resources, file_name),
+        process_file(resources, file_name).await,
         &format!("process `tests/test_cases/sourcemap/{}`", file_name)
     );
 }
@@ -161,8 +162,8 @@ fn snapshot_file_process(resources: &Resources, file_name: &str, snapshot_name: 
 const CONVERT_PATH_TO_ROBLOX_DEFAULT_CONFIG: &str =
     "{ rules: [{ rule: 'convert_require', current: 'path', target: 'roblox' }], generator: \"retain_lines\" }";
 
-#[test]
-fn convert_sibling_module_from_init_module() {
+#[tokio::test]
+async fn convert_sibling_module_from_init_module() {
     let resources = memory_resources!(
         "src/init.lua" => "local value = require('./value.lua')",
         "src/value.lua" => "return nil",
@@ -172,11 +173,12 @@ fn convert_sibling_module_from_init_module() {
         &resources,
         "src/init.lua",
         "local value = require(script:FindFirstChild('value'))",
-    );
+    )
+    .await;
 }
 
-#[test]
-fn convert_sibling_init_module_from_init_module() {
+#[tokio::test]
+async fn convert_sibling_init_module_from_init_module() {
     let resources = memory_resources!(
         "src/init.lua" => "local value = require('./folder/init.lua')",
         "src/folder/init.lua" => "return nil",
@@ -186,11 +188,12 @@ fn convert_sibling_init_module_from_init_module() {
         &resources,
         "src/init.lua",
         "local value = require(script:FindFirstChild('folder'))",
-    );
+    )
+    .await;
 }
 
-#[test]
-fn convert_parent_init_module_from_init_module() {
+#[tokio::test]
+async fn convert_parent_init_module_from_init_module() {
     let resources = memory_resources!(
         "src/module/init.lua" => "local value = require('../init.lua')",
         "src/init.lua" => "return nil",
@@ -200,7 +203,8 @@ fn convert_parent_init_module_from_init_module() {
         &resources,
         "src/module/init.lua",
         "local value = require(script.Parent)",
-    );
+    )
+    .await;
 }
 
 mod sourcemap {
@@ -229,7 +233,7 @@ mod sourcemap {
         )
     }
 
-    fn get_resources_for_sourcemap(datamodel_case: bool, sourcemap_path: &str) -> Resources {
+    async fn get_resources_for_sourcemap(datamodel_case: bool, sourcemap_path: &str) -> Resources {
         memory_resources!(
             "src/init.lua" => include_str!("../test_cases/sourcemap/src/init.lua"),
             "src/a.lua" => include_str!("../test_cases/sourcemap/src/a.lua"),
@@ -254,36 +258,39 @@ mod sourcemap {
         )
     }
 
-    #[test]
-    fn invalid_sourcemap() {
+    #[tokio::test]
+    async fn invalid_sourcemap() {
         let resources = memory_resources!(
             "src/init.lua" => "return nil",
             ".darklua.json" => get_darklua_config_with_sourcemap("./sourcemap.json"),
             "sourcemap.json" => "",
         );
         utils::snapshot_file_process_file_errors(&resources, "src/init.lua", "invalid_sourcemap")
+            .await
     }
 
-    #[test]
-    fn convert_sibling_module_from_init_module() {
+    #[tokio::test]
+    async fn convert_sibling_module_from_init_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(false, "./sourcemap.json"),
+            &get_resources_for_sourcemap(false, "./sourcemap.json").await,
             "src/d/init.lua",
             "convert_sibling_module_from_init_module",
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn convert_sibling_module_from_init_module_with_sourcemap_without_current_dir() {
+    #[tokio::test]
+    async fn convert_sibling_module_from_init_module_with_sourcemap_without_current_dir() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(false, "sourcemap.json"),
+            &get_resources_for_sourcemap(false, "sourcemap.json").await,
             "src/d/init.lua",
             "convert_sibling_module_from_init_module",
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn convert_sibling_module_from_init_module_in_nested_sourcemap() {
+    #[tokio::test]
+    async fn convert_sibling_module_from_init_module_in_nested_sourcemap() {
         let resources = memory_resources!(
             "parent/src/d/init.lua" => include_str!("../test_cases/sourcemap/src/d/init.lua"),
             "parent/src/d/d1.lua" => include_str!("../test_cases/sourcemap/src/d/d1.lua"),
@@ -308,115 +315,128 @@ mod sourcemap {
             &resources,
             "parent/src/d/init.lua",
             "convert_sibling_module_from_init_module",
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn in_datamodel_convert_sibling_module_from_init_module() {
+    #[tokio::test]
+    async fn in_datamodel_convert_sibling_module_from_init_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(true, "./sourcemap.json"),
+            &get_resources_for_sourcemap(true, "./sourcemap.json").await,
             "src/d/init.lua",
             "convert_sibling_module_from_init_module",
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn convert_module_from_child_module() {
+    #[tokio::test]
+    async fn convert_module_from_child_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(false, "./sourcemap.json"),
+            &get_resources_for_sourcemap(false, "./sourcemap.json").await,
             "src/d/d2.lua",
             "convert_module_from_child_module",
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn in_datamodel_convert_module_from_child_module() {
+    #[tokio::test]
+    async fn in_datamodel_convert_module_from_child_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(true, "./sourcemap.json"),
+            &get_resources_for_sourcemap(true, "./sourcemap.json").await,
             "src/d/d2.lua",
             "convert_module_from_child_module",
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn convert_multiple_sibling_modules_from_root_init_module() {
+    #[tokio::test]
+    async fn convert_multiple_sibling_modules_from_root_init_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(false, "./sourcemap.json"),
+            &get_resources_for_sourcemap(false, "./sourcemap.json").await,
             "src/init.lua",
             "convert_multiple_sibling_modules_from_root_init_module",
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn in_datamodel_convert_multiple_sibling_modules_from_root_init_module() {
+    #[tokio::test]
+    async fn in_datamodel_convert_multiple_sibling_modules_from_root_init_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(true, "./sourcemap.json"),
+            &get_resources_for_sourcemap(true, "./sourcemap.json").await,
             "src/init.lua",
             "convert_multiple_sibling_modules_from_root_init_module",
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn convert_sibling_module_from_sibling_module() {
+    #[tokio::test]
+    async fn convert_sibling_module_from_sibling_module() {
         expect_file_process(
-            &get_resources_for_sourcemap(false, "./sourcemap.json"),
+            &get_resources_for_sourcemap(false, "./sourcemap.json").await,
             "src/b.lua",
             "local a = require(script.Parent:FindFirstChild('a'))\n\nreturn a\n",
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn in_datamodel_convert_sibling_module_from_sibling_module() {
+    #[tokio::test]
+    async fn in_datamodel_convert_sibling_module_from_sibling_module() {
         expect_file_process(
-            &get_resources_for_sourcemap(true, "./sourcemap.json"),
+            &get_resources_for_sourcemap(true, "./sourcemap.json").await,
             "src/b.lua",
             "local a = require(script.Parent:FindFirstChild('a'))\n\nreturn a\n",
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn convert_package_module_from_nested_module() {
+    #[tokio::test]
+    async fn convert_package_module_from_nested_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(false, "./sourcemap.json"),
+            &get_resources_for_sourcemap(false, "./sourcemap.json").await,
             "src/d/d1.lua",
             "convert_package_module_from_nested_module",
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn in_datamodel_convert_package_module_from_nested_module() {
+    #[tokio::test]
+    async fn in_datamodel_convert_package_module_from_nested_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(true, "./sourcemap.json"),
+            &get_resources_for_sourcemap(true, "./sourcemap.json").await,
             "src/d/d1.lua",
             "convert_package_module_from_nested_module",
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn convert_nested_package_module_from_sibling_module() {
+    #[tokio::test]
+    async fn convert_nested_package_module_from_sibling_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(false, "./sourcemap.json"),
+            &get_resources_for_sourcemap(false, "./sourcemap.json").await,
             "Packages/Package1/init.lua",
             "convert_nested_package_module_from_sibling_module",
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn in_datamodel_convert_nested_package_module_from_sibling_module() {
+    #[tokio::test]
+    async fn in_datamodel_convert_nested_package_module_from_sibling_module() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(true, "./sourcemap.json"),
+            &get_resources_for_sourcemap(true, "./sourcemap.json").await,
             "Packages/Package1/init.lua",
             "convert_nested_package_module_from_sibling_module",
-        );
+        )
+        .await;
     }
 
     // following tests are only on the DataModel sourcemap case
-    #[test]
-    fn in_datamodel_convert_module_require_across_service_instance() {
+    #[tokio::test]
+    async fn in_datamodel_convert_module_require_across_service_instance() {
         snapshot_file_process(
-            &get_resources_for_sourcemap(true, "./sourcemap.json"),
+            &get_resources_for_sourcemap(true, "./sourcemap.json").await,
             "main.server.lua",
             "convert_module_require_across_service_instance",
-        );
+        )
+        .await;
     }
 }

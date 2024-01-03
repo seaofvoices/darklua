@@ -1,12 +1,14 @@
 use std::{
     collections::HashMap,
     ffi::OsStr,
-    fs::{self, File},
-    io::{self, BufWriter, ErrorKind as IOErrorKind, Write},
+    fs,
+    io::{self, ErrorKind as IOErrorKind},
     iter,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
+
+use tokio::{fs as tokio_fs, io::AsyncWriteExt};
 
 use crate::utils::normalize_path;
 
@@ -17,16 +19,24 @@ enum Source {
 }
 
 impl Source {
-    pub fn exists(&self, location: &Path) -> ResourceResult<bool> {
+    pub async fn exists(&self, location: &Path) -> ResourceResult<bool> {
         match self {
-            Self::FileSystem => Ok(location.exists()),
+            Self::FileSystem => Ok(tokio_fs::try_exists(location)
+                .await
+                .map_err(|err| ResourceError::io_error(location, err))?),
             Self::Memory(data) => Ok(data.lock().unwrap().contains_key(&normalize_path(location))),
         }
     }
 
-    pub fn is_directory(&self, location: &Path) -> ResourceResult<bool> {
+    pub async fn is_directory(&self, location: &Path) -> ResourceResult<bool> {
         let is_directory = match self {
-            Source::FileSystem => self.exists(location)? && location.is_dir(),
+            Source::FileSystem => match tokio_fs::metadata(location).await {
+                Ok(metadata) => metadata.is_dir(),
+                Err(err) => match err.kind() {
+                    IOErrorKind::NotFound => false,
+                    _ => return Err(ResourceError::io_error(location, err)),
+                },
+            },
             Source::Memory(data) => {
                 let data = data.lock().unwrap();
                 let location = normalize_path(location);
@@ -38,9 +48,9 @@ impl Source {
         Ok(is_directory)
     }
 
-    pub fn is_file(&self, location: &Path) -> ResourceResult<bool> {
+    pub fn is_file_blocking(&self, location: &Path) -> ResourceResult<bool> {
         let is_file = match self {
-            Source::FileSystem => self.exists(location)? && location.is_file(),
+            Source::FileSystem => location.exists() && location.is_file(),
             Source::Memory(data) => {
                 let data = data.lock().unwrap();
                 let location = normalize_path(location);
@@ -51,7 +61,26 @@ impl Source {
         Ok(is_file)
     }
 
-    pub fn get(&self, location: &Path) -> ResourceResult<String> {
+    pub async fn is_file(&self, location: &Path) -> ResourceResult<bool> {
+        let is_file = match self {
+            Source::FileSystem => match tokio_fs::metadata(location).await {
+                Ok(metadata) => metadata.is_file(),
+                Err(err) => match err.kind() {
+                    IOErrorKind::NotFound => false,
+                    _ => return Err(ResourceError::io_error(location, err)),
+                },
+            },
+            Source::Memory(data) => {
+                let data = data.lock().unwrap();
+                let location = normalize_path(location);
+
+                data.contains_key(&location)
+            }
+        };
+        Ok(is_file)
+    }
+
+    pub fn get_blocking(&self, location: &Path) -> ResourceResult<String> {
         match self {
             Self::FileSystem => fs::read_to_string(location).map_err(|err| match err.kind() {
                 IOErrorKind::NotFound => ResourceError::not_found(location),
@@ -68,19 +97,42 @@ impl Source {
         }
     }
 
-    pub fn write(&self, location: &Path, content: &str) -> ResourceResult<()> {
+    pub async fn get(&self, location: &Path) -> ResourceResult<String> {
+        match self {
+            Self::FileSystem => {
+                tokio_fs::read_to_string(location)
+                    .await
+                    .map_err(|err| match err.kind() {
+                        IOErrorKind::NotFound => ResourceError::not_found(location),
+                        _ => ResourceError::io_error(location, err),
+                    })
+            }
+            Self::Memory(data) => {
+                let data = data.lock().unwrap();
+                let location = normalize_path(location);
+
+                data.get(&location)
+                    .map(String::from)
+                    .ok_or_else(|| ResourceError::not_found(location))
+            }
+        }
+    }
+
+    pub async fn write(&self, location: &Path, content: &str) -> ResourceResult<()> {
         match self {
             Self::FileSystem => {
                 if let Some(parent) = location.parent() {
-                    fs::create_dir_all(parent)
+                    tokio_fs::create_dir_all(parent)
+                        .await
                         .map_err(|err| ResourceError::io_error(parent, err))?;
                 };
 
-                let file =
-                    File::create(location).map_err(|err| ResourceError::io_error(location, err))?;
+                let mut file = tokio_fs::File::create(location)
+                    .await
+                    .map_err(|err| ResourceError::io_error(location, err))?;
 
-                let mut file = BufWriter::new(file);
                 file.write_all(content.as_bytes())
+                    .await
                     .map_err(|err| ResourceError::io_error(location, err))
             }
             Self::Memory(data) => {
@@ -201,25 +253,45 @@ impl Resources {
         })
     }
 
-    pub fn exists(&self, location: impl AsRef<Path>) -> ResourceResult<bool> {
-        self.source.exists(location.as_ref())
+    pub async fn exists(&self, location: impl AsRef<Path>) -> ResourceResult<bool> {
+        self.source.exists(location.as_ref()).await
     }
 
-    pub fn is_directory(&self, location: impl AsRef<Path>) -> ResourceResult<bool> {
-        self.source.is_directory(location.as_ref())
+    // pub fn exists_blocking(&self, location: impl AsRef<Path>) -> ResourceResult<bool> {
+    //     block_on(self.exists(location.as_ref()))
+    // }
+
+    pub async fn is_directory(&self, location: impl AsRef<Path>) -> ResourceResult<bool> {
+        self.source.is_directory(location.as_ref()).await
     }
 
-    pub fn is_file(&self, location: impl AsRef<Path>) -> ResourceResult<bool> {
-        self.source.is_file(location.as_ref())
+    // pub fn is_directory_blocking(&self, location: impl AsRef<Path>) -> ResourceResult<bool> {
+    //     block_on(self.is_directory(location.as_ref()))
+    // }
+
+    pub async fn is_file(&self, location: impl AsRef<Path>) -> ResourceResult<bool> {
+        self.source.is_file(location.as_ref()).await
     }
 
-    pub fn get(&self, location: impl AsRef<Path>) -> ResourceResult<String> {
-        self.source.get(location.as_ref())
+    pub fn is_file_blocking(&self, location: impl AsRef<Path>) -> ResourceResult<bool> {
+        self.source.is_file_blocking(location.as_ref())
     }
 
-    pub fn write(&self, location: impl AsRef<Path>, content: &str) -> ResourceResult<()> {
-        self.source.write(location.as_ref(), content)
+    pub async fn get(&self, location: impl AsRef<Path>) -> ResourceResult<String> {
+        self.source.get(location.as_ref()).await
     }
+
+    pub fn get_blocking(&self, location: impl AsRef<Path>) -> ResourceResult<String> {
+        self.source.get_blocking(location.as_ref())
+    }
+
+    pub async fn write(&self, location: impl AsRef<Path>, content: &str) -> ResourceResult<()> {
+        self.source.write(location.as_ref(), content).await
+    }
+
+    // pub fn write_blocking(&self, location: impl AsRef<Path>, content: &str) -> ResourceResult<()> {
+    //     block_on(self.write(location.as_ref(), content))
+    // }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -262,47 +334,47 @@ mod test {
             Resources::from_memory()
         }
 
-        #[test]
-        fn not_created_file_does_not_exist() {
-            assert_eq!(new().exists(any_path()), Ok(false));
+        #[tokio::test]
+        async fn not_created_file_does_not_exist() {
+            assert_eq!(new().exists(any_path()).await, Ok(false));
         }
 
-        #[test]
-        fn created_file_exists() {
+        #[tokio::test]
+        async fn created_file_exists() {
             let resources = new();
-            resources.write(any_path(), ANY_CONTENT).unwrap();
+            resources.write(any_path(), ANY_CONTENT).await.unwrap();
 
-            assert_eq!(resources.exists(any_path()), Ok(true));
+            assert_eq!(resources.exists(any_path()).await, Ok(true));
         }
 
-        #[test]
-        fn created_file_exists_is_a_file() {
+        #[tokio::test]
+        async fn created_file_exists_is_a_file() {
             let resources = new();
-            resources.write(any_path(), ANY_CONTENT).unwrap();
+            resources.write(any_path(), ANY_CONTENT).await.unwrap();
 
-            assert_eq!(resources.is_file(any_path()), Ok(true));
+            assert_eq!(resources.is_file(any_path()).await, Ok(true));
         }
 
-        #[test]
-        fn created_file_exists_is_not_a_directory() {
+        #[tokio::test]
+        async fn created_file_exists_is_not_a_directory() {
             let resources = new();
-            resources.write(any_path(), ANY_CONTENT).unwrap();
+            resources.write(any_path(), ANY_CONTENT).await.unwrap();
 
-            assert_eq!(resources.is_directory(any_path()), Ok(false));
+            assert_eq!(resources.is_directory(any_path()).await, Ok(false));
         }
 
-        #[test]
-        fn read_content_of_created_file() {
+        #[tokio::test]
+        async fn read_content_of_created_file() {
             let resources = new();
-            resources.write(any_path(), ANY_CONTENT).unwrap();
+            resources.write(any_path(), ANY_CONTENT).await.unwrap();
 
-            assert_eq!(resources.get(any_path()), Ok(ANY_CONTENT.to_string()));
+            assert_eq!(resources.get(any_path()).await, Ok(ANY_CONTENT.to_string()));
         }
 
-        #[test]
-        fn collect_work_contains_created_files() {
+        #[tokio::test]
+        async fn collect_work_contains_created_files() {
             let resources = new();
-            resources.write("src/test.lua", ANY_CONTENT).unwrap();
+            resources.write("src/test.lua", ANY_CONTENT).await.unwrap();
 
             assert_eq!(
                 Vec::from_iter(resources.collect_work("src")),

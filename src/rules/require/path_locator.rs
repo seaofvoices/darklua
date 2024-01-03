@@ -74,7 +74,7 @@ impl<'a, 'b, 'c> RequirePathLocator<'a, 'b, 'c> {
             &normalized_path,
             self.path_require_mode.module_folder_name(),
         ) {
-            if self.resources.is_file(&potential_path)? {
+            if self.resources.is_file_blocking(&potential_path)? {
                 return Ok(utils::normalize_path_with_current_dir(potential_path));
             }
         }

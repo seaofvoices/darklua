@@ -18,7 +18,7 @@ pub struct Options {
     column_span: Option<usize>,
 }
 
-pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
+pub async fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
     log::debug!("running `minify`: {:?}", options);
 
     let resources = Resources::from_file_system();
@@ -35,7 +35,7 @@ pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
 
     let process_start_time = Instant::now();
 
-    let result = darklua_core::process(&resources, process_options);
+    let result = darklua_core::process(&resources, process_options).await;
 
     let process_duration = durationfmt::to_string(process_start_time.elapsed());
 

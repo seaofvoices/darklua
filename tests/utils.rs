@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use darklua_core::nodes::Block;
 use darklua_core::{Parser, ParserError, Resources};
 use env_logger::fmt::Color;
+use futures::Future;
 use log::Level;
 
 #[allow(dead_code)]
@@ -42,14 +43,14 @@ pub fn setup_logger(level_filter: log::LevelFilter) {
         .ok();
 }
 
-#[track_caller]
 #[allow(dead_code)]
-pub fn snapshot_file_process_file_errors(
+pub async fn snapshot_file_process_file_errors(
     resources: &Resources,
     file_name: &str,
     snapshot_name: &str,
 ) {
     let errors = darklua_core::process(resources, darklua_core::Options::new(file_name))
+        .await
         .result()
         .unwrap_err();
 
@@ -82,12 +83,28 @@ pub fn run_for_minimum_time<F: Fn()>(duration: Duration, func: F) {
     }
 }
 
+#[allow(dead_code)]
+pub async fn async_run_for_minimum_time<F: Fn() -> O, O: Future<Output = ()>>(
+    duration: Duration,
+    func: F,
+) {
+    let start = Instant::now();
+
+    loop {
+        func().await;
+
+        if Instant::now().duration_since(start) > duration {
+            break;
+        }
+    }
+}
+
 #[allow(unused_macros)]
 macro_rules! memory_resources {
     ($($path:literal => $content:expr),+$(,)?) => ({
         let resources = Resources::from_memory();
         $(
-            resources.write($path, &$content).unwrap();
+            resources.write($path, &$content).await.unwrap();
         )*
         resources
     });

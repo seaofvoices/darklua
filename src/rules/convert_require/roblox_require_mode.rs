@@ -25,7 +25,7 @@ pub struct RobloxRequireMode {
 }
 
 impl RobloxRequireMode {
-    pub(crate) fn initialize(&mut self, context: &Context) -> DarkluaResult<()> {
+    pub(crate) fn initialize(&mut self, context: &Context<'_, '_>) -> DarkluaResult<()> {
         if let Some(ref rojo_sourcemap_path) = self
             .rojo_sourcemap
             .as_ref()
@@ -35,7 +35,7 @@ impl RobloxRequireMode {
             let sourcemap = RojoSourcemap::parse(
                 &context
                     .resources()
-                    .get(rojo_sourcemap_path)
+                    .get_blocking(rojo_sourcemap_path)
                     .map_err(|err| {
                         DarkluaError::from(err).context("while initializing Roblox require mode")
                     })?,
@@ -55,7 +55,7 @@ impl RobloxRequireMode {
     pub(crate) fn find_require(
         &self,
         _call: &FunctionCall,
-        _context: &Context,
+        _context: &Context<'_, '_>,
     ) -> DarkluaResult<Option<PathBuf>> {
         Err(DarkluaError::custom("unsupported initial require mode")
             .context("Roblox require mode cannot be used as the current require mode"))

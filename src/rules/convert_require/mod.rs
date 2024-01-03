@@ -89,7 +89,7 @@ struct RequireConverter<'a> {
     identifier_tracker: IdentifierTracker,
     current: RequireMode,
     target: RequireMode,
-    context: &'a Context<'a, 'a, 'a>,
+    context: &'a Context<'a, 'a>,
 }
 
 impl<'a> Deref for RequireConverter<'a> {

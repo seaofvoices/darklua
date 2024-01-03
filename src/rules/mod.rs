@@ -69,23 +69,19 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 #[derive(Debug, Clone)]
-pub struct ContextBuilder<'a, 'resources, 'code> {
+pub struct ContextBuilder<'a, 'code> {
     path: PathBuf,
-    resources: &'resources Resources,
+    resources: Resources,
     original_code: &'code str,
     blocks: HashMap<PathBuf, &'a Block>,
     project_location: Option<PathBuf>,
 }
 
-impl<'a, 'resources, 'code> ContextBuilder<'a, 'resources, 'code> {
-    pub fn new(
-        path: impl Into<PathBuf>,
-        resources: &'resources Resources,
-        original_code: &'code str,
-    ) -> Self {
+impl<'a, 'code> ContextBuilder<'a, 'code> {
+    pub fn new(path: impl Into<PathBuf>, resources: &Resources, original_code: &'code str) -> Self {
         Self {
             path: path.into(),
-            resources,
+            resources: resources.clone(),
             original_code,
             blocks: Default::default(),
             project_location: None,
@@ -97,7 +93,7 @@ impl<'a, 'resources, 'code> ContextBuilder<'a, 'resources, 'code> {
         self
     }
 
-    pub fn build(self) -> Context<'a, 'resources, 'code> {
+    pub fn build(self) -> Context<'a, 'code> {
         Context {
             path: self.path,
             resources: self.resources,
@@ -114,15 +110,15 @@ impl<'a, 'resources, 'code> ContextBuilder<'a, 'resources, 'code> {
 
 /// The intent of this struct is to hold data shared across all rules applied to a file.
 #[derive(Debug, Clone)]
-pub struct Context<'a, 'resources, 'code> {
+pub struct Context<'a, 'code> {
     path: PathBuf,
-    resources: &'resources Resources,
+    resources: Resources,
     original_code: &'code str,
     blocks: HashMap<PathBuf, &'a Block>,
     project_location: Option<PathBuf>,
 }
 
-impl<'a, 'resources, 'code> Context<'a, 'resources, 'code> {
+impl<'a, 'resources, 'code> Context<'a, 'code> {
     pub fn block(&self, path: impl AsRef<Path>) -> Option<&Block> {
         self.blocks.get(path.as_ref()).copied()
     }
@@ -132,7 +128,7 @@ impl<'a, 'resources, 'code> Context<'a, 'resources, 'code> {
     }
 
     fn resources(&self) -> &Resources {
-        self.resources
+        &self.resources
     }
 
     fn original_code(&self) -> &str {
@@ -157,7 +153,7 @@ pub type RuleProcessResult = Result<(), String>;
 
 /// Defines an interface that will be used to mutate blocks and how to serialize and deserialize
 /// the rule configuration.
-pub trait Rule: RuleConfiguration + fmt::Debug {
+pub trait Rule: RuleConfiguration + Send + Sync + fmt::Debug {
     /// This method should mutate the given block to apply the rule
     fn process(&self, block: &mut Block, context: &Context) -> RuleProcessResult;
 
@@ -187,7 +183,7 @@ pub trait FlawlessRule {
     fn flawless_process(&self, block: &mut Block, context: &Context);
 }
 
-impl<T: FlawlessRule + RuleConfiguration + fmt::Debug> Rule for T {
+impl<T: FlawlessRule + RuleConfiguration + Send + Sync + fmt::Debug> Rule for T {
     fn process(&self, block: &mut Block, context: &Context) -> RuleProcessResult {
         self.flawless_process(block, context);
         Ok(())

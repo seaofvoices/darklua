@@ -63,7 +63,7 @@ impl PathRequireMode {
     pub(crate) fn find_require(
         &self,
         call: &FunctionCall,
-        context: &Context,
+        context: &Context<'_, '_>,
     ) -> DarkluaResult<Option<PathBuf>> {
         if let Some(literal_path) = match_path_require_call(call) {
             let required_path =
@@ -86,7 +86,7 @@ impl PathRequireMode {
         &self,
         _path: &Path,
         _current_mode: &crate::rules::RequireMode,
-        _context: &Context<'_, '_, '_>,
+        _context: &Context<'_, '_>,
     ) -> Result<Option<crate::nodes::Arguments>, crate::DarkluaError> {
         Err(DarkluaError::custom("unsupported target require mode")
             .context("path require mode cannot"))

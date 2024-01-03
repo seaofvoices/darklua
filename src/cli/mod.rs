@@ -41,10 +41,10 @@ pub enum Command {
 }
 
 impl Command {
-    pub fn run(&self, global_options: &GlobalOptions) -> CommandResult {
+    pub async fn run(&self, global_options: &GlobalOptions) -> CommandResult {
         match self {
-            Command::Minify(options) => minify::run(options, global_options),
-            Command::Process(options) => process::run(options, global_options),
+            Command::Minify(options) => minify::run(options, global_options).await,
+            Command::Process(options) => process::run(options, global_options).await,
         }
     }
 }
@@ -64,8 +64,8 @@ pub struct Darklua {
 }
 
 impl Darklua {
-    pub fn run(&self) -> CommandResult {
-        self.command.run(&self.global_options)
+    pub async fn run(&self) -> CommandResult {
+        self.command.run(&self.global_options).await
     }
 
     pub fn get_log_level_filter(&self) -> LevelFilter {
