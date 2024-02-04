@@ -1,84 +1,69 @@
-use std::fmt;
+mod ast_converter;
+mod converter;
+mod fullmoon_parser;
+mod parser_error;
+mod pest_converter;
+mod pest_parser;
 
-use full_moon::ast::Ast;
+pub use parser_error::ParserError;
 
-use crate::{
-    ast_converter::{AstConverter, ConvertError},
-    nodes::*,
-    utils::Timer,
-};
+use crate::nodes::Block;
+
+use fullmoon_parser::FullmoonParser;
+use pest_parser::PestParser;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum ParserImpl {
+    Fullmoon(FullmoonParser),
+    Pest(PestParser),
+}
+
+impl Default for ParserImpl {
+    fn default() -> Self {
+        Self::Fullmoon(Default::default())
+    }
+}
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Parser {
+    inner_parser: ParserImpl,
     hold_token_data: bool,
 }
 
 impl Parser {
     pub fn parse(&self, code: &str) -> Result<Block, ParserError> {
-        let full_moon_parse_timer = Timer::now();
-        let parse_result = full_moon::parse(code);
-        log::trace!(
-            "full-moon parsing done in {}",
-            full_moon_parse_timer.duration_label()
-        );
-        parse_result.map_err(ParserError::parsing).and_then(|ast| {
-            log::trace!("start converting full-moon AST");
-            let conversion_timer = Timer::now();
-            let block = self.convert_ast(ast).map_err(ParserError::converting);
-            log::trace!(
-                " ⨽ completed AST conversion in {}",
-                conversion_timer.duration_label()
-            );
-            block
-        })
+        match &self.inner_parser {
+            ParserImpl::Fullmoon(parser) => parser.parse(code),
+            ParserImpl::Pest(parser) => parser.parse(code),
+        }
+    }
+
+    pub fn unstable_new_parser(mut self) -> Self {
+        self.inner_parser = ParserImpl::Pest({
+            let mut parser = PestParser::default();
+            if self.hold_token_data {
+                parser.set_preserve_tokens()
+            }
+            parser
+        });
+        self
     }
 
     pub fn preserve_tokens(mut self) -> Self {
         self.hold_token_data = true;
+        match &mut self.inner_parser {
+            ParserImpl::Fullmoon(parser) => {
+                parser.set_preserve_tokens();
+            }
+            ParserImpl::Pest(parser) => {
+                parser.set_preserve_tokens();
+            }
+        }
         self
     }
 
     pub(crate) fn is_preserving_tokens(&self) -> bool {
         self.hold_token_data
-    }
-
-    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
-    fn convert_ast(&self, ast: Ast) -> Result<Block, ConvertError> {
-        AstConverter::new(self.hold_token_data).convert(&ast)
-    }
-}
-
-#[derive(Clone, Debug)]
-enum ParserErrorKind {
-    Parsing(full_moon::Error),
-    Converting(ConvertError),
-}
-
-#[derive(Clone, Debug)]
-pub struct ParserError {
-    kind: Box<ParserErrorKind>,
-}
-
-impl ParserError {
-    fn parsing(err: full_moon::Error) -> Self {
-        Self {
-            kind: ParserErrorKind::Parsing(err).into(),
-        }
-    }
-
-    fn converting(err: ConvertError) -> Self {
-        Self {
-            kind: ParserErrorKind::Converting(err).into(),
-        }
-    }
-}
-
-impl fmt::Display for ParserError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &*self.kind {
-            ParserErrorKind::Parsing(err) => write!(f, "{}", err),
-            ParserErrorKind::Converting(err) => write!(f, "{}", err),
-        }
     }
 }
 
@@ -86,7 +71,7 @@ impl fmt::Display for ParserError {
 mod test {
     use std::str::FromStr;
 
-    use crate::nodes::ReturnStatement;
+    use crate::nodes::*;
 
     use super::*;
 
@@ -101,6 +86,18 @@ mod test {
 
                     let expect_block = $value.into();
                     pretty_assertions::assert_eq!(block, expect_block);
+                }
+
+                paste::paste! {
+                    #[test]
+                    fn [<pest_ $name>]() {
+                        let parser = Parser::default().unstable_new_parser();
+                        let block = parser.parse($input)
+                            .expect(&format!("failed to parse `{}`", $input));
+
+                        let expect_block = $value.into();
+                        pretty_assertions::assert_eq!(block, expect_block);
+                    }
                 }
             )*
         };
@@ -324,7 +321,7 @@ mod test {
         return_field_expression("return math.huge") => ReturnStatement::one(
             FieldExpression::new(Prefix::from_name("math"), "huge")
         ),
-        index_field_function_call("return call().result") => ReturnStatement::one(
+        return_index_field_function_call("return call().result") => ReturnStatement::one(
             FieldExpression::new(FunctionCall::from_name("call"), "result"),
         ),
         return_index_expression("return value[true]") => ReturnStatement::one(

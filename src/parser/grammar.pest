@@ -1,0 +1,283 @@
+// resources:
+// https://gist.github.com/boatboatboatboat/38812eb5a46a56a3bd5ec569d5ebadf7
+
+module = {
+    SOI ~ block ~ EOI
+}
+
+keywords = @{
+    "and"
+  | "break"
+  | "do"
+  | "else"
+  | "elseif"
+  | "end"
+  | "false"
+  | "for"
+  | "function"
+  | "if"
+  | "in"
+  | "local"
+  | "nil"
+  | "not"
+  | "or"
+  | "repeat"
+  | "return"
+  | "then"
+  | "true"
+  | "until"
+  | "while"
+}
+
+ASCII_ALPHANUMERIC_UNDERSCORE = _{ ASCII_ALPHANUMERIC | "_" }
+
+identifier = @{ !(keywords ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE)) ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+
+binding      = { #identifier = identifier ~ (":" ~ #type = ty)? }
+binding_list = _{ #binding = binding ~ ("," ~ #binding = binding)* }
+
+string = @{
+    "'" ~ single_quoted_inner ~ "'"
+  | "\"" ~ double_quote_inner ~ "\""
+  | multiline_string
+}
+
+interpolated_string_segment_start = { "{" }
+interpolated_string_segment_end = { "}" }
+interpolated_string_segment = { interpolated_string_segment_start ~ #expr = expr ~ interpolated_string_segment_end }
+
+interpolated_string = ${ "`" ~ (backtick_quoted_inner ~ interpolated_string_segment)* ~ backtick_quoted_inner ~ "`"}
+
+backtick_quoted_inner = @{ (!("`" | "{" | "\\" | NEWLINE) ~ ANY)* ~ (backtick_escape ~ backtick_quoted_inner)? }
+
+single_quoted_inner = @{ (!("'" | "\\" | NEWLINE) ~ ANY)* ~ (escape ~ single_quoted_inner)? }
+double_quote_inner  = @{ (!("\"" | "\\" | NEWLINE) ~ ANY)* ~ (escape ~ double_quote_inner)? }
+
+// todo: support \z and \u and probably \x too
+escape          = @{ "\\" ~ ("\"" | "'" | "\\" | "/" | "a" | "b" | "f" | "n" | "r" | "t" | "v" | ASCII_DIGIT{1, 3}) }
+backtick_escape = @{ "\\" ~ ("`" | "{" | "\"" | "'" | "\\" | "/" | "a" | "b" | "f" | "n" | "r" | "t" | "v" | ASCII_DIGIT{1, 3}) }
+
+multiline_string       =  {
+    "[" ~ PUSH("="*) ~ "[" // push the equal characters onto the stack
+  ~ multiline_string_inner ~ "]" ~ POP ~ "]" // match a the equal characters
+}
+multiline_string_inner =  {
+    // unless the next character is ] followed by the correct amount of equal characters and ],
+    // consume one character
+    (!("]" ~ PEEK ~ "]") ~ ANY)*
+}
+
+number         =  { decimal_number | hex_number }
+decimal_number = @{ ("." ~ ASCII_DIGIT+ | ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)?) ~ dec_exponent? }
+dec_exponent   = @{ (^"e") ~ ("+" | "-")? ~ ASCII_DIGIT+ }
+hex_number     = @{ (^"0x") ~ ASCII_HEX_DIGIT+ ~ ("." ~ ASCII_HEX_DIGIT+)? ~ hex_exponent? }
+hex_exponent   = @{ (^"p") ~ ("+" | "-")? ~ ASCII_HEX_DIGIT+ }
+
+parenthese_expr = { "(" ~ #expr = expr ~ ")" }
+
+table_field_entry = { #field = identifier ~ "=" ~ #value = expr }
+table_index_entry = { "[" ~ #key = expr ~ "]" ~ "=" ~ #value = expr }
+table_entry       = _{ table_field_entry | table_index_entry | expr }
+table_expr        = { "{" ~ (#table_entry = table_entry ~ ("," | ";"))* ~ #table_entry = table_entry? ~ "}" }
+
+prefix_start = _{ identifier | parenthese_expr }
+suffix_index = { "[" ~ #index = expr ~ "]" }
+suffix_field = { "." ~ #field = identifier }
+suffix_call  = { (":" ~ #method = identifier)? ~ #arguments = function_arguments }
+prefix_expr  = { prefix_start ~ (suffix_index | suffix_field | suffix_call)* }
+
+elseif_expr_branch =  { elseif_token ~ expr ~ then_token ~ expr }
+if_expr            =  { if_token ~ expr ~ then_token ~ expr ~ elseif_expr_branch* ~ else_token ~ expr }
+
+var_args_expr = { "..." }
+
+simple_expr = _{ true_token | false_token | nil_token | var_args_expr | string | number | prefix_expr | table_expr | function_expr | interpolated_string }
+
+expr_atom = _{ if_expr | simple_expr ~ ("::" ~ ty)? }
+
+expr      = !{ unary_operator* ~ expr_atom ~ (binary_operator ~ unary_operator* ~ expr_atom)* }
+expr_list = _{ #expr = expr ~ ("," ~ #expr = expr)* }
+
+function_arguments = { "(" ~ expr_list? ~ ")" | #table_args = table_expr | #string_args = string }
+call               = { prefix_start ~ ((suffix_index | suffix_field)* ~ suffix_call)+ }
+
+variable            = { prefix_start ~ (suffix_call* ~ (suffix_index | suffix_field))* }
+variable_list       = _{ #variable = variable ~ ("," ~ #variable = variable)* }
+
+assign_statement          = { variable_list ~ "=" ~ expr_list }
+compound_assign_statement = { #variable = variable ~ #operator = compound_operator ~ #expr = expr }
+local_assign_statement    = { local_token ~ binding_list ~ ("=" ~ expr_list)? }
+do_statement              = { do_token ~ #block = block ~ end_token }
+while_statement           = { while_token ~ #condition = expr ~ do_token ~ #block = block ~ end_token }
+repeat_statement          = { repeat_token ~ #block = block ~ until_token ~ #condition = expr }
+numeric_for_statement     = { for_token ~ #binding = binding ~ "=" ~ #start = expr ~ "," ~ #end = expr ~ ("," ~ #step = expr)? ~ do_token ~ #block = block ~ end_token }
+generic_for_statement     = { for_token ~ binding_list ~ in_token ~ expr_list ~ do_token ~ #block = block ~ end_token }
+elseif_branch             = { elseif_token ~ #condition = expr ~ then_token ~ #block = block? }
+else_branch               = _{ else_token ~ #else_block = block? }
+if_statement              = { if_token ~ #condition = expr ~ then_token ~ #block = block? ~ (#branch = elseif_branch)* ~ else_branch? ~ end_token }
+
+typed_var_args           = { "..." ~ (":" ~ #type = ty | #type = generic_type_pack)? }
+function_parameters      = _{ #varargs = typed_var_args | (binding_list ~ ("," ~ #varargs = typed_var_args)?) }
+generic_type_list        = { "<" ~ (#generic = identifier ~ ("," ~ #generic = identifier)* | #generic_pack = generic_type_pack) ~ ("," ~ #generic_pack = generic_type_pack)* ~ ">" }
+function_body            = _{ generic_type_list? ~ "(" ~ function_parameters? ~ ")" ~ (":" ~ #return_type = return_type)? ~ #block = block ~ "end" }
+function_expr            = { function_token ~ function_body }
+local_function_statement = { local_token ~ function_token ~ #identifier = identifier ~ function_body }
+function_name            = { #identifier = identifier ~ ("." ~ #identifier = identifier)* ~ (":" ~ #method = identifier)? }
+function_statement       = { function_token ~ #name = function_name ~ function_body }
+
+type_declaration = { "export"? ~ "type" ~ identifier ~ generic_type_list_with_defaults? ~ "=" ~ ty }
+
+type_name_list                      = _{ identifier ~ ("," ~ identifier)* }
+generic_type_pack_with_default      = { generic_type_pack ~ "=" ~ (type_pack | variadic_type_pack | generic_type_pack) }
+generic_type_pack_with_default_list = { generic_type_pack_with_default ~ ("," ~ generic_type_pack_with_default)* }
+
+type_name_with_default      = { identifier ~ "=" ~ ty }
+type_name_with_default_list = _{ type_name_with_default ~ ("," ~ type_name_with_default)* }
+generic_type_pack_list      = _{ generic_type_pack ~ ("," ~ generic_type_pack)* }
+
+generic_type_middle_list = _{ type_name_with_default_list | generic_type_pack_list }
+
+generic_type_list_with_defaults = { "<" ~ (!">") ~ type_name_list? ~ generic_type_middle_list? ~ generic_type_pack_with_default_list? ~ ">" }
+
+statement = _{
+    assign_statement
+  | compound_assign_statement
+  | local_assign_statement
+  | do_statement
+  | while_statement
+  | repeat_statement
+  | numeric_for_statement
+  | generic_for_statement
+  | if_statement
+  | local_function_statement
+  | function_statement
+  | type_declaration
+  | call
+}
+
+return_statement =  { return_token ~ expr_list? }
+last_statement   = _{ return_statement | break_token | continue_token }
+
+variadic_type_pack = { "..." ~ #type = ty }
+generic_type_pack  = { #identifier = identifier ~ "..." }
+array_type         = { "{" ~ #type = ty ~ "}" }
+property_type      = { identifier ~ ":" ~ ty | "[" ~ ty ~ "]" ~ ":" ~ ty }
+object_type        = { "{" ~ (property_type ~ ("," | ";"))* ~ property_type? ~ "}" }
+table_type         = _{ array_type | object_type }
+function_type      = { generic_type_list? ~ "(" ~ ")" ~ "->" ~ #return_type =return_type }
+
+type_atom = {
+    true_token
+  | false_token
+  | nil_token
+  | string
+  | table_type
+  | function_type
+  | "typeof" ~ "(" ~ expr ~ ")"
+  | "(" ~ ty ~ ")"
+  | named_type
+}
+
+union_suffix        = { "?" | ("|" ~ type_atom ~ "?"?)+ }
+intersection_suffix = { ("&" ~ type_atom)+ }
+
+ty = { type_atom ~ (union_suffix | intersection_suffix)? }
+
+named_type          = { identifier ~ ("." ~ identifier)? ~ ("<" ~ type_parameter_list? ~ ">")? }
+type_parameter      = { generic_type_pack | variadic_type_pack | ty | type_pack }
+type_parameter_list = { type_parameter ~ ("," ~ type_parameter)* }
+
+type_pack   = { "(" ~ (variadic_type_pack | (ty ~ ("," ~ ty)* ~ ("," ~ variadic_type_pack)?))? ~ ")" }
+return_type = { ty | generic_type_pack | variadic_type_pack | type_pack }
+
+WHITESPACE = _{ " " | "\t" | NEWLINE }
+COMMENT    = _{ multiline_comment | line_comment }
+
+line_comment            = { "--" ~ (!NEWLINE ~ ANY)* }
+multiline_comment       = {
+    "--[" ~ PUSH("="*) ~ "[" // push the equal characters onto the stack
+  ~ multiline_comment_inner ~ "]" ~ POP ~ "]" // match a the equal characters
+}
+multiline_comment_inner = {
+    // unless the next character is ] followed by the correct amount of equal characters and ],
+    // consume one character
+    (!("]" ~ PEEK ~ "]") ~ ANY)*
+}
+
+block = { (statement ~ ";"?)* ~ (last_statement ~ ";"?)? }
+
+unary_operator = _{ unary_operator_length | unary_operator_negate | not_token }
+
+unary_operator_length = { "#" }
+unary_operator_negate = { "-" }
+
+binary_operator = _{
+    binary_operator_and
+  | binary_operator_or
+  | binary_operator_equal
+  | binary_operator_not_equal
+  | binary_operator_lower_equal
+  | binary_operator_lower
+  | binary_operator_greater_equal
+  | binary_operator_greater
+  | binary_operator_add
+  | binary_operator_subtract
+  | binary_operator_multiply
+  | binary_operator_floor_divide
+  | binary_operator_divide
+  | binary_operator_modulo
+  | binary_operator_exponent
+  | binary_operator_concat
+}
+
+binary_operator_and           = { and_token }
+binary_operator_or            = { or_token }
+binary_operator_equal         = { "==" }
+binary_operator_not_equal     = { "~=" }
+binary_operator_lower         = { "<" }
+binary_operator_lower_equal   = { "<=" }
+binary_operator_greater       = { ">" }
+binary_operator_greater_equal = { ">=" }
+binary_operator_add           = { "+" }
+binary_operator_subtract      = { "-" }
+binary_operator_multiply      = { "*" }
+binary_operator_divide        = { "/" }
+binary_operator_floor_divide  = { "//" }
+binary_operator_modulo        = { "%" }
+binary_operator_exponent      = { "^" }
+binary_operator_concat        = { ".." }
+
+compound_operator = {
+    "+="
+  | "-="
+  | "*="
+  | "/="
+  | "//="
+  | "%="
+  | "^="
+  | "..="
+}
+
+and_token      = @{ "and" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+break_token    = @{ "break" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+do_token       = @{ "do" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+else_token     = @{ "else" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+elseif_token   = @{ "elseif" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+end_token      = @{ "end" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+false_token    = @{ "false" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+for_token      = @{ "for" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+function_token = @{ "function" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+if_token       = @{ "if" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+in_token       = @{ "in" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+local_token    = @{ "local" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+nil_token      = @{ "nil" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+not_token      = @{ "not" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+or_token       = @{ "or" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+repeat_token   = @{ "repeat" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+return_token   = @{ "return" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+then_token     = @{ "then" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+true_token     = @{ "true" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+until_token    = @{ "until" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+while_token    = @{ "while" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }
+
+continue_token = @{ "continue" ~ &(!ASCII_ALPHANUMERIC_UNDERSCORE) }

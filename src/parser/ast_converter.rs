@@ -3038,6 +3038,9 @@ pub(crate) enum ConvertError {
     InternalStack {
         kind: &'static str,
     },
+    InternalMissingPestTag {
+        tag_name: &'static str,
+    },
 }
 
 impl fmt::Display for ConvertError {
@@ -3089,6 +3092,9 @@ impl fmt::Display for ConvertError {
                     "internal conversion stack expected to find an item of `{}`",
                     kind
                 )
+            }
+            ConvertError::InternalMissingPestTag { tag_name } => {
+                return write!(f, "internal parser error expected tag named `{}`", tag_name)
             }
         };
         write!(f, "unable to convert {} from `{}`", kind, code)

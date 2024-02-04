@@ -1,6 +1,5 @@
 //! Transform Lua scripts.
 
-mod ast_converter;
 mod frontend;
 pub mod generator;
 pub mod nodes;

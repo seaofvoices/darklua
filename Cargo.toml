@@ -34,8 +34,11 @@ elsa = "1.9.0"
 env_logger = "0.10.0"
 full_moon = { version = "0.19.0", features = ["roblox"] }
 json5 = "0.4.1"
+lazy_static = "1.4.0"
 log = "0.4.20"
 pathdiff = "0.2.1"
+pest = "2.7.5"
+pest_derive = { version = "2.7.5", features = ["grammar-extras"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.107"
 serde_yaml = "0.9.25"
