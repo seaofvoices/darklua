@@ -28,7 +28,7 @@ impl ValueInjection {
     }
 }
 
-impl<'a> ops::Deref for ValueInjection {
+impl ops::Deref for ValueInjection {
     type Target = IdentifierTracker;
 
     fn deref(&self) -> &Self::Target {
@@ -36,7 +36,7 @@ impl<'a> ops::Deref for ValueInjection {
     }
 }
 
-impl<'a> ops::DerefMut for ValueInjection {
+impl ops::DerefMut for ValueInjection {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.identifier_tracker
     }
