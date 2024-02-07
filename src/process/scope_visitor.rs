@@ -18,6 +18,8 @@ pub trait Scope {
     /// Called when entering a function block (with each parameters of the function), with the
     /// identifiers from a generic for statement or the identifier from a numeric for loop.
     fn insert(&mut self, identifier: &mut String);
+    /// Called when entering a function defined with a method
+    fn insert_self(&mut self);
     /// Called when a new local variable is initialized.
     fn insert_local(&mut self, identifier: &mut String, value: Option<&mut Expression>);
     /// Called when a new local function is initialized.
@@ -116,7 +118,7 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
 
         scope.push();
         if statement.get_name().has_method() {
-            scope.insert(&mut String::from("self"));
+            scope.insert_self();
         }
         statement
             .mutate_parameters()
@@ -280,6 +282,10 @@ impl Scope for IdentifierTracker {
         self.insert_identifier(identifier);
     }
 
+    fn insert_self(&mut self) {
+        self.insert_identifier("self");
+    }
+
     fn insert_local(&mut self, identifier: &mut String, _value: Option<&mut Expression>) {
         self.insert_identifier(identifier);
     }
@@ -308,6 +314,11 @@ where
     #[inline]
     fn insert(&mut self, identifier: &mut String) {
         self.deref_mut().insert(identifier);
+    }
+
+    #[inline]
+    fn insert_self(&mut self) {
+        self.deref_mut().insert_self();
     }
 
     #[inline]

@@ -136,6 +136,10 @@ impl Scope for RenameProcessor {
         self.replace_identifier(identifier);
     }
 
+    fn insert_self(&mut self) {
+        self.add("self".to_owned(), "self".to_owned());
+    }
+
     fn insert_local(&mut self, identifier: &mut String, _value: Option<&mut Expression>) {
         self.replace_identifier(identifier);
     }
@@ -143,6 +147,9 @@ impl Scope for RenameProcessor {
     fn insert_local_function(&mut self, function: &mut LocalFunctionStatement) {
         if self.include_functions {
             self.replace_identifier(function.mutate_identifier().mutate_name());
+        } else {
+            let name = function.mutate_identifier().get_name();
+            self.add(name.clone(), name.to_owned());
         }
     }
 }
