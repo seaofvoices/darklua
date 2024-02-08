@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-* add rule to remove unused variable (`remove_unused_variable`) ([#172](https://github.com/seaofvoices/darklua/pull/172))
+* add rule to remove unused variables (`remove_unused_variable`). Fix issue with `rename_variables` where `self` variables and some cases of variable shadowing were not correctly renamed ([#172](https://github.com/seaofvoices/darklua/pull/172))
 
 ## 0.12.1
 
