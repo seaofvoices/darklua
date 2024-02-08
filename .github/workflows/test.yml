@@ -44,7 +44,6 @@ jobs:
         run: |
           luarocks install luafilesystem
           luarocks install busted
-          luarocks install luacheck
 
       - name: Run end-to-end tests
         run: lua ./scripts/test-commands.lua
