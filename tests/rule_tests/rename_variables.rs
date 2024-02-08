@@ -35,6 +35,10 @@ test_rule!(
     global_function_parameter("function foo(bar) end") => "function foo(a) end",
     global_function_parameter_reference("function foo(bar) return bar end")
         => "function foo(a) return a end",
+    global_function_parameter_reference_named_self("function foo(self) return self end")
+        => "function foo(a) return a end",
+    global_function_with_field_parameter_reference_named_self("function foo.fn(self) return self end")
+        => "function foo.fn(a) return a end",
     global_function_name("local foo; function foo() end") => "local a; function a() end",
     function_expression_parameters("return function(foo, bar) end") => "return function(a, b) end",
     function_expression_parameters_reference("return function(foo, bar) return foo + bar end")
@@ -75,6 +79,10 @@ test_rule!(
     global_function_parameter("function foo(bar) end") => "function foo(a) end",
     global_function_parameter_reference("function foo(bar) return bar end")
         => "function foo(a) return a end",
+    global_function_parameter_reference_named_self("function foo(self) return self end")
+        => "function foo(a) return a end",
+    global_function_with_field_parameter_reference_named_self("function foo.fn(self) return self end")
+        => "function foo.fn(a) return a end",
     global_function_name("local foo; function foo() end") => "local a; function a() end",
     function_expression_parameters("return function(foo, bar) end") => "return function(a, b) end",
     function_expression_parameters_reference("return function(foo, bar) return foo + bar end")
