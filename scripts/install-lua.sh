@@ -6,4 +6,3 @@ export PATH=$PATH:$PWD/lua_install/bin
 
 luarocks install luafilesystem
 luarocks install busted
-luarocks install luacheck

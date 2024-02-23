@@ -35,6 +35,10 @@ test_rule!(
     global_function_parameter("function foo(bar) end") => "function foo(a) end",
     global_function_parameter_reference("function foo(bar) return bar end")
         => "function foo(a) return a end",
+    global_function_parameter_reference_named_self("function foo(self) return self end")
+        => "function foo(a) return a end",
+    global_function_with_field_parameter_reference_named_self("function foo.fn(self) return self end")
+        => "function foo.fn(a) return a end",
     global_function_name("local foo; function foo() end") => "local a; function a() end",
     function_expression_parameters("return function(foo, bar) end") => "return function(a, b) end",
     function_expression_parameters_reference("return function(foo, bar) return foo + bar end")
@@ -49,6 +53,12 @@ test_rule!(
         => "local function foo(a, b) end",
     avoid_defined_local_function_name("local var local function a() return var end")
         => "local b local function a() return b end",
+    method_function_do_not_rename_self("function class:foo(bar, baz) return self._prop end")
+        => "function class:foo(a, b) return self._prop end",
+    method_function_do_not_rename_self_but_rename_self_as_variable("local self = 1 function class:foo(bar) return self._prop end return self")
+        => "local a = 1 function class:foo(b) return self._prop end return a",
+    rename_variable_but_keep_redeclared_function_name("local fn = nil print(fn) local function fn() end return fn")
+        => "local a = nil print(a) local function fn() end return fn",
     // rename variable only cases
     local_assign("local foo") => "local a",
     local_assign_with_multiple_variable("local foo, bar") => "local a, b",
@@ -69,6 +79,10 @@ test_rule!(
     global_function_parameter("function foo(bar) end") => "function foo(a) end",
     global_function_parameter_reference("function foo(bar) return bar end")
         => "function foo(a) return a end",
+    global_function_parameter_reference_named_self("function foo(self) return self end")
+        => "function foo(a) return a end",
+    global_function_with_field_parameter_reference_named_self("function foo.fn(self) return self end")
+        => "function foo.fn(a) return a end",
     global_function_name("local foo; function foo() end") => "local a; function a() end",
     function_expression_parameters("return function(foo, bar) end") => "return function(a, b) end",
     function_expression_parameters_reference("return function(foo, bar) return foo + bar end")

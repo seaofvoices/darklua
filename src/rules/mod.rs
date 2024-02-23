@@ -22,6 +22,7 @@ mod remove_interpolated_string;
 mod remove_nil_declarations;
 mod remove_spaces;
 mod remove_types;
+mod remove_unused_variable;
 mod rename_variables;
 mod replace_referenced_tokens;
 pub(crate) mod require;
@@ -50,6 +51,7 @@ pub use remove_interpolated_string::*;
 pub use remove_nil_declarations::*;
 pub use remove_spaces::*;
 pub use remove_types::*;
+pub use remove_unused_variable::*;
 pub use rename_variables::*;
 pub(crate) use replace_referenced_tokens::*;
 pub use rule_property::*;
@@ -206,6 +208,7 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::<RemoveUnusedWhile>::default(),
         Box::<FilterAfterEarlyReturn>::default(),
         Box::<RemoveEmptyDo>::default(),
+        Box::<RemoveUnusedVariable>::default(),
         Box::<RemoveMethodDefinition>::default(),
         Box::<ConvertIndexToField>::default(),
         Box::<RemoveNilDeclaration>::default(),
@@ -236,6 +239,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         REMOVE_SPACES_RULE_NAME,
         REMOVE_TYPES_RULE_NAME,
         REMOVE_UNUSED_IF_BRANCH_RULE_NAME,
+        REMOVE_UNUSED_VARIABLE_RULE_NAME,
         REMOVE_UNUSED_WHILE_RULE_NAME,
         RENAME_VARIABLES_RULE_NAME,
     ]
@@ -268,6 +272,7 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_SPACES_RULE_NAME => Box::<RemoveSpaces>::default(),
             REMOVE_TYPES_RULE_NAME => Box::<RemoveTypes>::default(),
             REMOVE_UNUSED_IF_BRANCH_RULE_NAME => Box::<RemoveUnusedIfBranch>::default(),
+            REMOVE_UNUSED_VARIABLE_RULE_NAME => Box::<RemoveUnusedVariable>::default(),
             REMOVE_UNUSED_WHILE_RULE_NAME => Box::<RemoveUnusedWhile>::default(),
             RENAME_VARIABLES_RULE_NAME => Box::<RenameVariables>::default(),
             _ => return Err(format!("invalid rule name: {}", string)),

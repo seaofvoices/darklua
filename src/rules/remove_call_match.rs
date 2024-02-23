@@ -1,9 +1,8 @@
 use std::ops;
 
-use crate::nodes::{
-    Arguments, Block, DoStatement, Expression, LocalAssignStatement, Prefix, Statement, TableEntry,
-};
+use crate::nodes::{Arguments, DoStatement, Expression, Prefix, Statement, TableEntry};
 use crate::process::{Evaluator, IdentifierTracker, NodeProcessor};
+use crate::utils::{expressions_as_expression, expressions_as_statement};
 
 pub(crate) trait CallMatch<T> {
     fn matches(&self, identifiers: &IdentifierTracker, prefix: &Prefix) -> bool;
@@ -113,20 +112,10 @@ impl<Args, T: CallMatch<Args>> NodeProcessor for RemoveFunctionCallProcessor<Arg
                 .matches(&self.identifier_tracker, call.get_prefix())
             {
                 *statement = if self.preserve_args_side_effects {
-                    let values = self.preserve_side_effects(call.get_arguments());
-
-                    if values.is_empty() {
-                        DoStatement::default()
-                    } else {
-                        DoStatement::new(Block::default().with_statement(values.into_iter().fold(
-                            LocalAssignStatement::from_variable("_"),
-                            |assignment, value| assignment.with_value(value),
-                        )))
-                    }
+                    expressions_as_statement(self.preserve_side_effects(call.get_arguments()))
                 } else {
-                    DoStatement::default()
-                }
-                .into();
+                    DoStatement::default().into()
+                };
             }
         }
     }
@@ -138,22 +127,10 @@ impl<Args, T: CallMatch<Args>> NodeProcessor for RemoveFunctionCallProcessor<Arg
                 .matches(&self.identifier_tracker, call.get_prefix())
             {
                 *expression = if self.preserve_args_side_effects {
-                    let values = self.preserve_side_effects(call.get_arguments());
-
-                    if values.is_empty() {
-                        Expression::nil()
-                    } else if values.len() == 1 {
-                        values
-                            .into_iter()
-                            .next()
-                            .expect("expected to obtain a value")
-                    } else {
-                        todo!()
-                        // (e1 or true) and (e2 or true) and (e3 or true) ...
-                    }
+                    expressions_as_expression(self.preserve_side_effects(call.get_arguments()))
                 } else {
                     Expression::nil()
-                }
+                };
             }
         }
     }

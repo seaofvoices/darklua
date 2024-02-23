@@ -12,3 +12,5 @@ examples:
       end
       return {}
 ---
+
+This simple rule removes all empty do blocks found.

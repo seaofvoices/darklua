@@ -9,7 +9,7 @@ use std::mem;
 
 #[derive(Debug)]
 pub struct RenameProcessor {
-    real_to_obfuscated: Vec<HashMap<String, String>>,
+    real_to_obfuscated: Vec<HashMap<String, (String, bool)>>,
     permutator: CharPermutator,
     avoid_identifier: HashSet<String>,
     reuse_identifiers: Vec<String>,
@@ -30,12 +30,12 @@ impl RenameProcessor {
         }
     }
 
-    pub fn add(&mut self, real: String, obfuscated: String) {
+    pub fn add(&mut self, real: String, obfuscated: String, reuse: bool) {
         if let Some(dictionary) = self.real_to_obfuscated.last_mut() {
-            dictionary.insert(real, obfuscated);
+            dictionary.insert(real, (obfuscated, reuse));
         } else {
             let mut dictionary = HashMap::new();
-            dictionary.insert(real, obfuscated);
+            dictionary.insert(real, (obfuscated, reuse));
             self.real_to_obfuscated.push(dictionary);
         }
     }
@@ -44,7 +44,7 @@ impl RenameProcessor {
         self.real_to_obfuscated
             .iter()
             .rev()
-            .find_map(|dictionary| dictionary.get(real))
+            .find_map(|dictionary| dictionary.get(real).map(|(name, _)| name))
     }
 
     pub fn generate_identifier(&mut self) -> String {
@@ -72,7 +72,7 @@ impl RenameProcessor {
 
         identifier.push_str(&obfuscated_name);
 
-        self.add(original, obfuscated_name);
+        self.add(original, obfuscated_name, true);
     }
 }
 
@@ -126,7 +126,11 @@ impl Scope for RenameProcessor {
 
     fn pop(&mut self) {
         if let Some(dictionary) = self.real_to_obfuscated.pop() {
-            self.reuse_identifiers.extend(dictionary.into_values());
+            self.reuse_identifiers.extend(
+                dictionary
+                    .into_values()
+                    .filter_map(|(name, reuse)| reuse.then_some(name)),
+            );
             self.reuse_identifiers
                 .sort_by(|a, b| sort_identifiers(a, b).reverse());
         }
@@ -136,6 +140,10 @@ impl Scope for RenameProcessor {
         self.replace_identifier(identifier);
     }
 
+    fn insert_self(&mut self) {
+        self.add("self".to_owned(), "self".to_owned(), false);
+    }
+
     fn insert_local(&mut self, identifier: &mut String, _value: Option<&mut Expression>) {
         self.replace_identifier(identifier);
     }
@@ -143,6 +151,9 @@ impl Scope for RenameProcessor {
     fn insert_local_function(&mut self, function: &mut LocalFunctionStatement) {
         if self.include_functions {
             self.replace_identifier(function.mutate_identifier().mutate_name());
+        } else {
+            let name = function.mutate_identifier().get_name();
+            self.add(name.clone(), name.to_owned(), false);
         }
     }
 }
@@ -174,7 +185,7 @@ mod test {
         let real = "a".to_owned();
         let obfuscated = "b".to_owned();
 
-        scope.add(real.clone(), obfuscated.clone());
+        scope.add(real.clone(), obfuscated.clone(), true);
 
         assert_eq!(&obfuscated, scope.get_obfuscated_name(&real).unwrap());
     }
@@ -186,7 +197,7 @@ mod test {
         let obfuscated = "def".to_owned();
 
         scope.push();
-        scope.add(real.clone(), obfuscated);
+        scope.add(real.clone(), obfuscated, true);
         scope.pop();
 
         assert_eq!(None, scope.get_obfuscated_name(&real));
@@ -199,10 +210,10 @@ mod test {
         let obfuscated = "b".to_owned();
         let other_obfuscated = "c".to_owned();
 
-        scope.add(real.clone(), obfuscated.clone());
+        scope.add(real.clone(), obfuscated.clone(), true);
 
         scope.push();
-        scope.add(real.clone(), other_obfuscated);
+        scope.add(real.clone(), other_obfuscated, true);
         scope.pop();
 
         assert_eq!(&obfuscated, scope.get_obfuscated_name(&real).unwrap());
