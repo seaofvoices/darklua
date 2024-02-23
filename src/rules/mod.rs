@@ -208,6 +208,7 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::<RemoveUnusedWhile>::default(),
         Box::<FilterAfterEarlyReturn>::default(),
         Box::<RemoveEmptyDo>::default(),
+        Box::<RemoveUnusedVariable>::default(),
         Box::<RemoveMethodDefinition>::default(),
         Box::<ConvertIndexToField>::default(),
         Box::<RemoveNilDeclaration>::default(),

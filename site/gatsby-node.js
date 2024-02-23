@@ -217,8 +217,8 @@ exports.createSchemaCustomization = ({ actions }) => {
     }
 
     type RuleParameter {
-      name: String
-      type: String
+      name: String!
+      type: String!
       default: String
       description: String
       added_in: String

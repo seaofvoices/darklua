@@ -9,7 +9,7 @@ parameters:
     type: string
     description: A path to a file to be used as the comment content (required if `text` is not defined)
   - name: location
-    default: "start"
+    default: start
     type: '"start" or "end"'
     description: The location where to add the comment
 examples:
