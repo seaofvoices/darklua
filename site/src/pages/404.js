@@ -31,6 +31,7 @@ const NotFound = () => {
         <Stack spacing={4} pt={4} mx={8}>
           {LINKS.map(({ label, link, icon }) => (
             <Button
+              key={label}
               variant="contained"
               size="large"
               component={ViewStateLink}

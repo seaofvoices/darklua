@@ -131,14 +131,27 @@ export const MarkdownRenderer = ({ htmlAst, ...props }) => {
   return renderAst(htmlAst)
 }
 
-export const RenderMarkdown = ({ markdown }) => {
-  const htmlAst = React.useMemo(
-    () => toHast(fromMarkdown(markdown)),
-    [markdown]
-  )
+const EMPTY_OBJECT = JSON.stringify({})
+
+export const RenderMarkdown = ({ markdown, ...context }) => {
+  const serializedContext = JSON.stringify(context)
+
+  const htmlAst = React.useMemo(() => {
+    const html = toHast(fromMarkdown(markdown))
+    if (serializedContext !== EMPTY_OBJECT) {
+      html.children[0].properties.__darkluacontext = serializedContext
+    }
+    return html
+  }, [markdown, serializedContext])
+
   return <MarkdownRenderer htmlAst={htmlAst} />
 }
 
-export const RenderCode = ({ code, language = "lua" }) => (
-  <RenderMarkdown markdown={`\`\`\`${language}\n` + code + "\n```"} />
+export const RenderCode = ({ code, language = "lua", ...context }) => (
+  <RenderMarkdown
+    markdown={`\`\`\`${language}\n${code}${
+      code.endsWith("\n") ? "" : "\n"
+    }\`\`\``}
+    {...context}
+  />
 )
