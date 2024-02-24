@@ -28,17 +28,17 @@ tracing = ["dep:tracing"]
 stacker = ["full_moon/stacker"]
 
 [dependencies]
-clap = { version = "4.4.6", features = ["derive"] }
+clap = { version = "4.5.1", features = ["derive"] }
 durationfmt = "0.1.1"
 elsa = "1.9.0"
-env_logger = "0.10.0"
+env_logger = "0.10.2"
 full_moon = { version = "0.19.0", features = ["roblox"] }
 json5 = "0.4.1"
 log = "0.4.20"
 pathdiff = "0.2.1"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0.107"
-serde_yaml = "0.9.25"
+serde_json = "1.0.114"
+serde_yaml = "0.9.32"
 toml = "0.8.2"
 tracing = { version = "0.1", optional = true }
 wax = "0.5.0"

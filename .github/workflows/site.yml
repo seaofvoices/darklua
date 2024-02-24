@@ -11,7 +11,7 @@ on:
 jobs:
   build-site:
     name: Build darklua site
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     defaults:
       run:
         shell: bash
@@ -70,10 +70,11 @@ jobs:
             site/.cache/
           key: ${{ runner.os }}-gatsby-build-${{ hashFiles('site/package-lock.json') }}
 
+      - name: Get gatsby version
+        run: npx gatsby --version
+
       - name: Build site
-        run: |
-          npx gatsby --version
-          npx gatsby build
+        run: npx gatsby build
 
       - name: Archive site
         uses: actions/upload-pages-artifact@v1

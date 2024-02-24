@@ -87,6 +87,22 @@ const GroupIcon = ({ groupName }) => {
   return <MenuBook />
 }
 
+const DocumentationSection = ({ documentation }) => (
+  <>
+    <Divider />
+    <li>
+      <Typography
+        sx={{ mt: 0.5, ml: 2 }}
+        color="text.secondary"
+        display="block"
+        variant="caption"
+      >
+        {documentation}
+      </Typography>
+    </li>
+  </>
+)
+
 const DocumentationGroup = ({ name, content, drawerOpened, openDrawer }) => {
   const [open, setOpen] = React.useState(true)
 
@@ -118,19 +134,10 @@ const DocumentationGroup = ({ name, content, drawerOpened, openDrawer }) => {
             {content.map(documentation => {
               if (typeof documentation === "string") {
                 return (
-                  <>
-                    <Divider key={documentation} />
-                    <li>
-                      <Typography
-                        sx={{ mt: 0.5, ml: 2 }}
-                        color="text.secondary"
-                        display="block"
-                        variant="caption"
-                      >
-                        {documentation}
-                      </Typography>
-                    </li>
-                  </>
+                  <DocumentationSection
+                    key={documentation}
+                    documentation={documentation}
+                  />
                 )
               } else {
                 return (

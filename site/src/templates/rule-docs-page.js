@@ -71,7 +71,11 @@ const Parameters = ({ parameters }) => {
                   }`}</TableCell>
                   {hasOneDefault ? (
                     <TableCell>
-                      <RenderMarkdown markdown={`\`${defaultValue}\``} />
+                      {defaultValue === null ? (
+                        <></>
+                      ) : (
+                        <RenderMarkdown markdown={`\`${defaultValue}\``} />
+                      )}
                     </TableCell>
                   ) : null}
                 </TableRow>
@@ -108,12 +112,31 @@ const TabPanel = ({ children, value, index, identifier, ...other }) => {
   )
 }
 
-const Example = ({ input, output }) => {
+const usePatchLines = (input, output) => {
+  const addLines = input.split("\n").length - output.split("\n").length
+
+  let codeOutput = output
+  let codeInput = input
+  if (addLines > 0) {
+    codeOutput = output + "\n".repeat(addLines)
+  } else if (addLines < 0) {
+    codeInput = input + "\n".repeat(-addLines) + " "
+  }
+  if (codeOutput.length === 0) {
+    codeOutput = " "
+  }
+
+  return [codeInput, codeOutput]
+}
+
+const ExampleTab = ({ input, output, rules }) => {
   const [value, setValue] = React.useState(0)
 
   const handleChange = (_, newValue) => {
     setValue(newValue)
   }
+
+  const [codeInput, codeOutput] = usePatchLines(input, output)
 
   return (
     <>
@@ -128,16 +151,31 @@ const Example = ({ input, output }) => {
         </Tabs>
       </Box>
       <TabPanel value={value} index={0} identifier={"input"}>
-        <RenderCode code={input} />
+        <RenderCode code={codeInput} rules={rules} />
       </TabPanel>
       <TabPanel value={value} index={1} identifier={"output"}>
-        <RenderCode code={output} />
+        <RenderCode code={codeOutput} rules={rules} />
       </TabPanel>
     </>
   )
 }
 
-const Examples = ({ examples, examplesOut }) => {
+const ExampleCell = ({ input, output, rules }) => {
+  const [codeInput, codeOutput] = usePatchLines(input, output)
+
+  return (
+    <TableRow>
+      <TableCell component="th" scope="row" style={{ width: "50%" }}>
+        <RenderCode code={codeInput} rules={rules} />
+      </TableCell>
+      <TableCell style={{ width: "50%" }}>
+        <RenderCode code={codeOutput} rules={rules} />
+      </TableCell>
+    </TableRow>
+  )
+}
+
+const Examples = ({ ruleName, examples, examplesOut }) => {
   const theme = useTheme()
   const withTabs = useMediaQuery(theme.breakpoints.down("lg"))
 
@@ -151,10 +189,11 @@ const Examples = ({ examples, examplesOut }) => {
       <br />
       <Box sx={{ display: withTabs ? null : "none" }}>
         {examples.map(({ rules, content }, index) => (
-          <Example
+          <ExampleTab
+            key={`example-${index}`}
             input={content}
             output={examplesOut[index]}
-            withTabs={withTabs}
+            rules={rules ?? [ruleName]}
           />
         ))}
       </Box>
@@ -171,16 +210,12 @@ const Examples = ({ examples, examplesOut }) => {
           </TableHead>
           <TableBody>
             {examples.map(({ rules, content }, index) => (
-              <TableRow key={"input"}>
-                <TableCell component="th" scope="row" style={{ width: "50%" }}>
-                  <RenderMarkdown markdown={"\n```lua\n" + content + "\n```"} />
-                </TableCell>
-                <TableCell style={{ width: "50%" }}>
-                  <RenderMarkdown
-                    markdown={"\n```lua\n" + examplesOut[index] + "\n```"}
-                  />
-                </TableCell>
-              </TableRow>
+              <ExampleCell
+                key={`example-${index}`}
+                input={content}
+                output={examplesOut[index]}
+                rules={rules ?? [ruleName]}
+              />
             ))}
           </TableBody>
         </Table>
@@ -216,7 +251,11 @@ const RuleDocsTemplate = ({ data }) => {
 
       <MarkdownRenderer htmlAst={htmlAst} />
 
-      <Examples examples={examples} examplesOut={examplesOut} />
+      <Examples
+        ruleName={ruleName}
+        examples={examples}
+        examplesOut={examplesOut}
+      />
 
       <br />
     </DocsPageLayout>
