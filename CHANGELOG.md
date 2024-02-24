@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* add get link button to [try-it](https://darklua.com/try-it/) page ([#175](https://github.com/seaofvoices/darklua/pull/175))
 * add rule to remove unused variables (`remove_unused_variable`). Fix issue with `rename_variables` where `self` variables and some cases of variable shadowing were not correctly renamed ([#172](https://github.com/seaofvoices/darklua/pull/172))
 
 ## 0.12.1
