@@ -73,9 +73,6 @@ jobs:
       - name: Get gatsby version
         run: npx gatsby --version
 
-      - name: Clean gatsby site
-        run: npx gatsby clean
-
       - name: Build site
         run: npx gatsby build
 
