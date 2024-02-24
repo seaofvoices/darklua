@@ -53,6 +53,9 @@
     "babel-preset-gatsby": "^3.13.1",
     "prettier": "^2.8.8"
   },
+  "optionalDependencies": {
+    "@parcel/watcher-linux-x64-glibc": "^2.4.1"
+  },
   "homepage": "https://github.com/seaofvoices/darklua",
   "keywords": [
     "gatsby"
