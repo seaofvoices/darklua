@@ -127,7 +127,7 @@ impl Processor {
                                 .unwrap_or_else(|| index.get_prefix().clone()),
                             Expression::identifier(index_variable),
                         );
-                        Some(self.into_do_assignment(assignment, assign, variable))
+                        Some(self.create_do_assignment(assignment, assign, variable))
                     }
                     (Some(prefix_variable), None) => {
                         let assign = LocalAssignStatement::from_variable(prefix_variable.clone())
@@ -137,7 +137,7 @@ impl Processor {
                             index.get_index().clone(),
                         );
 
-                        Some(self.into_do_assignment(assignment, assign, variable))
+                        Some(self.create_do_assignment(assignment, assign, variable))
                     }
                     (Some(prefix_variable), Some(index_variable)) => {
                         let assign = LocalAssignStatement::from_variable(prefix_variable.clone())
@@ -148,7 +148,7 @@ impl Processor {
                             Prefix::from_name(prefix_variable),
                             Expression::identifier(index_variable),
                         );
-                        Some(self.into_do_assignment(assignment, assign, variable))
+                        Some(self.create_do_assignment(assignment, assign, variable))
                     }
                 }
             }
@@ -194,14 +194,14 @@ impl Processor {
                         },
                     );
 
-                    Some(self.into_do_assignment(assignment, assign, new_variable))
+                    Some(self.create_do_assignment(assignment, assign, new_variable))
                 }
             },
             Variable::Identifier(_) => None,
         }
     }
 
-    fn into_do_assignment(
+    fn create_do_assignment(
         &mut self,
         compound_assignment: &CompoundAssignStatement,
         assign: impl Into<Statement>,
@@ -214,7 +214,7 @@ impl Processor {
                 .with_statement(self.create_new_assignment_with_variable(
                     compound_assignment,
                     variable.clone().into(),
-                    Some(variable.into()),
+                    Some(variable),
                 )),
         )
         .into()
