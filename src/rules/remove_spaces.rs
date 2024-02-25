@@ -7,7 +7,7 @@ use crate::rules::{
 use super::verify_no_rule_properties;
 
 #[derive(Debug, Default)]
-struct RemoveWhitespacesProcessor {}
+pub(crate) struct RemoveWhitespacesProcessor {}
 
 impl NodeProcessor for RemoveWhitespacesProcessor {
     fn process_block(&mut self, block: &mut Block) {

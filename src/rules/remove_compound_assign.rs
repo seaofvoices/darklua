@@ -4,15 +4,17 @@ use crate::nodes::{
     AssignStatement, BinaryExpression, Block, CompoundAssignStatement, DoStatement, Expression,
     FieldExpression, IndexExpression, LocalAssignStatement, Prefix, Statement, Variable,
 };
-use crate::process::{IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
+use crate::process::{DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
 };
 
-use super::verify_no_rule_properties;
+use super::{verify_no_rule_properties, RemoveCommentProcessor, RemoveWhitespacesProcessor};
 
 struct Processor {
     identifier_tracker: IdentifierTracker,
+    remove_comments: RemoveCommentProcessor,
+    remove_spaces: RemoveWhitespacesProcessor,
 }
 
 impl Processor {
@@ -111,17 +113,11 @@ impl Processor {
                             self.remove_parentheses(index.get_index().clone()),
                         );
 
-                        Some(
-                            AssignStatement::from_variable(
-                                variable.clone(),
-                                BinaryExpression::new(
-                                    assignment.get_operator().to_binary_operator(),
-                                    variable,
-                                    assignment.get_value().clone(),
-                                ),
-                            )
-                            .into(),
-                        )
+                        Some(self.create_new_assignment_with_variable(
+                            assignment,
+                            variable.clone().into(),
+                            Some(variable.into()),
+                        ))
                     }
                     (None, Some(index_variable)) => {
                         let assign = LocalAssignStatement::from_variable(index_variable.clone())
@@ -131,7 +127,7 @@ impl Processor {
                                 .unwrap_or_else(|| index.get_prefix().clone()),
                             Expression::identifier(index_variable),
                         );
-                        Some(into_do_assignment(assignment, assign, variable))
+                        Some(self.create_do_assignment(assignment, assign, variable))
                     }
                     (Some(prefix_variable), None) => {
                         let assign = LocalAssignStatement::from_variable(prefix_variable.clone())
@@ -141,7 +137,7 @@ impl Processor {
                             index.get_index().clone(),
                         );
 
-                        Some(into_do_assignment(assignment, assign, variable))
+                        Some(self.create_do_assignment(assignment, assign, variable))
                     }
                     (Some(prefix_variable), Some(index_variable)) => {
                         let assign = LocalAssignStatement::from_variable(prefix_variable.clone())
@@ -152,7 +148,7 @@ impl Processor {
                             Prefix::from_name(prefix_variable),
                             Expression::identifier(index_variable),
                         );
-                        Some(into_do_assignment(assignment, assign, variable))
+                        Some(self.create_do_assignment(assignment, assign, variable))
                     }
                 }
             }
@@ -178,17 +174,11 @@ impl Processor {
                         };
                     let new_variable = FieldExpression::new(new_prefix, field.get_field().clone());
 
-                    Some(
-                        AssignStatement::from_variable(
-                            new_variable.clone(),
-                            BinaryExpression::new(
-                                assignment.get_operator().to_binary_operator(),
-                                new_variable,
-                                assignment.get_value().clone(),
-                            ),
-                        )
-                        .into(),
-                    )
+                    Some(self.create_new_assignment_with_variable(
+                        assignment,
+                        new_variable.clone().into(),
+                        Some(new_variable.into()),
+                    ))
                 }
                 Prefix::Call(_) | Prefix::Field(_) | Prefix::Index(_) | Prefix::Parenthese(_) => {
                     let identifier = self.generate_variable();
@@ -196,34 +186,73 @@ impl Processor {
                         Prefix::from_name(&identifier),
                         field.get_field().clone(),
                     );
-                    Some(
-                        DoStatement::new(
-                            Block::default()
-                                .with_statement(
-                                    LocalAssignStatement::from_variable(identifier).with_value(
-                                        match field.get_prefix().clone() {
-                                            Prefix::Parenthese(parenthese) => {
-                                                parenthese.into_inner_expression()
-                                            }
-                                            prefix => prefix.into(),
-                                        },
-                                    ),
-                                )
-                                .with_statement(AssignStatement::from_variable(
-                                    new_variable.clone(),
-                                    BinaryExpression::new(
-                                        assignment.get_operator().to_binary_operator(),
-                                        new_variable,
-                                        assignment.get_value().clone(),
-                                    ),
-                                )),
-                        )
-                        .into(),
-                    )
+
+                    let assign = LocalAssignStatement::from_variable(identifier).with_value(
+                        match field.get_prefix().clone() {
+                            Prefix::Parenthese(parenthese) => parenthese.into_inner_expression(),
+                            prefix => prefix.into(),
+                        },
+                    );
+
+                    Some(self.create_do_assignment(assignment, assign, new_variable))
                 }
             },
             Variable::Identifier(_) => None,
         }
+    }
+
+    fn create_do_assignment(
+        &mut self,
+        compound_assignment: &CompoundAssignStatement,
+        assign: impl Into<Statement>,
+        variable: impl Into<Variable>,
+    ) -> Statement {
+        let variable = variable.into();
+        DoStatement::new(
+            Block::default()
+                .with_statement(assign.into())
+                .with_statement(self.create_new_assignment_with_variable(
+                    compound_assignment,
+                    variable.clone().into(),
+                    Some(variable),
+                )),
+        )
+        .into()
+    }
+
+    fn create_new_assignment(
+        &mut self,
+        assignment: &CompoundAssignStatement,
+        variable: impl Into<Expression>,
+    ) -> Statement {
+        self.create_new_assignment_with_variable(assignment, variable.into(), None)
+    }
+
+    fn create_new_assignment_with_variable(
+        &mut self,
+        assignment: &CompoundAssignStatement,
+        mut value: Expression,
+        variable: Option<Variable>,
+    ) -> Statement {
+        let operator = assignment.get_operator().to_binary_operator();
+
+        DefaultVisitor::visit_expression(&mut value, &mut self.remove_comments);
+        DefaultVisitor::visit_expression(&mut value, &mut self.remove_spaces);
+
+        let mut expression = BinaryExpression::new(operator, value, assignment.get_value().clone());
+        if let Some(token) = assignment.get_tokens().map(|tokens| {
+            let mut new_token = tokens.operator.clone();
+            new_token.replace_with_content(operator.to_str());
+            new_token
+        }) {
+            expression.set_token(token);
+        }
+
+        AssignStatement::from_variable(
+            variable.unwrap_or_else(|| assignment.get_variable().clone()),
+            expression,
+        )
+        .into()
     }
 }
 
@@ -231,6 +260,8 @@ impl Default for Processor {
     fn default() -> Self {
         Self {
             identifier_tracker: IdentifierTracker::new(),
+            remove_comments: RemoveCommentProcessor::default(),
+            remove_spaces: RemoveWhitespacesProcessor::default(),
         }
     }
 }
@@ -253,40 +284,11 @@ impl NodeProcessor for Processor {
     fn process_statement(&mut self, statement: &mut Statement) {
         if let Statement::CompoundAssign(assignment) = statement {
             let variable = assignment.get_variable();
-            *statement = self.replace_with(assignment).unwrap_or_else(|| {
-                AssignStatement::from_variable(
-                    variable.clone(),
-                    BinaryExpression::new(
-                        assignment.get_operator().to_binary_operator(),
-                        variable.clone(),
-                        assignment.get_value().clone(),
-                    ),
-                )
-                .into()
-            });
+            *statement = self
+                .replace_with(assignment)
+                .unwrap_or_else(|| self.create_new_assignment(assignment, variable.clone()));
         }
     }
-}
-
-fn into_do_assignment(
-    compound_assignment: &CompoundAssignStatement,
-    assign: impl Into<Statement>,
-    variable: impl Into<Variable>,
-) -> Statement {
-    let variable = variable.into();
-    DoStatement::new(
-        Block::default()
-            .with_statement(assign.into())
-            .with_statement(AssignStatement::from_variable(
-                variable.clone(),
-                BinaryExpression::new(
-                    compound_assignment.get_operator().to_binary_operator(),
-                    variable,
-                    compound_assignment.get_value().clone(),
-                ),
-            )),
-    )
-    .into()
 }
 
 pub const REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME: &str = "remove_compound_assignment";

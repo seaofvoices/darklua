@@ -35,6 +35,15 @@ test_rule!(
         => "do local __DARKLUA_VAR = a.object __DARKLUA_VAR.counter = __DARKLUA_VAR.counter + 1 end do local __DARKLUA_VAR0 = b.object __DARKLUA_VAR0.counter = __DARKLUA_VAR0.counter - 1 end",
 );
 
+test_rule_with_tokens!(
+    remove_compound_assignment_with_tokens,
+    RemoveCompoundAssignment::default(),
+    trailing_comment("i += 1 -- comment") => "i =i+ 1 -- comment",
+    trailing_comment_on_second_line("\ni += 1 -- comment") => "\ni =i+ 1 -- comment",
+    comment_after_operator("i += --[[ comment ]] 1") => "i =i+ --[[ comment ]] 1",
+    comment_after_variable("i --[[ comment ]] += 1") => "i --[[ comment ]] =i+ 1",
+);
+
 #[test]
 fn deserialize_from_object_notation() {
     json5::from_str::<Box<dyn Rule>>(
