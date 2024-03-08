@@ -1,4 +1,5 @@
 pub mod error;
+pub mod generate_json_schema;
 pub mod minify;
 pub mod process;
 pub mod utils;
@@ -38,6 +39,8 @@ pub enum Command {
     /// If no configuration is passed, darklua will attempt to read
     /// `.darklua.json` or `darklua.json5` from the working directory.
     Process(process::Options),
+    /// Generate darklua's configuration file JSON schema
+    GenerateJsonSchema(generate_json_schema::Options),
 }
 
 impl Command {
@@ -45,6 +48,9 @@ impl Command {
         match self {
             Command::Minify(options) => minify::run(options, global_options),
             Command::Process(options) => process::run(options, global_options),
+            Command::GenerateJsonSchema(options) => {
+                generate_json_schema::run(options, global_options)
+            }
         }
     }
 }

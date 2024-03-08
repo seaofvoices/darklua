@@ -11,9 +11,10 @@ Site: https://darklua.com
 Usage: darklua [OPTIONS] <COMMAND>
 
 Commands:
-  minify   Minify lua files without applying any transformation
-  process  Process lua files with rules
-  help     Print this message or the help of the given subcommand(s)
+  minify                Minify lua files without applying any transformation
+  process               Process lua files with rules
+  generate-json-schema  Generate darklua's configuration file JSON schema
+  help                  Print this message or the help of the given subcommand(s)
 
 Options:
   -v, --verbose...
