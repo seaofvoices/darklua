@@ -1,0 +1,855 @@
+---
+source: src/frontend/configuration.rs
+expression: "serde_json::to_string_pretty(&Configuration::schema_value()).expect(\"unable to write configuration schema\")"
+---
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Darklua configuration",
+  "type": "object",
+  "properties": {
+    "bundle": {
+      "description": "Configure how darklua should bundle code",
+      "allOf": [
+        {
+          "$ref": "#/definitions/BundleConfiguration"
+        }
+      ]
+    },
+    "generator": {
+      "description": "Choose which code generator is used when writing the processed code",
+      "default": {
+        "name": "retain_lines"
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/GeneratorParameters"
+        }
+      ]
+    },
+    "rules": {
+      "description": "A list of darklua rule that are used for processing the code",
+      "default": [
+        "remove_spaces",
+        "remove_comments",
+        "compute_expression",
+        "remove_unused_if_branch",
+        "remove_unused_while",
+        "filter_after_early_return",
+        "remove_empty_do",
+        "remove_unused_variable",
+        "remove_method_definition",
+        "convert_index_to_field",
+        "remove_nil_declaration",
+        "rename_variables",
+        "remove_function_call_parens"
+      ],
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Rule"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "BundleConfiguration": {
+      "type": "object",
+      "required": [
+        "require_mode"
+      ],
+      "properties": {
+        "excludes": {
+          "description": "Provide a list of path globs to avoid bundling certain files",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "modules_identifier": {
+          "type": "string"
+        },
+        "require_mode": {
+          "description": "Configure how darklua should interpret require calls",
+          "allOf": [
+            {
+              "$ref": "#/definitions/BundleRequireMode"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "BundleRequireMode": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "path"
+          ]
+        },
+        {
+          "$ref": "#/definitions/PathRequireMode"
+        }
+      ]
+    },
+    "GeneratorParameters": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "retain_lines"
+          ]
+        },
+        {
+          "type": "string",
+          "enum": [
+            "dense"
+          ]
+        },
+        {
+          "type": "string",
+          "enum": [
+            "readable"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "column_span": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0.0
+            },
+            "name": {
+              "type": "string",
+              "enum": [
+                "readable"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "column_span": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0.0
+            },
+            "name": {
+              "type": "string",
+              "enum": [
+                "dense"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "PathRequireMode": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "module_folder_name": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "enum": [
+            "path"
+          ]
+        },
+        "sources": {
+          "description": "Provide aliases to certain path on the filesystem",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "RequireMode": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "path"
+          ]
+        },
+        {
+          "type": "string",
+          "enum": [
+            "roblox"
+          ]
+        },
+        {
+          "$ref": "#/definitions/PathRequireMode"
+        },
+        {
+          "$ref": "#/definitions/RobloxRequireMode"
+        }
+      ]
+    },
+    "RobloxIndexStyle": {
+      "default": "find_first_child",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "find_first_child",
+            "wait_for_child",
+            "property"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "enum": [
+                "find_first_child",
+                "wait_for_child",
+                "property"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "RobloxRequireMode": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "indexing_style": {
+          "description": "Configure how Instance are indexed when generating paths to ModuleScripts",
+          "default": {
+            "name": "find_first_child"
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/RobloxIndexStyle"
+            }
+          ]
+        },
+        "name": {
+          "type": "string",
+          "enum": [
+            "roblox"
+          ]
+        },
+        "rojo_sourcemap": {
+          "description": "A path to a Rojo sourcemap relative to the directory containing the darklua configuration file",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Rule": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "compute_expression"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "compute_expression"
+              ]
+            }
+          }
+        },
+        {
+          "type": "string",
+          "enum": [
+            "convert_index_to_field"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "convert_index_to_field"
+              ]
+            }
+          }
+        },
+        {
+          "type": "string",
+          "enum": [
+            "convert_local_function_to_assign"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "convert_local_function_to_assign"
+              ]
+            }
+          }
+        },
+        {
+          "type": "string",
+          "enum": [
+            "filter_after_early_return"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "filter_after_early_return"
+              ]
+            }
+          }
+        },
+        {
+          "type": "string",
+          "enum": [
+            "group_local_assignment"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "group_local_assignment"
+              ]
+            }
+          }
+        },
+        {
+          "type": "string",
+          "enum": [
+            "remove_assertions"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "remove_assertions"
+              ]
+            }
+          }
+        },
+        {
+          "type": "string",
+          "enum": [
+            "remove_comments"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "remove_comments"
+              ]
+            }
+          }
+        },
+        {
+          "type": "string",
+          "enum": [
+            "remove_compound_assignment"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "remove_compound_assignment"
+              ]
+            }
+          }
+        },
+        {
+          "type": "string",
+          "enum": [
+            "remove_debug_profiling"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "remove_debug_profiling"
+              ]
+            }
+          }
+        },
+        {
+          "type": "string",
+          "enum": [
+            "remove_empty_do"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "remove_empty_do"
+              ]
+            }
+          }
+        },
+        {
+          "type": "string",
+          "enum": [
+            "remove_function_call_parens"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "remove_function_call_parens"
+              ]
+            }
+          }
+        },
+        {
+          "type": "string",
+          "enum": [
+            "remove_interpolated_string"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "remove_interpolated_string"
+              ]
+            }
+          }
+        },
+        {
+          "type": "string",
+          "enum": [
+            "remove_method_definition"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "remove_method_definition"
+              ]
+            }
+          }
+        },
+        {
+          "type": "string",
+          "enum": [
+            "remove_nil_declaration"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "remove_nil_declaration"
+              ]
+            }
+          }
+        },
+        {
+          "type": "string",
+          "enum": [
+            "remove_spaces"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "remove_spaces"
+              ]
+            }
+          }
+        },
+        {
+          "type": "string",
+          "enum": [
+            "remove_types"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "remove_types"
+              ]
+            }
+          }
+        },
+        {
+          "type": "string",
+          "enum": [
+            "remove_unused_if_branch"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "remove_unused_if_branch"
+              ]
+            }
+          }
+        },
+        {
+          "type": "string",
+          "enum": [
+            "remove_unused_variable"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "remove_unused_variable"
+              ]
+            }
+          }
+        },
+        {
+          "type": "string",
+          "enum": [
+            "remove_unused_while"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "remove_unused_while"
+              ]
+            }
+          }
+        },
+        {
+          "type": "string",
+          "enum": [
+            "rename_variables"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "rename_variables"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule",
+            "text"
+          ],
+          "properties": {
+            "location": {
+              "type": "string",
+              "enum": [
+                "start",
+                "end"
+              ]
+            },
+            "rule": {
+              "type": "string",
+              "enum": [
+                "append_text_comment"
+              ]
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "file",
+            "rule"
+          ],
+          "properties": {
+            "file": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string",
+              "enum": [
+                "start",
+                "end"
+              ]
+            },
+            "rule": {
+              "type": "string",
+              "enum": [
+                "append_text_comment"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "current",
+            "rule",
+            "target"
+          ],
+          "properties": {
+            "current": {
+              "$ref": "#/definitions/RequireMode"
+            },
+            "rule": {
+              "type": "string",
+              "enum": [
+                "convert_require"
+              ]
+            },
+            "target": {
+              "$ref": "#/definitions/RequireMode"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "required",
+            "rule"
+          ],
+          "properties": {
+            "env": {
+              "type": "string"
+            },
+            "identifier": {
+              "type": "string"
+            },
+            "rule": {
+              "type": "string",
+              "enum": [
+                "inject_global_value"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "required",
+            "rule"
+          ],
+          "properties": {
+            "identifier": {
+              "type": "string"
+            },
+            "rule": {
+              "type": "string",
+              "enum": [
+                "inject_global_value"
+              ]
+            },
+            "value": true
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "preserve_arguments_side_effects": {
+              "type": "boolean"
+            },
+            "rule": {
+              "type": "string",
+              "enum": [
+                "remove_assertions"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "preserve_arguments_side_effects": {
+              "type": "boolean"
+            },
+            "rule": {
+              "type": "string",
+              "enum": [
+                "remove_debug_profiling"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "rule": {
+              "type": "string",
+              "enum": [
+                "remove_interpolated_string"
+              ]
+            },
+            "strategy": {
+              "type": "string",
+              "enum": [
+                "string",
+                "tostring"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "rule"
+          ],
+          "properties": {
+            "globals": {
+              "type": [
+                "string"
+              ]
+            },
+            "include_functions": {
+              "type": "boolean"
+            },
+            "rule": {
+              "type": "string",
+              "enum": [
+                "rename_variables"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

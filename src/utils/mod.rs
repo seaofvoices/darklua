@@ -1,4 +1,5 @@
 mod expressions_as_statement;
+pub(crate) mod schema;
 mod serde_string_or_struct;
 #[cfg(not(target_arch = "wasm32"))]
 mod timer;

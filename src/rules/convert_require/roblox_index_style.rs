@@ -1,7 +1,10 @@
+use schemars::schema::Schema;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::nodes::{FieldExpression, FunctionCall, IndexExpression, Prefix, StringExpression};
 use crate::process::utils::is_valid_identifier;
+use crate::utils::schema;
 
 use std::str::FromStr;
 
@@ -16,6 +19,17 @@ pub enum RobloxIndexStyle {
 impl Default for RobloxIndexStyle {
     fn default() -> Self {
         Self::FindFirstChild
+    }
+}
+
+impl ToString for RobloxIndexStyle {
+    fn to_string(&self) -> String {
+        match self {
+            Self::FindFirstChild => "find_first_child",
+            Self::WaitForChild => "wait_for_child",
+            Self::Property => "property",
+        }
+        .to_owned()
     }
 }
 
@@ -58,6 +72,29 @@ impl FromStr for RobloxIndexStyle {
             "property" => Self::Property,
             _ => return Err(format!("invalid roblox index style `{}`", s)),
         })
+    }
+}
+
+impl JsonSchema for RobloxIndexStyle {
+    fn schema_name() -> String {
+        "RobloxIndexStyle".to_owned()
+    }
+
+    fn json_schema(_gen: &mut schemars::gen::SchemaGenerator) -> Schema {
+        let index_style = schema::one_of(vec![
+            schema::string_enum(vec!["find_first_child", "wait_for_child", "property"]),
+            schema::object(
+                vec![(
+                    "name",
+                    schema::string_enum(vec!["find_first_child", "wait_for_child", "property"]),
+                )],
+                ["name"],
+            ),
+        ]);
+        schema::with_default_value(
+            index_style,
+            serde_json::json!(RobloxIndexStyle::default().to_string()),
+        )
     }
 }
 

@@ -183,21 +183,8 @@ impl<'a> Worker<'a> {
 
     fn read_configuration(&self, config: &Path) -> DarkluaResult<Configuration> {
         let config_content = self.resources.get(config)?;
-        json5::from_str(&config_content)
-            .map_err(|err| {
-                DarkluaError::invalid_configuration_file(config).context(err.to_string())
-            })
-            .map(|configuration: Configuration| {
-                configuration.with_location({
-                    config.parent().unwrap_or_else(|| {
-                        log::warn!(
-                            "unexpected configuration path `{}` (unable to extract parent path)",
-                            config.display()
-                        );
-                        config
-                    })
-                })
-            })
+
+        Configuration::parse(&config_content, config)
     }
 
     fn do_work(&mut self, work: WorkItem) -> DarkluaResult<Option<WorkItem>> {

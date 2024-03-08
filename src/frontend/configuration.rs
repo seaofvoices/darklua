@@ -4,6 +4,11 @@ use std::{
     str::FromStr,
 };
 
+use schemars::{
+    gen::SchemaSettings,
+    schema::{RootSchema, Schema},
+    JsonSchema,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -13,8 +18,11 @@ use crate::{
         bundle::{BundleRequireMode, Bundler},
         get_default_rules, Rule,
     },
-    Parser,
+    utils::schema,
+    DarkluaError, Parser,
 };
+
+use super::DarkluaResult;
 
 const DEFAULT_COLUMN_SPAN: usize = 80;
 
@@ -22,13 +30,17 @@ fn get_default_column_span() -> usize {
     DEFAULT_COLUMN_SPAN
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, JsonSchema)]
+#[schemars(title = "Darklua configuration")]
 #[serde(deny_unknown_fields)]
 pub struct Configuration {
+    /// A list of darklua rule that are used for processing the code
     #[serde(alias = "process", default = "get_default_rules")]
     rules: Vec<Box<dyn Rule>>,
+    /// Choose which code generator is used when writing the processed code
     #[serde(default, deserialize_with = "crate::utils::string_or_struct")]
     generator: GeneratorParameters,
+    /// Configure how darklua should bundle code
     #[serde(default, skip_serializing_if = "Option::is_none")]
     bundle: Option<BundleConfiguration>,
     #[serde(default, skip)]
@@ -45,6 +57,37 @@ impl Configuration {
             bundle: None,
             location: None,
         }
+    }
+
+    pub fn parse(content: &str, config_path: impl AsRef<Path>) -> DarkluaResult<Self> {
+        let config_path = config_path.as_ref();
+
+        json5::from_str(&content)
+            .map_err(|err| DarkluaError::invalid_configuration_file(config_path, err.to_string()))
+            .map(|configuration: Configuration| {
+                configuration.with_location({
+                    config_path.parent().unwrap_or_else(|| {
+                        log::warn!(
+                            "unexpected configuration path `{}` (unable to extract parent path)",
+                            config_path.display()
+                        );
+                        config_path
+                    })
+                })
+            })
+    }
+
+    pub(crate) fn schema_value() -> RootSchema {
+        let generator = SchemaSettings::draft07()
+            .with(|settings| {
+                settings.option_add_null_type = false;
+            })
+            .into_generator();
+        generator.into_root_schema_for::<Self>()
+    }
+
+    pub fn schema() -> String {
+        serde_json::to_string(&Self::schema_value()).expect("generated schema should be valid json")
     }
 
     #[inline]
@@ -163,6 +206,34 @@ pub enum GeneratorParameters {
     },
 }
 
+impl JsonSchema for GeneratorParameters {
+    fn schema_name() -> String {
+        "GeneratorParameters".to_owned()
+    }
+
+    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> Schema {
+        schema::one_of(vec![
+            schema::string_literal("retain_lines"),
+            schema::string_literal("dense"),
+            schema::string_literal("readable"),
+            schema::object(
+                vec![
+                    ("name", schema::string_literal("readable")),
+                    ("column_span", gen.subschema_for::<usize>()),
+                ],
+                ["name"],
+            ),
+            schema::object(
+                vec![
+                    ("name", schema::string_literal("dense")),
+                    ("column_span", gen.subschema_for::<usize>()),
+                ],
+                ["name"],
+            ),
+        ])
+    }
+}
+
 impl Default for GeneratorParameters {
     fn default() -> Self {
         Self::RetainLines
@@ -228,16 +299,20 @@ impl FromStr for GeneratorParameters {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub struct BundleConfiguration {
+    /// Configure how darklua should interpret require calls
     #[serde(deserialize_with = "crate::utils::string_or_struct")]
     require_mode: BundleRequireMode,
     #[serde(skip_serializing_if = "Option::is_none")]
     modules_identifier: Option<String>,
+    /// Provide a list of path globs to avoid bundling certain files
     #[serde(default, skip_serializing_if = "HashSet::is_empty")]
     excludes: HashSet<String>,
 }
+
+const DEFAULT_MODULES_IDENTIFIER: &str = "__DARKLUA_BUNDLE_MODULES";
 
 impl BundleConfiguration {
     pub fn new(require_mode: impl Into<BundleRequireMode>) -> Self {
@@ -266,7 +341,7 @@ impl BundleConfiguration {
         self.modules_identifier
             .as_ref()
             .map(AsRef::as_ref)
-            .unwrap_or("__DARKLUA_BUNDLE_MODULES")
+            .unwrap_or(DEFAULT_MODULES_IDENTIFIER)
     }
 
     pub(crate) fn excludes(&self) -> impl Iterator<Item = &str> {
@@ -277,6 +352,46 @@ impl BundleConfiguration {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn snapshot_json_schema() {
+        insta::assert_snapshot!(
+            "configuration_schema",
+            serde_json::to_string_pretty(&Configuration::schema_value())
+                .expect("unable to write configuration schema")
+        );
+    }
+
+    #[test]
+    fn invalid_rule_name_config_error() {
+        insta::assert_display_snapshot!(
+            "invalid_rule_name_config_error",
+            Configuration::parse(
+                r#"{
+    rules: [
+        'oops'
+    ]
+}"#,
+                "./darklua.json"
+            )
+            .unwrap_err()
+        );
+    }
+
+    #[test]
+    fn config_syntax_error() {
+        insta::assert_display_snapshot!(
+            "config_syntax_error",
+            Configuration::parse(
+                r#"{
+    process: [
+        'oops'
+}"#,
+                "./darklua.json"
+            )
+            .unwrap_err()
+        );
+    }
 
     mod generator_parameters {
         use super::*;

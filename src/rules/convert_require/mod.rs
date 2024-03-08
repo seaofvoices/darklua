@@ -3,6 +3,8 @@ mod roblox_index_style;
 mod roblox_require_mode;
 mod rojo_sourcemap;
 
+use schemars::schema::Schema;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::DarkluaResult;
@@ -10,6 +12,7 @@ use crate::nodes::{Arguments, Block, FunctionCall};
 use crate::process::{DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor};
 use crate::rules::require::{is_require_call, PathRequireMode};
 use crate::rules::{Context, RuleConfiguration, RuleConfigurationError, RuleProperties};
+use crate::utils::schema;
 
 use instance_path::InstancePath;
 pub use roblox_index_style::RobloxIndexStyle;
@@ -81,6 +84,69 @@ impl FromStr for RequireMode {
             "roblox" => Self::Roblox(Default::default()),
             _ => return Err(format!("invalid require mode name `{}`", s)),
         })
+    }
+}
+
+impl JsonSchema for RequireMode {
+    fn schema_name() -> String {
+        "RequireMode".to_owned()
+    }
+
+    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> Schema {
+        let mut path_require_mode = gen.subschema_for::<PathRequireMode>();
+
+        match &mut path_require_mode {
+            Schema::Object(object) => {
+                if let Some(reference) = &object.reference {
+                    let definitions_path = &gen.settings().definitions_path;
+
+                    if reference.starts_with(definitions_path) {
+                        let name = &reference[definitions_path.len()..];
+                        if let Some(Schema::Object(definition)) =
+                            gen.definitions_mut().get_mut(name)
+                        {
+                            definition
+                                .object()
+                                .properties
+                                .insert("name".to_owned(), schema::string_literal("path"));
+                            definition.object().required.insert("name".to_owned());
+                        }
+                    }
+                }
+            }
+            Schema::Bool(_) => {}
+        }
+
+        let mut roblox_require_mode = gen.subschema_for::<RobloxRequireMode>();
+
+        match &mut roblox_require_mode {
+            Schema::Object(object) => {
+                if let Some(reference) = &object.reference {
+                    let definitions_path = &gen.settings().definitions_path;
+
+                    if reference.starts_with(definitions_path) {
+                        let name = &reference[definitions_path.len()..];
+                        if let Some(Schema::Object(definition)) =
+                            gen.definitions_mut().get_mut(name)
+                        {
+                            definition
+                                .object()
+                                .properties
+                                .insert("name".to_owned(), schema::string_literal("roblox"));
+                            definition.object().required.insert("name".to_owned());
+                        }
+                    }
+                }
+            }
+            Schema::Bool(_) => {}
+        }
+
+        schema::one_of(vec![
+            schema::string_literal("path"),
+            schema::string_literal("roblox"),
+            path_require_mode,
+            roblox_require_mode,
+        ])
     }
 }
 

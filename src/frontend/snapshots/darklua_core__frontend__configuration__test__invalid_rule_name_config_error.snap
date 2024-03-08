@@ -1,0 +1,5 @@
+---
+source: src/frontend/configuration.rs
+expression: "Configuration::parse(r#\"{\n    process: [\n        'oops'\n    ]\n}\"#,\n        \"./darklua.json\").unwrap_err()"
+---
+invalid configuration file at `./darklua.json`: invalid rule name 'oops'

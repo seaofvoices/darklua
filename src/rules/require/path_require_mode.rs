@@ -1,3 +1,4 @@
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::DarkluaResult;
@@ -12,7 +13,7 @@ use std::path::{Path, PathBuf};
 
 use super::RequirePathLocator;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub struct PathRequireMode {
     #[serde(
@@ -20,6 +21,7 @@ pub struct PathRequireMode {
         default = "get_default_module_folder_name"
     )]
     module_folder_name: String,
+    /// Provide aliases to certain path on the filesystem
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     sources: HashMap<String, PathBuf>,
 }

@@ -1,3 +1,4 @@
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -14,11 +15,14 @@ use super::{
     RequireMode, RobloxIndexStyle,
 };
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub struct RobloxRequireMode {
+    /// A path to a Rojo sourcemap relative to the directory containing the darklua
+    /// configuration file
     rojo_sourcemap: Option<PathBuf>,
     #[serde(default, deserialize_with = "crate::utils::string_or_struct")]
+    /// Configure how Instance are indexed when generating paths to ModuleScripts
     indexing_style: RobloxIndexStyle,
     #[serde(skip)]
     cached_sourcemap: Option<RojoSourcemap>,

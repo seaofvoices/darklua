@@ -60,8 +60,10 @@ pub use unused_if_branch::*;
 pub use unused_while::*;
 
 use crate::nodes::Block;
+use crate::utils::schema;
 use crate::Resources;
 
+use schemars::{schema::Schema, JsonSchema};
 use serde::de::{self, MapAccess, Visitor};
 use serde::ser::SerializeMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -275,7 +277,7 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_UNUSED_VARIABLE_RULE_NAME => Box::<RemoveUnusedVariable>::default(),
             REMOVE_UNUSED_WHILE_RULE_NAME => Box::<RemoveUnusedWhile>::default(),
             RENAME_VARIABLES_RULE_NAME => Box::<RenameVariables>::default(),
-            _ => return Err(format!("invalid rule name: {}", string)),
+            _ => return Err(format!("invalid rule name '{}'", string)),
         };
 
         Ok(rule)
@@ -375,6 +377,134 @@ impl<'de> Deserialize<'de> for Box<dyn Rule> {
 
         deserializer.deserialize_any(StringOrStruct)
     }
+}
+
+impl JsonSchema for Box<dyn Rule> {
+    fn schema_name() -> String {
+        "Rule".to_owned()
+    }
+
+    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        let mut one_of_schemas = Vec::new();
+
+        for name in get_all_rule_names() {
+            match serde_json::from_str::<Box<dyn Rule>>(&format!("\"{}\"", name)) {
+                Ok(_rule) => {
+                    one_of_schemas.push(schema::string_literal(name));
+                    one_of_schemas.push(empty_rule_json_schema(name));
+                }
+                Err(_) => {}
+            }
+        }
+
+        // AppendTextComment
+        one_of_schemas.push(schema::object(
+            vec![
+                (
+                    "rule",
+                    schema::string_literal(APPEND_TEXT_COMMENT_RULE_NAME),
+                ),
+                ("text", schema::string()),
+                ("location", schema::string_enum(vec!["start", "end"])),
+            ],
+            ["rule", "text"],
+        ));
+        one_of_schemas.push(schema::object(
+            vec![
+                (
+                    "rule",
+                    schema::string_literal(APPEND_TEXT_COMMENT_RULE_NAME),
+                ),
+                ("file", schema::string()),
+                ("location", schema::string_enum(vec!["start", "end"])),
+            ],
+            ["rule", "file"],
+        ));
+
+        // ConvertRequire
+        let require_mode_schema = gen.subschema_for::<RequireMode>();
+        one_of_schemas.push(schema::object(
+            vec![
+                ("rule", schema::string_literal(CONVERT_REQUIRE_RULE_NAME)),
+                ("current", require_mode_schema.clone()),
+                ("target", require_mode_schema),
+            ],
+            ["rule", "current", "target"],
+        ));
+
+        // InjectGlobalValue
+        one_of_schemas.push(schema::object(
+            vec![
+                (
+                    "rule",
+                    schema::string_literal(INJECT_GLOBAL_VALUE_RULE_NAME),
+                ),
+                ("identifier", schema::string()),
+                ("env", schema::string()),
+            ],
+            ["rule", "required"],
+        ));
+        one_of_schemas.push(schema::object(
+            vec![
+                (
+                    "rule",
+                    schema::string_literal(INJECT_GLOBAL_VALUE_RULE_NAME),
+                ),
+                ("identifier", schema::string()),
+                ("value", schema::any()),
+            ],
+            ["rule", "required"],
+        ));
+
+        // RemoveAssertions
+        one_of_schemas.push(schema::object(
+            vec![
+                ("rule", schema::string_literal(REMOVE_ASSERTIONS_RULE_NAME)),
+                ("preserve_arguments_side_effects", schema::bool()),
+            ],
+            ["rule"],
+        ));
+
+        // RemoveDebugProfiling
+        one_of_schemas.push(schema::object(
+            vec![
+                (
+                    "rule",
+                    schema::string_literal(REMOVE_DEBUG_PROFILING_RULE_NAME),
+                ),
+                ("preserve_arguments_side_effects", schema::bool()),
+            ],
+            ["rule"],
+        ));
+
+        // RemoveInterpolatedString
+        one_of_schemas.push(schema::object(
+            vec![
+                (
+                    "rule",
+                    schema::string_literal(REMOVE_INTERPOLATED_STRING_RULE_NAME),
+                ),
+                ("strategy", schema::string_enum(vec!["string", "tostring"])),
+            ],
+            ["rule"],
+        ));
+
+        // RenameVariables
+        one_of_schemas.push(schema::object(
+            vec![
+                ("rule", schema::string_literal(RENAME_VARIABLES_RULE_NAME)),
+                ("globals", schema::string_array()),
+                ("include_functions", schema::bool()),
+            ],
+            ["rule"],
+        ));
+
+        schema::one_of(one_of_schemas)
+    }
+}
+
+fn empty_rule_json_schema(name: &str) -> Schema {
+    schema::object(vec![("rule", schema::string_literal(name))], ["rule"])
 }
 
 fn verify_no_rule_properties(properties: &RuleProperties) -> Result<(), RuleConfigurationError> {

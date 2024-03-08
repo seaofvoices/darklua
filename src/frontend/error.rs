@@ -28,6 +28,7 @@ enum ErrorKind {
     },
     InvalidConfiguration {
         path: PathBuf,
+        message: String,
     },
     MultipleConfigurationFound {
         paths: Vec<PathBuf>,
@@ -118,8 +119,14 @@ impl DarkluaError {
         Self::new(ErrorKind::ResourceNotFound { path: path.into() })
     }
 
-    pub(crate) fn invalid_configuration_file(path: impl Into<PathBuf>) -> Self {
-        Self::new(ErrorKind::InvalidConfiguration { path: path.into() })
+    pub(crate) fn invalid_configuration_file(
+        path: impl Into<PathBuf>,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::new(ErrorKind::InvalidConfiguration {
+            path: path.into(),
+            message: message.into(),
+        })
     }
 
     pub(crate) fn uncached_work(path: impl Into<PathBuf>) -> Self {
@@ -302,8 +309,13 @@ impl Display for DarkluaError {
             ErrorKind::ResourceNotFound { path } => {
                 write!(f, "unable to find `{}`", path.display())?;
             }
-            ErrorKind::InvalidConfiguration { path } => {
-                write!(f, "invalid configuration file at `{}`", path.display())?;
+            ErrorKind::InvalidConfiguration { path, message } => {
+                write!(
+                    f,
+                    "invalid configuration file at `{}`: {}",
+                    path.display(),
+                    &message
+                )?;
             }
             ErrorKind::MultipleConfigurationFound { paths } => {
                 write!(
