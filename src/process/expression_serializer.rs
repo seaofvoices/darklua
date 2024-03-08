@@ -2,11 +2,9 @@ use std::{borrow::Cow, fmt};
 
 use serde::{ser, Serialize};
 
-// By convention, the public API of a Serde serializer is one or more `to_abc`
-// functions such as `to_string`, `to_bytes`, or `to_writer` depending on what
-// Rust types the serializer is able to produce as output.
-//
-// This basic serializer supports only `to_string`.
+type Result<T> = std::result::Result<T, LuaSerializerError>;
+
+/// Convert serializable data into a Lua Expression
 pub(crate) fn to_expression<T>(value: &T) -> Result<Expression>
 where
     T: Serialize,
@@ -59,8 +57,6 @@ impl fmt::Display for LuaSerializerError {
 }
 
 impl std::error::Error for LuaSerializerError {}
-
-type Result<T> = std::result::Result<T, LuaSerializerError>;
 
 use crate::{
     nodes::{

@@ -7,10 +7,7 @@ use std::{
     path::PathBuf,
 };
 
-use crate::{
-    rules::{bundle::LuaSerializerError, Rule},
-    ParserError,
-};
+use crate::{process::LuaSerializerError, rules::Rule, ParserError};
 
 use super::{
     resources::ResourceError,

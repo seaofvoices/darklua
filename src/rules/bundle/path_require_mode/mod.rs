@@ -14,7 +14,9 @@ use crate::nodes::{
     Block, DoStatement, Expression, FunctionCall, LocalAssignStatement, Prefix, Statement,
     StringExpression,
 };
-use crate::process::{DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
+use crate::process::{
+    to_expression, DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor,
+};
 use crate::rules::require::{
     is_require_call, match_path_require_call, PathRequireMode, RequirePathLocator,
 };
@@ -24,7 +26,6 @@ use crate::rules::{
 use crate::utils::Timer;
 use crate::{DarkluaError, Resources};
 
-use super::expression_serializer::to_expression;
 use super::BundleOptions;
 
 pub(crate) enum RequiredResource {

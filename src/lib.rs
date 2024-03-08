@@ -9,5 +9,7 @@ pub mod process;
 pub mod rules;
 mod utils;
 
-pub use frontend::{process, Configuration, DarkluaError, GeneratorParameters, Options, Resources};
+pub use frontend::{
+    convert_data, process, Configuration, DarkluaError, GeneratorParameters, Options, Resources,
+};
 pub use parser::{Parser, ParserError};

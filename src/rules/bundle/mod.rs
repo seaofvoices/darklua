@@ -1,4 +1,3 @@
-mod expression_serializer;
 pub(crate) mod path_require_mode;
 mod require_mode;
 
@@ -9,8 +8,6 @@ use crate::rules::{
     Context, Rule, RuleConfiguration, RuleConfigurationError, RuleProcessResult, RuleProperties,
 };
 use crate::Parser;
-
-pub(crate) use expression_serializer::LuaSerializerError;
 
 pub use require_mode::BundleRequireMode;
 use wax::Pattern;
