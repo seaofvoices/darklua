@@ -2,9 +2,9 @@ use std::panic::Location;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
+use anstyle::{AnsiColor, Style};
 use darklua_core::nodes::Block;
 use darklua_core::{Parser, ParserError, Resources};
-use env_logger::fmt::Color;
 use log::Level;
 
 #[allow(dead_code)]
@@ -26,20 +26,28 @@ pub fn setup_logger(level_filter: log::LevelFilter) {
         .format(|f, record| {
             use std::io::Write;
 
-            let mut style = f.style();
-            let level = match record.level() {
-                Level::Trace => style.set_color(Color::Magenta).value("TRACE"),
-                Level::Debug => style.set_color(Color::Blue).value("DEBUG"),
-                Level::Info => style.set_color(Color::Green).value("INFO"),
-                Level::Warn => style.set_color(Color::Yellow).value("WARN"),
-                Level::Error => style.set_color(Color::Red).value("ERROR"),
-            };
+            let level = record.level();
+            let (style, text) = colored_level(level);
 
-            writeln!(f, " {} > {}", level, record.args(),)
+            writeln!(f, " {style}{text}{style:#} > {}", record.args())
         })
         .filter_module("darklua", level_filter)
         .try_init()
         .ok();
+}
+
+fn colored_level(level: Level) -> (Style, &'static str) {
+    let (color, text) = match level {
+        Level::Trace => (AnsiColor::Magenta, "TRACE"),
+        Level::Debug => (AnsiColor::Blue, "DEBUG"),
+        Level::Info => (AnsiColor::Green, "INFO"),
+        Level::Warn => (AnsiColor::Yellow, "WARN"),
+        Level::Error => (AnsiColor::Red, "ERROR"),
+    };
+    (
+        Style::new().fg_color(Some(anstyle::Color::Ansi(color))),
+        text,
+    )
 }
 
 #[track_caller]

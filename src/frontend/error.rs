@@ -220,7 +220,7 @@ impl DarkluaError {
         })
     }
 
-    pub(crate) fn custom(message: impl Into<Cow<'static, str>>) -> Self {
+    pub fn custom(message: impl Into<Cow<'static, str>>) -> Self {
         Self::new(ErrorKind::Custom {
             message: message.into(),
         })

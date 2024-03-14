@@ -33,11 +33,7 @@ pub fn process(resources: &Resources, options: Options) -> ProcessResult {
 }
 
 /// Convert serializable data into a Lua module
-pub fn convert_data<'a, T, E>(value: T) -> Result<String, DarkluaError>
-where
-    T: Serialize,
-    E: Into<DarkluaError>,
-{
+pub fn convert_data<'a>(value: impl Serialize) -> Result<String, DarkluaError> {
     let expression = to_expression(&value).map_err(DarkluaError::from)?;
 
     let block = Block::default()
