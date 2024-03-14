@@ -1,6 +1,6 @@
 ---
 description: Removes unused variable declarations
-added_in: "unreleased"
+added_in: "0.13.0"
 parameters: []
 examples:
   - content: "local var"
