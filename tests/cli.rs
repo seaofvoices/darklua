@@ -359,3 +359,25 @@ fn run_convert_command_on_json_file() {
         .replace_duration_labels()
         .snapshot_command("run_convert_command_on_json_file_stdout");
 }
+
+#[test]
+fn run_convert_command_errors_when_no_extension_and_no_format() {
+    Context::default()
+        .write_file("data", "{ \"property\": true }")
+        .arg("convert")
+        .arg("data")
+        .arg("out.lua")
+        .replace_duration_labels()
+        .snapshot_command("run_convert_command_errors_when_no_extension_and_no_format");
+}
+
+#[test]
+fn run_convert_command_errors_when_unrecognized_extension() {
+    Context::default()
+        .write_file("data.yoyo", "{ \"property\": true }")
+        .arg("convert")
+        .arg("data.yoyo")
+        .arg("out.lua")
+        .replace_duration_labels()
+        .snapshot_command("run_convert_command_errors_when_unrecognized_extension");
+}

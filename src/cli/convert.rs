@@ -34,20 +34,9 @@ impl FromStr for DataFormat {
             "yml" | "yaml" => Ok(Self::Yaml),
             "toml" => Ok(Self::Toml),
             _ => Err(format!(
-                "invalid data format '{}' (possible options are: 'json', 'json5', 'yml' or 'toml'",
+                "invalid data format '{}' (possible options are: 'json', 'json5', 'yml' or 'toml')",
                 format
             )),
-        }
-    }
-}
-
-impl DataFormat {
-    fn from_extension(extension: &str) -> Option<Self> {
-        match extension {
-            "json" | "json5" => Some(Self::Json),
-            "yml" | "yaml" => Some(Self::Yaml),
-            "toml" => Some(Self::Toml),
-            _ => None,
         }
     }
 }
@@ -73,13 +62,15 @@ fn convert_data(options: &Options) -> Result<(), DarkluaError> {
                 .extension()
                 .and_then(OsStr::to_str)
                 .ok_or_else(|| {
-                    DarkluaError::custom(
-                        "unable to find data format because the file has no extension",
-                    )
+                    DarkluaError::custom(format!(
+                        "unable to find data format because the input file '{}' has no extension. Specify the data format using the '--format' option",
+                        options.input.display()
+                    ))
                 })
                 .and_then(|extension| {
-                    DataFormat::from_extension(extension)
-                        .ok_or_else(|| DarkluaError::custom(format!("extension '{}'", extension)))
+                    DataFormat::from_str(extension).map_err(|err| {
+                        DarkluaError::custom( format!("{} [unrecognized file extension]", err))
+                    })
                 })
         })?;
 
