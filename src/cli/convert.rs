@@ -103,11 +103,13 @@ fn convert_data(options: &Options) -> Result<(), DarkluaError> {
         convert_duration
     );
 
-    Ok(if let Some(output) = &options.output {
+    if let Some(output) = &options.output {
         resources
             .write(output, &lua_code)
             .map_err(DarkluaError::from)?;
     } else {
         println!("{}", lua_code);
-    })
+    }
+
+    Ok(())
 }
