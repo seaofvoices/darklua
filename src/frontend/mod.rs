@@ -15,15 +15,33 @@ pub use error::{DarkluaError, DarkluaResult};
 pub use options::Options;
 pub use process_result::ProcessResult;
 pub use resources::Resources;
+use serde::Serialize;
 use work_item::WorkItem;
 use worker::Worker;
 
-use crate::utils::normalize_path;
+use crate::{
+    generator::{DenseLuaGenerator, LuaGenerator},
+    nodes::{Block, ReturnStatement},
+    process::to_expression,
+    utils::normalize_path,
+};
 
 pub fn process(resources: &Resources, options: Options) -> ProcessResult {
     match private_process(resources, options) {
         Ok(result) | Err(result) => result,
     }
+}
+
+/// Convert serializable data into a Lua module
+pub fn convert_data(value: impl Serialize) -> Result<String, DarkluaError> {
+    let expression = to_expression(&value).map_err(DarkluaError::from)?;
+
+    let block = Block::default()
+        .with_last_statement(ReturnStatement::default().with_expression(expression));
+
+    let mut generator = DenseLuaGenerator::default();
+    generator.write_block(&block);
+    Ok(generator.into_string())
 }
 
 fn private_process(

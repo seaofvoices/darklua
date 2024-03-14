@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* add `convert` command to convert data files (`json`, `json5`, `yaml` and `toml`) into Lua modules ([#178](https://github.com/seaofvoices/darklua/pull/178))
 * remove previously generated files between process runs in watch mode ([#177](https://github.com/seaofvoices/darklua/pull/177))
 * fix `remove_compound_assignment` rule to avoid copying variable tokens ([#176](https://github.com/seaofvoices/darklua/pull/176))
 * add get link button to [try-it](https://darklua.com/try-it/) page ([#175](https://github.com/seaofvoices/darklua/pull/175))

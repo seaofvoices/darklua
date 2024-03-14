@@ -2,12 +2,10 @@ mod cli;
 
 use std::process;
 
+use anstyle::{AnsiColor, Color, Style};
 use clap::Parser;
 use cli::Darklua;
-use env_logger::{
-    fmt::{Color, Style, StyledValue},
-    Builder,
-};
+use env_logger::Builder;
 use log::Level;
 
 fn main() {
@@ -30,20 +28,21 @@ fn formatted_logger() -> Builder {
     builder.format(|f, record| {
         use std::io::Write;
 
-        let mut style = f.style();
-        let level = colored_level(&mut style, record.level());
+        let level = record.level();
+        let (style, text) = colored_level(level);
 
-        writeln!(f, " {} > {}", level, record.args(),)
+        writeln!(f, " {style}{text}{style:#} > {}", record.args())
     });
     builder
 }
 
-fn colored_level(style: &mut Style, level: Level) -> StyledValue<&'static str> {
-    match level {
-        Level::Trace => style.set_color(Color::Magenta).value("TRACE"),
-        Level::Debug => style.set_color(Color::Blue).value("DEBUG"),
-        Level::Info => style.set_color(Color::Green).value("INFO"),
-        Level::Warn => style.set_color(Color::Yellow).value("WARN"),
-        Level::Error => style.set_color(Color::Red).value("ERROR"),
-    }
+fn colored_level(level: Level) -> (Style, &'static str) {
+    let (color, text) = match level {
+        Level::Trace => (AnsiColor::Magenta, "TRACE"),
+        Level::Debug => (AnsiColor::Blue, "DEBUG"),
+        Level::Info => (AnsiColor::Green, "INFO"),
+        Level::Warn => (AnsiColor::Yellow, "WARN"),
+        Level::Error => (AnsiColor::Red, "ERROR"),
+    };
+    (Style::new().fg_color(Some(Color::Ansi(color))), text)
 }

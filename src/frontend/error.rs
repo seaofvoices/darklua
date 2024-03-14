@@ -7,10 +7,7 @@ use std::{
     path::PathBuf,
 };
 
-use crate::{
-    rules::{bundle::LuaSerializerError, Rule},
-    ParserError,
-};
+use crate::{process::LuaSerializerError, rules::Rule, ParserError};
 
 use super::{
     resources::ResourceError,
@@ -223,7 +220,7 @@ impl DarkluaError {
         })
     }
 
-    pub(crate) fn custom(message: impl Into<Cow<'static, str>>) -> Self {
+    pub fn custom(message: impl Into<Cow<'static, str>>) -> Self {
         Self::new(ErrorKind::Custom {
             message: message.into(),
         })

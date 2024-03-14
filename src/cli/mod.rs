@@ -1,3 +1,4 @@
+pub mod convert;
 pub mod error;
 pub mod minify;
 pub mod process;
@@ -38,6 +39,8 @@ pub enum Command {
     /// If no configuration is passed, darklua will attempt to read
     /// `.darklua.json` or `darklua.json5` from the working directory.
     Process(process::Options),
+    /// Convert a data file [json, json5, yaml, toml] into a Lua file
+    Convert(convert::Options),
 }
 
 impl Command {
@@ -45,6 +48,7 @@ impl Command {
         match self {
             Command::Minify(options) => minify::run(options, global_options),
             Command::Process(options) => process::run(options, global_options),
+            Command::Convert(options) => convert::run(options, global_options),
         }
     }
 }
