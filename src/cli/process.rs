@@ -8,6 +8,8 @@ use darklua_core::{GeneratorParameters, Resources};
 use notify::RecursiveMode;
 #[cfg(not(target_arch = "wasm32"))]
 use notify_debouncer_mini::{new_debouncer, DebounceEventResult, DebouncedEventKind};
+use std::collections::HashSet;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::mpsc;
@@ -57,7 +59,10 @@ impl FromStr for LuaFormat {
     }
 }
 
-fn process(resources: Resources, process_options: darklua_core::Options) -> Result<(), CliError> {
+fn process(
+    resources: Resources,
+    process_options: darklua_core::Options,
+) -> (HashSet<PathBuf>, Result<(), CliError>) {
     let process_start_time = Instant::now();
 
     let result = darklua_core::process(&resources, process_options);
@@ -66,47 +71,32 @@ fn process(resources: Resources, process_options: darklua_core::Options) -> Resu
 
     let success_count = result.success_count();
 
-    match result.result() {
-        Ok(()) => {
-            println!(
-                "successfully processed {} file{} (in {})",
-                success_count,
-                maybe_plural(success_count),
-                process_duration
-            );
-            Ok(())
-        }
-        Err(errors) => {
-            let error_count = errors.len();
-            if success_count > 0 {
-                eprintln!(
-                    "successfully processed {} file{} (in {})",
-                    success_count,
-                    maybe_plural(success_count),
-                    process_duration
-                );
-                eprintln!(
-                    "but {} error{} happened:",
-                    error_count,
-                    maybe_plural(error_count)
-                );
-            } else {
-                eprintln!(
-                    "{} error{} happened:",
-                    error_count,
-                    maybe_plural(error_count)
-                );
-            }
+    println!(
+        "successfully processed {} file{} (in {})",
+        success_count,
+        maybe_plural(success_count),
+        process_duration
+    );
 
-            errors.iter().for_each(|error| eprintln!("-> {}", error));
+    if result.has_errored() {
+        let error_count = result.error_count();
+        eprintln!(
+            "{}{} error{} happened:",
+            if success_count > 0 { "but " } else { "" },
+            error_count,
+            maybe_plural(error_count)
+        );
 
-            Err(CliError::new(1))
-        }
+        result.errors().for_each(|error| eprintln!("-> {}", error));
+
+        (result.into_created_files().collect(), Err(CliError::new(1)))
+    } else {
+        (result.into_created_files().collect(), Ok(()))
     }
 }
 
 impl Options {
-    fn process(&self) -> Result<(), CliError> {
+    fn process(&self) -> (HashSet<PathBuf>, Result<(), CliError>) {
         let resources = Resources::from_file_system();
 
         let mut process_options =
@@ -134,34 +124,41 @@ pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
     log::debug!("running `process`: {:?}", options);
 
     if cfg!(not(target_arch = "wasm32")) && options.watch {
-        // run process once initially
-        if let Err(_cli_err) = options.process() {
-            // ignore error darklua need to setup watch mode
-        }
-
         let watcher_options = options.clone();
+
+        // run process once initially
+        let (mut last_created_files, _) = watcher_options.process();
 
         let mut debouncer = new_debouncer(
             Duration::from_millis(FILE_WATCHING_DEBOUNCE_DURATION_MILLIS),
-            move |events: DebounceEventResult| {
-                match events {
-                    Ok(events) => {
-                        if events
-                            .iter()
-                            .any(|event| matches!(event.kind, DebouncedEventKind::Any))
-                        {
-                            log::debug!("changes detected, re-running process");
-                            if let Err(_cli_err) = watcher_options.process() {
-                                // ignore error since it already has been printed
+            move |events: DebounceEventResult| match events {
+                Ok(events) => {
+                    if events
+                        .iter()
+                        .any(|event| matches!(event.kind, DebouncedEventKind::Any))
+                    {
+                        log::debug!("changes detected, re-running process");
+                        let (new_files, _) = watcher_options.process();
+
+                        for file_path in last_created_files.iter() {
+                            if !new_files.contains(file_path) {
+                                if let Err(err) = fs::remove_file(file_path) {
+                                    log::debug!(
+                                        "unable to remove path `{}`: {}",
+                                        file_path.display(),
+                                        err
+                                    )
+                                }
                             }
                         }
+                        last_created_files = new_files;
                     }
-                    Err(err) => {
-                        log::error!(
-                            "an error occured while watching file system for changes: {}",
-                            err
-                        );
-                    }
+                }
+                Err(err) => {
+                    log::error!(
+                        "an error occured while watching file system for changes: {}",
+                        err
+                    );
                 }
             },
         )
@@ -232,6 +229,6 @@ pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
 
         Ok(())
     } else {
-        options.process()
+        options.process().1
     }
 }

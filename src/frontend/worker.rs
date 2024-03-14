@@ -133,6 +133,7 @@ impl<'a> Worker<'a> {
         let mut success_count = 0;
 
         let work_timer = Timer::now();
+        let mut created_files = Vec::new();
 
         'work_loop: while !work_items.is_empty() {
             let work_length = work_items.len();
@@ -147,9 +148,14 @@ impl<'a> Worker<'a> {
             for work in work_items.into_iter() {
                 let work_source_display = work.source().display().to_string();
 
+                let created_path = work.get_created_file_path();
+
                 match self.do_work(work) {
                     Ok(None) => {
                         success_count += 1;
+                        if let Some(new_file) = created_path {
+                            created_files.push(new_file.to_path_buf());
+                        }
                         log::info!("successfully processed `{}`", work_source_display);
                     }
                     Ok(Some(next_work)) => {
@@ -170,7 +176,7 @@ impl<'a> Worker<'a> {
 
             if work_left.len() >= work_length {
                 errors.push(DarkluaError::cyclic_work(work_left));
-                return ProcessResult::new(success_count, errors).into();
+                return ProcessResult::new(success_count, created_files, errors).into();
             }
 
             work_items = work_left;
@@ -178,7 +184,7 @@ impl<'a> Worker<'a> {
 
         log::info!("executed work in {}", work_timer.duration_label());
 
-        ProcessResult::new(success_count, errors).into()
+        ProcessResult::new(success_count, created_files, errors).into()
     }
 
     fn read_configuration(&self, config: &Path) -> DarkluaResult<Configuration> {

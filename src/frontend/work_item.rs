@@ -148,6 +148,14 @@ impl WorkItem {
         &self.data.source
     }
 
+    pub fn get_created_file_path(&self) -> Option<PathBuf> {
+        if self.data.source == self.data.output {
+            None
+        } else {
+            Some(self.data.output.to_path_buf())
+        }
+    }
+
     pub fn total_required_content(&self) -> usize {
         match &self.status {
             WorkStatus::NotStarted => 0,
