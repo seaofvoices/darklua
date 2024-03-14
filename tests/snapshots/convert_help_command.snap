@@ -11,7 +11,7 @@ Arguments:
   [OUTPUT]  Path where to write the Lua file
 
 Options:
-  -f, --format <FORMAT>  Data format
+  -f, --format <FORMAT>  Data format ('json', 'yaml' or 'toml')
   -v, --verbose...       Sets verbosity level (can be specified multiple times)
   -h, --help             Print help
   -V, --version          Print version

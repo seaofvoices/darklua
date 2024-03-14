@@ -13,7 +13,7 @@ pub struct Options {
     input: PathBuf,
     /// Path where to write the Lua file
     output: Option<PathBuf>,
-    /// Data format
+    /// Data format ('json', 'yaml' or 'toml')
     #[arg(short, long)]
     format: Option<DataFormat>,
 }
