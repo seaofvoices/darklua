@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## 0.13.1
+## 0.13.0
 
 * add `convert` command to convert data files (`json`, `json5`, `yaml` and `toml`) into Lua modules ([#178](https://github.com/seaofvoices/darklua/pull/178))
 * remove previously generated files between process runs in watch mode ([#177](https://github.com/seaofvoices/darklua/pull/177))
