@@ -10,8 +10,6 @@ module.exports = {
     rulesGroup: "Rules",
   },
   plugins: [
-    `gatsby-plugin-material-ui`,
-    `gatsby-theme-material-ui`,
     `gatsby-plugin-image`,
     {
       resolve: `gatsby-source-filesystem`,

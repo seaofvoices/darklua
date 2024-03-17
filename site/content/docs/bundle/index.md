@@ -321,7 +321,6 @@ harness = false
 	},
 	lib = { name = "darklua_core", path = "src/lib.rs" },
 	package = {
-		authors = { "jeparlefrancais <jeparlefrancais21@gmail.com>" },
 		description = "Transform Lua scripts",
 		edition = "2018",
 		exclude = { "site" },

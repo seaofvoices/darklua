@@ -21,7 +21,7 @@ export const useAppEvent = (kind, fn, deps) => {
   React.useEffect(() => {
     const handleEvent = ({ detail }) => {
       if (detail.kind === kind) {
-        fn(detail)
+        memoizedFn(detail)
       }
     }
 

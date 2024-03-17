@@ -13,7 +13,7 @@ const FooterLink = ({ href, content, color }) => {
       target="_blank"
       rel="noreferrer"
     >
-      {content}
+      <Typography color={color}>{content}</Typography>
     </Link>
   )
 }
