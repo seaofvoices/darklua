@@ -164,7 +164,7 @@ const TextRuleEditor = () => {
 
       navigator.clipboard.writeText(newUrl)
     },
-    [model]
+    [model],
   )
 
   const formatCode = () => {
@@ -176,7 +176,7 @@ const TextRuleEditor = () => {
       model.setValue(json5.stringify(config, null, 2))
     } catch (error) {
       setAlertMessage(
-        `unable to format: ${error.message.replace("JSON5: ", "")}`
+        `unable to format: ${error.message.replace("JSON5: ", "")}`,
       )
     }
   }

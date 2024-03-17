@@ -169,7 +169,7 @@ export const DocumentationNavigation = ({ drawerOpened, openDrawer }) => {
       (groupName, index) => {
         groupNameToIndex.set(groupName, index)
         return { name: groupName, content: [] }
-      }
+      },
     )
 
     const documents = data.allMarkdownRemark.nodes.map(node => {
@@ -188,7 +188,7 @@ export const DocumentationNavigation = ({ drawerOpened, openDrawer }) => {
       if (typeof groupIndex !== "number") {
         const { title, slug } = document
         throw new Error(
-          `Unknown group '${groupName}' associated with '${title}' (at ${slug})`
+          `Unknown group '${groupName}' associated with '${title}' (at ${slug})`,
         )
       }
       groups[groupIndex].content.push(document)
@@ -220,7 +220,7 @@ export const DocumentationNavigation = ({ drawerOpened, openDrawer }) => {
 
         return [releasedRules, unreleasedRules]
       },
-      [[], []]
+      [[], []],
     )
     const sortByTitle = (a, b) => a.title > b.title
     releasedRules.sort(sortByTitle)

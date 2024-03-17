@@ -42,7 +42,7 @@ const TryItToolbar = ({ theme, openConfiguration }) => {
 
   const closeCopiedToClipboard = React.useCallback(
     () => setCopiedToClipboardOpened(false),
-    [setCopiedToClipboardOpened]
+    [setCopiedToClipboardOpened],
   )
 
   return (

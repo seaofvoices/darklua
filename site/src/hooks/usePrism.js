@@ -41,7 +41,7 @@ export const usePrism = () => {
 
       try {
         const context = JSON.parse(
-          env.element.parentNode.attributes.__darkluacontext.nodeValue
+          env.element.parentNode.attributes.__darkluacontext.nodeValue,
         )
         configuration = { rules: context?.rules }
       } catch (_) {}
@@ -51,10 +51,7 @@ export const usePrism = () => {
       const root = createRoot(container)
 
       root.render(
-        <TryItButtonLink
-          code={env.code}
-          configuration={configuration}
-        />
+        <TryItButtonLink code={env.code} configuration={configuration} />,
       )
 
       return container

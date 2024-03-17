@@ -116,7 +116,7 @@ const DocsPageLayout = ({ title, children }) => {
   const theme = useTheme()
 
   const [opened, setOpen] = React.useState(
-    location.state ? location.state.drawerOpened || false : false
+    location.state ? location.state.drawerOpened || false : false,
   )
   const forceOpenedDrawer = useMediaQuery(theme.breakpoints.up("lg"))
   const fullWidth = useMediaQuery(theme.breakpoints.down("xl"))

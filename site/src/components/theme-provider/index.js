@@ -31,7 +31,7 @@ const THEME = responsiveFontSizes(
       dark: DarkThemeOptions,
     },
     ...COMMON_OPTIONS,
-  })
+  }),
 )
 
 export const ThemeContext = React.createContext(null)

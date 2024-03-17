@@ -154,7 +154,7 @@ export const CompareCode = ({
       return element.props.children
     }
     const codeContent = element.props.children
-      .map((codeChild) => {
+      .map(codeChild => {
         if (typeof codeChild == "string") {
           return codeChild
         } else if (typeof codeChild.props.children == "string") {

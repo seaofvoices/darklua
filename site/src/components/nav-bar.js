@@ -46,7 +46,7 @@ const FoldedMenuNavBar = ({ children }) => {
     event => {
       setAnchor(event.currentTarget)
     },
-    [setAnchor]
+    [setAnchor],
   )
 
   const closeMenu = React.useCallback(() => {
@@ -125,7 +125,7 @@ const NavBar = () => {
           </Box>
         ) : (
           <NavigationLink key={label} label={label} link={link} />
-        )
+        ),
       )}
       {themeSwitch}
     </Toolbar>

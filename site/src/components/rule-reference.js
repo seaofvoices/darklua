@@ -36,16 +36,16 @@ export const RuleReference = () => {
   const released = React.useMemo(
     () =>
       allRules.filter(
-        ({ addedIn }) => addedIn !== null && addedIn !== "unreleased"
+        ({ addedIn }) => addedIn !== null && addedIn !== "unreleased",
       ),
-    [allRules]
+    [allRules],
   )
   const unreleased = React.useMemo(
     () =>
       allRules.filter(
-        ({ addedIn }) => addedIn === null || addedIn === "unreleased"
+        ({ addedIn }) => addedIn === null || addedIn === "unreleased",
       ),
-    [allRules]
+    [allRules],
   )
 
   return (

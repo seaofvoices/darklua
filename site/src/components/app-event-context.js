@@ -11,7 +11,7 @@ export const useDispatchAppEvent = kind => {
 
       document.dispatchEvent(event)
     },
-    [kind]
+    [kind],
   )
 }
 
