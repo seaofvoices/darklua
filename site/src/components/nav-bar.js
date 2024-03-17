@@ -57,8 +57,8 @@ const FoldedMenuNavBar = ({ children }) => {
     <Toolbar>
       <IconButton
         size="large"
-        aria-label="account of current user"
-        aria-controls="menu-appbar"
+        aria-label="darklua navigation menu"
+        aria-controls="navigation-menu"
         aria-haspopup="true"
         onClick={openMenu}
         color="inherit"
@@ -67,7 +67,7 @@ const FoldedMenuNavBar = ({ children }) => {
       </IconButton>
       <Menu
         sx={{ mt: "45px" }}
-        id="menu-appbar"
+        id="navigation-menu"
         anchorEl={anchor}
         anchorOrigin={{
           vertical: "top",
