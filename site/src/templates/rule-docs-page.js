@@ -32,7 +32,7 @@ const Parameters = ({ parameters }) => {
   }
 
   const hasOneDefault = parameters.find(
-    ({ default: defaultValue }) => defaultValue !== null
+    ({ default: defaultValue }) => defaultValue !== null,
   )
 
   return (
@@ -79,7 +79,7 @@ const Parameters = ({ parameters }) => {
                     </TableCell>
                   ) : null}
                 </TableRow>
-              )
+              ),
             )}
           </TableBody>
         </Table>

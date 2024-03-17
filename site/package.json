@@ -8,20 +8,20 @@
     "url": "https://github.com/seaofvoices/darklua/issues"
   },
   "dependencies": {
-    "darklua": "./darklua-wasm/pkg",
     "@babel/eslint-parser": "^7.23.10",
-    "@emotion/react": "^11.11.3",
+    "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.0",
-    "@mui/icons-material": "^5.15.10",
-    "@mui/material": "^5.15.10",
+    "@fontsource-variable/comfortaa": "^5.0.18",
+    "@mui/icons-material": "^5.15.13",
+    "@mui/material": "^5.15.13",
     "acorn": "^8.11.3",
     "acorn-import-assertions": "^1.9.0",
     "babel-plugin-prismjs": "^2.1.0",
+    "darklua": "./darklua-wasm/pkg",
     "gatsby": "^5.13.3",
     "gatsby-plugin-catch-links": "^5.13.1",
     "gatsby-plugin-image": "^3.13.1",
     "gatsby-plugin-manifest": "^5.13.1",
-    "gatsby-plugin-material-ui": "^4.1.0",
     "gatsby-plugin-react-helmet": "^6.13.1",
     "gatsby-plugin-sharp": "^5.13.1",
     "gatsby-remark-copy-linked-files": "^6.13.1",
@@ -30,31 +30,34 @@
     "gatsby-remark-responsive-iframe": "^6.13.1",
     "gatsby-remark-smartypants": "^6.13.1",
     "gatsby-source-filesystem": "^5.13.1",
-    "gatsby-theme-material-ui": "^5.3.0",
     "gatsby-transformer-remark": "^6.13.1",
     "gatsby-transformer-sharp": "^5.13.1",
-    "joi": "^17.11.0",
+    "joi": "^17.12.2",
     "json5": "^2.2.3",
-    "mdast-util-from-markdown": "^1.3.0",
-    "mdast-util-to-hast": "^12.3.0",
-    "monaco-editor": "^0.46.0",
+    "mdast-util-from-markdown": "^2.0.0",
+    "mdast-util-to-hast": "^13.1.0",
+    "monaco-editor": "^0.47.0",
     "monaco-editor-webpack-plugin": "^7.1.0",
     "prismjs": "^1.29.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-helmet": "^6.1.0",
     "react-use-ref-effect": "^1.2.0",
-    "rehype-react": "^7.2.0",
-    "typeface-merriweather": "1.1.13",
-    "typeface-montserrat": "1.1.13",
-    "typescript": "^4.9.5"
+    "rehype-react": "^8.0.0",
+    "typescript": "^5.4.2",
+    "unified": "^11.0.4"
   },
   "devDependencies": {
     "babel-preset-gatsby": "^3.13.1",
-    "prettier": "^2.8.8"
+    "prettier": "^3.2.5"
   },
   "optionalDependencies": {
     "@parcel/watcher-linux-x64-glibc": "^2.4.1"
+  },
+  "overrides": {
+    "react-server-dom-webpack@0.0.0-experimental-c8b778b7f-20220825": {
+      "react": "^18.2.0"
+    }
   },
   "homepage": "https://github.com/seaofvoices/darklua",
   "keywords": [
@@ -68,12 +71,12 @@
   },
   "scripts": {
     "prebuild": "wasm-pack build darklua-wasm -t bundler && wasm-pack build darklua-wasm -t nodejs -d node-pkg",
-    "build": "npm run prebuild && npx gatsby build",
-    "develop": "npm run prebuild && npx gatsby develop",
-    "format": "npx prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
-    "style-check": "npx prettier --check \"**/*.{js,jsx,ts,tsx,json,md}\"",
-    "serve": "npx gatsby serve",
-    "clean": "npx gatsby clean",
+    "build": "npm run prebuild && gatsby build",
+    "develop": "npm run prebuild && gatsby develop",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
+    "style-check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,md}\"",
+    "serve": "gatsby serve",
+    "clean": "gatsby clean",
     "test": "echo \"Write tests! -> https://gatsby.dev/unit-testing\" && exit 1"
   }
 }

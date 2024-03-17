@@ -4,31 +4,29 @@ import { createRoot } from "react-dom/client"
 import Prism from "prismjs"
 import ViewStateLink from "../components/ViewStateLink"
 import { Button } from "@mui/material"
-import { ThemeProvider as MuiThemeProvider } from "@mui/system"
+import ThemeProvider from "../components/theme-provider"
 
-const TryItButtonLink = React.forwardRef(
-  ({ theme, code, configuration }, ref) => {
-    return (
-      <MuiThemeProvider theme={theme}>
-        <Button
-          ref={ref}
-          variant="contained"
-          size="small"
-          component={ViewStateLink}
-          to="/try-it"
-          target="_blank"
-          state={{ code, configuration }}
-        >
-          Try it
-        </Button>
-      </MuiThemeProvider>
-    )
-  }
-)
+const TryItButtonLink = React.forwardRef(({ code, configuration }, ref) => {
+  return (
+    <ThemeProvider>
+      <Button
+        ref={ref}
+        variant="contained"
+        size="small"
+        component={ViewStateLink}
+        to="/try-it"
+        target="_blank"
+        state={{ code, configuration }}
+      >
+        Try it
+      </Button>
+    </ThemeProvider>
+  )
+})
 
 let registerTryItOnce = false
 
-export const usePrism = theme => {
+export const usePrism = () => {
   React.useEffect(() => {
     if (registerTryItOnce) {
       return
@@ -43,7 +41,7 @@ export const usePrism = theme => {
 
       try {
         const context = JSON.parse(
-          env.element.parentNode.attributes.__darkluacontext.nodeValue
+          env.element.parentNode.attributes.__darkluacontext.nodeValue,
         )
         configuration = { rules: context?.rules }
       } catch (_) {}
@@ -53,16 +51,12 @@ export const usePrism = theme => {
       const root = createRoot(container)
 
       root.render(
-        <TryItButtonLink
-          theme={theme}
-          code={env.code}
-          configuration={configuration}
-        />
+        <TryItButtonLink code={env.code} configuration={configuration} />,
       )
 
       return container
     })
-  }, [theme])
+  }, [])
 
   React.useEffect(() => {
     Prism.highlightAll()

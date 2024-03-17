@@ -114,7 +114,7 @@ const CompareCodeTable = ({
       <Table
         aria-label="code example"
         sx={{ tableLayout: "fixed" }}
-        stickyHeader="true"
+        stickyHeader={true}
       >
         <TableHead>
           <TableRow>
@@ -150,10 +150,15 @@ export const CompareCode = ({
   const withTabs = useMediaQuery(theme.breakpoints.down("lg"))
 
   const codeSnippets = columns.map(element => {
+    if (typeof element.props.children === "string") {
+      return element.props.children
+    }
     const codeContent = element.props.children
       .map(codeChild => {
         if (typeof codeChild == "string") {
           return codeChild
+        } else if (typeof codeChild.props.children == "string") {
+          return "\n" + codeChild.props.children
         } else {
           return codeChild.props.children[0] + "\n"
         }

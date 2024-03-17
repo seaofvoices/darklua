@@ -1,20 +1,21 @@
 import * as React from "react"
 
+import { responsiveFontSizes } from "@mui/material"
 import {
-  ThemeProvider as MuiThemeProvider,
-  useMediaQuery,
-  createTheme,
-  responsiveFontSizes,
-} from "@mui/material"
+  experimental_extendTheme as extendTheme,
+  Experimental_CssVarsProvider as CssVarsProvider,
+  useColorScheme,
+} from "@mui/material/styles"
 
 import LightThemeOptions from "./light"
 import DarkThemeOptions from "./dark"
-import { useLocation } from "../location-context"
-import { useThemeLocalStorage } from "../../hooks/useLocalStorage"
 import { usePrism } from "../../hooks/usePrism"
 
 const COMMON_OPTIONS = {
   typography: {
+    allVariants: {
+      fontFamily: "'Comfortaa Variable', system-ui",
+    },
     h1: { fontSize: "3.8rem", marginTop: "3rem" },
     h2: { fontSize: "2.7rem", marginTop: "2.3rem" },
     h3: { fontSize: "2rem", marginTop: "1.8rem" },
@@ -23,58 +24,44 @@ const COMMON_OPTIONS = {
     h6: { fontSize: "1.1rem", marginTop: "1.2rem" },
   },
 }
-const LIGHT_THEME = responsiveFontSizes(
-  createTheme({ ...COMMON_OPTIONS, ...LightThemeOptions })
-)
-const DARK_THEME = responsiveFontSizes(
-  createTheme({ ...COMMON_OPTIONS, ...DarkThemeOptions })
+const THEME = responsiveFontSizes(
+  extendTheme({
+    colorSchemes: {
+      light: LightThemeOptions,
+      dark: DarkThemeOptions,
+    },
+    ...COMMON_OPTIONS,
+  }),
 )
 
-export const ThemeContext = React.createContext(() => {})
+export const ThemeContext = React.createContext(null)
 
-const THEMES = {
-  light: LIGHT_THEME,
-  dark: DARK_THEME,
+const CustomThemeProvider = ({ children }) => {
+  const { mode, setMode } = useColorScheme()
+
+  const setTheme = themeName => {
+    setMode(themeName)
+  }
+
+  return (
+    <ThemeContext.Provider
+      value={{
+        current: mode,
+        setTheme,
+      }}
+    >
+      {children}
+    </ThemeContext.Provider>
+  )
 }
 
 const ThemeProvider = ({ children }) => {
-  const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)")
-  const [themeName, setThemeName] = React.useState(null)
-  const { state } = useLocation()
-
-  const [themeNameCookie, setThemeNameCookie] = useThemeLocalStorage(null)
-
-  let finalThemeName = themeName
-  if (!finalThemeName) {
-    if (state && state.currentThemeName && THEMES[state.currentThemeName]) {
-      finalThemeName = state.currentThemeName
-    } else if (themeNameCookie && THEMES[themeNameCookie]) {
-      finalThemeName = themeNameCookie
-    } else {
-      finalThemeName = prefersDarkMode ? "dark" : "light"
-    }
-  }
-
-  const theme = THEMES[finalThemeName]
-
-  const setTheme = themeName => {
-    setThemeName(themeName)
-    setThemeNameCookie(themeName)
-  }
-
-  usePrism(theme)
+  usePrism()
 
   return (
-    <MuiThemeProvider theme={theme}>
-      <ThemeContext.Provider
-        value={{
-          current: finalThemeName,
-          setTheme,
-        }}
-      >
-        {children}
-      </ThemeContext.Provider>
-    </MuiThemeProvider>
+    <CssVarsProvider theme={THEME}>
+      <CustomThemeProvider>{children}</CustomThemeProvider>
+    </CssVarsProvider>
   )
 }
 

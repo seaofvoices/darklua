@@ -157,7 +157,8 @@ impl Context {
     }
 
     pub fn replace_duration_labels(self) -> Self {
-        self.replace_snapshot_content("\\d+.\\d+[mµ]s", "{{DURATION}}")
+        self.replace_snapshot_content("\\d+\\.\\d+[µm]s", "{{DURATION}}")
+            .replace_snapshot_content("\\d+µs", "{{DURATION}}")
     }
 
     pub fn replace_backslashes(self) -> Self {

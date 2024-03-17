@@ -17,7 +17,7 @@ export const DarkluaConfigProvider = ({ children }) => {
           rules: json5.parse(darklua.get_serialized_default_rules()),
         },
         null,
-        2
+        2,
       )
       setDarkluaConfig(defaultConfig)
     }

@@ -33,7 +33,7 @@ const useCodePreview = () => {
         )
       }
     },
-    [darklua, darkluaConfig]
+    [darklua, darkluaConfig],
   )
 
   React.useEffect(() => {

@@ -11,8 +11,11 @@ import ViewStateLink from "../components/ViewStateLink"
 const InfoCard = ({ title, content, children }) => (
   <Paper elevation={2} sx={{ width: "280px", mx: 2, my: 0.5 }}>
     <CardContent>
-      <Typography variant="h5" component="div"></Typography>
-      {title}
+      <Typography variant="subtitle1">
+        <Box component="span" fontWeight="bold">
+          {title}
+        </Box>
+      </Typography>
       <Typography sx={{ mb: 1.5 }} color="text.secondary"></Typography>
       <Typography variant="body2">{content}</Typography>
     </CardContent>
