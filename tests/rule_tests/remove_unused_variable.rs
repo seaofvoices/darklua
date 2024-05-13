@@ -51,6 +51,8 @@ test_rule!(
     remove_variable_if_shadowed_undeclared_variable_is_used(
         "local a = true do local a print(a) end"
     ) => "do local a print(a) end",
+    remove_variable_before_call_statement("local x call()") => "call()",
+    remove_two_variables_before_call_statement("local x local y call()") => "call()",
     // remove variables that are used more than once, but never read
     // remove_if_only_assigned("local a = true a = false") => "",
     // remove_if_only_field_assigned("local a = {} a.foo = false") => "",
@@ -87,6 +89,7 @@ test_rule_without_effects!(
         "local a = {} local function b() print() return a end b().a = true"
     ),
     keep_if_variable_is_used_in_index_assignment("local a, b = {}, true a[b] = false return a"),
+    keep_variable_in_repeat_condition("repeat local x = true until x"),
 );
 
 #[test]

@@ -11,6 +11,13 @@ use super::verify_no_rule_properties;
 #[derive(Default)]
 struct RemoveUnusedVariableProcessor {
     evaluator: Evaluator,
+    mutated: bool,
+}
+
+impl RemoveUnusedVariableProcessor {
+    fn has_mutated(&self) -> bool {
+        self.mutated
+    }
 }
 
 impl NodeProcessor for RemoveUnusedVariableProcessor {
@@ -71,7 +78,7 @@ impl NodeProcessor for RemoveUnusedVariableProcessor {
             })
             .collect::<Vec<_>>();
 
-        let mut usages_iter = usages.into_iter();
+        let mut usages_iter = usages.into_iter().rev();
 
         let mut i = 0;
         let mut next_usage = usages_iter.next();
@@ -168,6 +175,10 @@ impl NodeProcessor for RemoveUnusedVariableProcessor {
                 true
             };
 
+            if !(self.mutated || filter) {
+                self.mutated = true;
+            }
+
             i += 1;
             filter
         })
@@ -182,8 +193,13 @@ pub struct RemoveUnusedVariable {}
 
 impl FlawlessRule for RemoveUnusedVariable {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
-        let mut processor = RemoveUnusedVariableProcessor::default();
-        DefaultVisitor::visit_block(block, &mut processor);
+        loop {
+            let mut processor = RemoveUnusedVariableProcessor::default();
+            DefaultVisitor::visit_block(block, &mut processor);
+            if !processor.has_mutated() {
+                break;
+            }
+        }
     }
 }
 
