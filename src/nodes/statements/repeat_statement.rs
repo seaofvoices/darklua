@@ -64,6 +64,11 @@ impl RepeatStatement {
         &mut self.condition
     }
 
+    #[inline]
+    pub(crate) fn mutate_block_and_condition(&mut self) -> (&mut Block, &mut Expression) {
+        (&mut self.block, &mut self.condition)
+    }
+
     pub fn with_tokens(mut self, tokens: RepeatTokens) -> Self {
         self.tokens = Some(tokens);
         self

@@ -21,7 +21,7 @@ impl RemoveUnusedVariableProcessor {
 }
 
 impl NodeProcessor for RemoveUnusedVariableProcessor {
-    fn process_block(&mut self, block: &mut Block) {
+    fn process_scope(&mut self, block: &mut Block, extra: Option<&mut Expression>) {
         let length = block.statements_len();
 
         let assignments = block
@@ -45,6 +45,22 @@ impl NodeProcessor for RemoveUnusedVariableProcessor {
                 _ => None,
             })
             .collect::<Vec<_>>();
+
+        let usages_in_extra = if let Some(expression) = extra {
+            let mut found_identifiers = Vec::new();
+            for (_, identifiers) in assignments.iter() {
+                for identifier in identifiers {
+                    let mut find_usage = FindUsage::new(identifier);
+                    ScopeVisitor::visit_expression(expression, &mut find_usage);
+                    if find_usage.has_found_usage() {
+                        found_identifiers.push(identifier.to_owned());
+                    }
+                }
+            }
+            found_identifiers
+        } else {
+            Vec::new()
+        };
 
         let usages = assignments
             .into_iter()
@@ -71,6 +87,7 @@ impl NodeProcessor for RemoveUnusedVariableProcessor {
                                     );
                                     find_usage.has_found_usage()
                                 })
+                            || usages_in_extra.contains(&identifier)
                     })
                     .collect::<Vec<_>>();
 
@@ -195,6 +212,7 @@ impl FlawlessRule for RemoveUnusedVariable {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
         loop {
             let mut processor = RemoveUnusedVariableProcessor::default();
+            processor.process_scope(block, None);
             DefaultVisitor::visit_block(block, &mut processor);
             if !processor.has_mutated() {
                 break;
