@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* fix `remove_unused_variable` rule ([#192](https://github.com/seaofvoices/darklua/pull/192))
+
 ## 0.13.0
 
 * add `convert` command to convert data files (`json`, `json5`, `yaml` and `toml`) into Lua modules ([#178](https://github.com/seaofvoices/darklua/pull/178))
