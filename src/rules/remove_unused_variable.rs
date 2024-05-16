@@ -97,108 +97,104 @@ impl NodeProcessor for RemoveUnusedVariableProcessor {
 
         let mut usages_iter = usages.into_iter().rev();
 
-        let mut i = 0;
-        let mut next_usage = usages_iter.next();
+        if let Some((mut find_next_index, mut usages)) = usages_iter.next() {
+            let mut i = 0;
+            let mut should_find_next = true;
 
-        block.filter_mut_statements(|statement| {
-            let filter = if let Some((find_next_index, usages)) = &next_usage {
-                let found = i == *find_next_index;
-                let assign = if found {
-                    if let Statement::LocalAssign(assign) = statement {
-                        Some(assign)
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                };
+            block.filter_mut_statements(|statement| {
+                let found = should_find_next && i == find_next_index;
+                i += 1;
 
-                let filter = if let Some(assign) = assign {
-                    if usages.iter().all(|used| !used) {
-                        let values = assign
-                            .iter_values()
-                            .filter(|value| self.evaluator.has_side_effects(value))
-                            .cloned()
-                            .collect::<Vec<_>>();
+                if found {
+                    let keep_statement = if let Statement::LocalAssign(assign) = statement {
+                        if usages.iter().all(|used| !used) {
+                            let values = assign
+                                .iter_values()
+                                .filter(|value| self.evaluator.has_side_effects(value))
+                                .cloned()
+                                .collect::<Vec<_>>();
 
-                        if values.is_empty() {
-                            false
-                        } else {
-                            *statement = expressions_as_statement(values);
-                            true
-                        }
-                    } else if usages.iter().any(|used| !used) {
-                        let mut assignments: Vec<_> = assign
-                            .iter_variables()
-                            .zip(usages)
-                            .map(|identifier| vec![identifier])
-                            .zip(assign.iter_values())
-                            .collect();
-
-                        let length = assignments.len();
-                        if let Some((last, value)) = assignments.last_mut() {
-                            if self.evaluator.can_return_multiple_values(value) {
-                                last.extend(assign.iter_variables().zip(usages).skip(length));
+                            if values.is_empty() {
+                                false
+                            } else {
+                                *statement = expressions_as_statement(values);
+                                true
                             }
-                        }
+                        } else if usages.iter().any(|used| !used) {
+                            let mut assignments: Vec<_> = assign
+                                .iter_variables()
+                                .zip(usages.iter())
+                                .map(|identifier| vec![identifier])
+                                .zip(assign.iter_values())
+                                .collect();
 
-                        let mut variables = Vec::new();
-                        let mut values = Vec::new();
-
-                        for (mut identifiers, value) in assignments {
-                            if !self.evaluator.has_side_effects(value) {
-                                while identifiers.last().filter(|(_, used)| !**used).is_some() {
-                                    identifiers.pop();
+                            let length = assignments.len();
+                            if let Some((last, value)) = assignments.last_mut() {
+                                if self.evaluator.can_return_multiple_values(value) {
+                                    last.extend(
+                                        assign.iter_variables().zip(usages.iter()).skip(length),
+                                    );
                                 }
                             }
 
-                            if !identifiers.is_empty() {
-                                variables.extend(
-                                    identifiers
-                                        .into_iter()
-                                        .map(|(identifier, _)| identifier.clone()),
-                                );
-                                values.push(value.clone());
-                            }
-                        }
+                            let mut variables = Vec::new();
+                            let mut values = Vec::new();
 
-                        if variables.is_empty() {
-                            let extra_values: Vec<_> =
-                                assign.iter_values().skip(length).cloned().collect();
-                            if extra_values.is_empty() {
-                                false
+                            for (mut identifiers, value) in assignments {
+                                if !self.evaluator.has_side_effects(value) {
+                                    while identifiers.last().filter(|(_, used)| !*used).is_some() {
+                                        identifiers.pop();
+                                    }
+                                }
+
+                                if !identifiers.is_empty() {
+                                    variables.extend(
+                                        identifiers
+                                            .into_iter()
+                                            .map(|(identifier, _)| identifier.clone()),
+                                    );
+                                    values.push(value.clone());
+                                }
+                            }
+
+                            if variables.is_empty() {
+                                let extra_values: Vec<_> =
+                                    assign.iter_values().skip(length).cloned().collect();
+                                if extra_values.is_empty() {
+                                    false
+                                } else {
+                                    *statement = expressions_as_statement(extra_values);
+                                    true
+                                }
                             } else {
-                                *statement = expressions_as_statement(extra_values);
+                                values.extend(assign.iter_values().skip(length).cloned());
+                                *statement = LocalAssignStatement::new(variables, values).into();
                                 true
                             }
                         } else {
-                            values.extend(assign.iter_values().skip(length).cloned());
-                            *statement = LocalAssignStatement::new(variables, values).into();
                             true
                         }
                     } else {
-                        true
+                        usages.iter().any(|used| *used)
+                    };
+
+                    if let Some((next_index, next_usages)) = usages_iter.next() {
+                        find_next_index = next_index;
+                        usages = next_usages;
+                    } else {
+                        should_find_next = false;
                     }
+
+                    if !(self.mutated || keep_statement) {
+                        self.mutated = true;
+                    }
+
+                    keep_statement
                 } else {
-                    usages.iter().any(|used| *used)
-                };
-
-                if found {
-                    next_usage = usages_iter.next();
+                    true
                 }
-
-                filter
-            } else {
-                true
-            };
-
-            if !(self.mutated || filter) {
-                self.mutated = true;
-            }
-
-            i += 1;
-            filter
-        })
+            });
+        }
     }
 }
 

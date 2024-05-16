@@ -24,6 +24,10 @@ impl TypeCastExpression {
         &mut self.expression
     }
 
+    pub fn into_inner_expression(self) -> Expression {
+        *self.expression
+    }
+
     pub fn get_type(&self) -> &Type {
         &self.r#type
     }
