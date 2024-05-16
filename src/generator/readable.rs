@@ -175,6 +175,24 @@ impl ReadableLuaGenerator {
         self.pop_indentation();
     }
 
+    fn push_new_line_if_needed(&mut self, pushed_length: usize) {
+        if self.current_line_length == 0 && self.current_indentation != 0 {
+            self.write_indentation();
+        }
+
+        if self.can_add_new_line() {
+            if self.current_line_length >= self.column_span {
+                self.push_new_line();
+            } else {
+                let total_length = self.current_line_length + pushed_length;
+
+                if total_length > self.column_span {
+                    self.push_new_line();
+                }
+            }
+        }
+    }
+
     fn push_space_if_needed(&mut self, next_character: char, pushed_length: usize) {
         if self.current_line_length == 0 && self.current_indentation != 0 {
             self.write_indentation();
@@ -980,7 +998,8 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.write_prefix(field.get_prefix());
         self.pop_can_add_new_line();
 
-        self.push_char('.');
+        self.push_new_line_if_needed(1);
+        self.raw_push_char('.');
         self.raw_push_str(field.get_field().get_name());
     }
 
@@ -1187,7 +1206,8 @@ impl LuaGenerator for ReadableLuaGenerator {
 
     fn write_type_field(&mut self, type_field: &nodes::TypeField) {
         self.write_identifier(type_field.get_namespace());
-        self.push_char('.');
+        self.push_new_line_if_needed(1);
+        self.raw_push_char('.');
         self.write_type_name(type_field.get_type_name());
     }
 
