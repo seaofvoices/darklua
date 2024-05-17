@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* fix generators that creates spaces when writing field expressions, function statements and field-types ([#193](https://github.com/seaofvoices/darklua/pull/193))
+
 ## 0.13.0
 
 * add `convert` command to convert data files (`json`, `json5`, `yaml` and `toml`) into Lua modules ([#178](https://github.com/seaofvoices/darklua/pull/178))
