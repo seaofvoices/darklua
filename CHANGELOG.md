@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* add `except` parameter to skip comments when using the `remove_comments` rule ([#194](https://github.com/seaofvoices/darklua/pull/194))
 * fix generators that creates spaces when writing field expressions, function statements and field-types ([#193](https://github.com/seaofvoices/darklua/pull/193))
 
 ## 0.13.0
