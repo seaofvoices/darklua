@@ -28,6 +28,8 @@ pub use while_statement::*;
 
 use crate::nodes::FunctionCall;
 
+use super::impl_token_fns;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Statement {
     Assign(AssignStatement),

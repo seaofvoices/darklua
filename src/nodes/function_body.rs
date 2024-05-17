@@ -238,36 +238,13 @@ pub struct FunctionBodyTokens {
 }
 
 impl FunctionBodyTokens {
-    fn for_each_token(&mut self, callback: impl Fn(&mut Token)) {
-        callback(&mut self.function);
-        callback(&mut self.opening_parenthese);
-        callback(&mut self.closing_parenthese);
-        callback(&mut self.end);
-        if let Some(variable_arguments) = &mut self.variable_arguments {
-            callback(variable_arguments);
-        }
-        if let Some(variable_arguments_colon) = &mut self.variable_arguments_colon {
-            callback(variable_arguments_colon);
-        }
-        if let Some(return_type_colon) = &mut self.return_type_colon {
-            callback(return_type_colon);
-        }
-        self.parameter_commas.iter_mut().for_each(callback);
-    }
-
-    pub fn clear_comments(&mut self) {
-        self.for_each_token(Token::clear_comments);
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.for_each_token(Token::clear_whitespaces);
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.for_each_token(|token| token.replace_referenced_tokens(code));
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.for_each_token(|token| token.shift_token_line(amount));
-    }
+    super::impl_token_fns!(
+        target = [function, opening_parenthese, closing_parenthese, end]
+        iter = [
+            variable_arguments,
+            variable_arguments_colon,
+            return_type_colon,
+            parameter_commas,
+        ]
+    );
 }

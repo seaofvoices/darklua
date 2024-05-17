@@ -10,25 +10,7 @@ pub struct LocalFunctionTokens {
 }
 
 impl LocalFunctionTokens {
-    pub fn clear_comments(&mut self) {
-        self.local.clear_comments();
-        self.function_body.clear_comments();
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.local.clear_whitespaces();
-        self.function_body.clear_whitespaces();
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.local.replace_referenced_tokens(code);
-        self.function_body.replace_referenced_tokens(code);
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.local.shift_token_line(amount);
-        self.function_body.shift_token_line(amount);
-    }
+    super::impl_token_fns!(target = [local, function_body]);
 }
 
 impl std::ops::Deref for LocalFunctionTokens {
@@ -263,57 +245,10 @@ impl LocalFunctionStatement {
         }
     }
 
-    pub fn clear_comments(&mut self) {
-        self.identifier.clear_comments();
-        self.parameters
-            .iter_mut()
-            .for_each(TypedIdentifier::clear_comments);
-        if let Some(generics) = &mut self.generic_parameters {
-            generics.clear_comments();
-        }
-        if let Some(tokens) = self.tokens.as_mut() {
-            tokens.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.identifier.clear_whitespaces();
-        self.parameters
-            .iter_mut()
-            .for_each(TypedIdentifier::clear_whitespaces);
-        if let Some(generics) = &mut self.generic_parameters {
-            generics.clear_whitespaces();
-        }
-        if let Some(tokens) = self.tokens.as_mut() {
-            tokens.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.identifier.replace_referenced_tokens(code);
-        for parameter in self.parameters.iter_mut() {
-            parameter.replace_referenced_tokens(code);
-        }
-        if let Some(generics) = &mut self.generic_parameters {
-            generics.replace_referenced_tokens(code);
-        }
-        if let Some(tokens) = self.tokens.as_mut() {
-            tokens.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.identifier.shift_token_line(amount);
-        for parameter in self.parameters.iter_mut() {
-            parameter.shift_token_line(amount);
-        }
-        if let Some(generics) = &mut self.generic_parameters {
-            generics.shift_token_line(amount);
-        }
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(
+        target = [identifier]
+        iter = [parameters, generic_parameters, tokens]
+    );
 }
 
 #[cfg(test)]

@@ -8,53 +8,10 @@ pub struct BlockTokens {
 }
 
 impl BlockTokens {
-    pub fn clear_comments(&mut self) {
-        for semicolon in self.semicolons.iter_mut().flatten() {
-            semicolon.clear_comments();
-        }
-        if let Some(last_semicolon) = &mut self.last_semicolon {
-            last_semicolon.clear_comments();
-        }
-        if let Some(final_token) = &mut self.final_token {
-            final_token.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        for semicolon in self.semicolons.iter_mut().flatten() {
-            semicolon.clear_whitespaces();
-        }
-        if let Some(last_semicolon) = &mut self.last_semicolon {
-            last_semicolon.clear_whitespaces();
-        }
-        if let Some(final_token) = &mut self.final_token {
-            final_token.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        for semicolon in self.semicolons.iter_mut().flatten() {
-            semicolon.replace_referenced_tokens(code);
-        }
-        if let Some(last_semicolon) = &mut self.last_semicolon {
-            last_semicolon.replace_referenced_tokens(code);
-        }
-        if let Some(final_token) = &mut self.final_token {
-            final_token.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        for semicolon in self.semicolons.iter_mut().flatten() {
-            semicolon.shift_token_line(amount);
-        }
-        if let Some(last_semicolon) = &mut self.last_semicolon {
-            last_semicolon.shift_token_line(amount);
-        }
-        if let Some(final_token) = &mut self.final_token {
-            final_token.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(
+        iter = [last_semicolon, final_token]
+        iter_flatten = [semicolons]
+    );
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -265,29 +222,7 @@ impl Block {
         }
     }
 
-    pub fn clear_comments(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [tokens]);
 }
 
 impl Default for Block {

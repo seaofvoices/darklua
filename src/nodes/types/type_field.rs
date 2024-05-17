@@ -49,31 +49,5 @@ impl TypeField {
         self.token.as_ref()
     }
 
-    pub fn clear_comments(&mut self) {
-        self.namespace.clear_comments();
-        if let Some(token) = &mut self.token {
-            token.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.namespace.clear_whitespaces();
-        if let Some(token) = &mut self.token {
-            token.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.namespace.replace_referenced_tokens(code);
-        if let Some(token) = &mut self.token {
-            token.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.namespace.shift_token_line(amount);
-        if let Some(token) = &mut self.token {
-            token.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(target = [namespace] iter = [token]);
 }

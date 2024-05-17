@@ -30,6 +30,8 @@ pub use unary::*;
 
 use crate::nodes::{FunctionCall, Identifier, Token, Variable};
 
+use super::impl_token_fns;
+
 use std::num::FpCategory;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
