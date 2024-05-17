@@ -245,8 +245,7 @@ impl<'a> FilterCommentProcessor<'a> {
     }
 
     fn ignore_trivia(&self, trivia: &Trivia) -> bool {
-        let content = trivia.read(&self.original_code);
-        println!("test comment `{}`", content);
+        let content = trivia.read(self.original_code);
         self.except.iter().any(|pattern| pattern.is_match(content))
     }
 }
