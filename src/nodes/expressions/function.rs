@@ -204,7 +204,5 @@ impl FunctionExpression {
         }
     }
 
-    super::impl_token_fns!(
-        iter = [parameters, generic_parameters, tokens]
-    );
+    super::impl_token_fns!(iter = [parameters, generic_parameters, tokens]);
 }

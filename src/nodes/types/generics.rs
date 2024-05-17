@@ -138,9 +138,7 @@ impl GenericParameters {
         self.tokens.as_ref()
     }
 
-    super::impl_token_fns!(
-        iter = [type_variables, generic_type_packs, tokens]
-    );
+    super::impl_token_fns!(iter = [type_variables, generic_type_packs, tokens]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -122,9 +122,7 @@ impl IfExpression {
         self.branches.iter_mut()
     }
 
-    super::impl_token_fns!(
-        iter = [tokens, branches]
-    );
+    super::impl_token_fns!(iter = [tokens, branches]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
