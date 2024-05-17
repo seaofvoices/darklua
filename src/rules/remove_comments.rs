@@ -499,17 +499,7 @@ impl RuleConfiguration for RemoveComments {
         for (key, value) in properties {
             match key.as_str() {
                 "except" => {
-                    self.except = value
-                        .expect_string_list(&key)?
-                        .into_iter()
-                        .filter_map(|regex_str| match Regex::new(&regex_str) {
-                            Ok(pattern) => Some(pattern),
-                            Err(err) => {
-                                log::warn!("unable to compile regex from `{}`: {}", regex_str, err);
-                                None
-                            }
-                        })
-                        .collect();
+                    self.except = value.expect_regex_list(&key)?;
                 }
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }
@@ -568,7 +558,11 @@ mod test {
             except: ["^[0-9"],
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+
+        insta::assert_snapshot!(
+            "remove_comments_configure_with_invalid_regex_error",
+            result.unwrap_err().to_string()
+        );
     }
 
     #[test]
