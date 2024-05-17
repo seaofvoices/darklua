@@ -5,7 +5,7 @@ parameters:
   - name: except
     added_in: "unreleased"
     type: string array
-    description: A list of regex that
+    description: Comments matching any of the given regular expressions will be kept
 examples:
   - content: "return nil -- this is a comment"
 ---
