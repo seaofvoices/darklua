@@ -16,7 +16,7 @@ The `except` parameter is useful to avoid removing specific comments like `--!na
 
 ```json5
 {
-  rule: 'remove_comments',
-  except: ['^--!']
+  rule: "remove_comments",
+  except: ["^--!"],
 }
 ```
