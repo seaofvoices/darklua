@@ -11,49 +11,10 @@ pub struct NumericForTokens {
 }
 
 impl NumericForTokens {
-    pub fn clear_comments(&mut self) {
-        self.r#for.clear_comments();
-        self.equal.clear_comments();
-        self.r#do.clear_comments();
-        self.end.clear_comments();
-        self.end_comma.clear_comments();
-        if let Some(token) = &mut self.step_comma {
-            token.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.r#for.clear_whitespaces();
-        self.equal.clear_whitespaces();
-        self.r#do.clear_whitespaces();
-        self.end.clear_whitespaces();
-        self.end_comma.clear_whitespaces();
-        if let Some(token) = &mut self.step_comma {
-            token.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.r#for.replace_referenced_tokens(code);
-        self.equal.replace_referenced_tokens(code);
-        self.r#do.replace_referenced_tokens(code);
-        self.end.replace_referenced_tokens(code);
-        self.end_comma.replace_referenced_tokens(code);
-        if let Some(token) = &mut self.step_comma {
-            token.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.r#for.shift_token_line(amount);
-        self.equal.shift_token_line(amount);
-        self.r#do.shift_token_line(amount);
-        self.end.shift_token_line(amount);
-        self.end_comma.shift_token_line(amount);
-        if let Some(token) = &mut self.step_comma {
-            token.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(
+        target = [r#for, equal, r#do, end, end_comma]
+        iter = [step_comma]
+    );
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -168,31 +129,5 @@ impl NumericForStatement {
         self.identifier.remove_type();
     }
 
-    pub fn clear_comments(&mut self) {
-        self.identifier.clear_comments();
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.identifier.clear_whitespaces();
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.identifier.replace_referenced_tokens(code);
-        if let Some(tokens) = &mut self.tokens {
-            tokens.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.identifier.shift_token_line(amount);
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(target = [identifier] iter = [tokens]);
 }

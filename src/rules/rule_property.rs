@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use super::{require::PathRequireMode, RequireMode, RobloxRequireMode, RuleConfigurationError};
@@ -43,6 +44,22 @@ impl RulePropertyValue {
     ) -> Result<Vec<String>, RuleConfigurationError> {
         if let Self::StringList(value) = self {
             Ok(value)
+        } else {
+            Err(RuleConfigurationError::StringListExpected(key.to_owned()))
+        }
+    }
+
+    pub(crate) fn expect_regex_list(self, key: &str) -> Result<Vec<Regex>, RuleConfigurationError> {
+        if let Self::StringList(value) = self {
+            value
+                .into_iter()
+                .map(|regex_str| {
+                    Regex::new(&regex_str).map_err(|err| RuleConfigurationError::UnexpectedValue {
+                        property: key.to_owned(),
+                        message: format!("invalid regex provided `{}`\n  {}", regex_str, err),
+                    })
+                })
+                .collect()
         } else {
             Err(RuleConfigurationError::StringListExpected(key.to_owned()))
         }

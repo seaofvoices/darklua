@@ -42,7 +42,18 @@ macro_rules! test_remove_comments_rule {
 test_remove_comments_rule!(
     RemoveComments::default(),
     empty_do("do end -- comment") => "do end ",
+    before_empty_do("-- comment\ndo end") => "\ndo end",
     comment_after_semicolon("print('hello');-- bye") => "print('hello');",
+);
+
+test_remove_comments_rule!(
+    json5::from_str::<Box<dyn Rule>>(r#"{
+        rule: 'remove_comments',
+        except: ['^--!'],
+    }"#,
+    )
+    .unwrap(),
+    keep_one_comment_before_empty_do("--!native\n-- comment\ndo end") => "--!native\n\ndo end",
 );
 
 #[test]

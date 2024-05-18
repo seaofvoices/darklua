@@ -68,41 +68,7 @@ impl FunctionArgumentType {
         self.token.as_ref()
     }
 
-    pub fn clear_comments(&mut self) {
-        if let Some(name) = &mut self.name {
-            name.clear_comments();
-        }
-        if let Some(token) = &mut self.token {
-            token.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(name) = &mut self.name {
-            name.clear_whitespaces();
-        }
-        if let Some(token) = &mut self.token {
-            token.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(name) = &mut self.name {
-            name.replace_referenced_tokens(code);
-        }
-        if let Some(token) = &mut self.token {
-            token.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(name) = &mut self.name {
-            name.shift_token_line(amount);
-        }
-        if let Some(token) = &mut self.token {
-            token.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [name, token]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -273,53 +239,7 @@ impl FunctionType {
         self.tokens.as_ref()
     }
 
-    pub fn clear_comments(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-        if let Some(generics) = &mut self.generic_parameters {
-            generics.clear_comments();
-        }
-        for argument in &mut self.arguments {
-            argument.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_whitespaces();
-        }
-        if let Some(generics) = &mut self.generic_parameters {
-            generics.clear_whitespaces();
-        }
-        for argument in &mut self.arguments {
-            argument.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.replace_referenced_tokens(code);
-        }
-        if let Some(generics) = &mut self.generic_parameters {
-            generics.replace_referenced_tokens(code);
-        }
-        for argument in &mut self.arguments {
-            argument.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-        if let Some(generics) = &mut self.generic_parameters {
-            generics.shift_token_line(amount);
-        }
-        for argument in &mut self.arguments {
-            argument.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [tokens, generic_parameters, arguments]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -331,39 +251,8 @@ pub struct FunctionTypeTokens {
 }
 
 impl FunctionTypeTokens {
-    pub fn clear_comments(&mut self) {
-        self.opening_parenthese.clear_comments();
-        self.closing_parenthese.clear_comments();
-        self.arrow.clear_comments();
-        for comma in self.commas.iter_mut() {
-            comma.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.opening_parenthese.clear_whitespaces();
-        self.closing_parenthese.clear_whitespaces();
-        self.arrow.clear_whitespaces();
-        for comma in self.commas.iter_mut() {
-            comma.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.opening_parenthese.replace_referenced_tokens(code);
-        self.closing_parenthese.replace_referenced_tokens(code);
-        self.arrow.replace_referenced_tokens(code);
-        for comma in self.commas.iter_mut() {
-            comma.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.opening_parenthese.shift_token_line(amount);
-        self.closing_parenthese.shift_token_line(amount);
-        self.arrow.shift_token_line(amount);
-        for comma in self.commas.iter_mut() {
-            comma.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(
+        target = [opening_parenthese, closing_parenthese, arrow]
+        iter = [commas]
+    );
 }

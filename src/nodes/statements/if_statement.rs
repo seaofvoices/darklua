@@ -9,25 +9,7 @@ pub struct IfBranchTokens {
 }
 
 impl IfBranchTokens {
-    pub fn clear_comments(&mut self) {
-        self.elseif.clear_comments();
-        self.then.clear_comments();
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.elseif.clear_whitespaces();
-        self.then.clear_whitespaces();
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.elseif.replace_referenced_tokens(code);
-        self.then.replace_referenced_tokens(code);
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.elseif.shift_token_line(amount);
-        self.then.shift_token_line(amount);
-    }
+    super::impl_token_fns!(target = [elseif, then]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -94,29 +76,7 @@ impl IfBranch {
         &mut self.condition
     }
 
-    pub fn clear_comments(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [tokens]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -128,41 +88,10 @@ pub struct IfStatementTokens {
 }
 
 impl IfStatementTokens {
-    pub fn clear_comments(&mut self) {
-        self.r#if.clear_comments();
-        self.then.clear_comments();
-        self.end.clear_comments();
-        if let Some(token) = &mut self.r#else {
-            token.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.r#if.clear_whitespaces();
-        self.then.clear_whitespaces();
-        self.end.clear_whitespaces();
-        if let Some(token) = &mut self.r#else {
-            token.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.r#if.replace_referenced_tokens(code);
-        self.then.replace_referenced_tokens(code);
-        self.end.replace_referenced_tokens(code);
-        if let Some(token) = &mut self.r#else {
-            token.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.r#if.shift_token_line(amount);
-        self.then.shift_token_line(amount);
-        self.end.shift_token_line(amount);
-        if let Some(token) = &mut self.r#else {
-            token.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(
+        target = [r#if, then, end]
+        iter = [r#else]
+    );
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -293,40 +222,6 @@ impl IfStatement {
         self.else_block.take()
     }
 
-    pub fn clear_comments(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-        self.branches.iter_mut().for_each(IfBranch::clear_comments);
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_whitespaces();
-        }
-        self.branches
-            .iter_mut()
-            .for_each(IfBranch::clear_whitespaces);
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.replace_referenced_tokens(code);
-        }
-        for branch in self.branches.iter_mut() {
-            branch.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-        for branch in self.branches.iter_mut() {
-            branch.shift_token_line(amount);
-        }
-    }
-
     pub fn retain_branches_mut(&mut self, filter: impl FnMut(&mut IfBranch) -> bool) -> bool {
         self.branches.retain_mut(filter);
         if self.branches.is_empty() {
@@ -337,4 +232,6 @@ impl IfStatement {
             false
         }
     }
+
+    super::impl_token_fns!(iter = [tokens, branches]);
 }

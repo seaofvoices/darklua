@@ -550,8 +550,7 @@ mod test {
             };
         }
 
-        macro_rules!
-        test_parse_last_statement_with_tokens {
+        macro_rules! test_parse_last_statement_with_tokens {
             ($($name:ident($input:literal) => $value:expr),* $(,)?) => {
                 test_parse_block_with_tokens!(
                     $(

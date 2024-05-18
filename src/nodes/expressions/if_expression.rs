@@ -122,41 +122,7 @@ impl IfExpression {
         self.branches.iter_mut()
     }
 
-    pub fn clear_comments(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-        self.branches
-            .iter_mut()
-            .for_each(ElseIfExpressionBranch::clear_comments);
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_whitespaces();
-        }
-        self.branches
-            .iter_mut()
-            .for_each(ElseIfExpressionBranch::clear_whitespaces);
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.replace_referenced_tokens(code);
-        }
-        for branch in self.branches.iter_mut() {
-            branch.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-        for branch in self.branches.iter_mut() {
-            branch.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [tokens, branches]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -209,29 +175,7 @@ impl ElseIfExpressionBranch {
         (self.condition, self.result)
     }
 
-    pub fn clear_comments(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [tokens]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -242,29 +186,7 @@ pub struct IfExpressionTokens {
 }
 
 impl IfExpressionTokens {
-    pub fn clear_comments(&mut self) {
-        self.r#if.clear_comments();
-        self.then.clear_comments();
-        self.r#else.clear_comments();
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.r#if.clear_whitespaces();
-        self.then.clear_whitespaces();
-        self.r#else.clear_whitespaces();
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.r#if.replace_referenced_tokens(code);
-        self.then.replace_referenced_tokens(code);
-        self.r#else.replace_referenced_tokens(code);
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.r#if.shift_token_line(amount);
-        self.then.shift_token_line(amount);
-        self.r#else.shift_token_line(amount);
-    }
+    super::impl_token_fns!(target = [r#if, then, r#else]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -274,23 +196,5 @@ pub struct ElseIfExpressionBranchTokens {
 }
 
 impl ElseIfExpressionBranchTokens {
-    pub fn clear_comments(&mut self) {
-        self.elseif.clear_comments();
-        self.then.clear_comments();
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.elseif.clear_whitespaces();
-        self.then.clear_whitespaces();
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.elseif.replace_referenced_tokens(code);
-        self.then.replace_referenced_tokens(code);
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.elseif.shift_token_line(amount);
-        self.then.shift_token_line(amount);
-    }
+    super::impl_token_fns!(target = [elseif, then]);
 }
