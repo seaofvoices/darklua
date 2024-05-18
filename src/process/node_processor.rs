@@ -4,6 +4,7 @@ use crate::nodes::*;
 /// perform mutations.
 pub trait NodeProcessor {
     fn process_block(&mut self, _: &mut Block) {}
+    fn process_scope(&mut self, _block: &mut Block, _extra: Option<&mut Expression>) {}
     fn process_statement(&mut self, _: &mut Statement) {}
 
     fn process_function_call(&mut self, _: &mut FunctionCall) {}

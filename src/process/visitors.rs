@@ -105,6 +105,8 @@ pub trait NodeVisitor<T: NodeProcessor> {
     fn visit_function_expression(function: &mut FunctionExpression, processor: &mut T) {
         processor.process_function_expression(function);
 
+        processor.process_scope(function.mutate_block(), None);
+
         Self::visit_block(function.mutate_block(), processor);
 
         for r#type in function
@@ -138,6 +140,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
     fn visit_do_statement(statement: &mut DoStatement, processor: &mut T) {
         processor.process_do_statement(statement);
+        processor.process_scope(statement.mutate_block(), None);
         Self::visit_block(statement.mutate_block(), processor);
     }
 
@@ -150,6 +153,8 @@ pub trait NodeVisitor<T: NodeProcessor> {
     fn visit_function_statement(statement: &mut FunctionStatement, processor: &mut T) {
         processor.process_function_statement(statement);
         processor.process_variable_expression(statement.mutate_function_name().mutate_identifier());
+
+        processor.process_scope(statement.mutate_block(), None);
         Self::visit_block(statement.mutate_block(), processor);
 
         for r#type in statement
@@ -174,6 +179,8 @@ pub trait NodeVisitor<T: NodeProcessor> {
         statement
             .iter_mut_expressions()
             .for_each(|expression| Self::visit_expression(expression, processor));
+
+        processor.process_scope(statement.mutate_block(), None);
         Self::visit_block(statement.mutate_block(), processor);
 
         for r#type in statement
@@ -189,10 +196,12 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
         statement.mutate_branches().iter_mut().for_each(|branch| {
             Self::visit_expression(branch.mutate_condition(), processor);
+            processor.process_scope(branch.mutate_block(), None);
             Self::visit_block(branch.mutate_block(), processor);
         });
 
         if let Some(block) = statement.mutate_else_block() {
+            processor.process_scope(block, None);
             Self::visit_block(block, processor);
         }
     }
@@ -214,6 +223,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
     fn visit_local_function(statement: &mut LocalFunctionStatement, processor: &mut T) {
         processor.process_local_function_statement(statement);
+        processor.process_scope(statement.mutate_block(), None);
         Self::visit_block(statement.mutate_block(), processor);
 
         for r#type in statement
@@ -253,6 +263,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Self::visit_expression(step, processor);
         };
 
+        processor.process_scope(statement.mutate_block(), None);
         Self::visit_block(statement.mutate_block(), processor);
 
         if let Some(r#type) = statement.mutate_identifier().mutate_type() {
@@ -263,6 +274,9 @@ pub trait NodeVisitor<T: NodeProcessor> {
     fn visit_repeat_statement(statement: &mut RepeatStatement, processor: &mut T) {
         processor.process_repeat_statement(statement);
 
+        let (block, condition) = statement.mutate_block_and_condition();
+        processor.process_scope(block, Some(condition));
+
         Self::visit_expression(statement.mutate_condition(), processor);
         Self::visit_block(statement.mutate_block(), processor);
     }
@@ -271,6 +285,8 @@ pub trait NodeVisitor<T: NodeProcessor> {
         processor.process_while_statement(statement);
 
         Self::visit_expression(statement.mutate_condition(), processor);
+
+        processor.process_scope(statement.mutate_block(), None);
         Self::visit_block(statement.mutate_block(), processor);
     }
 

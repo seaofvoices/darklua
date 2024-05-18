@@ -51,6 +51,11 @@ test_rule!(
     remove_variable_if_shadowed_undeclared_variable_is_used(
         "local a = true do local a print(a) end"
     ) => "do local a print(a) end",
+    remove_variable_before_call_statement("local x call()") => "call()",
+    remove_two_variables_before_call_statement("local x local y call()") => "call()",
+    remove_unused_variable_but_keep_require_side_effect("local _requireZero = require('./requireZero.roblox.lua')") => "require('./requireZero.roblox.lua')",
+    remove_unused_variable_but_keep_require_side_effect_in_parens("local _requireZero = (require('./requireZero.roblox.lua'))") => "require('./requireZero.roblox.lua')",
+    remove_unused_variable_but_keep_require_side_effect_in_parens_with_type_cast("local _requireZero = (require('./requireZero.roblox.lua') :: any)") => "require('./requireZero.roblox.lua')",
     // remove variables that are used more than once, but never read
     // remove_if_only_assigned("local a = true a = false") => "",
     // remove_if_only_field_assigned("local a = {} a.foo = false") => "",
@@ -87,6 +92,10 @@ test_rule_without_effects!(
         "local a = {} local function b() print() return a end b().a = true"
     ),
     keep_if_variable_is_used_in_index_assignment("local a, b = {}, true a[b] = false return a"),
+    keep_variable_in_repeat_condition("repeat local x = true until x"),
+    keep_variable_used_in_for_loop("local x, y = {}, {} function y.toString() end for k,v in y do x[k] = v end return { x = x }"),
+    keep_variable_used_in_returned_table_entry("local x = {} return { x = x }"),
+    keep_variable_used_in_type_declaration("local x = require('./m') export type X = x.X return {}"),
 );
 
 #[test]

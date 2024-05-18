@@ -3,11 +3,21 @@ use crate::nodes::{
     Statement,
 };
 
+fn get_inner_expression(mut expression: Expression) -> Expression {
+    loop {
+        expression = match expression {
+            Expression::Parenthese(parenthese) => parenthese.into_inner_expression(),
+            Expression::TypeCast(type_cast) => type_cast.into_inner_expression(),
+            value => break value,
+        };
+    }
+}
+
 pub(crate) fn expressions_as_statement(expressions: Vec<Expression>) -> Statement {
     let mut statements: Vec<Statement> = Vec::new();
 
     for value in expressions {
-        match value {
+        match get_inner_expression(value) {
             Expression::Call(call) => {
                 statements.push((*call).into());
             }
@@ -29,12 +39,13 @@ pub(crate) fn expressions_as_statement(expressions: Vec<Expression>) -> Statemen
     }
 
     if statements.len() == 1 {
-        if let Statement::Call(call) = statements.pop().unwrap() {
-            return call.into();
+        match statements.pop().unwrap() {
+            Statement::Call(call) => call.into(),
+            statement => statement,
         }
+    } else {
+        DoStatement::new(Block::new(statements, None)).into()
     }
-
-    DoStatement::new(Block::new(statements, None)).into()
 }
 
 pub(crate) fn expressions_as_expression(expressions: Vec<Expression>) -> Expression {

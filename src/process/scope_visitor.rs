@@ -93,6 +93,8 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
             .iter_mut()
             .for_each(|parameter| scope.insert(parameter.mutate_name()));
 
+        scope.process_scope(function.mutate_block(), None);
+
         Self::visit_block(function.mutate_block(), scope);
         scope.pop();
     }
@@ -125,6 +127,8 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
             .iter_mut()
             .for_each(|parameter| scope.insert(parameter.mutate_name()));
 
+        scope.process_scope(statement.mutate_block(), None);
+
         Self::visit_block(statement.mutate_block(), scope);
         scope.pop();
     }
@@ -155,6 +159,8 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
             .iter_mut()
             .for_each(|parameter| scope.insert(parameter.mutate_name()));
 
+        scope.process_scope(statement.mutate_block(), None);
+
         Self::visit_block(statement.mutate_block(), scope);
         scope.pop();
     }
@@ -177,6 +183,8 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
             Self::visit_type(r#type, scope);
         }
 
+        scope.process_scope(statement.mutate_block(), None);
+
         Self::visit_block(statement.mutate_block(), scope);
     }
 
@@ -197,6 +205,8 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
         scope.push();
         scope.insert(statement.mutate_identifier().mutate_name());
 
+        scope.process_scope(statement.mutate_block(), None);
+
         Self::visit_block(statement.mutate_block(), scope);
         scope.pop();
     }
@@ -205,6 +215,9 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
         scope.process_repeat_statement(statement);
 
         scope.push();
+
+        let (block, condition) = statement.mutate_block_and_condition();
+        scope.process_scope(block, Some(condition));
 
         Self::visit_block_without_push(statement.mutate_block(), scope);
         Self::visit_expression(statement.mutate_condition(), scope);

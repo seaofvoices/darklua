@@ -1,7 +1,7 @@
 use std::ops;
 
 use crate::{
-    nodes::Identifier,
+    nodes::{Identifier, TypeField},
     process::{IdentifierTracker, NodeProcessor},
 };
 
@@ -39,12 +39,20 @@ impl<'a> FindUsage<'a> {
     pub fn has_found_usage(&self) -> bool {
         self.usage_found
     }
+
+    fn verify_identifier(&mut self, variable: &Identifier) {
+        if !self.usage_found && variable.get_name() == self.variable {
+            self.usage_found = !self.is_identifier_used(self.variable);
+        }
+    }
 }
 
 impl<'a> NodeProcessor for FindUsage<'a> {
     fn process_variable_expression(&mut self, variable: &mut Identifier) {
-        if !self.usage_found && variable.get_name() == self.variable {
-            self.usage_found = !self.is_identifier_used(self.variable);
-        }
+        self.verify_identifier(variable);
+    }
+
+    fn process_type_field(&mut self, type_field: &mut TypeField) {
+        self.verify_identifier(type_field.get_namespace());
     }
 }
