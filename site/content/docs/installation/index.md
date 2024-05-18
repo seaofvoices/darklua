@@ -10,7 +10,7 @@ order: 1
 If you are already using [Foreman](https://github.com/Roblox/foreman), then installing darklua is as simple as adding this line in the `foreman.toml` file:
 
 ```toml
-darklua = { github = "seaofvoices/darklua", version = "=0.13.0" }
+darklua = { github = "seaofvoices/darklua", version = "=0.13.1" }
 ```
 
 ## Download a Release

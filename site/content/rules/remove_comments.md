@@ -3,7 +3,7 @@ description: Removes comments
 added_in: "0.7.0"
 parameters:
   - name: except
-    added_in: "unreleased"
+    added_in: "0.13.1"
     type: string array
     description: Comments matching any of the given regular expressions will be kept
 examples:
