@@ -1,4 +1,4 @@
-use crate::nodes::{Identifier, Token};
+use crate::nodes::{Identifier, Token, Trivia};
 
 use super::{StringType, Type};
 
@@ -53,29 +53,7 @@ impl TableIndexerType {
         self.tokens.as_ref()
     }
 
-    pub fn clear_comments(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [tokens]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -86,29 +64,7 @@ pub struct TableIndexTypeTokens {
 }
 
 impl TableIndexTypeTokens {
-    pub fn clear_comments(&mut self) {
-        self.opening_bracket.clear_comments();
-        self.closing_bracket.clear_comments();
-        self.colon.clear_comments();
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.opening_bracket.clear_whitespaces();
-        self.closing_bracket.clear_whitespaces();
-        self.colon.clear_whitespaces();
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.opening_bracket.replace_referenced_tokens(code);
-        self.closing_bracket.replace_referenced_tokens(code);
-        self.colon.replace_referenced_tokens(code);
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.opening_bracket.shift_token_line(amount);
-        self.closing_bracket.shift_token_line(amount);
-        self.colon.shift_token_line(amount);
-    }
+    super::impl_token_fns!(target = [opening_bracket, closing_bracket, colon]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -162,33 +118,7 @@ impl TablePropertyType {
         self.token.as_ref()
     }
 
-    pub fn clear_comments(&mut self) {
-        self.property.clear_comments();
-        if let Some(token) = &mut self.token {
-            token.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.property.clear_whitespaces();
-        if let Some(token) = &mut self.token {
-            token.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.property.replace_referenced_tokens(code);
-        if let Some(token) = &mut self.token {
-            token.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.property.shift_token_line(amount);
-        if let Some(token) = &mut self.token {
-            token.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(target = [property] iter = [token]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -242,33 +172,7 @@ impl TableLiteralPropertyType {
         self.tokens.as_ref()
     }
 
-    pub fn clear_comments(&mut self) {
-        self.string.clear_comments();
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.string.clear_whitespaces();
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.string.replace_referenced_tokens(code);
-        if let Some(tokens) = &mut self.tokens {
-            tokens.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.string.shift_token_line(amount);
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(target = [string] iter = [tokens]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -308,6 +212,14 @@ impl TableEntryType {
             TableEntryType::Property(property) => property.shift_token_line(amount),
             TableEntryType::Literal(literal) => literal.shift_token_line(amount),
             TableEntryType::Indexer(indexer) => indexer.shift_token_line(amount),
+        }
+    }
+
+    pub(crate) fn filter_comments(&mut self, filter: impl Fn(&Trivia) -> bool) {
+        match self {
+            TableEntryType::Property(property) => property.filter_comments(filter),
+            TableEntryType::Literal(literal) => literal.filter_comments(filter),
+            TableEntryType::Indexer(indexer) => indexer.filter_comments(filter),
         }
     }
 }
@@ -444,41 +356,7 @@ impl TableType {
         self.tokens.as_ref()
     }
 
-    pub fn clear_comments(&mut self) {
-        for property in self.entries.iter_mut() {
-            property.clear_comments();
-        }
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        for property in self.entries.iter_mut() {
-            property.clear_whitespaces();
-        }
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        for property in self.entries.iter_mut() {
-            property.replace_referenced_tokens(code);
-        }
-        if let Some(tokens) = &mut self.tokens {
-            tokens.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        for property in self.entries.iter_mut() {
-            property.shift_token_line(amount);
-        }
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [entries, tokens]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -489,35 +367,8 @@ pub struct TableTypeTokens {
 }
 
 impl TableTypeTokens {
-    pub fn clear_comments(&mut self) {
-        self.opening_brace.clear_comments();
-        self.closing_brace.clear_comments();
-        for token in self.separators.iter_mut() {
-            token.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.opening_brace.clear_whitespaces();
-        self.closing_brace.clear_whitespaces();
-        for token in self.separators.iter_mut() {
-            token.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.opening_brace.replace_referenced_tokens(code);
-        self.closing_brace.replace_referenced_tokens(code);
-        for token in self.separators.iter_mut() {
-            token.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.opening_brace.shift_token_line(amount);
-        self.closing_brace.shift_token_line(amount);
-        for token in self.separators.iter_mut() {
-            token.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(
+        target = [opening_brace, closing_brace]
+        iter = [separators]
+    );
 }

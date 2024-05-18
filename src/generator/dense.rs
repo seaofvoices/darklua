@@ -70,6 +70,18 @@ impl DenseLuaGenerator {
         }
     }
 
+    fn push_new_line_if_needed(&mut self, pushed_length: usize) {
+        if self.current_line_length >= self.column_span {
+            self.push_new_line();
+        } else {
+            let total_length = self.current_line_length + pushed_length;
+
+            if total_length > self.column_span {
+                self.push_new_line();
+            }
+        }
+    }
+
     fn push_space_if_needed(&mut self, next_character: char, pushed_length: usize) {
         if self.current_line_length >= self.column_span {
             self.push_new_line();
@@ -391,7 +403,8 @@ impl LuaGenerator for DenseLuaGenerator {
 
         self.push_str(name.get_name().get_name());
         name.get_field_names().iter().for_each(|field| {
-            self.push_char('.');
+            self.push_new_line_if_needed(1);
+            self.raw_push_char('.');
             self.push_str(field.get_name());
         });
 
@@ -728,7 +741,9 @@ impl LuaGenerator for DenseLuaGenerator {
     fn write_field(&mut self, field: &nodes::FieldExpression) {
         self.write_prefix(field.get_prefix());
 
-        self.push_char('.');
+        self.push_new_line_if_needed(1);
+        self.raw_push_char('.');
+
         self.push_str(field.get_field().get_name());
     }
 
@@ -951,7 +966,8 @@ impl LuaGenerator for DenseLuaGenerator {
 
     fn write_type_field(&mut self, type_field: &nodes::TypeField) {
         self.write_identifier(type_field.get_namespace());
-        self.push_char('.');
+        self.push_new_line_if_needed(1);
+        self.raw_push_char('.');
         self.write_type_name(type_field.get_type_name());
     }
 

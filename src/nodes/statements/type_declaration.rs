@@ -1,5 +1,5 @@
 use crate::nodes::{
-    GenericParameterMutRef, GenericParametersWithDefaults, Identifier, Token, Type,
+    GenericParameterMutRef, GenericParametersWithDefaults, Identifier, Token, Trivia, Type,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -10,37 +10,10 @@ pub struct TypeDeclarationTokens {
 }
 
 impl TypeDeclarationTokens {
-    pub fn clear_comments(&mut self) {
-        self.r#type.clear_comments();
-        self.equal.clear_comments();
-        if let Some(export) = &mut self.export {
-            export.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.r#type.clear_whitespaces();
-        self.equal.clear_comments();
-        if let Some(export) = &mut self.export {
-            export.clear_comments();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.r#type.replace_referenced_tokens(code);
-        self.equal.replace_referenced_tokens(code);
-        if let Some(export) = &mut self.export {
-            export.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.r#type.shift_token_line(amount);
-        self.equal.shift_token_line(amount);
-        if let Some(export) = &mut self.export {
-            export.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(
+        target = [r#type, equal]
+        iter = [export]
+    );
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -243,6 +216,33 @@ impl TypeDeclarationStatement {
                         generic_pack_with_default,
                     ) => {
                         generic_pack_with_default.shift_token_line(amount);
+                    }
+                }
+            }
+        }
+    }
+
+    pub(crate) fn filter_comments(&mut self, filter: impl Fn(&Trivia) -> bool) {
+        self.name.filter_comments(&filter);
+        if let Some(tokens) = &mut self.tokens {
+            tokens.filter_comments(&filter);
+        }
+        if let Some(parameters) = self.generic_parameters.as_mut() {
+            parameters.filter_comments(&filter);
+
+            for parameter in parameters {
+                match parameter {
+                    GenericParameterMutRef::TypeVariable(variable) => {
+                        variable.filter_comments(&filter);
+                    }
+                    GenericParameterMutRef::TypeVariableWithDefault(variable_with_default) => {
+                        variable_with_default.filter_comments(&filter);
+                    }
+                    GenericParameterMutRef::GenericTypePack(_) => {}
+                    GenericParameterMutRef::GenericTypePackWithDefault(
+                        generic_pack_with_default,
+                    ) => {
+                        generic_pack_with_default.filter_comments(&filter);
                     }
                 }
             }

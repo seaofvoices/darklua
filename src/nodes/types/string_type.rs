@@ -62,23 +62,5 @@ impl StringType {
         self.value.has_double_quote()
     }
 
-    #[inline]
-    pub fn clear_comments(&mut self) {
-        self.value.clear_comments();
-    }
-
-    #[inline]
-    pub fn clear_whitespaces(&mut self) {
-        self.value.clear_whitespaces();
-    }
-
-    #[inline]
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.value.replace_referenced_tokens(code);
-    }
-
-    #[inline]
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.value.shift_token_line(amount);
-    }
+    super::impl_token_fns!(target = [value]);
 }

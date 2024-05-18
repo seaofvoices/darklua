@@ -6,29 +6,7 @@ pub struct FunctionCallTokens {
 }
 
 impl FunctionCallTokens {
-    pub fn clear_comments(&mut self) {
-        if let Some(colon) = &mut self.colon {
-            colon.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(colon) = &mut self.colon {
-            colon.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(colon) = &mut self.colon {
-            colon.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(colon) = &mut self.colon {
-            colon.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [colon]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -137,39 +115,5 @@ impl FunctionCall {
         &mut self.prefix
     }
 
-    pub fn clear_comments(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-        if let Some(method) = &mut self.method {
-            method.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_whitespaces();
-        }
-        if let Some(method) = &mut self.method {
-            method.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.replace_referenced_tokens(code);
-        }
-        if let Some(method) = &mut self.method {
-            method.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-        if let Some(method) = &mut self.method {
-            method.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [tokens, method]);
 }

@@ -44,33 +44,10 @@ impl GenericTypePack {
         self.token.as_ref()
     }
 
-    pub fn clear_comments(&mut self) {
-        self.name.clear_comments();
-        if let Some(token) = &mut self.token {
-            token.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.name.clear_whitespaces();
-        if let Some(token) = &mut self.token {
-            token.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.name.replace_referenced_tokens(code);
-        if let Some(token) = &mut self.token {
-            token.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.name.shift_token_line(amount);
-        if let Some(token) = &mut self.token {
-            token.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(
+        target = [name]
+        iter = [token]
+    );
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -161,53 +138,7 @@ impl GenericParameters {
         self.tokens.as_ref()
     }
 
-    pub fn clear_comments(&mut self) {
-        for identifier in &mut self.type_variables {
-            identifier.clear_comments();
-        }
-        for generic_pack in &mut self.generic_type_packs {
-            generic_pack.clear_comments();
-        }
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        for identifier in &mut self.type_variables {
-            identifier.clear_whitespaces();
-        }
-        for generic_pack in &mut self.generic_type_packs {
-            generic_pack.clear_whitespaces();
-        }
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        for identifier in &mut self.type_variables {
-            identifier.replace_referenced_tokens(code);
-        }
-        for generic_pack in &mut self.generic_type_packs {
-            generic_pack.replace_referenced_tokens(code);
-        }
-        if let Some(tokens) = &mut self.tokens {
-            tokens.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        for identifier in &mut self.type_variables {
-            identifier.shift_token_line(amount);
-        }
-        for generic_pack in &mut self.generic_type_packs {
-            generic_pack.shift_token_line(amount);
-        }
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [type_variables, generic_type_packs, tokens]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -218,37 +149,10 @@ pub struct GenericParametersTokens {
 }
 
 impl GenericParametersTokens {
-    pub fn clear_comments(&mut self) {
-        self.opening_list.clear_comments();
-        self.closing_list.clear_comments();
-        for comma in self.commas.iter_mut() {
-            comma.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.opening_list.clear_whitespaces();
-        self.closing_list.clear_whitespaces();
-        for comma in self.commas.iter_mut() {
-            comma.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.opening_list.replace_referenced_tokens(code);
-        self.closing_list.replace_referenced_tokens(code);
-        for comma in self.commas.iter_mut() {
-            comma.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.opening_list.shift_token_line(amount);
-        self.closing_list.shift_token_line(amount);
-        for comma in self.commas.iter_mut() {
-            comma.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(
+        target = [opening_list, closing_list]
+        iter = [commas]
+    );
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -331,29 +235,7 @@ impl GenericTypePackWithDefault {
         self.token.as_ref()
     }
 
-    pub fn clear_comments(&mut self) {
-        if let Some(token) = &mut self.token {
-            token.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(token) = &mut self.token {
-            token.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(token) = &mut self.token {
-            token.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(token) = &mut self.token {
-            token.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [token]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -408,33 +290,10 @@ impl TypeVariableWithDefault {
         self.token.as_ref()
     }
 
-    pub fn clear_comments(&mut self) {
-        self.variable.clear_comments();
-        if let Some(token) = &mut self.token {
-            token.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.variable.clear_whitespaces();
-        if let Some(token) = &mut self.token {
-            token.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.variable.replace_referenced_tokens(code);
-        if let Some(token) = &mut self.token {
-            token.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.variable.shift_token_line(amount);
-        if let Some(token) = &mut self.token {
-            token.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(
+        target = [variable]
+        iter = [token]
+    );
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -600,29 +459,7 @@ impl GenericParametersWithDefaults {
             && self.generic_type_packs_with_default.is_empty()
     }
 
-    pub fn clear_comments(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [tokens]);
 }
 
 pub enum GenericParameter {

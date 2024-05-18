@@ -39,29 +39,7 @@ impl ExpressionType {
         self.tokens.as_ref()
     }
 
-    pub fn clear_comments(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [tokens]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -72,27 +50,5 @@ pub struct ExpressionTypeTokens {
 }
 
 impl ExpressionTypeTokens {
-    pub fn clear_comments(&mut self) {
-        self.r#typeof.clear_comments();
-        self.opening_parenthese.clear_comments();
-        self.closing_parenthese.clear_comments();
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.r#typeof.clear_whitespaces();
-        self.opening_parenthese.clear_whitespaces();
-        self.closing_parenthese.clear_whitespaces();
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.r#typeof.replace_referenced_tokens(code);
-        self.opening_parenthese.replace_referenced_tokens(code);
-        self.closing_parenthese.replace_referenced_tokens(code);
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.r#typeof.shift_token_line(amount);
-        self.opening_parenthese.shift_token_line(amount);
-        self.closing_parenthese.shift_token_line(amount);
-    }
+    super::impl_token_fns!(target = [r#typeof, opening_parenthese, closing_parenthese]);
 }

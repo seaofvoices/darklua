@@ -32,6 +32,8 @@ pub use variadic_type_pack::*;
 
 use crate::nodes::Token;
 
+use super::impl_token_fns;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Type {
     Name(TypeName),

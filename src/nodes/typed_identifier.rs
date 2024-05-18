@@ -61,33 +61,10 @@ impl TypedIdentifier {
         self.r#type.take()
     }
 
-    pub fn clear_comments(&mut self) {
-        self.name.clear_comments();
-        if let Some(token) = &mut self.token {
-            token.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.name.clear_whitespaces();
-        if let Some(token) = &mut self.token {
-            token.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.name.replace_referenced_tokens(code);
-        if let Some(token) = &mut self.token {
-            token.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.name.shift_token_line(amount);
-        if let Some(token) = &mut self.token {
-            token.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(
+        target = [name]
+        iter = [token]
+    );
 }
 
 impl<IntoIdentifier: Into<Identifier>> From<IntoIdentifier> for TypedIdentifier {

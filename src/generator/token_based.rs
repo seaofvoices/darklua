@@ -436,9 +436,9 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             .enumerate()
             .for_each(|(i, field)| {
                 if let Some(period) = tokens.periods.get(i) {
-                    self.write_token(period);
+                    self.write_token_options(period, false);
                 } else {
-                    self.write_symbol(".");
+                    self.write_symbol_without_space_check(".");
                 }
                 self.write_identifier(field);
             });
@@ -773,7 +773,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
 
     fn write_type_field_with_token(&mut self, type_field: &TypeField, token: &Token) {
         self.write_identifier(type_field.get_namespace());
-        self.write_token(token);
+        self.write_token_options(token, false);
         self.write_type_name(type_field.get_type_name());
     }
 
@@ -1568,6 +1568,13 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             self.uncomment();
         } else if self.needs_space(symbol.chars().next().expect("symbol cannot be empty")) {
             self.output.push(' ');
+        }
+        self.push_str(symbol);
+    }
+
+    fn write_symbol_without_space_check(&mut self, symbol: &str) {
+        if self.currently_commenting {
+            self.uncomment();
         }
         self.push_str(symbol);
     }
