@@ -15,5 +15,6 @@ expression: rules
   "convert_index_to_field",
   "remove_nil_declaration",
   "rename_variables",
-  "remove_function_call_parens"
+  "remove_function_call_parens",
+  "remove_if_expression"
 ]
