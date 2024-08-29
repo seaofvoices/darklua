@@ -4,6 +4,7 @@ test_rule!(
     remove_if_expression,
     RemoveIfExpression::default(),
     assign_if_expression("local a = if true then 1 else 2") => "local a = (function() if true then return 1 else return 2 end end)()",
+	assign_if_expression_with_elseif("local a = if true then 1 elseif false then 2 else 3") => "local a = (function() if true then return 1 elseif false then return 2 else return 3 end end)()"
 );
 
 #[test]
