@@ -18,12 +18,12 @@ impl NodeProcessor for Processor {
             let front_branch = nodes::IfBranch::new(if_exp.get_condition().clone(), front_block);
             let else_block = nodes::Block::new(vec![], Some(else_result_return.into()));
 
-			let mut branches: Vec<IfBranch> = vec![front_branch];
-			for elseif_exp in if_exp.iter_branches() {
-				let elseif_result_return = nodes::ReturnStatement::one(elseif_exp.get_result().clone());
-				let elseif_block = Block::new(vec![], Some(elseif_result_return.into()));
-				branches.push(IfBranch::new(elseif_exp.get_condition().clone(), elseif_block));
-			}
+            let mut branches: Vec<IfBranch> = vec![front_branch];
+            for elseif_exp in if_exp.iter_branches() {
+                let elseif_result_return = nodes::ReturnStatement::one(elseif_exp.get_result().clone());
+                let elseif_block = Block::new(vec![], Some(elseif_result_return.into()));
+                branches.push(IfBranch::new(elseif_exp.get_condition().clone(), elseif_block));
+            }
 
             let r#if = nodes::IfStatement::new(branches, Some(else_block));
 
@@ -33,11 +33,11 @@ impl NodeProcessor for Processor {
             let func_call = FunctionCall::from_prefix(parenthese_func);
             Some(Expression::Call(Box::new(func_call)))
         } else {
-			None
-		};
-		if let Some(exp) = call_exp {
-			*expression = exp;
-		}
+            None
+        };
+        if let Some(exp) = call_exp {
+            *expression = exp;
+        }
     }
 }
 
