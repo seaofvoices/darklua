@@ -29,6 +29,7 @@ stacker = ["full_moon/stacker"]
 
 [dependencies]
 anstyle = "1.0.6"
+blake3 = "1.5.4"
 clap = { version = "4.5.3", features = ["derive"] }
 durationfmt = "0.1.1"
 elsa = "1.10.0"
