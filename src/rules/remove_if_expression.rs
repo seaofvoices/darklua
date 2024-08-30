@@ -1,4 +1,15 @@
-use crate::nodes::{self, Block, Expression, FunctionCall, IfBranch, Prefix};
+use crate::nodes::{
+    self,
+    Block,
+    Expression,
+    FunctionCall,
+    IfBranch,
+    Prefix,
+    ReturnStatement,
+    IfStatement,
+    FunctionExpression,
+    ParentheseExpression
+};
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
@@ -12,24 +23,23 @@ struct Processor {}
 impl NodeProcessor for Processor {
     fn process_expression(&mut self, expression: &mut Expression) {
         let call_exp: Option<Expression> = if let Expression::If(if_exp) = expression {
-            let result_return = nodes::ReturnStatement::one(if_exp.get_result().clone());
-            let else_result_return = nodes::ReturnStatement::one(if_exp.get_else_result().clone());
-            let front_block = nodes::Block::new(vec![], Some(result_return.into()));
-            let front_branch = nodes::IfBranch::new(if_exp.get_condition().clone(), front_block);
-            let else_block = nodes::Block::new(vec![], Some(else_result_return.into()));
+            let result_return = ReturnStatement::one(if_exp.get_result().clone());
+            let else_result_return = ReturnStatement::one(if_exp.get_else_result().clone());
+            let front_branch = IfBranch::new(if_exp.get_condition().clone(), result_return);
+            let else_block = Block::new(vec![], Some(else_result_return.into()));
 
             let mut branches: Vec<IfBranch> = vec![front_branch];
             for elseif_exp in if_exp.iter_branches() {
-                let elseif_result_return = nodes::ReturnStatement::one(elseif_exp.get_result().clone());
+                let elseif_result_return = ReturnStatement::one(elseif_exp.get_result().clone());
                 let elseif_block = Block::new(vec![], Some(elseif_result_return.into()));
                 branches.push(IfBranch::new(elseif_exp.get_condition().clone(), elseif_block));
             }
 
-            let r#if = nodes::IfStatement::new(branches, Some(else_block));
+            let r#if = IfStatement::new(branches, Some(else_block));
 
-            let func_block = nodes::Block::new(vec![r#if.into()], None);
-            let func = nodes::Expression::Function(nodes::FunctionExpression::from_block(func_block));
-            let parenthese_func = Prefix::Parenthese(nodes::ParentheseExpression::new(func));
+            let func_block = Block::new(vec![r#if.into()], None);
+            let func = Expression::Function(FunctionExpression::from_block(func_block));
+            let parenthese_func = Prefix::Parenthese(ParentheseExpression::new(func));
             let func_call = FunctionCall::from_prefix(parenthese_func);
             Some(Expression::Call(Box::new(func_call)))
         } else {
