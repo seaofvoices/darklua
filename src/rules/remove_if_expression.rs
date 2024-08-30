@@ -21,14 +21,16 @@ fn process(
     let result_parenthese = ParentheseExpression::new(result.clone());
     let result_table = TableExpression::new(vec![TableEntry::Value(result_parenthese.into())]);
     let if_bin = BinaryExpression::new(nodes::BinaryOperator::And, condition.clone(), result_table);
-    let bin_right = if branches.len() > 0 {
+    let bin_right: Expression = if branches.len() > 0 {
         let b = branches[0];
-        process(
+        let elseif_result = process(
             b.get_condition(),
             b.get_result(),
             else_result,
             &branches[1..].to_vec(),
-        )
+        );
+        let elseif_result_table = TableExpression::new(vec![TableEntry::Value(elseif_result)]);
+        elseif_result_table.into()
     } else {
         let else_result_parenthese = ParentheseExpression::new(else_result.clone());
         let else_result_table =
@@ -51,33 +53,6 @@ impl NodeProcessor for Processor {
             );
             *expression = translated_exp;
         }
-
-        // let call_exp: Option<Expression> = if let Expression::If(if_exp) = expression {
-        //     let result_return = ReturnStatement::one(if_exp.get_result().clone());
-        //     let else_result_return = ReturnStatement::one(if_exp.get_else_result().clone());
-        //     let front_branch = IfBranch::new(if_exp.get_condition().clone(), result_return);
-        //     let else_block = Block::new(vec![], Some(else_result_return.into()));
-
-        //     let mut branches: Vec<IfBranch> = vec![front_branch];
-        //     for elseif_exp in if_exp.iter_branches() {
-        //         let elseif_result_return = ReturnStatement::one(elseif_exp.get_result().clone());
-        //         let elseif_block = Block::new(vec![], Some(elseif_result_return.into()));
-        //         branches.push(IfBranch::new(elseif_exp.get_condition().clone(), elseif_block));
-        //     }
-
-        //     let r#if = IfStatement::new(branches, Some(else_block));
-
-        //     let func_block = Block::new(vec![r#if.into()], None);
-        //     let func = Expression::Function(FunctionExpression::from_block(func_block));
-        //     let parenthese_func = Prefix::Parenthese(ParentheseExpression::new(func));
-        //     let func_call = FunctionCall::from_prefix(parenthese_func);
-        //     Some(Expression::Call(Box::new(func_call)))
-        // } else {
-        //     None
-        // };
-        // if let Some(exp) = call_exp {
-        //     *expression = exp;
-        // }
     }
 }
 
