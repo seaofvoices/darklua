@@ -312,4 +312,5 @@ mod remove_unused_if_branch;
 mod remove_unused_variable;
 mod remove_unused_while;
 mod rename_variables;
-mod remove_if_expression;
+
+mod remove_continue;
