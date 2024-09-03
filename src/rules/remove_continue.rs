@@ -106,38 +106,35 @@ fn continues_with_breaks_to_breaks(block: &mut Block, break_variable_name: &str)
 
 impl NodeProcessor for Processor {
     fn process_statement(&mut self, statement: &mut Statement) {
-        match statement {
-            Statement::NumericFor(numeric_for) => {
-                let block = numeric_for.mutate_block();
+        if let Statement::NumericFor(numeric_for) = statement {
+            let block = numeric_for.mutate_block();
 
-                let (has_continue, has_break) = continue_break_exists(block);
+            let (has_continue, has_break) = continue_break_exists(block);
 
-                if has_continue {
-                    let (mut stmts, break_variable_handler) = if has_break {
-                        let var = TypedIdentifier::new(self.break_variable_name.as_str());
-                        let value = Expression::False(None);
-                        let local_assign_stmt = LocalAssignStatement::new(vec![var], vec![value]);
+            if has_continue {
+                let (mut stmts, break_variable_handler) = if has_break {
+                    let var = TypedIdentifier::new(self.break_variable_name.as_str());
+                    let value = Expression::False(None);
+                    let local_assign_stmt = LocalAssignStatement::new(vec![var], vec![value]);
 
-                        let break_block = Block::new(vec![], Some(LastStatement::new_break()));
-                        let break_variable_handler = IfStatement::create(
-                            Identifier::new(self.break_variable_name.as_str()),
-                            break_block,
-                        );
-                        continues_with_breaks_to_breaks(block, self.break_variable_name.as_str());
-                        (vec![local_assign_stmt.into()], Some(break_variable_handler))
-                    } else {
-                        continues_to_breaks(block);
-                        (Vec::new(), None)
-                    };
-                    let repeat_stmt = RepeatStatement::new(block.clone(), true);
-                    stmts.push(repeat_stmt.into());
-                    if let Some(break_variable_handler) = break_variable_handler {
-                        stmts.push(break_variable_handler.into());
-                    }
-                    *block = Block::new(stmts, None);
+                    let break_block = Block::new(vec![], Some(LastStatement::new_break()));
+                    let break_variable_handler = IfStatement::create(
+                        Identifier::new(self.break_variable_name.as_str()),
+                        break_block,
+                    );
+                    continues_with_breaks_to_breaks(block, self.break_variable_name.as_str());
+                    (vec![local_assign_stmt.into()], Some(break_variable_handler))
+                } else {
+                    continues_to_breaks(block);
+                    (Vec::new(), None)
+                };
+                let repeat_stmt = RepeatStatement::new(block.clone(), true);
+                stmts.push(repeat_stmt.into());
+                if let Some(break_variable_handler) = break_variable_handler {
+                    stmts.push(break_variable_handler.into());
                 }
+                *block = Block::new(stmts, None);
             }
-            _ => {}
         }
     }
 }
