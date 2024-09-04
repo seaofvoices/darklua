@@ -4,6 +4,9 @@ test_rule!(
     remove_continue,
     RemoveContinue::default(),
     continue_inside_numeric_for("for i = 1, 10 do continue end") => "for i = 1, 10 do repeat break until true end",
+    continue_inside_generic_for("for i,v in {a,b,c} do continue end") => "for i,v in {a,b,c} do repeat break until true end",
+    continue_inside_repeat("repeat continue until true") => "repeat repeat break until true until true",
+    continue_inside_while("while true do continue end") => "while true do repeat break until true end"
 );
 
 #[test]
