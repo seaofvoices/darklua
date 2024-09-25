@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use crate::nodes::{
-    AssignStatement, Block, Expression, Identifier, IfStatement, LastStatement,
+    AssignStatement, Block, Expression, IfStatement, LastStatement,
     LocalAssignStatement, RepeatStatement, Statement, TypedIdentifier, UnaryExpression,
     UnaryOperator, Variable,
 };
@@ -21,7 +21,7 @@ const CONTINUE_VARIABLE_NAME: &str = "__DARKLUA_REMOVE_CONTINUE_continue";
 #[derive(Default)]
 struct Processor {
     break_variable_name: String,
-    continue_variable_name: String,
+    continue_variable_name: String
 }
 
 fn count_continue_break(block: &Block) -> (usize, usize) {
@@ -89,27 +89,30 @@ impl Processor {
 
         if continue_count > 0 {
             let (mut stmts, break_variable_handler) = if break_count > 0 {
-                let var = TypedIdentifier::new(self.break_variable_name.as_str());
-                let value = Expression::False(None);
-                let local_assign_stmt = LocalAssignStatement::new(vec![var], vec![value]);
-
                 let with_continue_statement = continue_count < break_count;
                 let break_block = Block::new(vec![], Some(LastStatement::new_break()));
-                let break_variable_handler = if with_continue_statement {
-                    IfStatement::create(
+                let (break_variable_handler, var) = if with_continue_statement {
+					let var = TypedIdentifier::new(self.continue_variable_name.as_str());
+                    (IfStatement::create(
                         UnaryExpression::new(
                             UnaryOperator::Not,
-                            Identifier::new(self.continue_variable_name.as_str()),
+                            var.get_identifier().clone(),
                         ),
                         break_block,
-                    )
+                    ), var)
                 } else {
-                    IfStatement::create(
-                        Identifier::new(self.break_variable_name.as_str()),
+					let var = TypedIdentifier::new(self.break_variable_name.as_str());
+                    (IfStatement::create(
+                        var.get_identifier().clone(),
                         break_block,
-                    )
+                    ), var)
                 };
+
                 self.continues_with_breaks_to_breaks(block, with_continue_statement);
+
+				let initial_value = Expression::False(None);
+				let local_assign_stmt = LocalAssignStatement::new(vec![var], vec![initial_value]);
+
                 (vec![local_assign_stmt.into()], Some(break_variable_handler))
             } else {
                 continues_to_breaks(block);
@@ -193,13 +196,17 @@ pub struct RemoveContinue {
 
 impl FlawlessRule for RemoveContinue {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
-        let hash = blake3::hash(format!("{block:?}").as_bytes());
-        let hash_hex = hex::encode(&hash.as_bytes()[..8]);
+        let hash_hex = if self.no_hash {
+            "".to_string()
+        } else {
+            let hash = blake3::hash(format!("{block:?}").as_bytes());
+            hex::encode(&hash.as_bytes()[..8])
+        };
         let break_variable_name = BREAK_VARIABLE_NAME.to_string() + hash_hex.as_str();
         let continue_variable_name = CONTINUE_VARIABLE_NAME.to_string() + hash_hex.as_str();
         let mut processor = Processor {
             break_variable_name,
-            continue_variable_name,
+            continue_variable_name
         };
         DefaultVisitor::visit_block(block, &mut processor);
     }
