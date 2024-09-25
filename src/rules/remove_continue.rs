@@ -10,7 +10,7 @@ use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
 };
 
-use super::verify_no_rule_properties;
+use super::verify_required_properties;
 
 use blake3;
 use hex;
@@ -47,14 +47,14 @@ fn count_continue_break(block: &Block) -> (usize, usize) {
             Statement::If(if_stmt) => {
                 for branch in if_stmt.iter_branches() {
                     let (c, b) = count_continue_break(branch.get_block());
-                    continue_count = continue_count + c;
-                    break_count = break_count + b;
+                    continue_count += c;
+                    break_count += b;
                 }
             }
             Statement::Do(do_stmt) => {
                 let (c, b) = count_continue_break(do_stmt.get_block());
-                continue_count = continue_count + c;
-                break_count = break_count + b;
+                continue_count += c;
+                break_count += b;
             }
             _ => {}
         }
@@ -187,7 +187,9 @@ pub const REMOVE_CONTINUE_RULE_NAME: &str = "remove_continue";
 
 /// A rule that removes continue statements and convert into breaks.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct RemoveContinue {}
+pub struct RemoveContinue {
+    no_hash: bool,
+}
 
 impl FlawlessRule for RemoveContinue {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -205,7 +207,16 @@ impl FlawlessRule for RemoveContinue {
 
 impl RuleConfiguration for RemoveContinue {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
-        verify_no_rule_properties(&properties)?;
+        verify_required_properties(&properties, &["no_hash"])?;
+
+        for (key, value) in properties {
+            match key.as_str() {
+                "no_hash" => {
+                    self.no_hash = value.expect_bool(&key)?;
+                }
+                _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
+            }
+        }
 
         Ok(())
     }
@@ -242,6 +253,7 @@ mod test {
         let result = json5::from_str::<Box<dyn Rule>>(
             r#"{
             rule: 'remove_continue',
+            no_hash: false,
             prop: "something",
         }"#,
         );
