@@ -21,23 +21,6 @@ struct Processor {
     skip_block_once: bool,
 }
 
-// impl Processor {
-//     fn process_generic_for<'a>(&self, block: &'a mut Block, iterator_identifier: &TypedIdentifier) -> Vec<(usize, Expression)> {
-//         let mut stmts: Vec<&mut Statement> = block.iter_mut_statements().collect();
-//         let mut generic_for_indexes: Vec<(usize, Expression)> = Vec::new();
-//         for (i, stmt) in (0..stmts.len()).zip(stmts.iter_mut()) {
-//             if let Statement::GenericFor(generic_for) = stmt {
-//                 let mut exps: Vec<&mut Expression> = generic_for.iter_mut_expressions().collect();
-//                 if exps.len() == 1 {
-//                     *exps[0] = Expression::Identifier(iterator_identifier.get_identifier().clone());
-//                     generic_for_indexes.push((i, exps[0].to_owned()));
-//                 }
-//             }
-//         }
-//         generic_for_indexes
-//     }
-// }
-
 fn get_type_condition(arg: Expression, type_name: &str) -> Box<BinaryExpression> {
     let type_call = Box::new(FunctionCall::new(
         Prefix::from_name("type"),
@@ -167,15 +150,6 @@ impl Processor {
 
 impl NodeProcessor for Processor {
     fn process_block(&mut self, block: &mut Block) {
-        // let iterator_identifier = TypedIdentifier::new(&self.iterator_variable_name);
-        // let generic_for_indexes = self.process_generic_for(block, &iterator_identifier);
-        // for (i, input_exp) in generic_for_indexes.iter() {
-        //     let iterator_local_assign = LocalAssignStatement::new(
-        //         vec![iterator_identifier.clone()],
-        //         vec![input_exp.to_owned()]
-        //     );
-        //     block.insert_statement(*i, Statement::LocalAssign(iterator_local_assign.into()));
-        // }
         if self.skip_block_once {
             self.skip_block_once = false;
             return;
@@ -191,7 +165,7 @@ impl NodeProcessor for Processor {
 
 pub const REMOVE_GENERALIZED_ITERATION_RULE_NAME: &str = "remove_generalized_iteration";
 
-/// A rule that removes trailing `nil` in local assignments.
+/// A rule that removes generalized iteration.
 #[derive(Debug, PartialEq, Eq)]
 pub struct RemoveGeneralizedIteration {
     runtime_variable_format: String,
