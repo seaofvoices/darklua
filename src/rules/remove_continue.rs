@@ -189,7 +189,7 @@ pub struct RemoveContinue {
 impl Default for RemoveContinue {
     fn default() -> Self {
         Self {
-            runtime_variable_format: "_DARKLUA_REMOVE_CONTINUE_{name}{hash}".to_string(),
+            runtime_variable_format: "__DARKLUA_REMOVE_CONTINUE_{name}{hash}".to_string(),
         }
     }
 }
@@ -200,7 +200,7 @@ impl Rule for RemoveContinue {
             self.runtime_variable_format.as_str(),
             format!("{block:?}").as_bytes(),
             None,
-        );
+        )?;
         let mut processor = Processor {
             break_variable_name: var_builder.build("break")?,
             continue_variable_name: var_builder.build("continue")?,
@@ -256,7 +256,7 @@ mod test {
         let result = json5::from_str::<Box<dyn Rule>>(
             r#"{
             rule: 'remove_continue',
-            no_hash: false,
+            runtime_variable_format: '{name}',
             prop: "something",
         }"#,
         );
