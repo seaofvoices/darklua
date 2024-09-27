@@ -51,17 +51,12 @@ impl Processor {
                     let control_identifier = control_typed_identifier.get_identifier().clone();
 
                     let iterator_local_assign = LocalAssignStatement::new(
-                        vec![
-                            iterator_typed_identifier,
-                        ],
+                        vec![iterator_typed_identifier],
                         vec![exps[0].to_owned()],
                     );
                     let invar_control_local_assign = LocalAssignStatement::new(
-                        vec![
-                            invariant_typed_identifier,
-                            control_typed_identifier,
-                        ],
-                        Vec::new()
+                        vec![invariant_typed_identifier, control_typed_identifier],
+                        Vec::new(),
                     );
 
                     let iterator_exp = Expression::Identifier(iterator_identifier.clone());
