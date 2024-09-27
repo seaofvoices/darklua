@@ -32,8 +32,9 @@ fn get_type_condition(arg: Expression, type_name: &str) -> Box<BinaryExpression>
 }
 
 impl Processor {
-    fn process_into_do(&self, block: &mut Block) -> Option<Statement> {
-        for stmt in block.iter_mut_statements() {
+    fn process_into_do(&self, block: &mut Block) -> Option<(usize, Statement)> {
+        let block_stmts = block.mutate_statements();
+        for (i, stmt) in block_stmts.iter_mut().enumerate() {
             if let Statement::GenericFor(generic_for) = stmt {
                 let exps = generic_for.mutate_expressions();
                 if exps.len() == 1 {
@@ -138,7 +139,9 @@ impl Processor {
                     stmts.push(if_table_stmt.into());
                     stmts.push(generic_for.clone().into());
 
-                    return Some(DoStatement::new(Block::new(stmts, None)).into());
+                    block_stmts.remove(i);
+
+                    return Some((i, DoStatement::new(Block::new(stmts, None)).into()));
                 }
             }
         }
@@ -153,10 +156,9 @@ impl NodeProcessor for Processor {
             return;
         }
         let do_stmt = self.process_into_do(block);
-        if let Some(stmt) = do_stmt {
+        if let Some((i, stmt)) = do_stmt {
             self.skip_block_once = true;
-            block.clear();
-            block.insert_statement(0, stmt);
+            block.insert_statement(i, stmt);
         }
     }
 }

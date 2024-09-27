@@ -167,6 +167,11 @@ impl Block {
         self.statements.iter_mut()
     }
 
+	#[inline]
+    pub fn mutate_statements(&mut self) -> &mut Vec<Statement> {
+        &mut self.statements
+    }
+
     #[inline]
     pub fn first_statement(&self) -> Option<&Statement> {
         self.statements.first()
