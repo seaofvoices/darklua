@@ -186,13 +186,13 @@ pub const REMOVE_CONTINUE_RULE_NAME: &str = "remove_continue";
 /// A rule that removes continue statements and convert into breaks.
 #[derive(Debug, PartialEq, Eq)]
 pub struct RemoveContinue {
-    runtime_variable: String,
+    runtime_variable_format: String,
 }
 
 impl Default for RemoveContinue {
     fn default() -> Self {
         Self {
-            runtime_variable: "_DARKLUA_REMOVE_CONTINUE_{name}{hash}".to_string()
+            runtime_variable_format: "_DARKLUA_REMOVE_CONTINUE_{name}{hash}".to_string()
         }
     }
 }
@@ -200,7 +200,7 @@ impl Default for RemoveContinue {
 impl Rule for RemoveContinue {
     fn process(&self, block: &mut Block, _: &Context) -> RuleProcessResult {
         let var_builder = RuntimeVariableBuilder::new(
-            self.runtime_variable.as_str(),
+            self.runtime_variable_format.as_str(),
             format!("{block:?}").as_bytes(),
             None
         );
@@ -217,8 +217,8 @@ impl RuleConfiguration for RemoveContinue {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, value) in properties {
             match key.as_str() {
-                "runtime_variable" => {
-                    self.runtime_variable = value.expect_string(&key)?;
+                "runtime_variable_format" => {
+                    self.runtime_variable_format = value.expect_string(&key)?;
                 }
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }
