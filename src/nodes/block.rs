@@ -167,7 +167,7 @@ impl Block {
         self.statements.iter_mut()
     }
 
-	#[inline]
+    #[inline]
     pub fn mutate_statements(&mut self) -> &mut Vec<Statement> {
         &mut self.statements
     }
