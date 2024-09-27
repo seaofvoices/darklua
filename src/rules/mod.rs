@@ -31,6 +31,7 @@ mod rule_property;
 mod shift_token_line;
 mod unused_if_branch;
 mod unused_while;
+pub(crate) mod runtime_variable;
 
 pub use append_text_comment::*;
 pub use call_parens::*;

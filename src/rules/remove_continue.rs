@@ -7,16 +7,11 @@ use crate::nodes::{
 };
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, RuleConfiguration, RuleConfigurationError, RuleProperties,
 };
 
-use super::verify_required_properties;
-
-use blake3;
-use hex;
-
-const BREAK_VARIABLE_NAME: &str = "__DARKLUA_REMOVE_CONTINUE_break";
-const CONTINUE_VARIABLE_NAME: &str = "__DARKLUA_REMOVE_CONTINUE_continue";
+use super::runtime_variable::RuntimeVariableBuilder;
+use super::{Rule, RuleProcessResult};
 
 #[derive(Default)]
 struct Processor {
@@ -92,7 +87,7 @@ impl Processor {
                 let with_continue_statement = continue_count < break_count;
                 let break_block = Block::new(vec![], Some(LastStatement::new_break()));
                 let (break_variable_handler, var) = if with_continue_statement {
-					let var = TypedIdentifier::new(self.continue_variable_name.as_str());
+                    let var = TypedIdentifier::new(self.continue_variable_name.as_str());
                     (IfStatement::create(
                         UnaryExpression::new(
                             UnaryOperator::Not,
@@ -101,7 +96,7 @@ impl Processor {
                         break_block,
                     ), var)
                 } else {
-					let var = TypedIdentifier::new(self.break_variable_name.as_str());
+                    let var = TypedIdentifier::new(self.break_variable_name.as_str());
                     (IfStatement::create(
                         var.get_identifier().clone(),
                         break_block,
@@ -110,8 +105,8 @@ impl Processor {
 
                 self.continues_with_breaks_to_breaks(block, with_continue_statement);
 
-				let initial_value = Expression::False(None);
-				let local_assign_stmt = LocalAssignStatement::new(vec![var], vec![initial_value]);
+                let initial_value = Expression::False(None);
+                let local_assign_stmt = LocalAssignStatement::new(vec![var], vec![initial_value]);
 
                 (vec![local_assign_stmt.into()], Some(break_variable_handler))
             } else {
@@ -189,37 +184,41 @@ impl NodeProcessor for Processor {
 pub const REMOVE_CONTINUE_RULE_NAME: &str = "remove_continue";
 
 /// A rule that removes continue statements and convert into breaks.
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct RemoveContinue {
-    no_hash: bool,
+    runtime_variable: String,
 }
 
-impl FlawlessRule for RemoveContinue {
-    fn flawless_process(&self, block: &mut Block, _: &Context) {
-        let hash_hex = if self.no_hash {
-            "".to_string()
-        } else {
-            let hash = blake3::hash(format!("{block:?}").as_bytes());
-            hex::encode(&hash.as_bytes()[..8])
-        };
-        let break_variable_name = BREAK_VARIABLE_NAME.to_string() + hash_hex.as_str();
-        let continue_variable_name = CONTINUE_VARIABLE_NAME.to_string() + hash_hex.as_str();
+impl Default for RemoveContinue {
+    fn default() -> Self {
+        Self {
+            runtime_variable: "_DARKLUA_REMOVE_CONTINUE_{name}{hash}".to_string()
+        }
+    }
+}
+
+impl Rule for RemoveContinue {
+    fn process(&self, block: &mut Block, _: &Context) -> RuleProcessResult {
+        let var_builder = RuntimeVariableBuilder::new(
+            self.runtime_variable.as_str(),
+            format!("{block:?}").as_bytes(),
+            None
+        );
         let mut processor = Processor {
-            break_variable_name,
-            continue_variable_name
+            break_variable_name: var_builder.build("break")?,
+            continue_variable_name: var_builder.build("continue")?
         };
         DefaultVisitor::visit_block(block, &mut processor);
+		Ok(())
     }
 }
 
 impl RuleConfiguration for RemoveContinue {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
-        verify_required_properties(&properties, &["no_hash"])?;
-
         for (key, value) in properties {
             match key.as_str() {
-                "no_hash" => {
-                    self.no_hash = value.expect_bool(&key)?;
+                "runtime_variable" => {
+                    self.runtime_variable = value.expect_string(&key)?;
                 }
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }
