@@ -56,13 +56,13 @@ impl Processor {
                         ],
                         vec![exps[0].to_owned()],
                     );
-					let invar_control_local_assign = LocalAssignStatement::new(
-						vec![
-							invariant_typed_identifier,
+                    let invar_control_local_assign = LocalAssignStatement::new(
+                        vec![
+                            invariant_typed_identifier,
                             control_typed_identifier,
-						],
-						Vec::new()
-					);
+                        ],
+                        Vec::new()
+                    );
 
                     let iterator_exp = Expression::Identifier(iterator_identifier.clone());
                     exps[0] = iterator_exp.clone();
@@ -139,7 +139,7 @@ impl Processor {
                     let if_table_stmt = IfStatement::new(vec![if_table_branch], None);
 
                     stmts.push(iterator_local_assign.into());
-					stmts.push(invar_control_local_assign.into());
+                    stmts.push(invar_control_local_assign.into());
                     stmts.push(if_table_stmt.into());
                     stmts.push(generic_for.clone().into());
 
@@ -247,7 +247,7 @@ mod test {
         let result = json5::from_str::<Box<dyn Rule>>(
             r#"{
             rule: 'remove_generalized_iteration',
-			runtime_variable_format: '{name}',
+            runtime_variable_format: '{name}',
             prop: "something",
         }"#,
         );

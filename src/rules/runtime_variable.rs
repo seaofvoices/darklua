@@ -15,10 +15,10 @@ impl RuntimeVariableBuilder {
         identifier: &[u8],
         keywords: Option<Vec<String>>,
     ) -> Result<Self, String> {
-		let format: String = format.into();
-		if !format.as_str().contains("{name}") {
-			return Err("`name` field is required for runtime variable".to_string())
-		}
+        let format: String = format.into();
+        if !format.as_str().contains("{name}") {
+            return Err("`name` field is required for runtime variable".to_string())
+        }
         let hash = blake3::hash(identifier);
         Ok(Self {
             format,
