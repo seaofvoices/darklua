@@ -25,5 +25,6 @@ expression: rule_names
   "remove_unused_if_branch",
   "remove_unused_variable",
   "remove_unused_while",
-  "rename_variables"
+  "rename_variables",
+  "remove_generalized_iteration"
 ]

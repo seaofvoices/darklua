@@ -241,6 +241,7 @@ mod test {
         let result = json5::from_str::<Box<dyn Rule>>(
             r#"{
             rule: 'remove_generalized_iteration',
+			runtime_variable_format: '{name}',
             prop: "something",
         }"#,
         );
