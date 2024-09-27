@@ -11,7 +11,6 @@ use super::runtime_variable::{
 };
 use super::{Rule, RuleProcessResult};
 
-const VARIABLE_PREFIX: &str = "_DARKLUA_REMOVE_GENERALIZED_ITERATION";
 const METATABLE_VARIABLE_NAME: &str = "_m";
 
 struct Processor {
@@ -174,7 +173,7 @@ pub struct RemoveGeneralizedIteration {
 impl Default for RemoveGeneralizedIteration {
     fn default() -> Self {
         Self {
-            runtime_variable_format: DEFAULT_RUNTIME_VARIABLE_FORMAT.to_string(),
+            runtime_variable_format: "_DARKLUA_REMOVE_GENERALIZED_ITERATION_{name}{hash}".to_string(),
         }
     }
 }
@@ -182,7 +181,6 @@ impl Default for RemoveGeneralizedIteration {
 impl Rule for RemoveGeneralizedIteration {
     fn process(&self, block: &mut Block, _: &Context) -> RuleProcessResult {
         let var_builder = RuntimeVariableBuilder::new(
-            VARIABLE_PREFIX,
             self.runtime_variable_format.as_str(),
             format!("{block:?}").as_bytes(),
             Some(vec![METATABLE_VARIABLE_NAME.to_string()]),
