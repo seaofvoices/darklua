@@ -3,38 +3,7 @@ use hex;
 use std::collections::HashMap;
 use strfmt::strfmt;
 
-// use crate::nodes::{
-//     AssignStatement, Expression, Identifier, LocalAssignStatement, TypedIdentifier,
-// };
-use crate::nodes::TypedIdentifier;
-
 pub const DEFAULT_RUNTIME_VARIABLE_FORMAT: &str = "{prefix}_{name}{hash}";
-
-pub struct RuntimeVariable {
-    name: String,
-}
-
-impl RuntimeVariable {
-    pub fn generate_typed_identifier(&self) -> TypedIdentifier {
-        TypedIdentifier::new(&self.name)
-    }
-
-    // pub fn generate_identifier(&self) -> Identifier {
-    //     Identifier::new(&self.name)
-    // }
-
-    // pub fn generate_local_assignment(&self, value: Option<Expression>) -> LocalAssignStatement {
-    //     if let Some(value) = value {
-    //         LocalAssignStatement::new(vec![self.generate_typed_identifier()], vec![value])
-    //     } else {
-    //         LocalAssignStatement::from_variable(self.generate_identifier())
-    //     }
-    // }
-
-    // pub fn generate_assignment(&self, value: Expression) -> AssignStatement {
-    //     AssignStatement::new(vec![self.generate_identifier().into()], vec![value])
-    // }
-}
 
 pub struct RuntimeVariableBuilder {
     prefix: String,
@@ -59,7 +28,7 @@ impl RuntimeVariableBuilder {
         }
     }
 
-    pub fn build(&self, name: &str) -> Result<RuntimeVariable, String> {
+    pub fn build(&self, name: &str) -> Result<String, String> {
         let mut vars = HashMap::new();
         vars.insert("prefix".to_string(), self.prefix.as_str());
         vars.insert("name".to_string(), name);
@@ -73,6 +42,6 @@ impl RuntimeVariableBuilder {
             }
         }
 
-        Ok(RuntimeVariable { name })
+        Ok(name)
     }
 }

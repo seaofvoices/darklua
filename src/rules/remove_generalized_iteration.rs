@@ -7,7 +7,7 @@ use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{Context, RuleConfiguration, RuleConfigurationError, RuleProperties};
 
 use super::runtime_variable::{
-    RuntimeVariable, RuntimeVariableBuilder, DEFAULT_RUNTIME_VARIABLE_FORMAT,
+    RuntimeVariableBuilder, DEFAULT_RUNTIME_VARIABLE_FORMAT,
 };
 use super::{Rule, RuleProcessResult};
 
@@ -15,9 +15,9 @@ const VARIABLE_PREFIX: &str = "_DARKLUA_REMOVE_GENERALIZED_ITERATION";
 const METATABLE_VARIABLE_NAME: &str = "_m";
 
 struct Processor {
-    iterator_variable: RuntimeVariable,
-    invariant_variable: RuntimeVariable,
-    control_variable: RuntimeVariable,
+    iterator_variable_name: String,
+    invariant_variable_name: String,
+    control_variable_name: String,
     skip_block_once: bool,
 }
 
@@ -42,15 +42,15 @@ impl Processor {
                 if exps.len() == 1 {
                     let mut stmts: Vec<Statement> = Vec::new();
                     let iterator_typed_identifier =
-                        self.iterator_variable.generate_typed_identifier();
+                        TypedIdentifier::new(self.iterator_variable_name.as_str());
                     let iterator_identifier = iterator_typed_identifier.get_identifier().clone();
 
                     let invariant_typed_identifier =
-                        self.invariant_variable.generate_typed_identifier();
+                        TypedIdentifier::new(self.invariant_variable_name.as_str());
                     let invariant_identifier = invariant_typed_identifier.get_identifier().clone();
 
                     let control_typed_identifier =
-                        self.control_variable.generate_typed_identifier();
+                        TypedIdentifier::new(self.control_variable_name.as_str());
                     let control_identifier = control_typed_identifier.get_identifier().clone();
 
                     let iterator_local_assign = LocalAssignStatement::new(
@@ -188,9 +188,9 @@ impl Rule for RemoveGeneralizedIteration {
             Some(vec![METATABLE_VARIABLE_NAME.to_string()]),
         );
         let mut processor = Processor {
-            iterator_variable: var_builder.build("iter")?,
-            invariant_variable: var_builder.build("invar")?,
-            control_variable: var_builder.build("control")?,
+            iterator_variable_name: var_builder.build("iter")?,
+            invariant_variable_name: var_builder.build("invar")?,
+            control_variable_name: var_builder.build("control")?,
             skip_block_once: false,
         };
         DefaultVisitor::visit_block(block, &mut processor);
