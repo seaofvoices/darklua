@@ -3,8 +3,6 @@ use hex;
 use std::collections::HashMap;
 use strfmt::strfmt;
 
-pub const DEFAULT_RUNTIME_VARIABLE_FORMAT: &str = "{name}{hash}";
-
 pub struct RuntimeVariableBuilder {
     format: String,
     hash: String,

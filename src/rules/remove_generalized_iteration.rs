@@ -6,9 +6,7 @@ use crate::nodes::{
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{Context, RuleConfiguration, RuleConfigurationError, RuleProperties};
 
-use super::runtime_variable::{
-    RuntimeVariableBuilder, DEFAULT_RUNTIME_VARIABLE_FORMAT,
-};
+use super::runtime_variable::RuntimeVariableBuilder;
 use super::{Rule, RuleProcessResult};
 
 const METATABLE_VARIABLE_NAME: &str = "_m";
@@ -173,7 +171,8 @@ pub struct RemoveGeneralizedIteration {
 impl Default for RemoveGeneralizedIteration {
     fn default() -> Self {
         Self {
-            runtime_variable_format: "_DARKLUA_REMOVE_GENERALIZED_ITERATION_{name}{hash}".to_string(),
+            runtime_variable_format: "_DARKLUA_REMOVE_GENERALIZED_ITERATION_{name}{hash}"
+                .to_string(),
         }
     }
 }
