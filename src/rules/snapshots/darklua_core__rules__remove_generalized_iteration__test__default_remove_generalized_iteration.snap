@@ -1,0 +1,5 @@
+---
+source: src/rules/remove_generalized_iteration.rs
+expression: rule
+---
+"remove_generalized_iteration"

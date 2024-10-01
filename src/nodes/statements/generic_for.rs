@@ -95,6 +95,11 @@ impl GenericForStatement {
     }
 
     #[inline]
+    pub fn mutate_expressions(&mut self) -> &mut Vec<Expression> {
+        &mut self.expressions
+    }
+
+    #[inline]
     pub fn mutate_block(&mut self) -> &mut Block {
         &mut self.block
     }

@@ -18,6 +18,7 @@ mod remove_call_match;
 mod remove_comments;
 mod remove_compound_assign;
 mod remove_debug_profiling;
+mod remove_generalized_iteration;
 mod remove_interpolated_string;
 mod remove_nil_declarations;
 mod remove_spaces;
@@ -27,6 +28,7 @@ mod rename_variables;
 mod replace_referenced_tokens;
 pub(crate) mod require;
 mod rule_property;
+pub(crate) mod runtime_variable;
 mod shift_token_line;
 mod unused_if_branch;
 mod unused_while;
@@ -47,6 +49,7 @@ pub use remove_assertions::*;
 pub use remove_comments::*;
 pub use remove_compound_assign::*;
 pub use remove_debug_profiling::*;
+pub use remove_generalized_iteration::*;
 pub use remove_interpolated_string::*;
 pub use remove_nil_declarations::*;
 pub use remove_spaces::*;
@@ -214,6 +217,7 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::<RemoveNilDeclaration>::default(),
         Box::<RenameVariables>::default(),
         Box::<RemoveFunctionCallParens>::default(),
+        Box::<RemoveGeneralizedIteration>::default(),
     ]
 }
 
@@ -242,6 +246,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         REMOVE_UNUSED_VARIABLE_RULE_NAME,
         REMOVE_UNUSED_WHILE_RULE_NAME,
         RENAME_VARIABLES_RULE_NAME,
+        REMOVE_GENERALIZED_ITERATION_RULE_NAME,
     ]
 }
 
@@ -275,6 +280,7 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_UNUSED_VARIABLE_RULE_NAME => Box::<RemoveUnusedVariable>::default(),
             REMOVE_UNUSED_WHILE_RULE_NAME => Box::<RemoveUnusedWhile>::default(),
             RENAME_VARIABLES_RULE_NAME => Box::<RenameVariables>::default(),
+            REMOVE_GENERALIZED_ITERATION_RULE_NAME => Box::<RemoveGeneralizedIteration>::default(),
             _ => return Err(format!("invalid rule name: {}", string)),
         };
 
