@@ -9,13 +9,14 @@ use crate::rules::{Context, RuleConfiguration, RuleConfigurationError, RulePrope
 use super::runtime_variable::RuntimeVariableBuilder;
 use super::{Rule, RuleProcessResult};
 
-const METATABLE_VARIABLE_NAME: &str = "_m";
+const METATABLE_VARIABLE_NAME: &str = "m";
 
 struct Processor {
     iterator_variable_name: String,
     invariant_variable_name: String,
     control_variable_name: String,
     skip_block_once: bool,
+    getmetatable: String,
 }
 
 fn get_type_condition(arg: Expression, type_name: &str) -> Box<BinaryExpression> {
@@ -73,7 +74,7 @@ impl Processor {
                     let mt_identifier = mt_typed_identifier.get_identifier().clone();
 
                     let get_mt_call = FunctionCall::new(
-                        Prefix::from_name("getmetatable"),
+                        Prefix::from_name(self.getmetatable.as_str()),
                         TupleArguments::new(vec![iterator_exp.clone()]).into(),
                         None,
                     );
@@ -169,6 +170,7 @@ pub const REMOVE_GENERALIZED_ITERATION_RULE_NAME: &str = "remove_generalized_ite
 #[derive(Debug, PartialEq, Eq)]
 pub struct RemoveGeneralizedIteration {
     runtime_variable_format: String,
+    getmetatable: String,
 }
 
 impl Default for RemoveGeneralizedIteration {
@@ -176,6 +178,7 @@ impl Default for RemoveGeneralizedIteration {
         Self {
             runtime_variable_format: "_DARKLUA_REMOVE_GENERALIZED_ITERATION_{name}{hash}"
                 .to_string(),
+            getmetatable: "getmetatable".to_string(),
         }
     }
 }
@@ -192,6 +195,7 @@ impl Rule for RemoveGeneralizedIteration {
             invariant_variable_name: var_builder.build("invar")?,
             control_variable_name: var_builder.build("control")?,
             skip_block_once: false,
+            getmetatable: self.getmetatable.to_owned(),
         };
         DefaultVisitor::visit_block(block, &mut processor);
         Ok(())
@@ -204,6 +208,9 @@ impl RuleConfiguration for RemoveGeneralizedIteration {
             match key.as_str() {
                 "runtime_variable_format" => {
                     self.runtime_variable_format = value.expect_string(&key)?;
+                }
+                "getmetatable" => {
+                    self.getmetatable = value.expect_string(&key)?;
                 }
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }
