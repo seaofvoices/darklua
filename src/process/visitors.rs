@@ -476,14 +476,16 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Type::Intersection(intersection) => {
                 processor.process_intersection_type(intersection);
 
-                Self::visit_type(intersection.mutate_left(), processor);
-                Self::visit_type(intersection.mutate_right(), processor);
+                for r#type in intersection.iter_mut_types() {
+                    Self::visit_type(r#type, processor);
+                }
             }
             Type::Union(union) => {
                 processor.process_union_type(union);
 
-                Self::visit_type(union.mutate_left(), processor);
-                Self::visit_type(union.mutate_right(), processor);
+                for r#type in union.iter_mut_types() {
+                    Self::visit_type(r#type, processor);
+                }
             }
             Type::String(string) => {
                 processor.process_string_type(string);
