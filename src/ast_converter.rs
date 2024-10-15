@@ -2319,12 +2319,16 @@ impl<'a> AstConverter<'a> {
     ) -> Result<(usize, usize, usize), ConvertError> {
         let start = token
             .start_position()
-            .ok_or_else(|| ConvertError::TokenPositionNotFound(token.clone()))?;
+            .ok_or_else(|| ConvertError::TokenPositionNotFound {
+                token: token.to_string(),
+            })?;
         Ok((
             start.bytes(),
             token
                 .end_position()
-                .ok_or_else(|| ConvertError::TokenPositionNotFound(token.clone()))?
+                .ok_or_else(|| ConvertError::TokenPositionNotFound {
+                    token: token.to_string(),
+                })?
                 .bytes(),
             start.line(),
         ))
@@ -2334,9 +2338,12 @@ impl<'a> AstConverter<'a> {
         &self,
         token: &tokenizer::TokenReference,
     ) -> Result<(usize, usize), ConvertError> {
-        let end_position = token
-            .end_position()
-            .ok_or_else(|| ConvertError::TokenPositionNotFound(token.clone()))?;
+        let end_position =
+            token
+                .end_position()
+                .ok_or_else(|| ConvertError::TokenPositionNotFound {
+                    token: token.to_string(),
+                })?;
         Ok((end_position.bytes(), end_position.line()))
     }
 
@@ -3033,7 +3040,9 @@ pub(crate) enum ConvertError {
     },
     UnexpectedTrivia(tokenizer::TokenKind),
     ExpectedFunctionName,
-    TokenPositionNotFound(tokenizer::TokenReference),
+    TokenPositionNotFound {
+        token: String,
+    },
     InternalStack {
         kind: &'static str,
     },
@@ -3082,7 +3091,7 @@ impl fmt::Display for ConvertError {
             ConvertError::ExpectedFunctionName => {
                 return write!(f, "unable to convert empty function name");
             }
-            ConvertError::TokenPositionNotFound(token) => {
+            ConvertError::TokenPositionNotFound { token } => {
                 return write!(
                     f,
                     "unable to convert token '{}' because its position is missing",

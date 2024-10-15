@@ -1778,7 +1778,7 @@ fn wrap_in_parenthese_if_leading_union_or_intersection(r#type: Type) -> Type {
         }
         Type::Union(union_type) => {
             if union_type.has_leading_token() {
-                Type::from(union_type).in_parentheses().into()
+                Type::from(union_type).in_parentheses()
             } else {
                 union_type.into()
             }

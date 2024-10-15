@@ -64,8 +64,8 @@ impl UnionType {
     }
 
     pub fn has_leading_token(&self) -> bool {
-        self.leading_operator ||
-        self.types.len() < 2
+        self.leading_operator
+            || self.types.len() < 2
             || self
                 .tokens
                 .as_ref()
