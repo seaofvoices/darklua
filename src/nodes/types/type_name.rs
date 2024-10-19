@@ -174,7 +174,12 @@ pub enum TypeParameter {
 
 impl<T: Into<Type>> From<T> for TypeParameter {
     fn from(value: T) -> Self {
-        Self::Type(value.into())
+        match value.into() {
+            Type::Parenthese(parenthese) => {
+                Self::TypePack(TypePack::default().with_type(parenthese.into_inner_type()))
+            }
+            other => Self::Type(other),
+        }
     }
 }
 

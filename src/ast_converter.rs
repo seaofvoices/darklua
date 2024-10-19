@@ -2,6 +2,7 @@ use std::{fmt, str::FromStr};
 
 use full_moon::{
     ast,
+    node::Node,
     tokenizer::{self, InterpolatedStringKind, Symbol, TokenType},
 };
 
@@ -116,6 +117,11 @@ impl<'a> AstConverter<'a> {
         self.types
             .pop()
             .ok_or(ConvertError::InternalStack { kind: "Type" })
+    }
+
+    #[inline]
+    fn pop_types(&mut self, n: usize) -> Result<Vec<Type>, ConvertError> {
+        std::iter::repeat_with(|| self.pop_type()).take(n).collect()
     }
 
     #[inline]
@@ -397,10 +403,12 @@ impl<'a> AstConverter<'a> {
                         let mut value_segment = ValueSegment::new(expression);
 
                         if self.hold_token_data {
+                            let literal_end = self.convert_token_end_position(literal)?;
+
                             let mut opening_brace = Token::new_with_line(
-                                literal.end_position().bytes().saturating_sub(1),
-                                literal.end_position().bytes(),
-                                literal.end_position().line(),
+                                literal_end.0.saturating_sub(1),
+                                literal_end.0,
+                                literal_end.1,
                             );
 
                             for trivia_token in literal.trailing_trivia() {
@@ -413,11 +421,13 @@ impl<'a> AstConverter<'a> {
                                 .map(|next_segment| &next_segment.literal)
                                 .unwrap_or(interpolated_string.last_string());
 
-                            let start_position = next_literal.start_position().bytes();
+                            let next_literal_position =
+                                self.convert_token_position(next_literal)?;
+
                             let closing_brace = Token::new_with_line(
-                                start_position,
-                                start_position + 1,
-                                next_literal.start_position().line(),
+                                next_literal_position.0,
+                                next_literal_position.0.saturating_add(1),
+                                next_literal_position.2,
                             );
 
                             value_segment.set_tokens(ValueSegmentTokens {
@@ -448,17 +458,17 @@ impl<'a> AstConverter<'a> {
                         let (opening_tick, closing_tick) = match first.token_type() {
                             TokenType::InterpolatedString { literal: _, kind } => match kind {
                                 InterpolatedStringKind::Begin | InterpolatedStringKind::Simple => {
-                                    let start_position = first.start_position().bytes();
+                                    let first_position = self.convert_token_position(first)?;
                                     let mut start_token = Token::new_with_line(
-                                        start_position,
-                                        start_position + 1,
-                                        first.start_position().line(),
+                                        first_position.0,
+                                        first_position.0.saturating_add(1),
+                                        first_position.2,
                                     );
-                                    let end_position = last.end_position().bytes();
+                                    let last_position = self.convert_token_end_position(last)?;
                                     let mut end_token = Token::new_with_line(
-                                        end_position.saturating_sub(1),
-                                        end_position,
-                                        last.end_position().line(),
+                                        last_position.0.saturating_sub(1),
+                                        last_position.0,
+                                        last_position.1,
                                     );
 
                                     for trivia_token in first.leading_trivia() {
@@ -632,7 +642,7 @@ impl<'a> AstConverter<'a> {
 
                         for parameter in generics.generics() {
                             match parameter.parameter() {
-                                ast::types::GenericParameterInfo::Name(token) => {
+                                ast::luau::GenericParameterInfo::Name(token) => {
                                     let name = self.convert_token_to_identifier(token)?;
 
                                     if let Some(default_type) = parameter
@@ -660,16 +670,16 @@ impl<'a> AstConverter<'a> {
                                             .push(self.convert_token_to_identifier(token)?);
                                     }
                                 }
-                                ast::types::GenericParameterInfo::Variadic { name, ellipse } => {
+                                ast::luau::GenericParameterInfo::Variadic { name, ellipsis } => {
                                     let mut generic_pack = GenericTypePack::new(
                                         self.convert_token_to_identifier(name)?,
                                     );
 
                                     if self.hold_token_data {
-                                        generic_pack.set_token(self.convert_token(ellipse)?);
+                                        generic_pack.set_token(self.convert_token(ellipsis)?);
                                     }
 
-                                    use ast::types::TypeInfo;
+                                    use ast::luau::TypeInfo;
 
                                     if let Some(default_type) = parameter
                                         .default_type()
@@ -981,7 +991,7 @@ impl<'a> AstConverter<'a> {
                     self.statements.push(if_statement.into());
                 }
                 ConvertWork::MakeFunctionReturnType { type_info } => {
-                    use ast::types::TypeInfo;
+                    use ast::luau::TypeInfo;
 
                     let return_type = if is_variadic_type(type_info).is_some() {
                         self.pop_variadic_type_pack()?.into()
@@ -995,11 +1005,11 @@ impl<'a> AstConverter<'a> {
 
                     self.function_return_types.push(return_type);
                 }
-                ConvertWork::MakeVariadicTypePack { ellipse } => {
+                ConvertWork::MakeVariadicTypePack { ellipsis } => {
                     let mut variadic_type_pack = VariadicTypePack::new(self.pop_type()?);
 
                     if self.hold_token_data {
-                        variadic_type_pack.set_token(self.convert_token(ellipse)?);
+                        variadic_type_pack.set_token(self.convert_token(ellipsis)?);
                     }
 
                     self.variadic_type_packs.push(variadic_type_pack);
@@ -1028,26 +1038,46 @@ impl<'a> AstConverter<'a> {
 
                     self.types.push(optional_type.into());
                 }
-                ConvertWork::MakeIntersectionType { operator } => {
-                    let left_type = self.pop_type()?;
-                    let right_type = self.pop_type()?;
+                ConvertWork::MakeIntersectionType {
+                    length,
+                    leading_token,
+                    separators,
+                } => {
+                    let types = self.pop_types(length)?;
 
-                    let mut intersection_type = IntersectionType::new(left_type, right_type);
+                    let mut intersection_type = IntersectionType::from(types);
 
                     if self.hold_token_data {
-                        intersection_type.set_token(self.convert_token(operator)?);
+                        intersection_type.set_tokens(IntersectionTypeTokens {
+                            leading_token: leading_token
+                                .map(|token| self.convert_token(token))
+                                .transpose()?,
+                            separators: self.extract_tokens_from_punctuation(separators)?,
+                        });
+                    } else if leading_token.is_some() {
+                        intersection_type.put_leading_token();
                     }
 
                     self.types.push(intersection_type.into());
                 }
-                ConvertWork::MakeUnionType { operator } => {
-                    let left_type = self.pop_type()?;
-                    let right_type = self.pop_type()?;
+                ConvertWork::MakeUnionType {
+                    length,
+                    leading_token,
+                    separators,
+                } => {
+                    let types = self.pop_types(length)?;
 
-                    let mut union_type = UnionType::new(left_type, right_type);
+                    let mut union_type = UnionType::from(types);
 
                     if self.hold_token_data {
-                        union_type.set_token(self.convert_token(operator)?);
+                        union_type.set_tokens(UnionTypeTokens {
+                            leading_token: leading_token
+                                .map(|token| self.convert_token(token))
+                                .transpose()?,
+                            separators: self.extract_tokens_from_punctuation(separators)?,
+                        });
+                    } else if leading_token.is_some() {
+                        union_type.put_leading_token();
                     }
 
                     self.types.push(union_type.into());
@@ -1056,7 +1086,7 @@ impl<'a> AstConverter<'a> {
                     let mut table_type = TableType::default();
 
                     for field in fields {
-                        use ast::types::TypeFieldKey;
+                        use ast::luau::TypeFieldKey;
 
                         match field.key() {
                             TypeFieldKey::Name(property_name) => {
@@ -1138,7 +1168,7 @@ impl<'a> AstConverter<'a> {
                     let mut function_type = FunctionType::new(self.pop_function_return_type()?);
 
                     for argument in arguments {
-                        use ast::types::TypeInfo;
+                        use ast::luau::TypeInfo;
 
                         if is_variadic_type(argument.type_info()).is_some() {
                             function_type.set_variadic_type(self.pop_variadic_type_pack()?);
@@ -1210,7 +1240,7 @@ impl<'a> AstConverter<'a> {
                         });
                 }
                 ConvertWork::MakeTypeParameters { arrows, generics } => {
-                    use ast::types::TypeInfo;
+                    use ast::luau::TypeInfo;
 
                     let mut parameters = generics
                         .iter()
@@ -1294,7 +1324,7 @@ impl<'a> AstConverter<'a> {
                     self.types.push(parenthese_type.into());
                 }
                 ConvertWork::MakeTypePack { types, parentheses } => {
-                    use ast::types::TypeInfo;
+                    use ast::luau::TypeInfo;
 
                     let mut type_pack = TypePack::default();
 
@@ -1346,13 +1376,13 @@ impl<'a> AstConverter<'a> {
 
     fn convert_generic_type_parameters(
         &mut self,
-        generics: &ast::types::GenericDeclaration,
+        generics: &ast::luau::GenericDeclaration,
     ) -> Result<GenericParameters, ConvertError> {
         let mut type_variables = Vec::new();
         let mut generic_type_packs = Vec::new();
         for parameter in generics.generics() {
             match parameter.parameter() {
-                ast::types::GenericParameterInfo::Name(name) => {
+                ast::luau::GenericParameterInfo::Name(name) => {
                     if !generic_type_packs.is_empty() {
                         return Err(ConvertError::GenericDeclaration {
                             generics: generics.to_string(),
@@ -1360,12 +1390,12 @@ impl<'a> AstConverter<'a> {
                     }
                     type_variables.push(self.convert_token_to_identifier(name)?);
                 }
-                ast::types::GenericParameterInfo::Variadic { name, ellipse } => {
+                ast::luau::GenericParameterInfo::Variadic { name, ellipsis } => {
                     let mut generic_pack =
                         GenericTypePack::new(self.convert_token_to_identifier(name)?);
 
                     if self.hold_token_data {
-                        generic_pack.set_token(self.convert_token(ellipse)?);
+                        generic_pack.set_token(self.convert_token(ellipsis)?);
                     }
 
                     generic_type_packs.push(generic_pack);
@@ -1549,7 +1579,7 @@ impl<'a> AstConverter<'a> {
 
     fn convert_type_declaration(
         &mut self,
-        type_declaration: &'a ast::types::TypeDeclaration,
+        type_declaration: &'a ast::luau::TypeDeclaration,
         export_token: Option<&'a tokenizer::TokenReference>,
     ) {
         self.work_stack
@@ -1564,8 +1594,8 @@ impl<'a> AstConverter<'a> {
                 if let Some(default_type) = parameter.default_type() {
                     match (parameter.parameter(), default_type) {
                         (
-                            ast::types::GenericParameterInfo::Variadic { .. },
-                            ast::types::TypeInfo::Tuple { parentheses, types },
+                            ast::luau::GenericParameterInfo::Variadic { .. },
+                            ast::luau::TypeInfo::Tuple { parentheses, types },
                         ) => {
                             self.push_type_pack_work(types, parentheses);
                         }
@@ -1798,7 +1828,8 @@ impl<'a> AstConverter<'a> {
                 self.push_work(type_assertion.cast_to());
                 self.push_work(expression.as_ref());
             }
-            ast::Expression::Function((token, body)) => {
+            ast::Expression::Function(function) => {
+                let (token, body) = function.as_ref();
                 self.work_stack
                     .push(ConvertWork::MakeFunctionExpression { body, token });
 
@@ -1842,7 +1873,7 @@ impl<'a> AstConverter<'a> {
                         Symbol::True => Expression::True(token),
                         Symbol::False => Expression::False(token),
                         Symbol::Nil => Expression::Nil(token),
-                        Symbol::Ellipse => Expression::VariableArguments(token),
+                        Symbol::Ellipsis => Expression::VariableArguments(token),
                         _ => {
                             return Err(ConvertError::Expression {
                                 expression: expression.to_string(),
@@ -1917,12 +1948,12 @@ impl<'a> AstConverter<'a> {
         }
     }
 
-    fn push_function_return_type(&mut self, return_type: &'a ast::types::TypeInfo) {
+    fn push_function_return_type(&mut self, return_type: &'a ast::luau::TypeInfo) {
         self.push_work(ConvertWork::MakeFunctionReturnType {
             type_info: return_type,
         });
         match return_type {
-            ast::types::TypeInfo::Tuple { types, parentheses } => {
+            ast::luau::TypeInfo::Tuple { types, parentheses } => {
                 self.push_type_pack_work(types, parentheses);
             }
             _ => {
@@ -1933,7 +1964,7 @@ impl<'a> AstConverter<'a> {
 
     fn push_type_pack_work(
         &mut self,
-        types: &'a ast::punctuated::Punctuated<ast::types::TypeInfo>,
+        types: &'a ast::punctuated::Punctuated<ast::luau::TypeInfo>,
         parentheses: &'a ast::span::ContainedSpan,
     ) {
         self.work_stack
@@ -1952,12 +1983,16 @@ impl<'a> AstConverter<'a> {
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_type_info(
         &mut self,
-        type_info: &'a ast::types::TypeInfo,
+        type_info: &'a ast::luau::TypeInfo,
     ) -> Result<(), ConvertError> {
-        use ast::types::TypeInfo;
+        use ast::luau::TypeInfo;
 
         match type_info {
-            TypeInfo::Array { braces, type_info } => {
+            TypeInfo::Array {
+                braces,
+                type_info,
+                access: _,
+            } => {
                 self.work_stack.push(ConvertWork::MakeArrayType { braces });
 
                 self.push_work(type_info.as_ref());
@@ -2019,9 +2054,6 @@ impl<'a> AstConverter<'a> {
                 arrow,
                 return_type,
             } => {
-                let (override_return_type, push_right_expression) =
-                    self.patch_return_type_tuple(return_type);
-
                 self.work_stack.push(ConvertWork::MakeFunctionType {
                     generics,
                     parentheses,
@@ -2029,7 +2061,7 @@ impl<'a> AstConverter<'a> {
                     arrow,
                 });
 
-                self.push_function_return_type(override_return_type);
+                self.push_function_return_type(return_type);
 
                 let mut has_variadic_type = false;
 
@@ -2045,10 +2077,6 @@ impl<'a> AstConverter<'a> {
                     }
                     self.push_maybe_variadic_type(argument_type);
                 }
-
-                for right in push_right_expression {
-                    self.push_work(right);
-                }
             }
             TypeInfo::Generic {
                 base,
@@ -2057,41 +2085,44 @@ impl<'a> AstConverter<'a> {
             } => {
                 self.push_generic_type_work(base, arrows, generics, None);
             }
-            TypeInfo::GenericPack { name, ellipse } => {
+            TypeInfo::GenericPack { name, ellipsis } => {
                 let mut generic_pack =
                     GenericTypePack::new(self.convert_token_to_identifier(name)?);
 
                 if self.hold_token_data {
-                    generic_pack.set_token(self.convert_token(ellipse)?);
+                    generic_pack.set_token(self.convert_token(ellipsis)?);
                 }
 
                 self.generic_type_packs.push(generic_pack);
             }
-            TypeInfo::Intersection {
-                left,
-                ampersand,
-                right,
-            } => {
+            TypeInfo::Intersection(intersection) => {
                 self.work_stack.push(ConvertWork::MakeIntersectionType {
-                    operator: ampersand,
+                    leading_token: intersection.leading(),
+                    separators: intersection.types(),
+                    length: intersection.types().len(),
                 });
 
-                self.push_work(left.as_ref());
-                self.push_work(right.as_ref());
+                for type_info in intersection.types() {
+                    self.push_work(type_info);
+                }
             }
-            TypeInfo::Union { left, pipe, right } => {
-                self.work_stack
-                    .push(ConvertWork::MakeUnionType { operator: pipe });
+            TypeInfo::Union(union) => {
+                self.work_stack.push(ConvertWork::MakeUnionType {
+                    leading_token: union.leading(),
+                    separators: union.types(),
+                    length: union.types().len(),
+                });
 
-                self.push_work(left.as_ref());
-                self.push_work(right.as_ref());
+                for type_info in union.types() {
+                    self.push_work(type_info);
+                }
             }
             TypeInfo::Module {
                 module,
                 punctuation,
                 type_info,
             } => match type_info.as_ref() {
-                ast::types::IndexedTypeInfo::Basic(name) => {
+                ast::luau::IndexedTypeInfo::Basic(name) => {
                     let mut type_field = TypeField::new(
                         self.convert_token_to_identifier(module)?,
                         TypeName::new(self.convert_token_to_identifier(name)?),
@@ -2104,7 +2135,7 @@ impl<'a> AstConverter<'a> {
                     self.work_stack
                         .push(ConvertWork::PushType(type_field.into()));
                 }
-                ast::types::IndexedTypeInfo::Generic {
+                ast::luau::IndexedTypeInfo::Generic {
                     base,
                     arrows,
                     generics,
@@ -2136,7 +2167,7 @@ impl<'a> AstConverter<'a> {
                     .push(ConvertWork::MakeTableType { braces, fields });
 
                 for field in fields {
-                    use ast::types::TypeFieldKey;
+                    use ast::luau::TypeFieldKey;
 
                     match field.key() {
                         TypeFieldKey::Name(_) => {}
@@ -2198,10 +2229,10 @@ impl<'a> AstConverter<'a> {
         Ok(())
     }
 
-    fn push_maybe_variadic_type(&mut self, type_info: &'a ast::types::TypeInfo) {
-        if let Some(ellipse) = is_variadic_type(type_info) {
+    fn push_maybe_variadic_type(&mut self, type_info: &'a ast::luau::TypeInfo) {
+        if let Some(ellipsis) = is_variadic_type(type_info) {
             self.work_stack
-                .push(ConvertWork::MakeVariadicTypePack { ellipse });
+                .push(ConvertWork::MakeVariadicTypePack { ellipsis });
         }
         self.push_work(type_info);
     }
@@ -2210,7 +2241,7 @@ impl<'a> AstConverter<'a> {
         &mut self,
         base: &'a tokenizer::TokenReference,
         arrows: &'a ast::span::ContainedSpan,
-        generics: &'a ast::punctuated::Punctuated<ast::types::TypeInfo>,
+        generics: &'a ast::punctuated::Punctuated<ast::luau::TypeInfo>,
         module: Option<(&'a tokenizer::TokenReference, &'a tokenizer::TokenReference)>,
     ) {
         self.work_stack
@@ -2221,7 +2252,7 @@ impl<'a> AstConverter<'a> {
 
         for parameter_type in generics {
             match parameter_type {
-                ast::types::TypeInfo::Tuple { parentheses, types } => {
+                ast::luau::TypeInfo::Tuple { parentheses, types } => {
                     self.push_type_pack_work(types, parentheses);
                 }
                 _ => {
@@ -2282,13 +2313,44 @@ impl<'a> AstConverter<'a> {
         Ok(())
     }
 
+    fn convert_token_position(
+        &self,
+        token: &tokenizer::TokenReference,
+    ) -> Result<(usize, usize, usize), ConvertError> {
+        let start = token
+            .start_position()
+            .ok_or_else(|| ConvertError::TokenPositionNotFound {
+                token: token.to_string(),
+            })?;
+        Ok((
+            start.bytes(),
+            token
+                .end_position()
+                .ok_or_else(|| ConvertError::TokenPositionNotFound {
+                    token: token.to_string(),
+                })?
+                .bytes(),
+            start.line(),
+        ))
+    }
+
+    fn convert_token_end_position(
+        &self,
+        token: &tokenizer::TokenReference,
+    ) -> Result<(usize, usize), ConvertError> {
+        let end_position =
+            token
+                .end_position()
+                .ok_or_else(|| ConvertError::TokenPositionNotFound {
+                    token: token.to_string(),
+                })?;
+        Ok((end_position.bytes(), end_position.line()))
+    }
+
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_token(&self, token: &tokenizer::TokenReference) -> Result<Token, ConvertError> {
-        let mut new_token = Token::new_with_line(
-            token.start_position().bytes(),
-            token.end_position().bytes(),
-            token.start_position().line(),
-        );
+        let position = self.convert_token_position(token)?;
+        let mut new_token = Token::new_with_line(position.0, position.1, position.2);
 
         for trivia_token in token.leading_trivia() {
             new_token.push_leading_trivia(self.convert_trivia(trivia_token)?);
@@ -2335,7 +2397,7 @@ impl<'a> AstConverter<'a> {
     fn convert_typed_identifier(
         &mut self,
         identifier: &tokenizer::TokenReference,
-        type_specifier: Option<&ast::types::TypeSpecifier>,
+        type_specifier: Option<&ast::luau::TypeSpecifier>,
     ) -> Result<TypedIdentifier, ConvertError> {
         let identifier = self.convert_token_to_identifier(identifier)?;
 
@@ -2390,7 +2452,7 @@ impl<'a> AstConverter<'a> {
 
         for (param, type_specifier) in body.parameters().iter().zip(body.type_specifiers()) {
             match param {
-                ast::Parameter::Ellipse(token) => {
+                ast::Parameter::Ellipsis(token) => {
                     if builder.is_variadic() {
                         return Err(ConvertError::FunctionParameters {
                             parameters: body.parameters().to_string(),
@@ -2398,7 +2460,7 @@ impl<'a> AstConverter<'a> {
                     } else {
                         if let Some(type_specifier) = type_specifier {
                             builder.set_variadic_type(
-                                if let ast::types::TypeInfo::GenericPack { .. } =
+                                if let ast::luau::TypeInfo::GenericPack { .. } =
                                     type_specifier.type_info()
                                 {
                                     self.pop_generic_type_pack()?.into()
@@ -2547,19 +2609,17 @@ impl<'a> AstConverter<'a> {
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_compound_op(
         &self,
-        operator: &ast::types::CompoundOp,
+        operator: &ast::luau::CompoundOp,
     ) -> Result<CompoundOperator, ConvertError> {
         Ok(match operator {
-            ast::types::CompoundOp::PlusEqual(_) => CompoundOperator::Plus,
-            ast::types::CompoundOp::MinusEqual(_) => CompoundOperator::Minus,
-            ast::types::CompoundOp::StarEqual(_) => CompoundOperator::Asterisk,
-            ast::types::CompoundOp::SlashEqual(_) => CompoundOperator::Slash,
-            // todo: once full-moon fixes this issue and the change is in a new release
-            // https://github.com/Kampfkarren/full-moon/issues/292
-            // ast::types::CompoundOp::DoubleSlashEqual(_) => CompoundOperator::DoubleSlash,
-            ast::types::CompoundOp::PercentEqual(_) => CompoundOperator::Percent,
-            ast::types::CompoundOp::CaretEqual(_) => CompoundOperator::Caret,
-            ast::types::CompoundOp::TwoDotsEqual(_) => CompoundOperator::Concat,
+            ast::luau::CompoundOp::PlusEqual(_) => CompoundOperator::Plus,
+            ast::luau::CompoundOp::MinusEqual(_) => CompoundOperator::Minus,
+            ast::luau::CompoundOp::StarEqual(_) => CompoundOperator::Asterisk,
+            ast::luau::CompoundOp::SlashEqual(_) => CompoundOperator::Slash,
+            ast::luau::CompoundOp::DoubleSlashEqual(_) => CompoundOperator::DoubleSlash,
+            ast::luau::CompoundOp::PercentEqual(_) => CompoundOperator::Percent,
+            ast::luau::CompoundOp::CaretEqual(_) => CompoundOperator::Caret,
+            ast::luau::CompoundOp::TwoDotsEqual(_) => CompoundOperator::Concat,
             _ => {
                 return Err(ConvertError::CompoundOperator {
                     operator: operator.to_string(),
@@ -2637,10 +2697,11 @@ impl<'a> AstConverter<'a> {
                         .expect("unable to convert interpolated string segment");
 
                     if self.hold_token_data {
+                        let position = self.convert_token_position(token)?;
                         let segment_token = Token::new_with_line(
-                            token.start_position().bytes() + 1,
-                            token.end_position().bytes().saturating_sub(1),
-                            token.start_position().line(),
+                            position.0.saturating_add(1),
+                            position.1.saturating_sub(1),
+                            position.2,
                         );
                         // no trivia since it is grabbing a substring of the token
                         segment.set_token(segment_token);
@@ -2654,120 +2715,60 @@ impl<'a> AstConverter<'a> {
             _ => unreachable!(),
         }
     }
-
-    fn patch_return_type_tuple(
-        &mut self,
-        r#type: &'a ast::types::TypeInfo,
-    ) -> (&'a ast::types::TypeInfo, Vec<&'a ast::types::TypeInfo>) {
-        use ast::types::TypeInfo;
-        let mut current = r#type;
-        let mut additional_types = Vec::new();
-
-        loop {
-            match current {
-                TypeInfo::Tuple { types, .. } => {
-                    if types.len() == 1 {
-                        break (r#type, additional_types);
-                    } else {
-                        break (current, additional_types);
-                    }
-                }
-                TypeInfo::Optional {
-                    base,
-                    question_mark,
-                } => match base.as_ref() {
-                    TypeInfo::Tuple { types, .. } if types.len() != 1 => {
-                        self.work_stack
-                            .push(ConvertWork::MakeOptionalType { question_mark });
-
-                        current = base;
-                    }
-                    TypeInfo::GenericPack { .. } => {
-                        self.work_stack
-                            .push(ConvertWork::MakeOptionalType { question_mark });
-
-                        break (base, additional_types);
-                    }
-                    _ => break (current, additional_types),
-                },
-                TypeInfo::Intersection {
-                    left,
-                    right,
-                    ampersand,
-                } => match left.as_ref() {
-                    TypeInfo::Tuple { types, .. } if types.len() != 1 => {
-                        self.work_stack.push(ConvertWork::MakeIntersectionType {
-                            operator: ampersand,
-                        });
-                        additional_types.push(right.as_ref());
-
-                        break (left, additional_types);
-                    }
-                    TypeInfo::GenericPack { .. } => {
-                        // if we get a generic pack here then we are
-                        // not making a function type
-                        self.work_stack.push(ConvertWork::MakeIntersectionType {
-                            operator: ampersand,
-                        });
-                        additional_types.push(right.as_ref());
-
-                        break (left, additional_types);
-                    }
-                    _ => break (current, additional_types),
-                },
-                TypeInfo::Union { left, right, pipe } => match left.as_ref() {
-                    TypeInfo::Tuple { types, .. } if types.len() != 1 => {
-                        self.work_stack
-                            .push(ConvertWork::MakeUnionType { operator: pipe });
-                        additional_types.push(right.as_ref());
-
-                        break (left, additional_types);
-                    }
-                    TypeInfo::GenericPack { .. } => {
-                        // if we get a generic pack here then we are
-                        // not making a function type
-                        self.work_stack
-                            .push(ConvertWork::MakeUnionType { operator: pipe });
-                        additional_types.push(right.as_ref());
-
-                        break (left, additional_types);
-                    }
-                    _ => break (current, additional_types),
-                },
-                _ => break (current, additional_types),
-            }
-        }
-    }
 }
 
-fn is_argument_variadic(mut r#type: &ast::types::TypeInfo) -> bool {
-    use ast::types::TypeInfo;
+fn is_argument_variadic(mut r#type: &ast::luau::TypeInfo) -> bool {
+    use ast::luau::TypeInfo;
     loop {
         match r#type {
             TypeInfo::GenericPack { .. }
             | TypeInfo::Variadic { .. }
             | TypeInfo::VariadicPack { .. } => break true,
-            TypeInfo::Intersection { left, .. }
-            | TypeInfo::Union { left, .. }
-            | TypeInfo::Optional { base: left, .. } => {
-                r#type = left;
+            TypeInfo::Optional { base, .. } => {
+                r#type = base;
+            }
+            TypeInfo::Intersection(intersection) => {
+                r#type = intersection
+                    .types()
+                    .first()
+                    .expect("intersection should have at least one type")
+                    .value();
+            }
+            TypeInfo::Union(union_type) => {
+                r#type = union_type
+                    .types()
+                    .first()
+                    .expect("union should have at least one type")
+                    .value();
             }
             _ => break false,
         }
     }
 }
 
-fn is_variadic_type(mut r#type: &ast::types::TypeInfo) -> Option<&tokenizer::TokenReference> {
-    use ast::types::TypeInfo;
+fn is_variadic_type(mut r#type: &ast::luau::TypeInfo) -> Option<&tokenizer::TokenReference> {
+    use ast::luau::TypeInfo;
     loop {
         match r#type {
-            TypeInfo::Variadic { ellipse, .. } | TypeInfo::VariadicPack { ellipse, .. } => {
-                break Some(ellipse)
+            TypeInfo::Variadic { ellipsis, .. } | TypeInfo::VariadicPack { ellipsis, .. } => {
+                break Some(ellipsis)
             }
-            TypeInfo::Intersection { left, .. }
-            | TypeInfo::Union { left, .. }
-            | TypeInfo::Optional { base: left, .. } => {
+            TypeInfo::Optional { base: left, .. } => {
                 r#type = left;
+            }
+            TypeInfo::Intersection(intersection) => {
+                r#type = intersection
+                    .types()
+                    .first()
+                    .expect("at least one type")
+                    .value();
+            }
+            TypeInfo::Union(union_type) => {
+                r#type = union_type
+                    .types()
+                    .first()
+                    .expect("at least one type")
+                    .value();
             }
             _ => break None,
         }
@@ -2782,7 +2783,7 @@ enum ConvertWork<'a> {
     Expression(&'a ast::Expression),
     Prefix(&'a ast::Prefix),
     Arguments(&'a ast::FunctionArgs),
-    TypeInfo(&'a ast::types::TypeInfo),
+    TypeInfo(&'a ast::luau::TypeInfo),
     PushExpression(Expression),
     PushVariable(Variable),
     PushType(Type),
@@ -2805,7 +2806,7 @@ enum ConvertWork<'a> {
         contained_span: &'a ast::span::ContainedSpan,
     },
     MakeIfExpression {
-        if_expression: &'a ast::types::IfExpression,
+        if_expression: &'a ast::luau::IfExpression,
     },
     MakeFunctionExpression {
         body: &'a ast::FunctionBody,
@@ -2833,7 +2834,7 @@ enum ConvertWork<'a> {
         call: &'a ast::FunctionCall,
     },
     MakeTypeDeclarationStatement {
-        type_declaration: &'a ast::types::TypeDeclaration,
+        type_declaration: &'a ast::luau::TypeDeclaration,
         export_token: Option<&'a tokenizer::TokenReference>,
     },
     MakePrefixFromExpression {
@@ -2849,7 +2850,7 @@ enum ConvertWork<'a> {
         statement: &'a ast::Assignment,
     },
     MakeCompoundAssignStatement {
-        statement: &'a ast::types::CompoundAssignment,
+        statement: &'a ast::luau::CompoundAssignment,
     },
     MakeIfStatement {
         statement: &'a ast::If,
@@ -2871,13 +2872,13 @@ enum ConvertWork<'a> {
         variable: &'a ast::VarExpression,
     },
     MakeInterpolatedString {
-        interpolated_string: &'a ast::types::InterpolatedString,
+        interpolated_string: &'a ast::luau::InterpolatedString,
     },
     MakeFunctionReturnType {
-        type_info: &'a ast::types::TypeInfo,
+        type_info: &'a ast::luau::TypeInfo,
     },
     MakeVariadicTypePack {
-        ellipse: &'a tokenizer::TokenReference,
+        ellipsis: &'a tokenizer::TokenReference,
     },
     MakeArrayType {
         braces: &'a ast::span::ContainedSpan,
@@ -2886,23 +2887,27 @@ enum ConvertWork<'a> {
         question_mark: &'a tokenizer::TokenReference,
     },
     MakeUnionType {
-        operator: &'a tokenizer::TokenReference,
+        length: usize,
+        leading_token: Option<&'a tokenizer::TokenReference>,
+        separators: &'a ast::punctuated::Punctuated<ast::luau::TypeInfo>,
     },
     MakeIntersectionType {
-        operator: &'a tokenizer::TokenReference,
+        length: usize,
+        leading_token: Option<&'a tokenizer::TokenReference>,
+        separators: &'a ast::punctuated::Punctuated<ast::luau::TypeInfo>,
     },
     MakeTableType {
         braces: &'a ast::span::ContainedSpan,
-        fields: &'a ast::punctuated::Punctuated<ast::types::TypeField>,
+        fields: &'a ast::punctuated::Punctuated<ast::luau::TypeField>,
     },
     MakeExpressionType {
         typeof_token: &'a tokenizer::TokenReference,
         parentheses: &'a ast::span::ContainedSpan,
     },
     MakeFunctionType {
-        generics: &'a Option<ast::types::GenericDeclaration>,
+        generics: &'a Option<ast::luau::GenericDeclaration>,
         parentheses: &'a ast::span::ContainedSpan,
-        arguments: &'a ast::punctuated::Punctuated<ast::types::TypeArgument>,
+        arguments: &'a ast::punctuated::Punctuated<ast::luau::TypeArgument>,
         arrow: &'a tokenizer::TokenReference,
     },
     MakeGenericType {
@@ -2911,17 +2916,17 @@ enum ConvertWork<'a> {
     },
     MakeTypeParameters {
         arrows: &'a ast::span::ContainedSpan,
-        generics: &'a ast::punctuated::Punctuated<ast::types::TypeInfo>,
+        generics: &'a ast::punctuated::Punctuated<ast::luau::TypeInfo>,
     },
     MakeTypeCast {
-        type_assertion: &'a ast::types::TypeAssertion,
+        type_assertion: &'a ast::luau::TypeAssertion,
     },
     MakeParentheseType {
         parentheses: &'a ast::span::ContainedSpan,
     },
     MakeTypePack {
         parentheses: &'a ast::span::ContainedSpan,
-        types: &'a ast::punctuated::Punctuated<ast::types::TypeInfo>,
+        types: &'a ast::punctuated::Punctuated<ast::luau::TypeInfo>,
     },
 }
 
@@ -2961,8 +2966,8 @@ impl<'a> From<&'a ast::FunctionArgs> for ConvertWork<'a> {
     }
 }
 
-impl<'a> From<&'a ast::types::TypeInfo> for ConvertWork<'a> {
-    fn from(type_info: &'a ast::types::TypeInfo) -> Self {
+impl<'a> From<&'a ast::luau::TypeInfo> for ConvertWork<'a> {
+    fn from(type_info: &'a ast::luau::TypeInfo) -> Self {
         ConvertWork::TypeInfo(type_info)
     }
 }
@@ -3035,6 +3040,9 @@ pub(crate) enum ConvertError {
     },
     UnexpectedTrivia(tokenizer::TokenKind),
     ExpectedFunctionName,
+    TokenPositionNotFound {
+        token: String,
+    },
     InternalStack {
         kind: &'static str,
     },
@@ -3081,7 +3089,14 @@ impl fmt::Display for ConvertError {
                 );
             }
             ConvertError::ExpectedFunctionName => {
-                return write!(f, "unable to convert empty function name",);
+                return write!(f, "unable to convert empty function name");
+            }
+            ConvertError::TokenPositionNotFound { token } => {
+                return write!(
+                    f,
+                    "unable to convert token '{}' because its position is missing",
+                    token
+                );
             }
             ConvertError::InternalStack { kind } => {
                 return write!(
@@ -3137,18 +3152,16 @@ fn get_unary_operator_token(
 }
 
 fn get_compound_operator_token(
-    operator: &ast::types::CompoundOp,
+    operator: &ast::luau::CompoundOp,
 ) -> Result<&tokenizer::TokenReference, ConvertError> {
-    use ast::types::CompoundOp;
+    use ast::luau::CompoundOp;
 
     match operator {
         CompoundOp::PlusEqual(token)
         | CompoundOp::MinusEqual(token)
         | CompoundOp::StarEqual(token)
         | CompoundOp::SlashEqual(token)
-        // todo: once full-moon fixes this issue and the change is in a new release
-        // https://github.com/Kampfkarren/full-moon/issues/292
-        // | CompoundOp::DoubleSlashEqual(token)
+        | CompoundOp::DoubleSlashEqual(token)
         | CompoundOp::PercentEqual(token)
         | CompoundOp::CaretEqual(token)
         | CompoundOp::TwoDotsEqual(token) => Ok(token),

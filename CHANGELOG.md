@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* migrate parser to the latest version. Reduce stack overflow issues, add support for compound assignments using floor division and leading symbols in union and intersection types ([#219](https://github.com/seaofvoices/darklua/pull/219))
+
 ## 0.13.1
 
 * fix `remove_unused_variable` rule ([#192](https://github.com/seaofvoices/darklua/pull/192))

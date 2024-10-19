@@ -81,7 +81,12 @@ pub enum FunctionReturnType {
 
 impl<T: Into<Type>> From<T> for FunctionReturnType {
     fn from(r#type: T) -> Self {
-        Self::Type(Box::new(r#type.into()))
+        match r#type.into() {
+            Type::Parenthese(parenthese) => {
+                Self::TypePack(TypePack::default().with_type(parenthese.into_inner_type()))
+            }
+            other => Self::Type(Box::new(other)),
+        }
     }
 }
 

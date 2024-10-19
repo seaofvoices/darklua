@@ -8,7 +8,7 @@ use fuzzer_work::*;
 use rand::seq::SliceRandom;
 use random::RandomAst;
 
-use std::iter;
+use std::iter::{self, FromIterator};
 
 use darklua_core::nodes::*;
 
@@ -333,11 +333,10 @@ impl AstFuzzer {
                                 )
                             }
                             TypeParameterWithDefaultKind::GenericPackWithVariadicPack => {
-                                let r#type = self.pop_type();
                                 GenericParametersWithDefaults::from_generic_type_pack_with_default(
                                     GenericTypePackWithDefault::new(
                                         GenericTypePack::new(self.random.identifier()),
-                                        self.variadic_type_pack(r#type),
+                                        self.pop_variadic_type_pack(),
                                     ),
                                 )
                             }
@@ -375,11 +374,10 @@ impl AstFuzzer {
                                     );
                                 }
                                 TypeParameterWithDefaultKind::GenericPackWithVariadicPack => {
-                                    let r#type = self.pop_type();
                                     parameter_list.push_generic_type_pack_with_default(
                                         GenericTypePackWithDefault::new(
                                             GenericTypePack::new(identifier),
-                                            self.variadic_type_pack(r#type),
+                                            self.pop_variadic_type_pack(),
                                         ),
                                     );
                                 }
@@ -706,16 +704,29 @@ impl AstFuzzer {
                     };
                     match self.random.full_range(start, bound) {
                         0 => {
-                            self.push_work(AstFuzzerWork::MakeIntersectionType);
-                            self.budget.try_take_types(2);
-                            self.fuzz_nested_type(depth);
-                            self.fuzz_nested_type(depth);
+                            let length = self
+                                .budget
+                                .try_take_types(self.random.intersection_type_length())
+                                .max(1);
+                            self.push_work(AstFuzzerWork::MakeIntersectionType {
+                                has_leading_token: length == 1
+                                    || self.random.leading_intersection_or_union_operator(),
+                                length,
+                            });
+                            self.fuzz_multiple_nested_type(depth, length);
                         }
                         1 => {
-                            self.push_work(AstFuzzerWork::MakeUnionType);
+                            let length = self
+                                .budget
+                                .try_take_types(self.random.union_type_length())
+                                .max(1);
+                            self.push_work(AstFuzzerWork::MakeUnionType {
+                                has_leading_token: length == 1
+                                    || self.random.leading_intersection_or_union_operator(),
+                                length,
+                            });
                             self.budget.try_take_types(2);
-                            self.fuzz_nested_type(depth);
-                            self.fuzz_nested_type(depth);
+                            self.fuzz_multiple_nested_type(depth, length);
                         }
 
                         2 => {
@@ -806,10 +817,7 @@ impl AstFuzzer {
                         }
                         8 => {
                             if self.random.has_type_parameters() && self.budget.has_types() {
-                                // todo: once full-moon supports empty type parameter lists
-                                // the max(1) can be removed
-                                // https://github.com/Kampfkarren/full-moon/issues/275
-                                let type_parameters = self.random.type_parameters().max(1);
+                                let type_parameters = self.random.type_parameters();
                                 self.push_work(AstFuzzerWork::MakeTypeField { type_parameters });
 
                                 self.push_repeated_work(
@@ -868,8 +876,15 @@ impl AstFuzzer {
                         .collect();
 
                     if has_indexer {
+                        let mut key_type = self.pop_type();
+                        if matches!(
+                            key_type,
+                            Type::Optional(_) | Type::Union(_) | Type::Intersection(_)
+                        ) {
+                            key_type = ParentheseType::new(key_type).into();
+                        }
                         table_properties
-                            .push(TableIndexerType::new(self.pop_type(), self.pop_type()).into());
+                            .push(TableIndexerType::new(key_type, self.pop_type()).into());
                     }
 
                     table_properties.shuffle(&mut rand::thread_rng());
@@ -1316,35 +1331,59 @@ impl AstFuzzer {
                     let call = self.pop_call();
                     self.prefixes.push(call.into());
                 }
-                AstFuzzerWork::MakeIntersectionType => {
-                    let mut left_type = self.pop_type();
-                    let mut right_type = self.pop_type();
+                AstFuzzerWork::MakeIntersectionType {
+                    has_leading_token,
+                    length,
+                } => {
+                    let mut intersection = IntersectionType::from_iter(
+                        self.pop_types(length)
+                            .into_iter()
+                            .enumerate()
+                            .map(|(i, inner_type)| {
+                                let needs_parentheses = if i == length.saturating_sub(1) {
+                                    IntersectionType::last_needs_parentheses(&inner_type)
+                                } else {
+                                    IntersectionType::intermediate_needs_parentheses(&inner_type)
+                                };
+                                if needs_parentheses {
+                                    inner_type.in_parentheses()
+                                } else {
+                                    inner_type
+                                }
+                            }),
+                    );
 
-                    if IntersectionType::left_needs_parentheses(&left_type) {
-                        left_type = left_type.in_parentheses();
+                    if has_leading_token {
+                        intersection.put_leading_token();
                     }
 
-                    if IntersectionType::right_needs_parentheses(&right_type) {
-                        right_type = right_type.in_parentheses();
-                    }
-
-                    self.types
-                        .push(IntersectionType::new(left_type, right_type).into());
+                    self.types.push(intersection.into());
                 }
-                AstFuzzerWork::MakeUnionType => {
-                    let mut left_type = self.pop_type();
-                    let mut right_type = self.pop_type();
+                AstFuzzerWork::MakeUnionType {
+                    has_leading_token,
+                    length,
+                } => {
+                    let mut union_type =
+                        UnionType::from_iter(self.pop_types(length).into_iter().enumerate().map(
+                            |(i, inner_type)| {
+                                let needs_parentheses = if i == length.saturating_sub(1) {
+                                    UnionType::last_needs_parentheses(&inner_type)
+                                } else {
+                                    UnionType::intermediate_needs_parentheses(&inner_type)
+                                };
+                                if needs_parentheses {
+                                    inner_type.in_parentheses()
+                                } else {
+                                    inner_type
+                                }
+                            },
+                        ));
 
-                    if UnionType::left_needs_parentheses(&left_type) {
-                        left_type = left_type.in_parentheses();
+                    if has_leading_token {
+                        union_type.put_leading_token();
                     }
 
-                    if UnionType::right_needs_parentheses(&right_type) {
-                        right_type = right_type.in_parentheses();
-                    }
-
-                    self.types
-                        .push(UnionType::new(left_type, right_type).into());
+                    self.types.push(union_type.into());
                 }
                 AstFuzzerWork::MakeOptionalType => {
                     let r#type = self.pop_type();
@@ -1382,8 +1421,7 @@ impl AstFuzzer {
                     self.function_return_types.push(type_pack.into());
                 }
                 AstFuzzerWork::MakeReturnFunctionVariadicPack => {
-                    let r#type = self.pop_type();
-                    let variadic_type = self.variadic_type_pack(r#type);
+                    let variadic_type = self.pop_variadic_type_pack();
                     self.function_return_types.push(variadic_type.into());
                 }
                 AstFuzzerWork::MakeTypePack {
@@ -1399,8 +1437,7 @@ impl AstFuzzer {
                             type_pack.set_variadic_type(generic_pack);
                         }
                         VariadicArgumentTypeKind::VariadicPack => {
-                            let r#type = self.pop_type();
-                            type_pack.set_variadic_type(self.variadic_type_pack(r#type));
+                            type_pack.set_variadic_type(self.pop_variadic_type_pack());
                         }
                     }
 
@@ -1440,8 +1477,7 @@ impl AstFuzzer {
                             function_type.set_variadic_type(generic_pack);
                         }
                         VariadicArgumentTypeKind::VariadicPack => {
-                            let r#type = self.pop_type();
-                            function_type.set_variadic_type(self.variadic_type_pack(r#type));
+                            function_type.set_variadic_type(self.pop_variadic_type_pack());
                         }
                     }
 
@@ -1485,10 +1521,7 @@ impl AstFuzzer {
                             }
                         }
                         TypeParameterKind::TypePack => self.pop_type_pack().into(),
-                        TypeParameterKind::VariadicTypePack => {
-                            let r#type = self.pop_type();
-                            self.variadic_type_pack(r#type).into()
-                        }
+                        TypeParameterKind::VariadicTypePack => self.pop_variadic_type_pack().into(),
                         TypeParameterKind::GenericTypePack => {
                             GenericTypePack::new(self.random.identifier()).into()
                         }
@@ -1516,6 +1549,15 @@ impl AstFuzzer {
                 }
             }
         }
+    }
+
+    fn pop_variadic_type_pack(&mut self) -> VariadicTypePack {
+        // fix: once full-moon supports leading operators for union and
+        // intersection type, simply replace with `self.pop_type()`
+        // https://github.com/Kampfkarren/full-moon/issues/311
+        VariadicTypePack::new(wrap_in_parenthese_if_leading_union_or_intersection(
+            self.pop_type(),
+        ))
     }
 
     fn generate_function_generics(&mut self) -> Option<GenericParameters> {
@@ -1613,7 +1655,17 @@ impl AstFuzzer {
     }
 
     fn pop_type_parameter(&mut self) -> TypeParameter {
-        self.type_parameters.pop().expect("expected type parameter")
+        // fix: once full-moon supports leading operators for union and
+        // intersection type, simply replace with `self.type_parameters.pop()`
+        // https://github.com/Kampfkarren/full-moon/issues/311
+        let parameter = self.type_parameters.pop().expect("expected type parameter");
+
+        match parameter {
+            TypeParameter::Type(r#type) => {
+                wrap_in_parenthese_if_leading_union_or_intersection(r#type).into()
+            }
+            parameter => parameter,
+        }
     }
 
     fn pop_type_parameters(&mut self, n: usize) -> Vec<TypeParameter> {
@@ -1647,9 +1699,20 @@ impl AstFuzzer {
     }
 
     fn pop_return_type(&mut self) -> FunctionReturnType {
-        self.function_return_types
+        let return_type = self
+            .function_return_types
             .pop()
-            .expect("expected function return type")
+            .expect("expected function return type");
+
+        // fix: once full-moon supports leading operators for union and
+        // intersection type, simply replace with `self.function_return_types.pop()`
+        // https://github.com/Kampfkarren/full-moon/issues/311
+        match return_type {
+            FunctionReturnType::Type(r#type) => FunctionReturnType::from(
+                wrap_in_parenthese_if_leading_union_or_intersection(*r#type),
+            ),
+            return_type => return_type,
+        }
     }
 
     fn pop_type_pack(&mut self) -> TypePack {
@@ -1702,21 +1765,24 @@ impl AstFuzzer {
             amount,
         );
     }
+}
 
-    #[inline]
-    fn variadic_type_pack(&self, r#type: Type) -> VariadicTypePack {
-        // todo: full-moons has a bug where it does not allow variadic type packs
-        // in some situations. Remove this function once this issue is fixed
-        // https://github.com/Kampfkarren/full-moon/issues/285
-        match &r#type {
-            Type::Name(name) => {
-                if name.has_type_parameters() {
-                    VariadicTypePack::new(TypeName::new(name.get_type_name().clone()))
-                } else {
-                    VariadicTypePack::new(r#type)
-                }
+fn wrap_in_parenthese_if_leading_union_or_intersection(r#type: Type) -> Type {
+    match r#type {
+        Type::Intersection(intersection_type) => {
+            if intersection_type.has_leading_token() {
+                Type::from(intersection_type).in_parentheses()
+            } else {
+                intersection_type.into()
             }
-            _ => VariadicTypePack::new(TypeName::new(self.random.identifier())),
         }
+        Type::Union(union_type) => {
+            if union_type.has_leading_token() {
+                Type::from(union_type).in_parentheses()
+            } else {
+                union_type.into()
+            }
+        }
+        r#type => r#type,
     }
 }
