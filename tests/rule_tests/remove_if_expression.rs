@@ -3,8 +3,18 @@ use darklua_core::rules::{RemoveIfExpression, Rule};
 test_rule!(
     remove_if_expression,
     RemoveIfExpression::default(),
-    assign_if_expression("local a = if true then 1 else 2") => "local a = (function() if true then return 1 else return 2 end end)()",
-	assign_if_expression_with_elseif("local a = if true then 1 elseif false then 2 else 3") => "local a = (function() if true then return 1 elseif false then return 2 else return 3 end end)()"
+    if_with_truthy_result("local a = if condition() then 1 else 2")
+        => "local a = condition() and 1 or 2",
+    if_with_truthy_result_else_nil("local a = if condition() then '' else nil")
+        => "local a = condition() and '' or nil",
+    if_with_truthy_result_else_false("local a = if condition() then {} else false")
+        => "local a = condition() and {} or false",
+    if_with_nil_result_else_false("local a = if condition() then nil else false")
+        => "local a = (condition() and { nil } or { false })[1]",
+    if_with_false_result_else_truthy("local a = if condition() then false else true")
+        => "local a = (condition() and { false } or { true })[1]",
+    if_with_unknown_result_else_unknown("local a = if condition() then update() else default()")
+        => "local a = (condition() and { (update()) } or { (default()) })[1]",
 );
 
 #[test]
