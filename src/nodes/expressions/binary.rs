@@ -74,8 +74,12 @@ fn ends_with_type_cast_to_type_name_without_type_parameters(expression: &Express
                                 }
                             }
                         }
-                        Type::Intersection(intersection) => current_type = intersection.get_right(),
-                        Type::Union(union) => current_type = union.get_right(),
+                        Type::Intersection(intersection) => {
+                            current_type = intersection.last_type();
+                        }
+                        Type::Union(union_type) => {
+                            current_type = union_type.last_type();
+                        }
                         Type::True(_)
                         | Type::False(_)
                         | Type::Nil(_)

@@ -2,4 +2,4 @@
 source: src/generator/mod.rs
 expression: generator.into_string()
 ---
-function fn(): ...(true | nil) end
+&true

@@ -666,12 +666,12 @@ mod test {
                 BinaryOperator::Slash,
                 Expression::from(1.0),
                 Expression::from(0.0)
-            ) => LuaValue::Number(std::f64::INFINITY),
+            ) => LuaValue::Number(f64::INFINITY),
             zero_divided_by_zero(
                 BinaryOperator::Slash,
                 Expression::from(0.0),
                 Expression::from(0.0)
-            ) => LuaValue::Number(std::f64::NAN),
+            ) => LuaValue::Number(f64::NAN),
             twelve_floor_division_by_four(
                 BinaryOperator::DoubleSlash,
                 Expression::from(12.0),
@@ -686,17 +686,17 @@ mod test {
                 BinaryOperator::DoubleSlash,
                 Expression::from(1.0),
                 Expression::from(0.0)
-            ) => LuaValue::Number(std::f64::INFINITY),
+            ) => LuaValue::Number(f64::INFINITY),
             minus_one_floor_division_by_zero(
                 BinaryOperator::DoubleSlash,
                 Expression::from(-1.0),
                 Expression::from(0.0)
-            ) => LuaValue::Number(std::f64::NEG_INFINITY),
+            ) => LuaValue::Number(f64::NEG_INFINITY),
             zero_floor_division_by_zero(
                 BinaryOperator::DoubleSlash,
                 Expression::from(0.0),
                 Expression::from(0.0)
-            ) => LuaValue::Number(std::f64::NAN),
+            ) => LuaValue::Number(f64::NAN),
             five_mod_two(
                 BinaryOperator::Percent,
                 Expression::from(5.0),
