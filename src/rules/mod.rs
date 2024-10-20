@@ -216,7 +216,6 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::<RemoveNilDeclaration>::default(),
         Box::<RenameVariables>::default(),
         Box::<RemoveFunctionCallParens>::default(),
-        Box::<RemoveIfExpression>::default(),
     ]
 }
 
