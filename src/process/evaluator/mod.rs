@@ -80,12 +80,14 @@ impl Evaluator {
     #[allow(clippy::only_used_in_recursion)]
     pub fn can_return_multiple_values(&self, expression: &Expression) -> bool {
         match expression {
-            Expression::Binary(_)
-            | Expression::Call(_)
+            Expression::Call(_)
             | Expression::Field(_)
             | Expression::Index(_)
             | Expression::Unary(_)
             | Expression::VariableArguments(_) => true,
+            Expression::Binary(binary) => {
+                !matches!(binary.operator(), BinaryOperator::And | BinaryOperator::Or)
+            }
             Expression::False(_)
             | Expression::Function(_)
             | Expression::Identifier(_)
