@@ -304,6 +304,7 @@ mod remove_comments;
 mod remove_compound_assignment;
 mod remove_debug_profiling;
 mod remove_empty_do;
+mod remove_if_expression;
 mod remove_interpolated_string;
 mod remove_method_definition;
 mod remove_nil_declaration;
