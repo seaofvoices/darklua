@@ -477,6 +477,7 @@ mod test {
         false_expression(Expression::from(false)) => LuaValue::False,
         nil_expression(Expression::nil()) => LuaValue::Nil,
         number_expression(DecimalNumber::new(0.0)) => LuaValue::Number(0.0),
+        number_expression_negative_zero(DecimalNumber::new(-0.0)) => LuaValue::Number(-0.0),
         string_expression(StringExpression::from_value("foo")) => LuaValue::String("foo".to_owned()),
         empty_interpolated_string_expression(InterpolatedStringExpression::empty()) => LuaValue::String("".to_owned()),
         interpolated_string_expression_with_one_string(InterpolatedStringExpression::empty().with_segment("hello"))
@@ -549,6 +550,10 @@ mod test {
                                     assert!(
                                         (expect_float - result).abs() < f64::EPSILON,
                                         "{} does not approximate {}", result, expect_float
+                                    );
+                                    assert!(
+                                        expect_float.is_sign_positive() == result.is_sign_positive(),
+                                        "{} should be of the same sign as {}", result, expect_float
                                     );
                                 }
                             }
@@ -667,6 +672,16 @@ mod test {
                 Expression::from(1.0),
                 Expression::from(0.0)
             ) => LuaValue::Number(f64::INFINITY),
+            negative_zero_plus_negative_zero(
+                BinaryOperator::Plus,
+                Expression::from(-0.0),
+                Expression::from(-0.0)
+            ) => LuaValue::Number(-0.0),
+            negative_zero_minus_zero(
+                BinaryOperator::Minus,
+                Expression::from(-0.0),
+                Expression::from(0.0)
+            ) => LuaValue::Number(-0.0),
             zero_divided_by_zero(
                 BinaryOperator::Slash,
                 Expression::from(0.0),
@@ -1038,6 +1053,7 @@ mod test {
             ) => LuaValue::False,
             not_identifier(Not, Expression::identifier("foo")) => LuaValue::Unknown,
             minus_one(Minus, DecimalNumber::new(1.0)) => LuaValue::from(-1.0),
+            minus_zero(Minus, DecimalNumber::new(-0.0)) => LuaValue::from(-0.0),
             minus_negative_number(Minus, DecimalNumber::new(-5.0)) => LuaValue::from(5.0),
             minus_string_converted_to_number(Minus, StringExpression::from_value("1")) => LuaValue::from(-1.0)
         );

@@ -34,11 +34,15 @@ test_rule!(
         => "return 'is equal'",
     if_expression_elseif_always_false("return if false then 'is true' elseif 1 == 2 then 'is equal' else nil")
         => "return nil",
+    preserve_negative_zero("return -0") => "return -0",
+    addition_preserve_negative_zero("return -0 + -0") => "return -0",
+    subtract_preserve_negative_zero("return -0 - 0") => "return -0",
 );
 
-test_rule_without_effects!(if_expression_unknown_condition(
-    "return if condition then func() else func2()"
-),);
+test_rule_without_effects!(
+    ComputeExpression::default(),
+    if_expression_unknown_condition("return if condition then func() else func2()"),
+);
 
 #[test]
 fn deserialize_from_object_notation() {
