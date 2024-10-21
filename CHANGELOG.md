@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* fix negative zero sign erasure ([#222](https://github.com/seaofvoices/darklua/pull/222))
 * add `remove_if_expression` rule ([#221](https://github.com/seaofvoices/darklua/pull/221))
 
 ## 0.14.0
