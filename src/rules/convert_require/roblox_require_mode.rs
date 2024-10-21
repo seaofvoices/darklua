@@ -22,6 +22,8 @@ pub struct RobloxRequireMode {
     indexing_style: RobloxIndexStyle,
     #[serde(skip)]
     cached_sourcemap: Option<RojoSourcemap>,
+    #[serde(default)]
+    force_relative_path: bool,
 }
 
 impl RobloxRequireMode {
@@ -91,7 +93,7 @@ impl RobloxRequireMode {
                 );
 
                 if let Some(instance_path) =
-                    sourcemap.get_instance_path(&source_path, &require_relative_to_sourcemap)
+                    sourcemap.get_instance_path(&source_path, &require_relative_to_sourcemap, self.force_relative_path)
                 {
                     Ok(Some(Arguments::default().with_argument(
                         instance_path.convert(&self.indexing_style),
