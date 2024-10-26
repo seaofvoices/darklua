@@ -7,13 +7,13 @@ use crate::nodes::{
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{Context, RuleConfiguration, RuleConfigurationError, RuleProperties};
 
-use super::runtime_variable::RuntimeVariableBuilder;
+use super::runtime_identifier::RuntimeIdentifierBuilder;
 use super::{Rule, RuleProcessResult};
 
 #[derive(Default)]
 struct Processor {
-    break_variable_name: String,
-    continue_variable_name: String,
+    break_identifier: String,
+    continue_identifier: String,
 }
 
 fn count_continue_break(block: &Block) -> (usize, usize) {
@@ -84,7 +84,7 @@ impl Processor {
                 let with_continue_statement = continue_count < break_count;
                 let break_block = Block::new(vec![], Some(LastStatement::new_break()));
                 let (break_variable_handler, var) = if with_continue_statement {
-                    let var = TypedIdentifier::new(self.continue_variable_name.as_str());
+                    let var = TypedIdentifier::new(self.continue_identifier.as_str());
                     (
                         IfStatement::create(
                             UnaryExpression::new(UnaryOperator::Not, var.get_identifier().clone()),
@@ -93,7 +93,7 @@ impl Processor {
                         var,
                     )
                 } else {
-                    let var = TypedIdentifier::new(self.break_variable_name.as_str());
+                    let var = TypedIdentifier::new(self.break_identifier.as_str());
                     (
                         IfStatement::create(var.get_identifier().clone(), break_block),
                         var,
@@ -122,10 +122,10 @@ impl Processor {
     fn continues_with_breaks_to_breaks(&self, block: &mut Block, with_continue_statement: bool) {
         if let Some(last_stmt) = block.mutate_last_statement() {
             let (continue_statement, break_statement) = if with_continue_statement {
-                let var = Variable::new(self.continue_variable_name.as_str());
+                let var = Variable::new(self.continue_identifier.as_str());
                 (Some(AssignStatement::from_variable(var, true)), None)
             } else {
-                let var = Variable::new(self.break_variable_name.as_str());
+                let var = Variable::new(self.break_identifier.as_str());
                 (None, Some(AssignStatement::from_variable(var, true)))
             };
             match last_stmt {
@@ -183,27 +183,27 @@ pub const REMOVE_CONTINUE_RULE_NAME: &str = "remove_continue";
 /// A rule that removes continue statements and convert into breaks.
 #[derive(Debug, PartialEq, Eq)]
 pub struct RemoveContinue {
-    runtime_variable_format: String,
+    runtime_identifier_format: String,
 }
 
 impl Default for RemoveContinue {
     fn default() -> Self {
         Self {
-            runtime_variable_format: "__DARKLUA_REMOVE_CONTINUE_{name}{hash}".to_string(),
+            runtime_identifier_format: "__DARKLUA_REMOVE_CONTINUE_{name}{hash}".to_string(),
         }
     }
 }
 
 impl Rule for RemoveContinue {
     fn process(&self, block: &mut Block, _: &Context) -> RuleProcessResult {
-        let var_builder = RuntimeVariableBuilder::new(
-            self.runtime_variable_format.as_str(),
+        let var_builder = RuntimeIdentifierBuilder::new(
+            self.runtime_identifier_format.as_str(),
             format!("{block:?}").as_bytes(),
             None,
         )?;
         let mut processor = Processor {
-            break_variable_name: var_builder.build("break")?,
-            continue_variable_name: var_builder.build("continue")?,
+            break_identifier: var_builder.build("break")?,
+            continue_identifier: var_builder.build("continue")?,
         };
         DefaultVisitor::visit_block(block, &mut processor);
         Ok(())
@@ -214,8 +214,8 @@ impl RuleConfiguration for RemoveContinue {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, value) in properties {
             match key.as_str() {
-                "runtime_variable_format" => {
-                    self.runtime_variable_format = value.expect_string(&key)?;
+                "runtime_identifier_format" => {
+                    self.runtime_identifier_format = value.expect_string(&key)?;
                 }
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }
