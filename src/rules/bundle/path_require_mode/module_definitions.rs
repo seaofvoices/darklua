@@ -374,8 +374,8 @@ fn last_type_token(r#type: &Type) -> Option<&Token> {
             }
         },
         Type::Optional(optional) => optional.get_token(),
-        Type::Intersection(intersection) => last_type_token(intersection.get_right()),
-        Type::Union(union) => last_type_token(union.get_right()),
+        Type::Intersection(intersection) => last_type_token(intersection.last_type()),
+        Type::Union(union_type) => last_type_token(union_type.last_type()),
     }
 }
 

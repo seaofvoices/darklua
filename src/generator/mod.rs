@@ -842,6 +842,20 @@ mod $mod_name {
                 .with_new_branch(false, Block::default()),
         ));
 
+        snapshot_node!($mod_name, $generator, intersection_type, write_intersection_type => (
+            single_type => IntersectionType::from(vec![Type::from(true)]),
+            two_types => IntersectionType::from(vec![Type::from(true), Type::from(false)]),
+            two_types_with_leading_token => IntersectionType::from(vec![Type::from(true), Type::from(false)])
+                .with_leading_token(),
+        ));
+
+        snapshot_node!($mod_name, $generator, union_type, write_union_type => (
+            single_type => UnionType::from(vec![Type::from(true)]),
+            two_types => UnionType::from(vec![Type::from(true), Type::from(false)]),
+            two_types_with_leading_token => UnionType::from(vec![Type::from(true), Type::from(false)])
+                .with_leading_token(),
+        ));
+
         snapshot_node!($mod_name, $generator, local_assign, write_statement => (
             foo_unassigned => LocalAssignStatement::from_variable("foo"),
             foo_typed_unassigned => LocalAssignStatement::from_variable(

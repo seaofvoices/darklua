@@ -1018,7 +1018,24 @@ impl LuaGenerator for DenseLuaGenerator {
                 }
                 nodes::TableEntryType::Indexer(indexer) => {
                     self.push_char('[');
-                    self.write_type(indexer.get_key_type());
+
+                    let key_type = indexer.get_key_type();
+
+                    let need_parentheses = matches!(
+                        key_type,
+                        nodes::Type::Optional(_)
+                            | nodes::Type::Intersection(_)
+                            | nodes::Type::Union(_)
+                    );
+
+                    if need_parentheses {
+                        self.push_char('(');
+                        self.write_type(key_type);
+                        self.push_char(')');
+                    } else {
+                        self.write_type(key_type);
+                    }
+
                     self.push_char(']');
                     self.push_char(':');
                     self.write_type(indexer.get_value_type());
@@ -1085,38 +1102,46 @@ impl LuaGenerator for DenseLuaGenerator {
     }
 
     fn write_intersection_type(&mut self, intersection: &nodes::IntersectionType) {
-        let left = intersection.get_left();
-        if nodes::IntersectionType::left_needs_parentheses(left) {
-            self.write_type_in_parentheses(left);
-        } else {
-            self.write_type(left);
-        }
+        let length = intersection.len();
+        let last_index = length.saturating_sub(1);
+        for (i, r#type) in intersection.iter_types().enumerate() {
+            if i != 0 || intersection.has_leading_token() {
+                self.push_char('&');
+            }
 
-        self.push_char('&');
+            let need_parentheses = if i == last_index {
+                nodes::IntersectionType::last_needs_parentheses(r#type)
+            } else {
+                nodes::IntersectionType::intermediate_needs_parentheses(r#type)
+            };
 
-        let right = intersection.get_right();
-        if nodes::IntersectionType::right_needs_parentheses(right) {
-            self.write_type_in_parentheses(right);
-        } else {
-            self.write_type(right);
+            if need_parentheses {
+                self.write_type_in_parentheses(r#type);
+            } else {
+                self.write_type(r#type);
+            }
         }
     }
 
     fn write_union_type(&mut self, union: &nodes::UnionType) {
-        let left = union.get_left();
-        if nodes::UnionType::left_needs_parentheses(left) {
-            self.write_type_in_parentheses(left);
-        } else {
-            self.write_type(left);
-        }
+        let length = union.len();
+        let last_index = length.saturating_sub(1);
+        for (i, r#type) in union.iter_types().enumerate() {
+            if i != 0 || union.has_leading_token() {
+                self.push_char('|');
+            }
 
-        self.push_char('|');
+            let need_parentheses = if i == last_index {
+                nodes::UnionType::last_needs_parentheses(r#type)
+            } else {
+                nodes::UnionType::intermediate_needs_parentheses(r#type)
+            };
 
-        let right = union.get_right();
-        if nodes::UnionType::right_needs_parentheses(right) {
-            self.write_type_in_parentheses(right);
-        } else {
-            self.write_type(right);
+            if need_parentheses {
+                self.write_type_in_parentheses(r#type);
+            } else {
+                self.write_type(r#type);
+            }
         }
     }
 

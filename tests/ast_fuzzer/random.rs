@@ -24,6 +24,10 @@ pub struct RandomAst {
     interpolated_string_segments_mean: f64,
     interpolated_string_segments_std_def: f64,
     interpolated_segment_is_expression_prob: f64,
+    intersection_type_length_mean: f64,
+    intersection_type_length_std_dev: f64,
+    union_type_length_mean: f64,
+    union_type_length_std_dev: f64,
 }
 
 impl Default for RandomAst {
@@ -49,6 +53,10 @@ impl Default for RandomAst {
             interpolated_string_segments_mean: 1.5,
             interpolated_string_segments_std_def: 2.5,
             interpolated_segment_is_expression_prob: 0.5,
+            intersection_type_length_mean: 2.0,
+            intersection_type_length_std_dev: 0.5,
+            union_type_length_mean: 2.0,
+            union_type_length_std_dev: 0.5,
         }
     }
 }
@@ -150,6 +158,17 @@ impl RandomAst {
         normal_sample(self.return_length_mean, self.return_length_std_dev)
     }
 
+    pub fn intersection_type_length(&self) -> usize {
+        normal_sample(
+            self.intersection_type_length_mean,
+            self.intersection_type_length_std_dev,
+        )
+    }
+
+    pub fn union_type_length(&self) -> usize {
+        normal_sample(self.union_type_length_mean, self.union_type_length_std_dev)
+    }
+
     pub fn numeric_for_step(&self) -> bool {
         thread_rng().gen_bool(self.numeric_for_step_prob)
     }
@@ -217,9 +236,7 @@ impl RandomAst {
             1 => CompoundOperator::Minus,
             2 => CompoundOperator::Asterisk,
             3 => CompoundOperator::Slash,
-            // todo: once full-moon fixes this issue and the change is in a new release
-            // https://github.com/Kampfkarren/full-moon/issues/292
-            // 4 => CompoundOperator::DoubleSlash,
+            4 => CompoundOperator::DoubleSlash,
             5 => CompoundOperator::Percent,
             6 => CompoundOperator::Caret,
             _ => CompoundOperator::Concat,
@@ -296,6 +313,10 @@ impl RandomAst {
 
     pub fn function_variadic_type_is_generic_pack(&self) -> bool {
         thread_rng().gen_bool(0.2)
+    }
+
+    pub fn leading_intersection_or_union_operator(&self) -> bool {
+        thread_rng().gen_bool(0.4)
     }
 }
 

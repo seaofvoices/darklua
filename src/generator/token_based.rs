@@ -841,7 +841,22 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         tokens: &TableIndexTypeTokens,
     ) {
         self.write_token(&tokens.opening_bracket);
-        self.write_type(indexer_type.get_key_type());
+
+        let key_type = indexer_type.get_key_type();
+
+        let need_parentheses = matches!(
+            key_type,
+            Type::Optional(_) | Type::Intersection(_) | Type::Union(_)
+        );
+
+        if need_parentheses {
+            self.write_symbol("(");
+            self.write_type(key_type);
+            self.write_symbol(")");
+        } else {
+            self.write_type(key_type);
+        }
+
         self.write_token(&tokens.closing_bracket);
         self.write_token(&tokens.colon);
         self.write_type(indexer_type.get_value_type());
@@ -1025,48 +1040,66 @@ impl<'a> TokenBasedLuaGenerator<'a> {
     fn write_intersection_type_with_token(
         &mut self,
         intersection: &IntersectionType,
-        token: &Token,
+        tokens: &IntersectionTypeTokens,
     ) {
-        let left = intersection.get_left();
-        if IntersectionType::left_needs_parentheses(left) {
-            self.write_symbol("(");
-            self.write_type(left);
-            self.write_symbol(")");
-        } else {
-            self.write_type(left);
-        }
+        let length = intersection.len();
+        let last_index = length.saturating_sub(1);
 
-        self.write_token(token);
+        for (i, r#type) in intersection.iter_types().enumerate() {
+            if i == 0 {
+                if let Some(leading) = &tokens.leading_token {
+                    self.write_token(leading);
+                }
+            } else if let Some(token) = tokens.separators.get(i.saturating_sub(1)) {
+                self.write_token(token);
+            } else {
+                self.write_symbol("&");
+            }
 
-        let right = intersection.get_right();
-        if IntersectionType::right_needs_parentheses(right) {
-            self.write_symbol("(");
-            self.write_type(right);
-            self.write_symbol(")");
-        } else {
-            self.write_type(right);
+            let need_parentheses = if i == last_index {
+                IntersectionType::last_needs_parentheses(r#type)
+            } else {
+                IntersectionType::intermediate_needs_parentheses(r#type)
+            };
+
+            if need_parentheses {
+                self.write_symbol("(");
+                self.write_type(r#type);
+                self.write_symbol(")");
+            } else {
+                self.write_type(r#type);
+            }
         }
     }
 
-    fn write_union_type_with_token(&mut self, union: &UnionType, token: &Token) {
-        let left = union.get_left();
-        if UnionType::left_needs_parentheses(left) {
-            self.write_symbol("(");
-            self.write_type(left);
-            self.write_symbol(")");
-        } else {
-            self.write_type(left);
-        }
+    fn write_union_type_with_token(&mut self, union: &UnionType, tokens: &UnionTypeTokens) {
+        let length = union.len();
+        let last_index = length.saturating_sub(1);
 
-        self.write_token(token);
+        for (i, r#type) in union.iter_types().enumerate() {
+            if i == 0 {
+                if let Some(leading) = &tokens.leading_token {
+                    self.write_token(leading);
+                }
+            } else if let Some(token) = tokens.separators.get(i.saturating_sub(1)) {
+                self.write_token(token);
+            } else {
+                self.write_symbol("|");
+            }
 
-        let right = union.get_right();
-        if UnionType::right_needs_parentheses(right) {
-            self.write_symbol("(");
-            self.write_type(right);
-            self.write_symbol(")");
-        } else {
-            self.write_type(right);
+            let need_parentheses = if i == last_index {
+                UnionType::last_needs_parentheses(r#type)
+            } else {
+                UnionType::intermediate_needs_parentheses(r#type)
+            };
+
+            if need_parentheses {
+                self.write_symbol("(");
+                self.write_type(r#type);
+                self.write_symbol(")");
+            } else {
+                self.write_type(r#type);
+            }
         }
     }
 
@@ -1502,12 +1535,23 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         Token::from_content("?")
     }
 
-    fn generate_intersection_type_token(&self, _intersection: &IntersectionType) -> Token {
-        Token::from_content("&")
+    fn generate_intersection_type_token(
+        &self,
+        intersection: &IntersectionType,
+    ) -> IntersectionTypeTokens {
+        IntersectionTypeTokens {
+            leading_token: intersection
+                .has_leading_token()
+                .then(|| Token::from_content("&")),
+            separators: intersect_with_token(Token::from_content("&"), intersection.len()),
+        }
     }
 
-    fn generate_union_type_token(&self, _union: &UnionType) -> Token {
-        Token::from_content("|")
+    fn generate_union_type_token(&self, union: &UnionType) -> UnionTypeTokens {
+        UnionTypeTokens {
+            leading_token: union.has_leading_token().then(|| Token::from_content("|")),
+            separators: intersect_with_token(Token::from_content("|"), union.len()),
+        }
     }
 
     fn generate_type_pack_tokens(&self, type_pack: &TypePack) -> TypePackTokens {

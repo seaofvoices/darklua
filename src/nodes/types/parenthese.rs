@@ -22,6 +22,11 @@ impl ParentheseType {
     }
 
     #[inline]
+    pub fn into_inner_type(self) -> Type {
+        *self.inner_type
+    }
+
+    #[inline]
     pub fn mutate_inner_type(&mut self) -> &mut Type {
         &mut self.inner_type
     }
