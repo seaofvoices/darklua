@@ -91,8 +91,14 @@ pub enum AstFuzzerWork {
     MakeParenthesePrefix,
     MakeIndexPrefix,
     MakeCallPrefix,
-    MakeIntersectionType,
-    MakeUnionType,
+    MakeIntersectionType {
+        has_leading_token: bool,
+        length: usize,
+    },
+    MakeUnionType {
+        has_leading_token: bool,
+        length: usize,
+    },
     MakeOptionalType,
     MakeParentheseType,
     MakeArrayType,

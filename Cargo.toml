@@ -1,6 +1,6 @@
 [package]
 name = "darklua"
-version = "0.13.1"
+version = "0.14.0"
 authors = ["jeparlefrancais <jeparlefrancais21@gmail.com>"]
 edition = "2018"
 readme = "README.md"
@@ -23,9 +23,7 @@ name = "darklua"
 path = "src/bin.rs"
 
 [features]
-default = ["stacker"]
 tracing = ["dep:tracing"]
-stacker = ["full_moon/stacker"]
 
 [dependencies]
 anstyle = "1.0.6"
@@ -34,7 +32,7 @@ clap = { version = "4.5.3", features = ["derive"] }
 durationfmt = "0.1.1"
 elsa = "1.10.0"
 env_logger = "0.11.3"
-full_moon = { version = "0.19.0", features = ["roblox"] }
+full_moon = { version = "1.0.0", features = ["roblox"] }
 hex = "0.4.3"
 json5 = "0.4.1"
 log = "0.4.21"
@@ -87,3 +85,6 @@ harness = false
 [[bench]]
 name = "parse_bench"
 harness = false
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }

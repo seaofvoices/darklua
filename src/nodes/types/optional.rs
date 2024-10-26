@@ -42,13 +42,9 @@ impl OptionalType {
     }
 
     pub fn needs_parentheses(r#type: &Type) -> bool {
-        // todo: parentheses are not needed for nested optional types but
-        // a bug in full-moon forces darklua to put parentheses around
-        // optional types too
-        // https://github.com/Kampfkarren/full-moon/issues/290
         matches!(
             r#type,
-            Type::Intersection(_) | Type::Union(_) | Type::Optional(_) | Type::Function(_)
+            Type::Intersection(_) | Type::Union(_) | Type::Function(_)
         )
     }
 

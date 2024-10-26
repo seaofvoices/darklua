@@ -80,12 +80,14 @@ impl Evaluator {
     #[allow(clippy::only_used_in_recursion)]
     pub fn can_return_multiple_values(&self, expression: &Expression) -> bool {
         match expression {
-            Expression::Binary(_)
-            | Expression::Call(_)
+            Expression::Call(_)
             | Expression::Field(_)
             | Expression::Index(_)
             | Expression::Unary(_)
             | Expression::VariableArguments(_) => true,
+            Expression::Binary(binary) => {
+                !matches!(binary.operator(), BinaryOperator::And | BinaryOperator::Or)
+            }
             Expression::False(_)
             | Expression::Function(_)
             | Expression::Identifier(_)
@@ -475,6 +477,7 @@ mod test {
         false_expression(Expression::from(false)) => LuaValue::False,
         nil_expression(Expression::nil()) => LuaValue::Nil,
         number_expression(DecimalNumber::new(0.0)) => LuaValue::Number(0.0),
+        number_expression_negative_zero(DecimalNumber::new(-0.0)) => LuaValue::Number(-0.0),
         string_expression(StringExpression::from_value("foo")) => LuaValue::String("foo".to_owned()),
         empty_interpolated_string_expression(InterpolatedStringExpression::empty()) => LuaValue::String("".to_owned()),
         interpolated_string_expression_with_one_string(InterpolatedStringExpression::empty().with_segment("hello"))
@@ -547,6 +550,10 @@ mod test {
                                     assert!(
                                         (expect_float - result).abs() < f64::EPSILON,
                                         "{} does not approximate {}", result, expect_float
+                                    );
+                                    assert!(
+                                        expect_float.is_sign_positive() == result.is_sign_positive(),
+                                        "{} should be of the same sign as {}", result, expect_float
                                     );
                                 }
                             }
@@ -664,12 +671,22 @@ mod test {
                 BinaryOperator::Slash,
                 Expression::from(1.0),
                 Expression::from(0.0)
-            ) => LuaValue::Number(std::f64::INFINITY),
+            ) => LuaValue::Number(f64::INFINITY),
+            negative_zero_plus_negative_zero(
+                BinaryOperator::Plus,
+                Expression::from(-0.0),
+                Expression::from(-0.0)
+            ) => LuaValue::Number(-0.0),
+            negative_zero_minus_zero(
+                BinaryOperator::Minus,
+                Expression::from(-0.0),
+                Expression::from(0.0)
+            ) => LuaValue::Number(-0.0),
             zero_divided_by_zero(
                 BinaryOperator::Slash,
                 Expression::from(0.0),
                 Expression::from(0.0)
-            ) => LuaValue::Number(std::f64::NAN),
+            ) => LuaValue::Number(f64::NAN),
             twelve_floor_division_by_four(
                 BinaryOperator::DoubleSlash,
                 Expression::from(12.0),
@@ -684,17 +701,17 @@ mod test {
                 BinaryOperator::DoubleSlash,
                 Expression::from(1.0),
                 Expression::from(0.0)
-            ) => LuaValue::Number(std::f64::INFINITY),
+            ) => LuaValue::Number(f64::INFINITY),
             minus_one_floor_division_by_zero(
                 BinaryOperator::DoubleSlash,
                 Expression::from(-1.0),
                 Expression::from(0.0)
-            ) => LuaValue::Number(std::f64::NEG_INFINITY),
+            ) => LuaValue::Number(f64::NEG_INFINITY),
             zero_floor_division_by_zero(
                 BinaryOperator::DoubleSlash,
                 Expression::from(0.0),
                 Expression::from(0.0)
-            ) => LuaValue::Number(std::f64::NAN),
+            ) => LuaValue::Number(f64::NAN),
             five_mod_two(
                 BinaryOperator::Percent,
                 Expression::from(5.0),
@@ -1036,6 +1053,7 @@ mod test {
             ) => LuaValue::False,
             not_identifier(Not, Expression::identifier("foo")) => LuaValue::Unknown,
             minus_one(Minus, DecimalNumber::new(1.0)) => LuaValue::from(-1.0),
+            minus_zero(Minus, DecimalNumber::new(-0.0)) => LuaValue::from(-0.0),
             minus_negative_number(Minus, DecimalNumber::new(-5.0)) => LuaValue::from(5.0),
             minus_string_converted_to_number(Minus, StringExpression::from_value("1")) => LuaValue::from(-1.0)
         );
