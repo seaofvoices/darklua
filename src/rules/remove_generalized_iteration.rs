@@ -6,17 +6,16 @@ use crate::nodes::{
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{Context, RuleConfiguration, RuleConfigurationError, RuleProperties};
 
-use super::runtime_variable::RuntimeVariableBuilder;
+use super::runtime_identifier::RuntimeIdentifierBuilder;
 use super::{Rule, RuleProcessResult};
 
 const METATABLE_VARIABLE_NAME: &str = "m";
 
 struct Processor {
-    iterator_variable_name: String,
-    invariant_variable_name: String,
-    control_variable_name: String,
+    iterator_identifier: String,
+    invariant_identifier: String,
+    control_identifier: String,
     skip_block_once: bool,
-    getmetatable: String,
 }
 
 fn get_type_condition(arg: Expression, type_name: &str) -> Box<BinaryExpression> {
@@ -41,15 +40,15 @@ impl Processor {
                 if exps.len() == 1 {
                     let mut stmts: Vec<Statement> = Vec::new();
                     let iterator_typed_identifier =
-                        TypedIdentifier::new(self.iterator_variable_name.as_str());
+                        TypedIdentifier::new(self.iterator_identifier.as_str());
                     let iterator_identifier = iterator_typed_identifier.get_identifier().clone();
 
                     let invariant_typed_identifier =
-                        TypedIdentifier::new(self.invariant_variable_name.as_str());
+                        TypedIdentifier::new(self.invariant_identifier.as_str());
                     let invariant_identifier = invariant_typed_identifier.get_identifier().clone();
 
                     let control_typed_identifier =
-                        TypedIdentifier::new(self.control_variable_name.as_str());
+                        TypedIdentifier::new(self.control_identifier.as_str());
                     let control_identifier = control_typed_identifier.get_identifier().clone();
 
                     let iterator_local_assign = LocalAssignStatement::new(
@@ -74,7 +73,7 @@ impl Processor {
                     let mt_identifier = mt_typed_identifier.get_identifier().clone();
 
                     let get_mt_call = FunctionCall::new(
-                        Prefix::from_name(self.getmetatable.as_str()),
+                        Prefix::from_name("getmetatable"),
                         TupleArguments::new(vec![iterator_exp.clone()]).into(),
                         None,
                     );
@@ -169,33 +168,30 @@ pub const REMOVE_GENERALIZED_ITERATION_RULE_NAME: &str = "remove_generalized_ite
 /// A rule that removes generalized iteration.
 #[derive(Debug, PartialEq, Eq)]
 pub struct RemoveGeneralizedIteration {
-    runtime_variable_format: String,
-    getmetatable: String,
+    runtime_identifier_format: String,
 }
 
 impl Default for RemoveGeneralizedIteration {
     fn default() -> Self {
         Self {
-            runtime_variable_format: "_DARKLUA_REMOVE_GENERALIZED_ITERATION_{name}{hash}"
+            runtime_identifier_format: "_DARKLUA_REMOVE_GENERALIZED_ITERATION_{name}{hash}"
                 .to_string(),
-            getmetatable: "getmetatable".to_string(),
         }
     }
 }
 
 impl Rule for RemoveGeneralizedIteration {
     fn process(&self, block: &mut Block, _: &Context) -> RuleProcessResult {
-        let var_builder = RuntimeVariableBuilder::new(
-            self.runtime_variable_format.as_str(),
+        let var_builder = RuntimeIdentifierBuilder::new(
+            self.runtime_identifier_format.as_str(),
             format!("{block:?}").as_bytes(),
             Some(vec![METATABLE_VARIABLE_NAME.to_string()]),
         )?;
         let mut processor = Processor {
-            iterator_variable_name: var_builder.build("iter")?,
-            invariant_variable_name: var_builder.build("invar")?,
-            control_variable_name: var_builder.build("control")?,
+            iterator_identifier: var_builder.build("iter")?,
+            invariant_identifier: var_builder.build("invar")?,
+            control_identifier: var_builder.build("control")?,
             skip_block_once: false,
-            getmetatable: self.getmetatable.to_owned(),
         };
         DefaultVisitor::visit_block(block, &mut processor);
         Ok(())
@@ -206,11 +202,8 @@ impl RuleConfiguration for RemoveGeneralizedIteration {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, value) in properties {
             match key.as_str() {
-                "runtime_variable_format" => {
-                    self.runtime_variable_format = value.expect_string(&key)?;
-                }
-                "getmetatable" => {
-                    self.getmetatable = value.expect_string(&key)?;
+                "runtime_identifier_format" => {
+                    self.runtime_identifier_format = value.expect_string(&key)?;
                 }
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }
@@ -251,7 +244,7 @@ mod test {
         let result = json5::from_str::<Box<dyn Rule>>(
             r#"{
             rule: 'remove_generalized_iteration',
-            runtime_variable_format: '{name}',
+            runtime_identifier_format: '{name}',
             prop: "something",
         }"#,
         );
