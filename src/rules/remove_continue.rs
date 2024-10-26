@@ -256,7 +256,7 @@ mod test {
         let result = json5::from_str::<Box<dyn Rule>>(
             r#"{
             rule: 'remove_continue',
-            runtime_variable_format: '{name}',
+            runtime_identifier_format: '{name}',
             prop: "something",
         }"#,
         );

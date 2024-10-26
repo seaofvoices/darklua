@@ -5,7 +5,7 @@ test_rule!(
     json5::from_str::<Box<dyn Rule>>(
         r#"{
             rule: 'remove_continue',
-            runtime_variable_format: '_{name}'
+            runtime_identifier_format: '_{name}'
         }"#
     ).unwrap(),
     continue_inside_numeric_for("for i = 1,10 do continue end") => "for i = 1,10 do repeat break until true end",
@@ -35,7 +35,7 @@ fn deserialize_from_object_notation() {
     json5::from_str::<Box<dyn Rule>>(
         r#"{
         rule: 'remove_continue',
-		runtime_variable_format: '_{name}'
+		runtime_identifier_format: '_{name}'
     }"#,
     )
     .unwrap();
