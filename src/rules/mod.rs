@@ -29,7 +29,6 @@ mod rename_variables;
 mod replace_referenced_tokens;
 pub(crate) mod require;
 mod rule_property;
-pub mod runtime_identifier;
 mod shift_token_line;
 mod unused_if_branch;
 mod unused_while;
@@ -219,7 +218,6 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::<RemoveNilDeclaration>::default(),
         Box::<RenameVariables>::default(),
         Box::<RemoveFunctionCallParens>::default(),
-        Box::<RemoveContinue>::default(),
     ]
 }
 
@@ -285,7 +283,6 @@ impl FromStr for Box<dyn Rule> {
             RENAME_VARIABLES_RULE_NAME => Box::<RenameVariables>::default(),
             REMOVE_IF_EXPRESSION_RULE_NAME => Box::<RemoveIfExpression>::default(),
             REMOVE_CONTINUE_RULE_NAME => Box::<RemoveContinue>::default(),
-
             _ => return Err(format!("invalid rule name: {}", string)),
         };
 
