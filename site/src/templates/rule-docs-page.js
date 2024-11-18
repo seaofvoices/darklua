@@ -274,7 +274,7 @@ const RuleDocsPageTemplate = ({ data, location }) => (
 export default RuleDocsPageTemplate
 
 export const Head = ({ data }) => {
-  const ruleName=data.markdownRemark.fields.ruleName
+  const ruleName = data.markdownRemark.fields.ruleName
   return <Seo title={ruleName} articles={[`Documentation for ${ruleName}`]} />
 }
 
