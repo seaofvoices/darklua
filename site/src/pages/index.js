@@ -7,6 +7,7 @@ import { LocationContext } from "../components/location-context"
 import { Box } from "@mui/system"
 import RocketLaunchIcon from "@mui/icons-material/RocketLaunch"
 import ViewStateLink from "../components/ViewStateLink"
+import Seo from "../components/seo"
 
 const InfoCard = ({ title, content, children }) => (
   <Paper elevation={2} sx={{ width: "280px", mx: 2, my: 0.5 }}>
@@ -61,7 +62,7 @@ const Home = () => {
   const theme = useTheme()
 
   return (
-    <Layout title="Home">
+    <Layout>
       <Paper
         square
         elevation={1}
@@ -147,5 +148,7 @@ const HomePage = ({ location }) => (
     </ThemeProvider>
   </LocationContext.Provider>
 )
+
+export const Head = () => <Seo title="Home" />
 
 export default HomePage

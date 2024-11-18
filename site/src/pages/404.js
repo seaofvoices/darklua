@@ -6,6 +6,7 @@ import { LocationContext } from "../components/location-context"
 import { Button, Paper, Stack, Typography } from "@mui/material"
 import ViewStateLink from "../components/ViewStateLink"
 import RocketLaunchIcon from "@mui/icons-material/RocketLaunch"
+import Seo from "../components/seo"
 
 const LINKS = [
   { label: "Home", link: "/" },
@@ -15,7 +16,7 @@ const LINKS = [
 
 const NotFound = () => {
   return (
-    <Layout title="Not Found">
+    <Layout>
       <Paper
         square
         elevation={1}
@@ -25,7 +26,7 @@ const NotFound = () => {
           404: Not Found
         </Typography>
         <Typography variant="h4" align="center">
-          You just hit a route that doesn&#39;t exist :(
+          You landed on a page that doesn&#39;t exist 🥲
         </Typography>
 
         <Stack spacing={4} pt={4} mx={8}>
@@ -54,5 +55,7 @@ const NotFoundPage = ({ location }) => (
     </ThemeProvider>
   </LocationContext.Provider>
 )
+
+export const Head = () => <Seo title="Not Found" />
 
 export default NotFoundPage

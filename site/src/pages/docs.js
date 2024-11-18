@@ -6,11 +6,12 @@ import { DocumentationNavigation } from "../components/documentation-nav"
 import { useTheme } from "@mui/system"
 import { LocationContext } from "../components/location-context"
 import ThemeProvider from "../components/theme-provider"
+import Seo from "../components/seo"
 
 const Docs = () => {
   const theme = useTheme()
   return (
-    <Layout title="Documentation">
+    <Layout>
       <Paper
         square
         sx={{
@@ -43,5 +44,7 @@ const DocsPage = ({ location }) => (
     </ThemeProvider>
   </LocationContext.Provider>
 )
+
+export const Head = () => <Seo title="Documentation" />
 
 export default DocsPage

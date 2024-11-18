@@ -112,7 +112,6 @@ const TryItLayout = () => {
 
   return (
     <Box sx={{ display: "flex", flexGrow: 1, overflow: "hidden" }}>
-      <Seo title={"Try it"} />
       <AppBar
         position="fixed"
         sx={{ zIndex: theme => theme.zIndex.drawer + 1 }}
@@ -167,6 +166,8 @@ const TryItLayout = () => {
     </Box>
   )
 }
+
+export const Head = () => <Seo title="Try it" />
 
 const TryIt = ({ location }) => {
   return (
