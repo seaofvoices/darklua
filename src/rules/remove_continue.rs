@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::mem;
 
 use crate::nodes::{
     AssignStatement, Block, GenericForStatement, Identifier, IfStatement, LastStatement,
@@ -50,7 +51,7 @@ impl Processor {
             if !loop_data.has_continue_statement {
                 return;
             }
-            let mut current_loop_block = std::mem::replace(block, Block::default());
+            let mut current_loop_block = mem::take(block);
 
             if current_loop_block.get_last_statement().is_none() {
                 current_loop_block.push_statement(AssignStatement::from_variable(
@@ -164,14 +165,8 @@ impl NodePostProcessor for Processor {
 pub const REMOVE_CONTINUE_RULE_NAME: &str = "remove_continue";
 
 /// A rule that removes continue statements and converts them into break statements.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct RemoveContinue {}
-
-impl Default for RemoveContinue {
-    fn default() -> Self {
-        Self {}
-    }
-}
 
 impl FlawlessRule for RemoveContinue {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
