@@ -1,10 +1,12 @@
-use crate::nodes::*;
-use crate::process::NodeProcessor;
-
 use std::marker::PhantomData;
 
-/// A trait that defines method that iterates on nodes and process them using a NodeProcessor.
-pub trait NodeVisitor<T: NodeProcessor> {
+use crate::nodes::*;
+
+use super::node_processor::{NodePostProcessor, NodeProcessor};
+
+/// Similar to the NodeVisitor, except that visits the AST using a NodePostVisitor, which
+/// makes it possible to run transforms when leaving a node.
+pub trait NodePostVisitor<T: NodeProcessor + NodePostProcessor> {
     fn visit_block(block: &mut Block, processor: &mut T) {
         processor.process_block(block);
 
@@ -15,6 +17,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
         if let Some(last_statement) = block.mutate_last_statement() {
             Self::visit_last_statement(last_statement, processor);
         };
+        processor.process_after_block(block);
     }
 
     fn visit_statement(statement: &mut Statement, processor: &mut T) {
@@ -39,6 +42,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
                 Self::visit_type_declaration(statement, processor)
             }
         };
+        processor.process_after_statement(statement);
     }
 
     fn visit_last_statement(last_statement: &mut LastStatement, processor: &mut T) {
@@ -49,6 +53,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
                 .iter_mut_expressions()
                 .for_each(|expression| Self::visit_expression(expression, processor));
         };
+        processor.process_after_last_statement(last_statement);
     }
 
     fn visit_expression(expression: &mut Expression, processor: &mut T) {
@@ -86,25 +91,30 @@ pub trait NodeVisitor<T: NodeProcessor> {
             | Expression::True(_)
             | Expression::VariableArguments(_) => {}
         }
+        processor.process_after_expression(expression);
     }
 
     fn visit_binary_expression(binary: &mut BinaryExpression, processor: &mut T) {
         processor.process_binary_expression(binary);
         Self::visit_expression(binary.mutate_left(), processor);
         Self::visit_expression(binary.mutate_right(), processor);
+        processor.process_after_binary_expression(binary);
     }
 
     fn visit_number_expression(number: &mut NumberExpression, processor: &mut T) {
         processor.process_number_expression(number);
+        processor.process_after_number_expression(number);
     }
 
     fn visit_parenthese_expression(parenthese: &mut ParentheseExpression, processor: &mut T) {
         processor.process_parenthese_expression(parenthese);
-        Self::visit_expression(parenthese.mutate_inner_expression(), processor)
+        Self::visit_expression(parenthese.mutate_inner_expression(), processor);
+        processor.process_after_parenthese_expression(parenthese);
     }
 
     fn visit_string_expression(string: &mut StringExpression, processor: &mut T) {
         processor.process_string_expression(string);
+        processor.process_after_string_expression(string);
     }
 
     fn visit_interpolated_string_expression(
@@ -121,11 +131,13 @@ pub trait NodeVisitor<T: NodeProcessor> {
                 }
             }
         }
+        processor.process_after_interpolated_string_expression(interpolated_string);
     }
 
     fn visit_unary_expression(unary: &mut UnaryExpression, processor: &mut T) {
         processor.process_unary_expression(unary);
         Self::visit_expression(unary.mutate_expression(), processor);
+        processor.process_after_unary_expression(unary);
     }
 
     fn visit_type_cast_expression(type_cast: &mut TypeCastExpression, processor: &mut T) {
@@ -133,6 +145,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
         Self::visit_expression(type_cast.mutate_expression(), processor);
         Self::visit_type(type_cast.mutate_type(), processor);
+        processor.process_after_type_cast_expression(type_cast);
     }
 
     fn visit_function_expression(function: &mut FunctionExpression, processor: &mut T) {
@@ -156,6 +169,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
         if let Some(return_type) = function.mutate_return_type() {
             Self::visit_function_return_type(return_type, processor);
         }
+        processor.process_after_function_expression(function);
     }
 
     fn visit_assign_statement(statement: &mut AssignStatement, processor: &mut T) {
@@ -169,18 +183,21 @@ pub trait NodeVisitor<T: NodeProcessor> {
         statement
             .iter_mut_values()
             .for_each(|expression| Self::visit_expression(expression, processor));
+        processor.process_after_assign_statement(statement);
     }
 
     fn visit_do_statement(statement: &mut DoStatement, processor: &mut T) {
         processor.process_do_statement(statement);
         processor.process_scope(statement.mutate_block(), None);
         Self::visit_block(statement.mutate_block(), processor);
+        processor.process_after_do_statement(statement);
     }
 
     fn visit_compound_assign(statement: &mut CompoundAssignStatement, processor: &mut T) {
         processor.process_compound_assign_statement(statement);
         Self::visit_variable(statement.mutate_variable(), processor);
         Self::visit_expression(statement.mutate_value(), processor);
+        processor.process_after_compound_assign_statement(statement);
     }
 
     fn visit_function_statement(statement: &mut FunctionStatement, processor: &mut T) {
@@ -208,6 +225,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
         if let Some(return_type) = statement.mutate_return_type() {
             Self::visit_function_return_type(return_type, processor);
         }
+        processor.process_after_function_statement(statement);
     }
 
     fn visit_generic_for(statement: &mut GenericForStatement, processor: &mut T) {
@@ -226,6 +244,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
         {
             Self::visit_type(r#type, processor);
         }
+        processor.process_after_generic_for_statement(statement);
     }
 
     fn visit_if_statement(statement: &mut IfStatement, processor: &mut T) {
@@ -241,6 +260,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
             processor.process_scope(block, None);
             Self::visit_block(block, processor);
         }
+        processor.process_after_if_statement(statement);
     }
 
     fn visit_local_assign(statement: &mut LocalAssignStatement, processor: &mut T) {
@@ -256,6 +276,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
         {
             Self::visit_type(r#type, processor);
         }
+        processor.process_after_local_assign_statement(statement);
     }
 
     fn visit_local_function(statement: &mut LocalFunctionStatement, processor: &mut T) {
@@ -277,6 +298,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
         if let Some(return_type) = statement.mutate_return_type() {
             Self::visit_function_return_type(return_type, processor);
         }
+        processor.process_after_local_function_statement(statement);
     }
 
     fn visit_function_variadic_type(variadic_type: &mut FunctionVariadicType, processor: &mut T) {
@@ -292,6 +314,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
     fn visit_generic_type_pack(generic: &mut GenericTypePack, processor: &mut T) {
         processor.process_generic_type_pack(generic);
+        processor.process_after_generic_type_pack(generic);
     }
 
     fn visit_numeric_for(statement: &mut NumericForStatement, processor: &mut T) {
@@ -310,6 +333,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
         if let Some(r#type) = statement.mutate_identifier().mutate_type() {
             Self::visit_type(r#type, processor);
         }
+        processor.process_after_numeric_for_statement(statement);
     }
 
     fn visit_repeat_statement(statement: &mut RepeatStatement, processor: &mut T) {
@@ -320,6 +344,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
         Self::visit_expression(statement.mutate_condition(), processor);
         Self::visit_block(statement.mutate_block(), processor);
+        processor.process_after_repeat_statement(statement);
     }
 
     fn visit_while_statement(statement: &mut WhileStatement, processor: &mut T) {
@@ -329,6 +354,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
         processor.process_scope(statement.mutate_block(), None);
         Self::visit_block(statement.mutate_block(), processor);
+        processor.process_after_while_statement(statement);
     }
 
     fn visit_type_declaration(statement: &mut TypeDeclarationStatement, processor: &mut T) {
@@ -369,6 +395,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
         }
 
         Self::visit_type(statement.mutate_type(), processor);
+        processor.process_after_type_declaration(statement);
     }
 
     fn visit_variable(variable: &mut Variable, processor: &mut T) {
@@ -379,10 +406,12 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Variable::Field(field) => Self::visit_field_expression(field, processor),
             Variable::Index(index) => Self::visit_index_expression(index, processor),
         }
+        processor.process_after_variable(variable);
     }
 
     fn visit_identifier(identifier: &mut Identifier, processor: &mut T) {
         processor.process_variable_expression(identifier);
+        processor.process_after_variable_expression(identifier);
     }
 
     fn visit_if_expression(if_expression: &mut IfExpression, processor: &mut T) {
@@ -397,12 +426,14 @@ pub trait NodeVisitor<T: NodeProcessor> {
         }
 
         Self::visit_expression(if_expression.mutate_else_result(), processor);
+        processor.process_after_if_expression(if_expression);
     }
 
     fn visit_field_expression(field: &mut FieldExpression, processor: &mut T) {
         processor.process_field_expression(field);
 
         Self::visit_prefix_expression(field.mutate_prefix(), processor);
+        processor.process_after_field_expression(field);
     }
 
     fn visit_index_expression(index: &mut IndexExpression, processor: &mut T) {
@@ -410,6 +441,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
         Self::visit_prefix_expression(index.mutate_prefix(), processor);
         Self::visit_expression(index.mutate_index(), processor);
+        processor.process_after_index_expression(index);
     }
 
     fn visit_function_call(call: &mut FunctionCall, processor: &mut T) {
@@ -417,6 +449,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
         Self::visit_prefix_expression(call.mutate_prefix(), processor);
         Self::visit_arguments(call.mutate_arguments(), processor);
+        processor.process_after_function_call(call);
     }
 
     fn visit_arguments(arguments: &mut Arguments, processor: &mut T) {
@@ -440,6 +473,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
             }
             TableEntry::Value(value) => Self::visit_expression(value, processor),
         });
+        processor.process_after_table_expression(table);
     }
 
     fn visit_prefix_expression(prefix: &mut Prefix, processor: &mut T) {
@@ -454,6 +488,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
                 Self::visit_parenthese_expression(expression, processor)
             }
         };
+        processor.process_after_prefix_expression(prefix);
     }
 
     fn visit_type(r#type: &mut Type, processor: &mut T) {
@@ -477,6 +512,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Type::String(string) => Self::visit_string_type(string, processor),
             Type::True(_) | Type::False(_) | Type::Nil(_) => {}
         }
+        processor.process_after_type(r#type);
     }
 
     fn visit_type_name(type_name: &mut TypeName, processor: &mut T) {
@@ -500,16 +536,19 @@ pub trait NodeVisitor<T: NodeProcessor> {
                 }
             }
         }
+        processor.process_after_type_name(type_name);
     }
 
     fn visit_type_field(type_field: &mut TypeField, processor: &mut T) {
         processor.process_type_field(type_field);
         Self::visit_type_name(type_field.mutate_type_name(), processor);
+        processor.process_after_type_field(type_field);
     }
 
     fn visit_array_type(array: &mut ArrayType, processor: &mut T) {
         processor.process_array_type(array);
         Self::visit_type(array.mutate_element_type(), processor);
+        processor.process_after_array_type(array);
     }
 
     fn visit_table_type(table: &mut TableType, processor: &mut T) {
@@ -530,16 +569,19 @@ pub trait NodeVisitor<T: NodeProcessor> {
                 }
             }
         }
+        processor.process_after_table_type(table);
     }
 
     fn visit_expression_type(expression_type: &mut ExpressionType, processor: &mut T) {
         processor.process_expression_type(expression_type);
         Self::visit_expression(expression_type.mutate_expression(), processor);
+        processor.process_after_expression_type(expression_type);
     }
 
     fn visit_parenthese_type(parenthese: &mut ParentheseType, processor: &mut T) {
         processor.process_parenthese_type(parenthese);
         Self::visit_type(parenthese.mutate_inner_type(), processor);
+        processor.process_after_parenthese_type(parenthese);
     }
 
     fn visit_function_type(function: &mut FunctionType, processor: &mut T) {
@@ -554,11 +596,14 @@ pub trait NodeVisitor<T: NodeProcessor> {
         }
 
         Self::visit_function_return_type(function.mutate_return_type(), processor);
+
+        processor.process_after_function_type(function);
     }
 
     fn visit_optional_type(optional: &mut OptionalType, processor: &mut T) {
         processor.process_optional_type(optional);
         Self::visit_type(optional.mutate_inner_type(), processor);
+        processor.process_after_optional_type(optional);
     }
 
     fn visit_intersection_type(intersection: &mut IntersectionType, processor: &mut T) {
@@ -567,6 +612,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
         for r#type in intersection.iter_mut_types() {
             Self::visit_type(r#type, processor);
         }
+        processor.process_after_intersection_type(intersection);
     }
 
     fn visit_union_type(union: &mut UnionType, processor: &mut T) {
@@ -575,10 +621,12 @@ pub trait NodeVisitor<T: NodeProcessor> {
         for r#type in union.iter_mut_types() {
             Self::visit_type(r#type, processor);
         }
+        processor.process_after_union_type(union);
     }
 
     fn visit_string_type(string: &mut StringType, processor: &mut T) {
         processor.process_string_type(string);
+        processor.process_after_string_type(string);
     }
 
     fn visit_type_pack(type_pack: &mut TypePack, processor: &mut T) {
@@ -590,11 +638,13 @@ pub trait NodeVisitor<T: NodeProcessor> {
         if let Some(variadic_type) = type_pack.mutate_variadic_type() {
             Self::visit_variadic_argument_type(variadic_type, processor);
         }
+        processor.process_after_type_pack(type_pack);
     }
 
     fn visit_variadic_type_pack(variadic_type_pack: &mut VariadicTypePack, processor: &mut T) {
         processor.process_variadic_type_pack(variadic_type_pack);
         Self::visit_type(variadic_type_pack.mutate_type(), processor);
+        processor.process_after_variadic_type_pack(variadic_type_pack);
     }
 
     fn visit_variadic_argument_type(variadic_type: &mut VariadicArgumentType, processor: &mut T) {
@@ -627,159 +677,9 @@ pub trait NodeVisitor<T: NodeProcessor> {
     }
 }
 
-/// The default node visitor.
-pub struct DefaultVisitor<T> {
+/// A node visitor for NodePostVisitor.
+pub struct DefaultPostVisitor<T> {
     _phantom: PhantomData<T>,
 }
 
-impl<T: NodeProcessor> NodeVisitor<T> for DefaultVisitor<T> {}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::process::NodeCounter;
-
-    #[test]
-    fn visit_do_statement() {
-        let mut counter = NodeCounter::new();
-        let mut block = Block::default().with_statement(DoStatement::default());
-
-        DefaultVisitor::visit_block(&mut block, &mut counter);
-
-        assert_eq!(counter.block_count, 2);
-        assert_eq!(counter.do_count, 1);
-    }
-
-    #[test]
-    fn visit_numeric_for_statement() {
-        let mut counter = NodeCounter::new();
-        let mut block = Block::default().with_statement(NumericForStatement::new(
-            "i".to_owned(),
-            Expression::from(true),
-            Expression::from(true),
-            None,
-            Block::default(),
-        ));
-
-        DefaultVisitor::visit_block(&mut block, &mut counter);
-
-        assert_eq!(counter.block_count, 2);
-        assert_eq!(counter.expression_count, 2);
-        assert_eq!(counter.numeric_for_count, 1);
-    }
-
-    #[test]
-    fn visit_generic_for_statement() {
-        let mut counter = NodeCounter::new();
-        let mut block = Block::default().with_statement(GenericForStatement::new(
-            vec!["k".into()],
-            vec![Expression::from(true)],
-            Block::default(),
-        ));
-
-        DefaultVisitor::visit_block(&mut block, &mut counter);
-
-        assert_eq!(counter.block_count, 2);
-        assert_eq!(counter.expression_count, 1);
-        assert_eq!(counter.generic_for_count, 1);
-    }
-
-    #[test]
-    fn visit_repeat_statement() {
-        let mut counter = NodeCounter::new();
-        let mut block =
-            Block::default().with_statement(RepeatStatement::new(Block::default(), true));
-
-        DefaultVisitor::visit_block(&mut block, &mut counter);
-
-        assert_eq!(counter.block_count, 2);
-        assert_eq!(counter.expression_count, 1);
-        assert_eq!(counter.repeat_count, 1);
-    }
-
-    #[test]
-    fn visit_while_statement() {
-        let mut counter = NodeCounter::new();
-        let mut block =
-            Block::default().with_statement(WhileStatement::new(Block::default(), true));
-
-        DefaultVisitor::visit_block(&mut block, &mut counter);
-
-        assert_eq!(counter.block_count, 2);
-        assert_eq!(counter.expression_count, 1);
-        assert_eq!(counter.while_count, 1);
-    }
-
-    #[test]
-    fn visit_if_statement() {
-        let mut counter = NodeCounter::new();
-        let mut block =
-            Block::default().with_statement(IfStatement::create(true, Block::default()));
-
-        DefaultVisitor::visit_block(&mut block, &mut counter);
-
-        assert_eq!(counter.block_count, 2);
-        assert_eq!(counter.expression_count, 1);
-        assert_eq!(counter.if_count, 1);
-    }
-
-    #[test]
-    fn visit_if_statement_with_else() {
-        let mut counter = NodeCounter::new();
-        let if_statement =
-            IfStatement::create(true, Block::default()).with_else_block(Block::default());
-
-        let mut block = Block::default().with_statement(if_statement);
-
-        DefaultVisitor::visit_block(&mut block, &mut counter);
-
-        assert_eq!(counter.block_count, 3);
-        assert_eq!(counter.expression_count, 1);
-        assert_eq!(counter.if_count, 1);
-    }
-
-    #[test]
-    fn visit_if_statement_with_elseif_and_else() {
-        let mut counter = NodeCounter::new();
-        let if_statement = IfStatement::create(true, Block::default())
-            .with_new_branch(false, Block::default())
-            .with_else_block(Block::default());
-
-        let mut block = Block::default().with_statement(if_statement);
-
-        DefaultVisitor::visit_block(&mut block, &mut counter);
-
-        assert_eq!(counter.block_count, 4);
-        assert_eq!(counter.expression_count, 2);
-        assert_eq!(counter.if_count, 1);
-    }
-
-    #[test]
-    fn visit_compound_assign_statement() {
-        let mut counter = NodeCounter::new();
-        let statement =
-            CompoundAssignStatement::new(CompoundOperator::Plus, Variable::new("var"), 1_f64);
-
-        let mut block = statement.into();
-
-        DefaultVisitor::visit_block(&mut block, &mut counter);
-
-        assert_eq!(counter.compound_assign, 1);
-        assert_eq!(counter.expression_count, 1);
-        assert_eq!(counter.variable_count, 1);
-    }
-
-    #[test]
-    fn visit_interpolated_string() {
-        let mut counter = NodeCounter::new();
-        let statement = LocalAssignStatement::from_variable("value")
-            .with_value(InterpolatedStringExpression::empty().with_segment(Expression::from(true)));
-
-        let mut block = statement.into();
-
-        DefaultVisitor::visit_block(&mut block, &mut counter);
-
-        assert_eq!(counter.interpolated_string_count, 1);
-        assert_eq!(counter.expression_count, 2);
-    }
-}
+impl<T: NodeProcessor + NodePostProcessor> NodePostVisitor<T> for DefaultPostVisitor<T> {}
