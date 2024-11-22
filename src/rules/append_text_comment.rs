@@ -60,7 +60,6 @@ impl AppendTextComment {
                     }
                 }
                 .map(|content| {
-                    let content = content.trim();
                     if content.is_empty() {
                         "".to_owned()
                     } else if content.contains('\n') {
@@ -81,7 +80,7 @@ impl AppendTextComment {
                             close_comment
                         )
                     } else {
-                        format!("-- {}", content)
+                        format!("--{}", content)
                     }
                 })
             })
