@@ -175,7 +175,7 @@ impl<Args, T: CallMatch<Args>> NodeProcessor for RemoveFunctionCallProcessor<Arg
                     .reserve_globals()
                     .filter(|global| {
                         self.is_identifier_used(global)
-                            && self.global_mappings.get(global).is_none()
+                            && !self.global_mappings.contains_key(global)
                     })
                     .collect::<Vec<_>>();
 
