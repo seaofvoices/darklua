@@ -172,6 +172,7 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
             .iter_mut_expressions()
             .for_each(|expression| Self::visit_expression(expression, scope));
 
+        scope.push();
         statement
             .iter_mut_identifiers()
             .for_each(|identifier| scope.insert(identifier.mutate_name()));
@@ -186,6 +187,7 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
         scope.process_scope(statement.mutate_block(), None);
 
         Self::visit_block(statement.mutate_block(), scope);
+        scope.pop();
     }
 
     fn visit_numeric_for(statement: &mut NumericForStatement, scope: &mut T) {
