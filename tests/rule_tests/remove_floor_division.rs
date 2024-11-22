@@ -13,7 +13,7 @@ test_rule!(
     floor_division_with_index_with_parenthese_expression("a[(key)] //= 1") => "a[key] = math.floor(a[key] / 1)",
     floor_division_with_field("a.counter //= 1") => "a.counter = math.floor(a.counter / 1)",
     floor_division_with_field_on_function_call("getObject().counter //= 1")
-        => "do local __DR = getObject() __DARKLUA_VAR.counter = math.floor(__DARKLUA_VAR.counter / 1) end",
+        => "do local __DARKLUA_VAR = getObject() __DARKLUA_VAR.counter = math.floor(__DARKLUA_VAR.counter / 1) end",
     floor_division_with_field_on_parentheses("(if condition then a else b).counter //= 1")
         => "do local __DARKLUA_VAR = if condition then a else b __DARKLUA_VAR.counter = math.floor(__DARKLUA_VAR.counter / 1) end",
     floor_division_with_identifier_in_parenthese_for_field("(a).counter //= 1") => "a.counter = math.floor(a.counter / 1)",
