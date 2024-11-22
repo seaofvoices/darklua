@@ -30,6 +30,15 @@ test_rule_with_tokens!(
 );
 
 test_rule_with_tokens!(
+    append_text_comment_start_native,
+    json5::from_str::<Box<dyn Rule>>(r#"{
+        rule: 'append_text_comment',
+        text: '!native',
+    }"#).unwrap(),
+    append_native_direction("return {}") => "--!native\nreturn {}",
+);
+
+test_rule_with_tokens!(
     append_text_comment_multiline,
     json5::from_str::<Box<dyn Rule>>(r#"{
         rule: 'append_text_comment',
