@@ -19,6 +19,7 @@ mod remove_comments;
 mod remove_compound_assign;
 mod remove_continue;
 mod remove_debug_profiling;
+mod remove_floor_division;
 mod remove_if_expression;
 mod remove_interpolated_string;
 mod remove_nil_declarations;
@@ -50,6 +51,7 @@ pub use remove_comments::*;
 pub use remove_compound_assign::*;
 pub use remove_continue::*;
 pub use remove_debug_profiling::*;
+pub use remove_floor_division::*;
 pub use remove_if_expression::*;
 pub use remove_interpolated_string::*;
 pub use remove_nil_declarations::*;
@@ -271,6 +273,7 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME => Box::<RemoveCompoundAssignment>::default(),
             REMOVE_DEBUG_PROFILING_RULE_NAME => Box::<RemoveDebugProfiling>::default(),
             REMOVE_EMPTY_DO_RULE_NAME => Box::<RemoveEmptyDo>::default(),
+            REMOVE_FLOOR_DIVISION_RULE_NAME => Box::<RemoveFloorDivision>::default(),
             REMOVE_FUNCTION_CALL_PARENS_RULE_NAME => Box::<RemoveFunctionCallParens>::default(),
             REMOVE_INTERPOLATED_STRING_RULE_NAME => Box::<RemoveInterpolatedString>::default(),
             REMOVE_METHOD_DEFINITION_RULE_NAME => Box::<RemoveMethodDefinition>::default(),

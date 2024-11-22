@@ -265,6 +265,17 @@ impl BinaryExpression {
         self.operator
     }
 
+    #[inline]
+    pub fn set_operator(&mut self, operator: BinaryOperator) {
+        if self.operator == operator {
+            return;
+        }
+        self.operator = operator;
+        if let Some(token) = self.token.as_mut() {
+            token.replace_with_content(operator.to_str());
+        }
+    }
+
     super::impl_token_fns!(iter = [token]);
 }
 
