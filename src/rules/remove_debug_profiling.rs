@@ -47,6 +47,10 @@ impl FlawlessRule for RemoveDebugProfiling {
         let mut processor =
             RemoveFunctionCallProcessor::new(self.preserve_args_side_effects, should_remove_call);
         ScopeVisitor::visit_block(block, &mut processor);
+
+        if let Some(statement) = processor.extract_reserved_globals() {
+            block.insert_statement(0, statement);
+        }
     }
 }
 
