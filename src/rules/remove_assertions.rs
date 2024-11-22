@@ -1,10 +1,13 @@
-use crate::nodes::{Block, Prefix};
+use std::collections::HashMap;
+use std::iter::{self, FromIterator};
+
+use crate::nodes::{Block, Expression, FunctionCall, Prefix, TupleArguments};
 use crate::process::{IdentifierTracker, NodeVisitor, ScopeVisitor};
 use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
 };
 
-use super::remove_call_match::RemoveFunctionCallProcessor;
+use super::remove_call_match::{CallMatch, RemoveFunctionCallProcessor};
 
 const ASSERT_FUNCTION_NAME: &str = "assert";
 
@@ -24,22 +27,60 @@ impl Default for RemoveAssertions {
     }
 }
 
-fn should_remove_call(identifiers: &IdentifierTracker, prefix: &Prefix) -> bool {
-    if identifiers.is_identifier_used(ASSERT_FUNCTION_NAME) {
-        return false;
+struct AssertMatcher;
+
+impl CallMatch<()> for AssertMatcher {
+    fn matches(&self, identifiers: &IdentifierTracker, prefix: &Prefix) -> bool {
+        if identifiers.is_identifier_used(ASSERT_FUNCTION_NAME) {
+            return false;
+        }
+
+        match prefix {
+            Prefix::Identifier(identifier) => identifier.get_name() == ASSERT_FUNCTION_NAME,
+            _ => false,
+        }
     }
 
-    match prefix {
-        Prefix::Identifier(identifier) => identifier.get_name() == ASSERT_FUNCTION_NAME,
-        _ => false,
+    fn compute_result(
+        &self,
+        call: &FunctionCall,
+        mappings: &HashMap<&'static str, String>,
+    ) -> Option<Expression> {
+        let expressions = call.get_arguments().clone().to_expressions();
+
+        Some(match expressions.len() {
+            0 => Expression::nil(),
+            1 => expressions
+                .into_iter()
+                .next()
+                .expect("at least one expression is expected"),
+            _ => FunctionCall::from_name(
+                mappings
+                    .get("select")
+                    .cloned()
+                    .unwrap_or_else(|| "select".to_owned()),
+            )
+            .with_arguments(TupleArguments::from_iter(
+                iter::once(Expression::from(1)).chain(expressions),
+            ))
+            .into(),
+        })
+    }
+
+    fn reserve_globals(&self) -> impl Iterator<Item = &'static str> {
+        iter::once("select")
     }
 }
 
 impl FlawlessRule for RemoveAssertions {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
         let mut processor =
-            RemoveFunctionCallProcessor::new(self.preserve_args_side_effects, should_remove_call);
+            RemoveFunctionCallProcessor::new(self.preserve_args_side_effects, AssertMatcher);
         ScopeVisitor::visit_block(block, &mut processor);
+
+        if let Some(statement) = processor.extract_reserved_globals() {
+            block.insert_statement(0, statement);
+        }
     }
 }
 
