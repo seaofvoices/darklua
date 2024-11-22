@@ -25,6 +25,7 @@ import {
   useMediaQuery,
 } from "@mui/material"
 import { useTheme } from "@mui/material/styles"
+import Seo from "../components/seo"
 
 const Parameters = ({ parameters }) => {
   if (parameters.length === 0) {
@@ -271,6 +272,11 @@ const RuleDocsPageTemplate = ({ data, location }) => (
 )
 
 export default RuleDocsPageTemplate
+
+export const Head = ({ data }) => {
+  const ruleName = data.markdownRemark.fields.ruleName
+  return <Seo title={ruleName} articles={[`Documentation for ${ruleName}`]} />
+}
 
 export const pageQuery = graphql`
   query RuleDocsPageBySlug($id: String!) {

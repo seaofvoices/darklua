@@ -2,16 +2,14 @@ import * as React from "react"
 
 import Footer, { FooterFiller } from "./footer"
 import { Box } from "@mui/system"
-import Seo from "./seo"
 import { AppBar, Paper } from "@mui/material"
 import NavBar, { NavBarFiller } from "./nav-bar"
 
-const Layout = ({ title, children }) => {
+const Layout = ({ children }) => {
   const onTopOfDrawer = theme => theme.zIndex.drawer + 1
 
   return (
     <Paper elevation={0} square sx={{ display: "flex", flexGrow: 1 }}>
-      <Seo title={title} />
       <AppBar position="fixed" sx={{ zIndex: onTopOfDrawer }}>
         <NavBar />
       </AppBar>
