@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* fix `remove_assertions` rule to make the `assert` calls return their arguments ([#229](https://github.com/seaofvoices/darklua/pull/229))
 * fix negative zero sign erasure ([#222](https://github.com/seaofvoices/darklua/pull/222))
 * add `remove_if_expression` rule ([#221](https://github.com/seaofvoices/darklua/pull/221))
 
