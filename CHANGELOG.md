@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* add rule to remove floor divisions (`remove_floor_division`) ([#230](https://github.com/seaofvoices/darklua/pull/230))
 * fix `remove_assertions` rule to make the `assert` calls return their arguments ([#229](https://github.com/seaofvoices/darklua/pull/229))
 * add rule to remove continue statements (`remove_continue`) ([#227](https://github.com/seaofvoices/darklua/pull/227))
 * fix negative zero sign erasure ([#222](https://github.com/seaofvoices/darklua/pull/222))
