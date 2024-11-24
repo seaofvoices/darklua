@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* fix `rename_variables` rule to rename module names in types ([#233](https://github.com/seaofvoices/darklua/pull/233))
 * fix string encoding containing unicode characters taking more than 1 byte ([#232](https://github.com/seaofvoices/darklua/pull/232))
 * fix `append_text_comment` to not add an extra space to comments ([#231](https://github.com/seaofvoices/darklua/pull/231))
 * add rule to remove floor divisions (`remove_floor_division`) ([#230](https://github.com/seaofvoices/darklua/pull/230))
