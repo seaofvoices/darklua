@@ -44,6 +44,7 @@ test_rule!(
     function_expression_parameters_reference("return function(foo, bar) return foo + bar end")
         => "return function(a, b) return a + b end",
     recycle_previous_identifiers("do local foo end local foo") => "do local a end local a",
+    reexported_type_field("local types = require('./types') export type Oof = types.Oof") => "local a = require('./types') export type Oof = a.Oof",
 );
 
 test_rule!(
@@ -88,6 +89,7 @@ test_rule!(
     function_expression_parameters_reference("return function(foo, bar) return foo + bar end")
         => "return function(a, b) return a + b end",
     recycle_previous_identifiers("do local foo end local foo") => "do local a end local a",
+    reexported_type_field("local types = require('./types') export type Oof = types.Oof") => "local a = require('./types') export type Oof = a.Oof",
 );
 
 test_rule_without_effects!(
