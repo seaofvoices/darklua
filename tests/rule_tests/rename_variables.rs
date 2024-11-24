@@ -45,6 +45,8 @@ test_rule!(
         => "return function(a, b) return a + b end",
     recycle_previous_identifiers("do local foo end local foo") => "do local a end local a",
     reexported_type_field("local types = require('./types') export type Oof = types.Oof") => "local a = require('./types') export type Oof = a.Oof",
+    type_variable_type_field("local React = require('@pkg/@jsdotlua/react') type Props = { children: React.ReactNode }")
+        => "local a = require('@pkg/@jsdotlua/react') type Props = { children: a.ReactNode }",
 );
 
 test_rule!(
@@ -90,6 +92,8 @@ test_rule!(
         => "return function(a, b) return a + b end",
     recycle_previous_identifiers("do local foo end local foo") => "do local a end local a",
     reexported_type_field("local types = require('./types') export type Oof = types.Oof") => "local a = require('./types') export type Oof = a.Oof",
+    type_variable_type_field("local React = require('@pkg/@jsdotlua/react') type Props = { children: React.ReactNode }")
+        => "local a = require('@pkg/@jsdotlua/react') type Props = { children: a.ReactNode }",
 );
 
 test_rule_without_effects!(
