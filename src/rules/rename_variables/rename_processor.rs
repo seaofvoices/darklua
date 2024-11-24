@@ -1,4 +1,4 @@
-use crate::nodes::{Expression, Identifier, LocalFunctionStatement};
+use crate::nodes::{Expression, Identifier, LocalFunctionStatement, TypeField};
 use crate::process::utils::{identifier_permutator, CharPermutator};
 use crate::process::{utils::KEYWORDS, NodeProcessor, Scope};
 
@@ -162,6 +162,14 @@ impl NodeProcessor for RenameProcessor {
     fn process_variable_expression(&mut self, variable: &mut Identifier) {
         if let Some(obfuscated_name) = self.get_obfuscated_name(variable.get_name()) {
             variable.set_name(obfuscated_name);
+        }
+    }
+
+    fn process_type_field(&mut self, type_field: &mut TypeField) {
+        if let Some(obfuscated_name) =
+            self.get_obfuscated_name(type_field.get_namespace().get_name())
+        {
+            type_field.mutate_namespace().set_name(obfuscated_name);
         }
     }
 }
