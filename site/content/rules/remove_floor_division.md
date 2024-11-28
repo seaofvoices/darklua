@@ -1,6 +1,6 @@
 ---
 description: Removes floor divisions
-added_in: "unreleased"
+added_in: "0.14.1"
 parameters: []
 examples:
   - content: "return variable // divider"
