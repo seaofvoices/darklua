@@ -10,6 +10,7 @@ pub mod rules;
 mod utils;
 
 pub use frontend::{
-    convert_data, process, Configuration, DarkluaError, GeneratorParameters, Options, Resources,
+    convert_data, process, BundleConfiguration, Configuration, DarkluaError, GeneratorParameters,
+    Options, Resources,
 };
 pub use parser::{Parser, ParserError};
