@@ -10,7 +10,7 @@ mod worker;
 
 use std::path::Path;
 
-pub use configuration::{Configuration, GeneratorParameters, BundleConfiguration};
+pub use configuration::{BundleConfiguration, Configuration, GeneratorParameters};
 pub use error::{DarkluaError, DarkluaResult};
 pub use options::Options;
 pub use process_result::ProcessResult;
