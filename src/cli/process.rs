@@ -4,12 +4,13 @@ use crate::cli::{CommandResult, GlobalOptions};
 
 use clap::Args;
 use darklua_core::{GeneratorParameters, Resources};
+use notify::EventKind;
 #[cfg(not(target_arch = "wasm32"))]
 use notify::RecursiveMode;
 #[cfg(not(target_arch = "wasm32"))]
-use notify_debouncer_mini::{new_debouncer, DebounceEventResult, DebouncedEventKind};
+use notify_debouncer_full::{new_debouncer, DebounceEventResult};
 use std::collections::HashSet;
-use std::fs;
+use std::env::current_dir;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::mpsc;
@@ -59,13 +60,13 @@ impl FromStr for LuaFormat {
     }
 }
 
-fn process(
-    resources: Resources,
-    process_options: darklua_core::Options,
-) -> (HashSet<PathBuf>, Result<(), CliError>) {
+fn process(resources: Resources, process_options: darklua_core::Options) -> CommandResult {
     let process_start_time = Instant::now();
 
-    let result = darklua_core::process(&resources, process_options);
+    let result = darklua_core::process(&resources, process_options).map_err(|err| {
+        log::error!("{}", err);
+        CliError::new(1)
+    })?;
 
     let process_duration = durationfmt::to_string(process_start_time.elapsed());
 
@@ -78,8 +79,12 @@ fn process(
         process_duration
     );
 
-    if result.has_errored() {
-        let error_count = result.error_count();
+    let errors = result.collect_errors();
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        let error_count = errors.len();
         eprintln!(
             "{}{} error{} happened:",
             if success_count > 0 { "but " } else { "" },
@@ -87,18 +92,16 @@ fn process(
             maybe_plural(error_count)
         );
 
-        result.errors().for_each(|error| eprintln!("-> {}", error));
+        for error in errors {
+            eprintln!("-> {}", error);
+        }
 
-        (result.into_created_files().collect(), Err(CliError::new(1)))
-    } else {
-        (result.into_created_files().collect(), Ok(()))
+        Err(CliError::new(1))
     }
 }
 
 impl Options {
-    fn process(&self) -> (HashSet<PathBuf>, Result<(), CliError>) {
-        let resources = Resources::from_file_system();
-
+    fn get_process_options(&self) -> darklua_core::Options {
         let mut process_options =
             darklua_core::Options::new(&self.input_path).with_output(&self.output_path);
 
@@ -113,8 +116,7 @@ impl Options {
                 LuaFormat::RetainLines => GeneratorParameters::RetainLines,
             })
         }
-
-        process(resources, process_options)
+        process_options
     }
 }
 
@@ -126,39 +128,140 @@ pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
     if cfg!(not(target_arch = "wasm32")) && options.watch {
         let watcher_options = options.clone();
 
-        // run process once initially
-        let (mut last_created_files, _) = watcher_options.process();
+        let resources = Resources::from_file_system();
+
+        let mut worker_tree = setup_worker_tree(&resources, &watcher_options);
+
+        let (sender, receiver) = mpsc::channel();
+        let process_sender = sender.clone();
+
+        let current_path = current_dir().ok();
+
+        let mut extra_file_watch = HashSet::new();
 
         let mut debouncer = new_debouncer(
             Duration::from_millis(FILE_WATCHING_DEBOUNCE_DURATION_MILLIS),
+            None,
             move |events: DebounceEventResult| match events {
                 Ok(events) => {
-                    if events
-                        .iter()
-                        .any(|event| matches!(event.kind, DebouncedEventKind::Any))
-                    {
-                        log::debug!("changes detected, re-running process");
-                        let (new_files, _) = watcher_options.process();
+                    for event in events.iter() {
+                        if let Some(worker_tree) = worker_tree.as_mut() {
+                            log::debug!("file watch has detected changes");
 
-                        for file_path in last_created_files.iter() {
-                            if !new_files.contains(file_path) {
-                                if let Err(err) = fs::remove_file(file_path) {
-                                    log::debug!(
-                                        "unable to remove path `{}`: {}",
-                                        file_path.display(),
-                                        err
-                                    )
+                            let mut paths_iterator = event.event.paths.iter().map(|path| {
+                                current_path
+                                    .as_ref()
+                                    .and_then(|current_path| path.strip_prefix(current_path).ok())
+                                    .unwrap_or(path)
+                            });
+
+                            if log::log_enabled!(log::Level::Trace) {
+                                let event_display = match event.kind {
+                                    EventKind::Any => Some("unknown operation on"),
+                                    EventKind::Create(_) => Some("created"),
+                                    EventKind::Modify(_) => Some("modified"),
+                                    EventKind::Remove(_) => Some("removed"),
+                                    EventKind::Access(_) | EventKind::Other => None,
+                                };
+                                if let Some(event_display) = event_display {
+                                    for path in event.event.paths.iter() {
+                                        log::trace!(
+                                            "file watcher: {} '{}'",
+                                            event_display,
+                                            path.display()
+                                        );
+                                    }
                                 }
                             }
+
+                            let mut has_created = false;
+
+                            match event.kind {
+                                EventKind::Any => {
+                                    for path in paths_iterator {
+                                        has_created = true;
+                                        worker_tree.source_changed(path);
+                                    }
+                                }
+                                EventKind::Create(_create_kind) => {
+                                    has_created = paths_iterator.next().is_some();
+                                }
+                                EventKind::Modify(_modify_kind) => {
+                                    for path in paths_iterator {
+                                        worker_tree.source_changed(path);
+                                    }
+                                }
+                                EventKind::Remove(_remove_kind) => {
+                                    for path in paths_iterator {
+                                        worker_tree.remove_source(path);
+                                    }
+                                }
+                                EventKind::Access(_) | EventKind::Other => {}
+                            }
+
+                            if has_created {
+                                log_darklua_error(
+                                    worker_tree.collect_work(
+                                        &resources,
+                                        &watcher_options.get_process_options(),
+                                    ),
+                                    || (),
+                                );
+                            }
                         }
-                        last_created_files = new_files;
+                    }
+
+                    if let Some(worker_tree) = worker_tree.as_mut() {
+                        log_darklua_error(
+                            worker_tree.process(&resources, watcher_options.get_process_options()),
+                            || (),
+                        );
+                    } else {
+                        worker_tree = setup_worker_tree(&resources, &watcher_options);
+                    }
+
+                    if let Some(worker_tree) = worker_tree.as_ref() {
+                        let files: HashSet<_> = worker_tree
+                            .iter_external_dependencies()
+                            .map(ToOwned::to_owned)
+                            .collect();
+
+                        for last_file in extra_file_watch.difference(&files) {
+                            log::debug!("stop file watching on '{}'", last_file.display());
+                            if let Err(err) =
+                                process_sender.send(WatcherSignal::Unwatch(last_file.to_path_buf()))
+                            {
+                                log::warn!(
+                                    "unable to send signal to unwatch '{}': {}",
+                                    last_file.display(),
+                                    err
+                                );
+                            }
+                        }
+
+                        for new_file in files.difference(&extra_file_watch) {
+                            log::debug!("start file watching on '{}'", new_file.display());
+                            if let Err(err) =
+                                process_sender.send(WatcherSignal::Watch(new_file.to_path_buf()))
+                            {
+                                log::warn!(
+                                    "unable to send signal to watch '{}': {}",
+                                    new_file.display(),
+                                    err
+                                );
+                            }
+                        }
+
+                        extra_file_watch = files;
                     }
                 }
-                Err(err) => {
-                    log::error!(
-                        "an error occured while watching file system for changes: {}",
-                        err
-                    );
+                Err(errors) => {
+                    for err in errors {
+                        log::error!(
+                            "an error occured while watching file system for changes: {}",
+                            err
+                        );
+                    }
                 }
             },
         )
@@ -173,7 +276,6 @@ pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
         );
 
         debouncer
-            .watcher()
             .watch(&options.input_path, RecursiveMode::Recursive)
             .map_err(|err| {
                 log::error!(
@@ -187,7 +289,6 @@ pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
         if let Some(config) = options.config.as_ref() {
             log::debug!("start watching provided config path {}", config.display());
             debouncer
-                .watcher()
                 .watch(config, RecursiveMode::NonRecursive)
                 .map_err(|err| {
                     log::error!(
@@ -202,7 +303,6 @@ pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
                 if path.exists() {
                     log::debug!("start watching default config path {}", path.display());
                     debouncer
-                        .watcher()
                         .watch(path, RecursiveMode::NonRecursive)
                         .map_err(|err| {
                             log::error!(
@@ -216,19 +316,77 @@ pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
             }
         }
 
-        let (sender, receiver) = mpsc::channel();
-
-        ctrlc::set_handler(move || sender.send(()).expect("unable to send signal to terminate"))
-            .map_err(|err| {
-                log::error!("unable to set Ctrl-C handler: {}", err);
-                CliError::new(1)
-            })?;
+        ctrlc::set_handler(move || {
+            sender
+                .send(WatcherSignal::Exit)
+                .expect("unable to send signal to terminate")
+        })
+        .map_err(|err| {
+            log::error!("unable to set Ctrl-C handler: {}", err);
+            CliError::new(1)
+        })?;
 
         log::debug!("waiting for Ctrl-C to close the program");
-        receiver.recv().expect("Could not receive from channel.");
+
+        loop {
+            match receiver.recv().expect("Could not receive from channel.") {
+                WatcherSignal::Exit => break,
+                WatcherSignal::Watch(path) => {
+                    match debouncer.watch(&path, RecursiveMode::NonRecursive) {
+                        Ok(()) => {}
+                        Err(err) => {
+                            log::error!(
+                                "unable to start watching file system at `{}`: {}",
+                                path.display(),
+                                err
+                            );
+                        }
+                    }
+                }
+                WatcherSignal::Unwatch(path) => match debouncer.unwatch(&path) {
+                    Ok(()) => {}
+                    Err(err) => {
+                        log::error!(
+                            "unable to stop watching file system at `{}`: {}",
+                            path.display(),
+                            err
+                        );
+                    }
+                },
+            }
+        }
 
         Ok(())
     } else {
-        options.process().1
+        let resources = Resources::from_file_system();
+
+        process(resources, options.get_process_options())
     }
+}
+
+fn log_darklua_error<T>(
+    result: Result<T, darklua_core::DarkluaError>,
+    else_result: impl Fn() -> T,
+) -> T {
+    result
+        .inspect_err(|err| {
+            log::error!("{}", err);
+        })
+        .unwrap_or_else(|_| else_result())
+}
+
+fn setup_worker_tree(
+    resources: &Resources,
+    watcher_options: &Options,
+) -> Option<darklua_core::WorkerTree> {
+    log_darklua_error(
+        darklua_core::process(resources, watcher_options.get_process_options()).map(Some),
+        || None,
+    )
+}
+
+enum WatcherSignal {
+    Exit,
+    Watch(PathBuf),
+    Unwatch(PathBuf),
 }

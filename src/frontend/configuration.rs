@@ -54,6 +54,11 @@ impl Configuration {
     }
 
     #[inline]
+    pub fn set_generator(&mut self, generator: GeneratorParameters) {
+        self.generator = generator;
+    }
+
+    #[inline]
     pub fn with_rule(mut self, rule: impl Into<Box<dyn Rule>>) -> Self {
         self.push_rule(rule);
         self

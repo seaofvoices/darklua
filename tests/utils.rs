@@ -58,6 +58,7 @@ pub fn snapshot_file_process_file_errors(
     snapshot_name: &str,
 ) {
     let errors = darklua_core::process(resources, darklua_core::Options::new(file_name))
+        .unwrap()
         .result()
         .unwrap_err();
 

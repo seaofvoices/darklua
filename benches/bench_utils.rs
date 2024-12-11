@@ -139,6 +139,7 @@ macro_rules! generate_bench {
                             criterion::black_box(&resources),
                             criterion::black_box($options),
                         )
+                        .unwrap()
                         .result()
                         .unwrap()
                     })

@@ -89,7 +89,7 @@ impl PathRequireMode {
         _context: &Context<'_, '_, '_>,
     ) -> Result<Option<crate::nodes::Arguments>, crate::DarkluaError> {
         Err(DarkluaError::custom("unsupported target require mode")
-            .context("path require mode cannot"))
+            .context("path require mode cannot be used"))
     }
 }
 

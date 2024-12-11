@@ -105,6 +105,35 @@ impl Source {
             }
         }
     }
+
+    fn remove(&self, location: &Path) -> Result<(), ResourceError> {
+        match self {
+            Self::FileSystem => {
+                if !self.exists(location)? {
+                    Ok(())
+                } else if self.is_file(location)? {
+                    fs::remove_file(location).map_err(|err| ResourceError::io_error(location, err))
+                } else if self.is_directory(location)? {
+                    fs::remove_dir_all(location)
+                        .map_err(|err| ResourceError::io_error(location, err))
+                } else {
+                    Ok(())
+                }
+            }
+            Self::Memory(data) => {
+                if self.is_file(location)? {
+                    let mut data = data.lock().unwrap();
+                    data.remove(&normalize_path(location));
+                } else if self.is_directory(location)? {
+                    let mut data = data.lock().unwrap();
+                    let location = normalize_path(location);
+                    data.retain(|path, _| !path.starts_with(&location));
+                }
+
+                Ok(())
+            }
+        }
+    }
 }
 
 fn walk_file_system(location: PathBuf) -> impl Iterator<Item = PathBuf> {
@@ -220,6 +249,14 @@ impl Resources {
     pub fn write(&self, location: impl AsRef<Path>, content: &str) -> ResourceResult<()> {
         self.source.write(location.as_ref(), content)
     }
+
+    pub fn remove(&self, location: impl AsRef<Path>) -> ResourceResult<()> {
+        self.source.remove(location.as_ref())
+    }
+
+    pub fn walk(&self, location: impl AsRef<Path>) -> impl Iterator<Item = PathBuf> {
+        self.source.walk(location.as_ref())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -273,6 +310,16 @@ mod test {
             resources.write(any_path(), ANY_CONTENT).unwrap();
 
             assert_eq!(resources.exists(any_path()), Ok(true));
+        }
+
+        #[test]
+        fn created_file_is_removed_exists() {
+            let resources = new();
+            resources.write(any_path(), ANY_CONTENT).unwrap();
+
+            resources.remove(any_path()).unwrap();
+
+            assert_eq!(resources.exists(any_path()), Ok(false));
         }
 
         #[test]
