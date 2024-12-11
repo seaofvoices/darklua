@@ -26,46 +26,46 @@ path = "src/bin.rs"
 tracing = ["dep:tracing"]
 
 [dependencies]
-anstyle = "1.0.6"
-clap = { version = "4.5.3", features = ["derive"] }
+anstyle = "1.0.10"
+clap = { version = "4.5.23", features = ["derive"] }
 durationfmt = "0.1.1"
 elsa = "1.10.0"
-env_logger = "0.11.3"
+env_logger = "0.11.5"
 full_moon = { version = "1.0.0", features = ["roblox"] }
 json5 = "0.4.1"
-log = "0.4.21"
-pathdiff = "0.2.1"
-regex = "1.10.4"
+log = "0.4.22"
+pathdiff = "0.2.3"
+petgraph = "0.6.5"
+regex = "1.11.1"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0.114"
+serde_json = "1.0.133"
 serde_yaml = "0.9.32"
-toml = "0.8.11"
+toml = "0.8.19"
 tracing = { version = "0.1", optional = true }
 wax = "0.5.0"
+xxhash-rust = { version = "0.8.12", features = ["xxh3"] }
 
 [dev-dependencies]
-assert_cmd = "2.0.14"
+assert_cmd = "2.0.16"
 criterion = { version = "0.5.1", features = ["html_reports"] }
-include_dir = "0.7.3"
+include_dir = "0.7.4"
 insta = { version = "1.36.1", features = ["json", "filters"] }
-paste = "1.0.14"
-pretty_assertions = "1.4.0"
+paste = "1.0.15"
+pretty_assertions = "1.4.1"
 rand = "0.8.5"
 rand_distr = "0.4.3"
-serde_bytes = "0.11.14"
-tempfile = "3.10.1"
+serde_bytes = "0.11.15"
+tempfile = "3.14.0"
 tracing-subscriber = "0.3.18"
 tracing-tracy = "0.11.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 web-time = "1.1.0"
-# node-sys = "0.4.2"
-# web-sys = { version = "0.3.72", features = ["Window", "Performance"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-ctrlc = { version = "3.4.4", features = ["termination"] }
-notify = "6.1.1"
-notify-debouncer-mini = "0.4.1"
+ctrlc = { version = "3.4.5", features = ["termination"] }
+notify = "7.0.0"
+notify-debouncer-full = "0.4.0"
 
 # This is needed because when runnin `cargo test`, the library and its
 # dependencies are build with the `dev` profile. To make sure full_moon

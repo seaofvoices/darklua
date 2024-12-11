@@ -31,6 +31,8 @@ impl RobloxRequireMode {
             .as_ref()
             .map(|rojo_sourcemap_path| context.project_location().join(rojo_sourcemap_path))
         {
+            context.add_file_dependency(rojo_sourcemap_path.clone());
+
             let sourcemap_parent_location = get_relative_parent_path(rojo_sourcemap_path);
             let sourcemap = RojoSourcemap::parse(
                 &context

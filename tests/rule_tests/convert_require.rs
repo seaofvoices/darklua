@@ -140,6 +140,7 @@ test_rule!(
 
 fn process_file(resources: &Resources, file_name: &str) -> String {
     darklua_core::process(resources, Options::new(file_name))
+        .unwrap()
         .result()
         .unwrap();
 

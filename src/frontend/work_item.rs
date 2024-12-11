@@ -1,6 +1,11 @@
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+};
 
 use crate::{nodes::Block, utils::Timer};
+
+use super::{DarkluaError, DarkluaResult};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Progress {
@@ -11,7 +16,7 @@ pub(crate) struct Progress {
 }
 
 impl Progress {
-    pub fn new(block: Block) -> Self {
+    pub(crate) fn new(block: Block) -> Self {
         Self {
             block,
             next_rule: 0,
@@ -20,67 +25,69 @@ impl Progress {
         }
     }
 
-    pub fn with_content(self, content: String) -> WorkProgress {
-        WorkProgress {
-            content,
-            work: self,
-        }
-    }
-
-    pub fn at_rule(mut self, rule_index: usize) -> Self {
-        self.next_rule = rule_index;
-        self
-    }
-
-    pub fn with_required_content(mut self, required_content: Vec<PathBuf>) -> Self {
+    pub(crate) fn set_required_content(&mut self, required_content: Vec<PathBuf>) {
         self.required = required_content;
-        self
     }
 
-    pub fn next_rule(&self) -> usize {
+    pub(crate) fn next_rule(&self) -> usize {
         self.next_rule
     }
 
-    pub fn block(&self) -> &Block {
+    pub(crate) fn set_next_rule(&mut self, rule_index: usize) {
+        self.next_rule = rule_index;
+    }
+
+    pub(crate) fn block(&self) -> &Block {
         &self.block
     }
 
-    pub fn mutate_block(&mut self) -> &mut Block {
+    pub(crate) fn mutate_block(&mut self) -> &mut Block {
         &mut self.block
     }
 
-    pub fn duration(&mut self) -> &mut Timer {
+    pub(crate) fn duration(&mut self) -> &mut Timer {
         &mut self.duration
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct WorkProgress {
-    content: String,
-    work: Progress,
+    pub(crate) content: String,
+    pub(crate) progress: Progress,
 }
 
 impl WorkProgress {
-    pub fn new(content: String, block: Block) -> Self {
+    pub(crate) fn new(content: String, block: Block) -> Self {
         Self {
             content,
-            work: Progress::new(block),
+            progress: Progress::new(block),
         }
     }
 
-    pub fn required_content(&self) -> impl Iterator<Item = &Path> {
-        self.work.required.iter().map(AsRef::as_ref)
-    }
-
-    pub fn extract(self) -> (String, Progress) {
-        (self.content, self.work)
+    pub(crate) fn required_content(&self) -> impl Iterator<Item = &Path> {
+        self.progress.required.iter().map(AsRef::as_ref)
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub(crate) enum WorkStatus {
     NotStarted,
     InProgress(Box<WorkProgress>),
+    Done(DarkluaResult<()>),
+}
+
+impl WorkStatus {
+    pub(crate) fn done() -> Self {
+        Self::Done(Ok(()))
+    }
+
+    pub(crate) fn err(err: DarkluaError) -> Self {
+        Self::Done(Err(err))
+    }
+
+    pub(crate) fn is_done(&self) -> bool {
+        matches!(self, WorkStatus::Done(_))
+    }
 }
 
 impl Default for WorkStatus {
@@ -102,64 +109,56 @@ pub(crate) struct WorkData {
 }
 
 impl WorkData {
-    pub fn with_status(self, status: impl Into<WorkStatus>) -> WorkItem {
-        WorkItem {
-            data: self,
-            status: status.into(),
-        }
+    pub(crate) fn is_in_place(&self) -> bool {
+        self.source == self.output
     }
 
-    pub fn source(&self) -> &Path {
+    pub(crate) fn source(&self) -> &Path {
         &self.source
     }
 
-    pub fn output(&self) -> &Path {
+    pub(crate) fn output(&self) -> &Path {
         &self.output
     }
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct WorkItem {
-    data: WorkData,
-    status: WorkStatus,
+    pub(crate) data: WorkData,
+    pub(crate) status: WorkStatus,
+    pub(crate) external_file_dependencies: HashSet<PathBuf>,
 }
 
 impl WorkItem {
-    pub fn new(source: impl Into<PathBuf>, output: impl Into<PathBuf>) -> Self {
+    pub(crate) fn new(source: impl Into<PathBuf>, output: impl Into<PathBuf>) -> Self {
         Self {
             data: WorkData {
                 source: source.into(),
                 output: output.into(),
             },
             status: Default::default(),
+            external_file_dependencies: Default::default(),
         }
     }
 
-    pub fn new_in_place(source: impl Into<PathBuf>) -> Self {
+    pub(crate) fn new_in_place(source: impl Into<PathBuf>) -> Self {
         let source = source.into();
         Self::new(source.clone(), source)
     }
 
-    pub fn extract(self) -> (WorkStatus, WorkData) {
-        (self.status, self.data)
-    }
-
-    pub fn source(&self) -> &Path {
+    pub(crate) fn source(&self) -> &Path {
         &self.data.source
     }
 
-    pub fn get_created_file_path(&self) -> Option<PathBuf> {
-        if self.data.source == self.data.output {
-            None
-        } else {
-            Some(self.data.output.to_path_buf())
+    pub(crate) fn total_required_content(&self) -> usize {
+        match &self.status {
+            WorkStatus::NotStarted | WorkStatus::Done(_) => 0,
+            WorkStatus::InProgress(progress) => progress.progress.required.len(),
         }
     }
 
-    pub fn total_required_content(&self) -> usize {
-        match &self.status {
-            WorkStatus::NotStarted => 0,
-            WorkStatus::InProgress(progress) => progress.work.required.len(),
-        }
+    pub(crate) fn reset(&mut self) {
+        self.status = WorkStatus::NotStarted;
+        self.external_file_dependencies.clear();
     }
 }

@@ -17,6 +17,7 @@ fn process_main_unchanged(resources: &Resources, main_code: &'static str) {
         resources,
         Options::new("src/main.lua").with_output("out.lua"),
     )
+    .unwrap()
     .result()
     .unwrap();
 
@@ -75,6 +76,7 @@ mod without_rules {
             resources,
             Options::new("src/main.lua").with_output("out.lua"),
         )
+        .unwrap()
         .result()
         .unwrap();
 
@@ -88,6 +90,7 @@ mod without_rules {
             resources,
             Options::new("src/main.lua").with_output("out.lua"),
         )
+        .unwrap()
         .result()
         .unwrap_err();
 
@@ -523,6 +526,7 @@ data:
                     resource_ref,
                     Options::new("src/main.lua").with_output("out.lua"),
                 )
+                .unwrap()
                 .result()
                 .unwrap();
             });

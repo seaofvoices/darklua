@@ -139,6 +139,10 @@ impl BuildModuleDefinitions {
             return;
         }
 
+        for (_, _, path) in self.module_definitions.iter() {
+            context.add_file_dependency(path.clone());
+        }
+
         let modules_identifier = Identifier::from(&self.modules_identifier);
 
         let mut shift_lines = 0;
