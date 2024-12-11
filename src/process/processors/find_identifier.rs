@@ -60,7 +60,7 @@ impl<'a> FromIterator<&'a str> for FindVariables<'a> {
     }
 }
 
-impl<'a> NodeProcessor for FindVariables<'a> {
+impl NodeProcessor for FindVariables<'_> {
     fn process_variable_expression(&mut self, variable: &mut Identifier) {
         if !self.usage_found {
             let name = variable.get_name();
