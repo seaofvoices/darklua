@@ -246,7 +246,9 @@ impl WorkerTree {
     }
 
     pub fn iter_external_dependencies(&self) -> impl Iterator<Item = &Path> {
-        self.external_dependencies.keys().map(PathBuf::as_path)
+        self.external_dependencies
+            .iter()
+            .filter_map(|(path, container)| (!container.is_empty()).then_some(path.as_path()))
     }
 
     pub fn reset(&mut self) {
@@ -377,6 +379,11 @@ impl WorkerTree {
                 .expect("node index should exist");
 
             log::debug!("restart work for {}", item.source().display());
+            for path in item.external_file_dependencies.iter() {
+                if let Some(container) = self.external_dependencies.get_mut(path) {
+                    container.remove(&node_index);
+                }
+            }
             item.reset();
         }
     }
