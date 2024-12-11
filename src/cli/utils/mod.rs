@@ -1,3 +1,9 @@
+#[cfg(not(target_arch = "wasm32"))]
+mod file_watcher;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use file_watcher::FileWatcher;
+
 pub fn maybe_plural(count: usize) -> &'static str {
     if count > 1 {
         "s"

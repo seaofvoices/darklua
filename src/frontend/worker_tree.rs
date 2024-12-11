@@ -20,7 +20,6 @@ pub struct WorkerTree {
     external_dependencies: HashMap<PathBuf, HashSet<NodeIndex>>,
     remove_files: Vec<PathBuf>,
     last_configuration_hash: Option<u64>,
-    external_file_dependencies: HashSet<PathBuf>,
 }
 
 impl WorkerTree {
@@ -172,10 +171,19 @@ impl WorkerTree {
                         }
 
                         for path in work_item.external_file_dependencies.iter() {
-                            self.external_dependencies
+                            let container = self
+                                .external_dependencies
                                 .entry(path.to_path_buf())
-                                .or_default()
-                                .insert(node_index);
+                                .or_default();
+
+                            if !container.contains(&node_index) {
+                                log::trace!(
+                                    "link external dependency {} to {}",
+                                    path.display(),
+                                    work_item.source().display()
+                                );
+                                container.insert(node_index);
+                            }
                         }
                     }
 
@@ -199,10 +207,6 @@ impl WorkerTree {
                 self.graph.add_edge(from, to, ());
             }
         }
-
-        // for path in worker.into_file_dependencies() {
-        //     self.external_file_dependencies.insert(path);
-        // }
 
         log::info!("executed work in {}", work_timer.duration_label());
 
@@ -243,7 +247,6 @@ impl WorkerTree {
 
     pub fn iter_external_dependencies(&self) -> impl Iterator<Item = &Path> {
         self.external_dependencies.keys().map(PathBuf::as_path)
-        // self.external_file_dependencies.iter().map(PathBuf::as_path)
     }
 
     pub fn reset(&mut self) {
@@ -251,7 +254,6 @@ impl WorkerTree {
             work_item.reset();
         });
         self.external_dependencies.clear();
-        self.external_file_dependencies.clear();
     }
 
     pub fn source_changed(&mut self, path: impl AsRef<Path>) {

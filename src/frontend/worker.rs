@@ -125,8 +125,7 @@ impl<'a> Worker<'a> {
             WorkStatus::NotStarted => {
                 let source_display = work_item.source().display();
 
-                let source = work_item.source();
-                let content = self.resources.get(source)?;
+                let content = self.resources.get(work_item.source())?;
 
                 let parser = self.configuration.build_parser();
 
@@ -134,14 +133,14 @@ impl<'a> Worker<'a> {
 
                 let parser_timer = Timer::now();
 
-                let mut block = parser
-                    .parse(&content)
-                    .map_err(|parser_error| DarkluaError::parser_error(source, parser_error))?;
+                let mut block = parser.parse(&content).map_err(|parser_error| {
+                    DarkluaError::parser_error(work_item.source(), parser_error)
+                })?;
 
                 let parser_time = parser_timer.duration_label();
                 log::debug!("parsed `{}` in {}", source_display, parser_time);
 
-                self.bundle(&mut block, source, &content)?;
+                self.bundle(work_item, &mut block, &content)?;
 
                 work_item.status = WorkProgress::new(content, block).into();
 
@@ -347,8 +346,8 @@ impl<'a> Worker<'a> {
 
     fn bundle(
         &mut self,
+        work_item: &mut WorkItem,
         block: &mut Block,
-        source: &Path,
         original_code: &str,
     ) -> DarkluaResult<()> {
         if self.cached_bundler.is_none() {
@@ -361,27 +360,39 @@ impl<'a> Worker<'a> {
             None => return Ok(()),
         };
 
-        log::debug!("beginning bundling from `{}`", source.display());
+        log::debug!("beginning bundling from `{}`", work_item.source().display());
 
         let bundle_timer = Timer::now();
 
-        let context = self.create_rule_context(source, original_code).build();
+        let context = self
+            .create_rule_context(work_item.source(), original_code)
+            .build();
 
-        bundler.process(block, &context).map_err(|rule_error| {
-            let error = DarkluaError::orphan_rule_error(source, bundler, rule_error);
+        let rule_result = bundler.process(block, &context).map_err(|rule_error| {
+            let error = DarkluaError::orphan_rule_error(work_item.source(), bundler, rule_error);
 
             log::trace!(
                 "[{}] rule `{}` errored: {}",
-                source.display(),
+                work_item.source().display(),
                 bundler.get_name(),
                 error
             );
 
             error
-        })?;
+        });
+
+        work_item
+            .external_file_dependencies
+            .extend(context.into_dependencies());
+
+        rule_result?;
 
         let bundle_time = bundle_timer.duration_label();
-        log::debug!("bundled `{}` in {}", source.display(), bundle_time);
+        log::debug!(
+            "bundled `{}` in {}",
+            work_item.source().display(),
+            bundle_time
+        );
 
         Ok(())
     }
