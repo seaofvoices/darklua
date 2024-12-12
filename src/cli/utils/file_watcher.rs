@@ -73,6 +73,7 @@ impl FileWatcher {
             .take()
             .expect("file watcher channel receiver should exist");
 
+        let input_path = self.process_option.input_path.clone();
         let config_path = self.process_option.config.clone();
 
         let mut debouncer = new_debouncer(
@@ -97,6 +98,19 @@ impl FileWatcher {
             log::error!("unable to create file watcher: {}", err);
             CliError::new(1)
         })?;
+
+        log::debug!("start watching file system on {}", input_path.display());
+
+        debouncer
+            .watch(&input_path, RecursiveMode::Recursive)
+            .map_err(|err| {
+                log::error!(
+                    "unable to start watching file system at `{}`: {}",
+                    input_path.display(),
+                    err
+                );
+                CliError::new(1)
+            })?;
 
         if let Some(config) = &config_path {
             log::debug!("start watching provided config path {}", config.display());
