@@ -92,7 +92,7 @@ struct RequireConverter<'a> {
     context: &'a Context<'a, 'a, 'a>,
 }
 
-impl<'a> Deref for RequireConverter<'a> {
+impl Deref for RequireConverter<'_> {
     type Target = IdentifierTracker;
 
     fn deref(&self) -> &Self::Target {
@@ -100,7 +100,7 @@ impl<'a> Deref for RequireConverter<'a> {
     }
 }
 
-impl<'a> DerefMut for RequireConverter<'a> {
+impl DerefMut for RequireConverter<'_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.identifier_tracker
     }
@@ -131,7 +131,7 @@ impl<'a> RequireConverter<'a> {
     }
 }
 
-impl<'a> NodeProcessor for RequireConverter<'a> {
+impl NodeProcessor for RequireConverter<'_> {
     fn process_function_call(&mut self, call: &mut FunctionCall) {
         if is_require_call(call, self) {
             match self.try_require_conversion(call) {

@@ -16,7 +16,7 @@ pub struct WorkCache<'a> {
     input_to_output: HashMap<PathBuf, PathBuf>,
 }
 
-impl<'a> Clone for WorkCache<'a> {
+impl Clone for WorkCache<'_> {
     fn clone(&self) -> Self {
         Self {
             resources: self.resources,
@@ -26,7 +26,7 @@ impl<'a> Clone for WorkCache<'a> {
     }
 }
 
-impl<'a> fmt::Debug for WorkCache<'a> {
+impl fmt::Debug for WorkCache<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("WorkCache")
             .field("resources", &self.resources)

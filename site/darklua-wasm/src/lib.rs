@@ -28,24 +28,24 @@ pub fn process_code(code: &str, opt_config: JsValue) -> Result<String, JsValue> 
     const LOCATION: &str = "file.lua";
     resources.write(LOCATION, code).unwrap();
 
-    let result = darklua_core::process(
+    let worker_tree = darklua_core::process(
         &resources,
         Options::new(LOCATION).with_configuration(config),
-    );
+    )
+    .map_err(|err| err.to_string())?;
 
-    match result.result() {
-        Ok(()) => {
-            let lua_code = resources.get(LOCATION).unwrap();
+    let errors = worker_tree.collect_errors();
 
-            Ok(lua_code)
-        }
-        Err(errors) => {
-            let errors: Vec<_> = errors
-                .into_iter()
-                .map(|error| format!("-> {}", error))
-                .collect();
-            Err(format!("unable to process code:\n{}", errors.join("\n")).into())
-        }
+    if errors.is_empty() {
+        let lua_code = resources.get(LOCATION).unwrap();
+
+        Ok(lua_code)
+    } else {
+        let errors: Vec<_> = errors
+            .into_iter()
+            .map(|error| format!("-> {}", error))
+            .collect();
+        Err(format!("unable to process code:\n{}", errors.join("\n")).into())
     }
 }
 

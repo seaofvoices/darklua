@@ -35,48 +35,50 @@ pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
 
     let process_start_time = Instant::now();
 
-    let result = darklua_core::process(&resources, process_options);
+    let result = darklua_core::process(&resources, process_options).map_err(|err| {
+        log::error!("{}", err);
+        CliError::new(1)
+    })?;
 
     let process_duration = durationfmt::to_string(process_start_time.elapsed());
 
     let success_count = result.success_count();
 
-    match result.result() {
-        Ok(()) => {
-            println!(
+    let errors = result.collect_errors();
+
+    if errors.is_empty() {
+        println!(
+            "successfully minified {} file{} (in {})",
+            success_count,
+            maybe_plural(success_count),
+            process_duration
+        );
+        Ok(())
+    } else {
+        let error_count = errors.len();
+
+        if success_count > 0 {
+            eprintln!(
                 "successfully minified {} file{} (in {})",
                 success_count,
                 maybe_plural(success_count),
                 process_duration
             );
-            Ok(())
+            eprintln!(
+                "But {} error{} happened:",
+                error_count,
+                maybe_plural(error_count)
+            );
+        } else {
+            eprintln!(
+                "{} error{} happened:",
+                error_count,
+                maybe_plural(error_count)
+            );
         }
-        Err(errors) => {
-            let error_count = errors.len();
 
-            if success_count > 0 {
-                eprintln!(
-                    "successfully minified {} file{} (in {})",
-                    success_count,
-                    maybe_plural(success_count),
-                    process_duration
-                );
-                eprintln!(
-                    "But {} error{} happened:",
-                    error_count,
-                    maybe_plural(error_count)
-                );
-            } else {
-                eprintln!(
-                    "{} error{} happened:",
-                    error_count,
-                    maybe_plural(error_count)
-                );
-            }
+        errors.iter().for_each(|error| eprintln!("-> {}", error));
 
-            errors.iter().for_each(|error| eprintln!("-> {}", error));
-
-            Err(CliError::new(1))
-        }
+        Err(CliError::new(1))
     }
 }
