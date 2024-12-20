@@ -108,12 +108,16 @@ fn parse_roblox_call(call: &FunctionCall, current_path: &mut PathBuf) -> Darklua
 
     let mut temp_path = PathBuf::from("node_modules");
     let Arguments::Tuple(args) = call.get_arguments() else {
-        return Err(
-            DarkluaError::custom("expected call arguments for TS.getModule to be a tuple")
-                .context("while parsing roblox-ts require"),
-        )?;
+        return Err(DarkluaError::custom(
+            "expected call arguments for TS.getModule to be a tuple",
+        )
+        .context("while parsing roblox-ts require"))?;
     };
-    args.iter_values().for_each(|arg| if let Expression::String(x) = arg { temp_path.push(x.get_value()) });
+    args.iter_values().for_each(|arg| {
+        if let Expression::String(x) = arg {
+            temp_path.push(x.get_value())
+        }
+    });
 
     let _ = temp_path.join(&current_path);
     *current_path = temp_path;
