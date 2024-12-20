@@ -1,3 +1,4 @@
+pub(crate) mod hybrid_require_mode;
 pub(crate) mod path_require_mode;
 mod require_mode;
 

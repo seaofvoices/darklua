@@ -250,7 +250,7 @@ impl<'a> FilterCommentProcessor<'a> {
     }
 }
 
-impl<'a> NodeProcessor for FilterCommentProcessor<'a> {
+impl NodeProcessor for FilterCommentProcessor<'_> {
     fn process_block(&mut self, block: &mut Block) {
         block.filter_comments(|trivia| self.ignore_trivia(trivia));
     }

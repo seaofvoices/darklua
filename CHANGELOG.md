@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.14.2
+
+* add `hybrid` require mode with support for roblox-ts ([#242](https://github.com/seaofvoices/darklua/pull/242))
+
 ## 0.14.1
 
 * fix `rename_variables` rule to rename module names in types ([#233](https://github.com/seaofvoices/darklua/pull/233))

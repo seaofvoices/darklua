@@ -34,7 +34,7 @@ impl<'a, 'b> PathIterator<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Iterator for PathIterator<'a, 'b> {
+impl Iterator for PathIterator<'_, '_> {
     type Item = PathBuf;
 
     fn next(&mut self) -> Option<Self::Item> {

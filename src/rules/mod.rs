@@ -130,7 +130,7 @@ pub struct Context<'a, 'resources, 'code> {
     project_location: Option<PathBuf>,
 }
 
-impl<'a, 'resources, 'code> Context<'a, 'resources, 'code> {
+impl Context<'_, '_, '_> {
     pub fn block(&self, path: impl AsRef<Path>) -> Option<&Block> {
         self.blocks.get(path.as_ref()).copied()
     }
