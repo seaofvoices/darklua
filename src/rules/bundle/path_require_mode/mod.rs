@@ -47,7 +47,9 @@ pub(crate) struct RequirePathProcessor<'a, 'b, 'resources, 'code, T: RequirePath
     errors: Vec<String>,
 }
 
-impl<'a, 'b, 'code, 'resources, T: RequirePathLocatorMode> RequirePathProcessor<'a, 'b, 'code, 'resources, T> {
+impl<'a, 'b, 'code, 'resources, T: RequirePathLocatorMode>
+    RequirePathProcessor<'a, 'b, 'code, 'resources, T>
+{
     pub(crate) fn new<'context>(
         context: &'context Context<'b, 'resources, 'code>,
         options: &'a BundleOptions,
@@ -87,11 +89,12 @@ impl<'a, 'b, 'code, 'resources, T: RequirePathLocatorMode> RequirePathProcessor<
 
     fn require_call(&self, call: &FunctionCall) -> Option<PathBuf> {
         if let Some(x) = self.path_locator.require_call(call, &self.source) {
-            return Some(x)
+            return Some(x);
         }
-        
+
         if is_require_call(call, self) {
-            self.path_locator.match_path_require_call(call, &self.source)
+            self.path_locator
+                .match_path_require_call(call, &self.source)
         } else {
             None
         }
@@ -265,7 +268,9 @@ impl<'a, 'b, 'code, 'resources, T: RequirePathLocatorMode> RequirePathProcessor<
     }
 }
 
-impl<'a, 'b, 'resources, 'code, T: RequirePathLocatorMode> Deref for RequirePathProcessor<'a, 'b, 'resources, 'code, T> {
+impl<'a, 'b, 'resources, 'code, T: RequirePathLocatorMode> Deref
+    for RequirePathProcessor<'a, 'b, 'resources, 'code, T>
+{
     type Target = IdentifierTracker;
 
     fn deref(&self) -> &Self::Target {
@@ -273,7 +278,9 @@ impl<'a, 'b, 'resources, 'code, T: RequirePathLocatorMode> Deref for RequirePath
     }
 }
 
-impl<'a, 'b, 'resources, 'code, T: RequirePathLocatorMode> DerefMut for RequirePathProcessor<'a, 'b, 'resources, 'code, T> {
+impl<'a, 'b, 'resources, 'code, T: RequirePathLocatorMode> DerefMut
+    for RequirePathProcessor<'a, 'b, 'resources, 'code, T>
+{
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.identifier_tracker
     }
@@ -304,7 +311,9 @@ where
     expression
 }
 
-impl<'a, 'b, 'resources, 'code, T: RequirePathLocatorMode> NodeProcessor for RequirePathProcessor<'a, 'b, 'resources, 'code, T> {
+impl<'a, 'b, 'resources, 'code, T: RequirePathLocatorMode> NodeProcessor
+    for RequirePathProcessor<'a, 'b, 'resources, 'code, T>
+{
     fn process_expression(&mut self, expression: &mut Expression) {
         if let Expression::Call(call) = expression {
             if let Some(replace_with) = self.try_inline_call(call) {

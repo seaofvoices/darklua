@@ -83,25 +83,23 @@ impl PathRequireMode {
         let mut current_path = context.current_path().to_path_buf();
         current_path.pop();
         let diff = pathdiff::diff_paths(&path, &current_path).ok_or(
-            DarkluaError::custom("invalid path difference")
-                .context("path require mode cannot")
+            DarkluaError::custom("invalid path difference").context("path require mode cannot"),
         )?;
-        
+
         let mut path_str = diff
             .to_str()
             .ok_or(
                 DarkluaError::custom("invalid non-UTF8 characters")
-                    .context("path require mode cannot")
+                    .context("path require mode cannot"),
             )?
             .replace("\\", "/");
         if !(path_str.starts_with("./")) {
             path_str = String::from("./") + path_str.as_str();
         }
 
-        let string_expr = StringExpression::new(&format!("[[{path_str}]]")).map_err(|e|
-            DarkluaError::custom(format!("{e}"))
-                .context("path require mode cannot")
-        )?;
+        let string_expr = StringExpression::new(&format!("[[{path_str}]]")).map_err(|e| {
+            DarkluaError::custom(format!("{e}")).context("path require mode cannot")
+        })?;
         Ok(Some(crate::nodes::Arguments::String(string_expr)))
     }
 }

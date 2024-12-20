@@ -23,18 +23,14 @@ impl<'a, 'b, 'c, T: RequirePathLocatorMode> RequirePathLocator<'a, 'b, 'c, T> {
         }
     }
 
-    pub(crate) fn require_call(
-    &self,
-        call: &FunctionCall,
-        source: &Path
-    ) -> Option<PathBuf> {
+    pub(crate) fn require_call(&self, call: &FunctionCall, source: &Path) -> Option<PathBuf> {
         self.path_require_mode.require_call(call, source)
     }
 
     pub(crate) fn match_path_require_call(
         &self,
         call: &FunctionCall,
-        source: &Path
+        source: &Path,
     ) -> Option<PathBuf> {
         self.path_require_mode.match_path_require_call(call, source)
     }

@@ -2,10 +2,13 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
-use crate::rules::{require::{HybridRequireMode, PathRequireMode}, RuleProcessResult};
+use crate::rules::{
+    require::{HybridRequireMode, PathRequireMode},
+    RuleProcessResult,
+};
 use crate::{nodes::Block, rules::Context};
 
-use super::{path_require_mode, hybrid_require_mode, BundleOptions};
+use super::{hybrid_require_mode, path_require_mode, BundleOptions};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "snake_case", tag = "name")]
@@ -54,10 +57,10 @@ impl BundleRequireMode {
         match self {
             Self::Path(path_require_mode) => {
                 path_require_mode::process_block(block, context, options, path_require_mode)
-            },
+            }
             Self::Hybrid(hybrid_require_mode) => {
                 hybrid_require_mode::process_block(block, context, options, hybrid_require_mode)
-            },
+            }
         }
     }
 }

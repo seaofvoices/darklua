@@ -1,4 +1,12 @@
-use crate::{nodes::Block, process::{NodeVisitor, ScopeVisitor}, rules::{bundle::BundleOptions, require::HybridRequireMode, Context, FlawlessRule, ReplaceReferencedTokens}, utils::Timer};
+use crate::{
+    nodes::Block,
+    process::{NodeVisitor, ScopeVisitor},
+    rules::{
+        bundle::BundleOptions, require::HybridRequireMode, Context, FlawlessRule,
+        ReplaceReferencedTokens,
+    },
+    utils::Timer,
+};
 
 use super::path_require_mode::RequirePathProcessor;
 
