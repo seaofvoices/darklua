@@ -66,7 +66,7 @@ impl RequirePathLocatorMode for HybridRequireMode {
         };
         let mut current_path = source.to_path_buf();
 
-        if current_path.ends_with("init.lua") {
+        if current_path.ends_with("init.lua") || current_path.ends_with("init.luau") {
             current_path.pop();
         }
 
