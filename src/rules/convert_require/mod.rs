@@ -13,7 +13,7 @@ use crate::rules::{Context, RuleConfiguration, RuleConfigurationError, RulePrope
 
 use instance_path::InstancePath;
 pub use roblox_index_style::RobloxIndexStyle;
-pub use roblox_require_mode::RobloxRequireMode;
+pub use roblox_require_mode::{RobloxRequireMode, parse_roblox};
 
 use super::{verify_required_properties, Rule, RuleProcessResult};
 

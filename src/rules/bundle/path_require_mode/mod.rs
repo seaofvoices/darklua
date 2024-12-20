@@ -18,7 +18,7 @@ use crate::process::{
     to_expression, DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor,
 };
 use crate::rules::require::{
-    is_require_call, match_path_require_call, PathRequireMode, RequirePathLocator,
+    is_require_call, PathRequireMode, RequirePathLocator, RequirePathLocatorMode,
 };
 use crate::rules::{
     Context, ContextBuilder, FlawlessRule, ReplaceReferencedTokens, RuleProcessResult,
@@ -34,10 +34,10 @@ pub(crate) enum RequiredResource {
 }
 
 #[derive(Debug)]
-struct RequirePathProcessor<'a, 'b, 'resources, 'code> {
+pub(crate) struct RequirePathProcessor<'a, 'b, 'resources, 'code, T: RequirePathLocatorMode> {
     options: &'a BundleOptions,
     identifier_tracker: IdentifierTracker,
-    path_locator: RequirePathLocator<'b, 'code, 'resources>,
+    path_locator: RequirePathLocator<'b, 'code, 'resources, T>,
     module_definitions: BuildModuleDefinitions,
     source: PathBuf,
     module_cache: HashMap<PathBuf, Expression>,
@@ -47,11 +47,11 @@ struct RequirePathProcessor<'a, 'b, 'resources, 'code> {
     errors: Vec<String>,
 }
 
-impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> {
-    fn new<'context>(
+impl<'a, 'b, 'code, 'resources, T: RequirePathLocatorMode> RequirePathProcessor<'a, 'b, 'code, 'resources, T> {
+    pub(crate) fn new<'context>(
         context: &'context Context<'b, 'resources, 'code>,
         options: &'a BundleOptions,
-        path_require_mode: &'b PathRequireMode,
+        path_require_mode: &'b T,
     ) -> Self
     where
         'context: 'b,
@@ -76,7 +76,7 @@ impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> 
         }
     }
 
-    fn apply(self, block: &mut Block, context: &Context) -> RuleProcessResult {
+    pub(crate) fn apply(self, block: &mut Block, context: &Context) -> RuleProcessResult {
         self.module_definitions.apply(block, context);
         match self.errors.len() {
             0 => Ok(()),
@@ -86,8 +86,12 @@ impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> 
     }
 
     fn require_call(&self, call: &FunctionCall) -> Option<PathBuf> {
+        if let Some(x) = self.path_locator.require_call(call, &self.source) {
+            return Some(x)
+        }
+        
         if is_require_call(call, self) {
-            match_path_require_call(call)
+            self.path_locator.match_path_require_call(call, &self.source)
         } else {
             None
         }
@@ -261,7 +265,7 @@ impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> 
     }
 }
 
-impl<'a, 'b, 'resources, 'code> Deref for RequirePathProcessor<'a, 'b, 'resources, 'code> {
+impl<'a, 'b, 'resources, 'code, T: RequirePathLocatorMode> Deref for RequirePathProcessor<'a, 'b, 'resources, 'code, T> {
     type Target = IdentifierTracker;
 
     fn deref(&self) -> &Self::Target {
@@ -269,7 +273,7 @@ impl<'a, 'b, 'resources, 'code> Deref for RequirePathProcessor<'a, 'b, 'resource
     }
 }
 
-impl<'a, 'b, 'resources, 'code> DerefMut for RequirePathProcessor<'a, 'b, 'resources, 'code> {
+impl<'a, 'b, 'resources, 'code, T: RequirePathLocatorMode> DerefMut for RequirePathProcessor<'a, 'b, 'resources, 'code, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.identifier_tracker
     }
@@ -300,7 +304,7 @@ where
     expression
 }
 
-impl<'a, 'b, 'resources, 'code> NodeProcessor for RequirePathProcessor<'a, 'b, 'resources, 'code> {
+impl<'a, 'b, 'resources, 'code, T: RequirePathLocatorMode> NodeProcessor for RequirePathProcessor<'a, 'b, 'resources, 'code, T> {
     fn process_expression(&mut self, expression: &mut Expression) {
         if let Expression::Call(call) = expression {
             if let Some(replace_with) = self.try_inline_call(call) {
