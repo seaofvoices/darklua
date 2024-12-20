@@ -1688,7 +1688,7 @@ fn comma_token() -> Token {
     Token::from_content(",").with_trailing_trivia(TriviaKind::Whitespace.with_content(" "))
 }
 
-impl<'a> LuaGenerator for TokenBasedLuaGenerator<'a> {
+impl LuaGenerator for TokenBasedLuaGenerator<'_> {
     fn into_string(self) -> String {
         self.output
     }

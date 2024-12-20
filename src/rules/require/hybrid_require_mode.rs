@@ -113,10 +113,7 @@ fn parse_roblox_call(call: &FunctionCall, current_path: &mut PathBuf) -> Darklua
                 .context("while parsing roblox-ts require"),
         )?;
     };
-    args.iter_values().for_each(|arg| match arg {
-        Expression::String(x) => temp_path.push(x.get_value().to_string()),
-        _ => {}
-    });
+    args.iter_values().for_each(|arg| if let Expression::String(x) = arg { temp_path.push(x.get_value()) });
 
     let _ = temp_path.join(&current_path);
     *current_path = temp_path;
@@ -130,9 +127,9 @@ fn parse_roblox_prefix(
     current_path: &mut PathBuf,
 ) -> DarkluaResult<()> {
     match prefix {
-        Prefix::Field(x) => parse_roblox_field(&x, path_builder, current_path)?,
+        Prefix::Field(x) => parse_roblox_field(x, path_builder, current_path)?,
         Prefix::Identifier(x) => {
-            handle_roblox_script_parent(&x.get_name(), path_builder, current_path)?
+            handle_roblox_script_parent(x.get_name(), path_builder, current_path)?
         }
         Prefix::Call(x) => parse_roblox_call(x, current_path)?,
         _ => Err(
@@ -151,7 +148,7 @@ fn parse_roblox_expression(
     match expression {
         Expression::Field(x) => parse_roblox_field(x, path_builder, current_path)?,
         Expression::Identifier(x) => {
-            handle_roblox_script_parent(&x.get_name(), path_builder, current_path)?
+            handle_roblox_script_parent(x.get_name(), path_builder, current_path)?
         }
         Expression::String(x) => {
             handle_roblox_script_parent(x.get_value(), path_builder, current_path)?
@@ -166,12 +163,12 @@ fn parse_roblox_expression(
 }
 
 fn parse_roblox_field(
-    field: &Box<FieldExpression>,
+    field: &FieldExpression,
     path_builder: &mut VecDeque<String>,
     current_path: &mut PathBuf,
 ) -> DarkluaResult<()> {
     parse_roblox_prefix(field.get_prefix(), path_builder, current_path)?;
-    handle_roblox_script_parent(&field.get_field().get_name(), path_builder, current_path)
+    handle_roblox_script_parent(field.get_field().get_name(), path_builder, current_path)
 }
 
 fn handle_roblox_script_parent(

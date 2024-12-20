@@ -268,8 +268,8 @@ impl<'a, 'b, 'code, 'resources, T: RequirePathLocatorMode>
     }
 }
 
-impl<'a, 'b, 'resources, 'code, T: RequirePathLocatorMode> Deref
-    for RequirePathProcessor<'a, 'b, 'resources, 'code, T>
+impl<T: RequirePathLocatorMode> Deref
+    for RequirePathProcessor<'_, '_, '_, '_, T>
 {
     type Target = IdentifierTracker;
 
@@ -278,8 +278,8 @@ impl<'a, 'b, 'resources, 'code, T: RequirePathLocatorMode> Deref
     }
 }
 
-impl<'a, 'b, 'resources, 'code, T: RequirePathLocatorMode> DerefMut
-    for RequirePathProcessor<'a, 'b, 'resources, 'code, T>
+impl<T: RequirePathLocatorMode> DerefMut
+    for RequirePathProcessor<'_, '_, '_, '_, T>
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.identifier_tracker
@@ -311,8 +311,8 @@ where
     expression
 }
 
-impl<'a, 'b, 'resources, 'code, T: RequirePathLocatorMode> NodeProcessor
-    for RequirePathProcessor<'a, 'b, 'resources, 'code, T>
+impl<T: RequirePathLocatorMode> NodeProcessor
+    for RequirePathProcessor<'_, '_, '_, '_, T>
 {
     fn process_expression(&mut self, expression: &mut Expression) {
         if let Expression::Call(call) = expression {

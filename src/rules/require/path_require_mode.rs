@@ -82,7 +82,7 @@ impl PathRequireMode {
     ) -> Result<Option<crate::nodes::Arguments>, crate::DarkluaError> {
         let mut current_path = context.current_path().to_path_buf();
         current_path.pop();
-        let diff = pathdiff::diff_paths(&path, &current_path).ok_or(
+        let diff = pathdiff::diff_paths(path, &current_path).ok_or(
             DarkluaError::custom("invalid path difference").context("path require mode cannot"),
         )?;
 

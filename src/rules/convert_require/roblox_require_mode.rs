@@ -276,10 +276,10 @@ fn parse_roblox_prefix(
     current_path: &mut PathBuf,
 ) -> DarkluaResult<()> {
     match prefix {
-        Prefix::Field(x) => parse_roblox_field(&x, path_builder, current_path)?,
-        Prefix::Index(x) => parse_roblox_index(&x, path_builder, current_path)?,
+        Prefix::Field(x) => parse_roblox_field(x, path_builder, current_path)?,
+        Prefix::Index(x) => parse_roblox_index(x, path_builder, current_path)?,
         Prefix::Identifier(x) => {
-            handle_roblox_script_parent(&x.get_name(), path_builder, current_path)?
+            handle_roblox_script_parent(x.get_name(), path_builder, current_path)?
         }
         _ => Err(
             DarkluaError::custom("unexpected prefix, only constants accepted")
@@ -298,7 +298,7 @@ fn parse_roblox_expression(
         Expression::Field(x) => parse_roblox_field(x, path_builder, current_path)?,
         Expression::Index(x) => parse_roblox_index(x, path_builder, current_path)?,
         Expression::Identifier(x) => {
-            handle_roblox_script_parent(&x.get_name(), path_builder, current_path)?
+            handle_roblox_script_parent(x.get_name(), path_builder, current_path)?
         }
         Expression::String(x) => {
             handle_roblox_script_parent(x.get_value(), path_builder, current_path)?
@@ -312,16 +312,16 @@ fn parse_roblox_expression(
 }
 
 fn parse_roblox_field(
-    field: &Box<FieldExpression>,
+    field: &FieldExpression,
     path_builder: &mut VecDeque<String>,
     current_path: &mut PathBuf,
 ) -> DarkluaResult<()> {
-    handle_roblox_script_parent(&field.get_field().get_name(), path_builder, current_path)?;
+    handle_roblox_script_parent(field.get_field().get_name(), path_builder, current_path)?;
     parse_roblox_prefix(field.get_prefix(), path_builder, current_path)
 }
 
 fn parse_roblox_index(
-    index: &Box<IndexExpression>,
+    index: &IndexExpression,
     path_builder: &mut VecDeque<String>,
     current_path: &mut PathBuf,
 ) -> DarkluaResult<()> {
