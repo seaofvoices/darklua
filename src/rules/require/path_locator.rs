@@ -1,18 +1,18 @@
 use std::path::{Path, PathBuf};
 
-use super::{path_iterator, PathRequireMode};
-use crate::{utils, DarkluaError, Resources};
+use super::{path_iterator, RequirePathLocatorMode};
+use crate::{nodes::FunctionCall, utils, DarkluaError, Resources};
 
 #[derive(Debug)]
-pub(crate) struct RequirePathLocator<'a, 'b, 'resources> {
-    path_require_mode: &'a PathRequireMode,
+pub(crate) struct RequirePathLocator<'a, 'b, 'resources, T: RequirePathLocatorMode> {
+    path_require_mode: &'a T,
     extra_module_relative_location: &'b Path,
     resources: &'resources Resources,
 }
 
-impl<'a, 'b, 'c> RequirePathLocator<'a, 'b, 'c> {
+impl<'a, 'b, 'c, T: RequirePathLocatorMode> RequirePathLocator<'a, 'b, 'c, T> {
     pub(crate) fn new(
-        path_require_mode: &'a PathRequireMode,
+        path_require_mode: &'a T,
         extra_module_relative_location: &'b Path,
         resources: &'c Resources,
     ) -> Self {
@@ -21,6 +21,14 @@ impl<'a, 'b, 'c> RequirePathLocator<'a, 'b, 'c> {
             extra_module_relative_location,
             resources,
         }
+    }
+
+    pub(crate) fn match_path_require_call(
+        &self,
+        call: &FunctionCall,
+        source: &Path,
+    ) -> Option<PathBuf> {
+        self.path_require_mode.match_path_require_call(call, source)
     }
 
     pub(crate) fn find_require_path(

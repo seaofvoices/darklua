@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::DarkluaResult;
-use crate::nodes::FunctionCall;
+use crate::nodes::{FunctionCall, StringExpression};
 use crate::rules::require::match_path_require_call;
 use crate::rules::Context;
 use crate::DarkluaError;
@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
-use super::RequirePathLocator;
+use super::{RequirePathLocator, RequirePathLocatorMode};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
@@ -36,11 +36,11 @@ impl Default for PathRequireMode {
 const DEFAULT_MODULE_FOLDER_NAME: &str = "init";
 
 #[inline]
-fn get_default_module_folder_name() -> String {
+pub fn get_default_module_folder_name() -> String {
     DEFAULT_MODULE_FOLDER_NAME.to_owned()
 }
 
-fn is_default_module_folder_name(value: &String) -> bool {
+pub fn is_default_module_folder_name(value: &String) -> bool {
     value == DEFAULT_MODULE_FOLDER_NAME
 }
 
@@ -50,14 +50,6 @@ impl PathRequireMode {
             module_folder_name: module_folder_name.into(),
             sources: Default::default(),
         }
-    }
-
-    pub(crate) fn module_folder_name(&self) -> &str {
-        &self.module_folder_name
-    }
-
-    pub(crate) fn get_source(&self, name: &str) -> Option<&Path> {
-        self.sources.get(name).map(PathBuf::as_path)
     }
 
     pub(crate) fn find_require(
@@ -84,12 +76,43 @@ impl PathRequireMode {
 
     pub(crate) fn generate_require(
         &self,
-        _path: &Path,
+        path: &Path,
         _current_mode: &crate::rules::RequireMode,
-        _context: &Context<'_, '_, '_>,
+        context: &Context<'_, '_, '_>,
     ) -> Result<Option<crate::nodes::Arguments>, crate::DarkluaError> {
-        Err(DarkluaError::custom("unsupported target require mode")
-            .context("path require mode cannot be used"))
+        let mut current_path = context.current_path().to_path_buf();
+        current_path.pop();
+        let diff = pathdiff::diff_paths(path, &current_path).ok_or(
+            DarkluaError::custom("invalid path difference").context("path require mode cannot"),
+        )?;
+
+        let mut path_str = diff
+            .to_str()
+            .ok_or(
+                DarkluaError::custom("invalid non-UTF8 characters")
+                    .context("path require mode cannot"),
+            )?
+            .replace("\\", "/");
+        if !(path_str.starts_with("./")) {
+            path_str = String::from("./") + path_str.as_str();
+        }
+
+        let string_expr = StringExpression::new(&format!("[[{path_str}]]")).map_err(|e| {
+            DarkluaError::custom(format!("{e}")).context("path require mode cannot")
+        })?;
+        Ok(Some(crate::nodes::Arguments::String(string_expr)))
+    }
+}
+
+impl RequirePathLocatorMode for PathRequireMode {
+    fn get_source(&self, name: &str) -> Option<&Path> {
+        self.sources.get(name).map(PathBuf::as_path)
+    }
+    fn module_folder_name(&self) -> &str {
+        &self.module_folder_name
+    }
+    fn match_path_require_call(&self, call: &FunctionCall, _source: &Path) -> Option<PathBuf> {
+        match_path_require_call(call)
     }
 }
 

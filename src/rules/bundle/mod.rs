@@ -1,16 +1,22 @@
+pub(crate) mod hybrid_require_mode;
 pub(crate) mod path_require_mode;
 mod require_mode;
 
 use std::path::Path;
 
 use crate::nodes::Block;
+use crate::process::{NodeVisitor, ScopeVisitor};
 use crate::rules::{
-    Context, Rule, RuleConfiguration, RuleConfigurationError, RuleProcessResult, RuleProperties,
+    Context, FlawlessRule, ReplaceReferencedTokens, Rule, RuleConfiguration, RuleConfigurationError, RuleProcessResult, RuleProperties
 };
+use crate::utils::Timer;
 use crate::Parser;
 
+use path_require_mode::RequirePathProcessor;
 pub use require_mode::BundleRequireMode;
 use wax::Pattern;
+
+use super::require::RequirePathLocatorMode;
 
 pub const BUNDLER_RULE_NAME: &str = "bundler";
 
@@ -118,6 +124,35 @@ impl RuleConfiguration for Bundler {
 }
 
 const DEFAULT_MODULE_IDENTIFIER: &str = "__DARKLUA_BUNDLE_MODULES";
+
+pub(crate) fn process_block_generic<T: RequirePathLocatorMode>(
+    block: &mut Block,
+    context: &Context,
+    options: &BundleOptions,
+    require_mode: &T,
+) -> Result<(), String> {
+    if options.parser().is_preserving_tokens() {
+        log::trace!(
+            "replacing token references of {}",
+            context.current_path().display()
+        );
+        let replace_tokens = ReplaceReferencedTokens::default();
+
+        let apply_replace_tokens_timer = Timer::now();
+
+        replace_tokens.flawless_process(block, context);
+
+        log::trace!(
+            "replaced token references for `{}` in {}",
+            context.current_path().display(),
+            apply_replace_tokens_timer.duration_label()
+        );
+    }
+
+    let mut processor = RequirePathProcessor::new(context, options, require_mode);
+    ScopeVisitor::visit_block(block, &mut processor);
+    processor.apply(block, context)
+}
 
 #[cfg(test)]
 mod test {
