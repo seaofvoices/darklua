@@ -112,6 +112,7 @@ impl<'a, 'resources, 'code> ContextBuilder<'a, 'resources, 'code> {
             original_code: self.original_code,
             blocks: self.blocks,
             project_location: self.project_location,
+            dependencies: Default::default(),
         }
     }
 
@@ -128,15 +129,29 @@ pub struct Context<'a, 'resources, 'code> {
     original_code: &'code str,
     blocks: HashMap<PathBuf, &'a Block>,
     project_location: Option<PathBuf>,
+    dependencies: std::cell::RefCell<Vec<PathBuf>>,
 }
 
-impl<'a, 'resources, 'code> Context<'a, 'resources, 'code> {
+impl Context<'_, '_, '_> {
     pub fn block(&self, path: impl AsRef<Path>) -> Option<&Block> {
         self.blocks.get(path.as_ref()).copied()
     }
 
     pub fn current_path(&self) -> &Path {
         self.path.as_ref()
+    }
+
+    pub fn add_file_dependency(&self, path: PathBuf) {
+        if let Ok(mut dependencies) = self.dependencies.try_borrow_mut() {
+            log::trace!("add file dependency {}", path.display());
+            dependencies.push(path);
+        } else {
+            log::warn!("unable to submit file dependency (internal error)");
+        }
+    }
+
+    pub fn into_dependencies(self) -> impl Iterator<Item = PathBuf> {
+        self.dependencies.into_inner().into_iter()
     }
 
     fn resources(&self) -> &Resources {

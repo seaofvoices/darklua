@@ -5,8 +5,8 @@ use super::{
     resources::Resources,
     utils::maybe_plural,
     work_cache::WorkCache,
-    work_item::{WorkData, WorkItem, WorkProgress, WorkStatus},
-    DarkluaError, DarkluaResult, Options, ProcessResult,
+    work_item::{WorkItem, WorkProgress, WorkStatus},
+    DarkluaError, DarkluaResult, Options,
 };
 
 use crate::{
@@ -27,7 +27,7 @@ pub(crate) struct Worker<'a> {
 }
 
 impl<'a> Worker<'a> {
-    pub fn new(resources: &'a Resources) -> Self {
+    pub(crate) fn new(resources: &'a Resources) -> Self {
         Self {
             resources,
             cache: WorkCache::new(resources),
@@ -36,11 +36,7 @@ impl<'a> Worker<'a> {
         }
     }
 
-    pub fn process(
-        mut self,
-        work_items: impl Iterator<Item = Result<WorkItem, DarkluaError>>,
-        mut options: Options,
-    ) -> Result<ProcessResult, ProcessResult> {
+    pub(crate) fn setup_worker(&mut self, options: &mut Options) -> DarkluaResult<()> {
         let configuration_setup_timer = Timer::now();
 
         if let Some(config) = options.take_configuration() {
@@ -62,8 +58,7 @@ impl<'a> Worker<'a> {
                 log::info!("using configuration file `{}`", config.display());
             } else {
                 return Err(DarkluaError::resource_not_found(config)
-                    .context("expected to find configuration file as provided by the options")
-                    .into());
+                    .context("expected to find configuration file as provided by the options"));
             }
         } else {
             let mut configuration_files = Vec::new();
@@ -79,9 +74,7 @@ impl<'a> Worker<'a> {
                 }
                 1 => {
                     let configuration_file_path = configuration_files.first().unwrap();
-                    self.configuration = self
-                        .read_configuration(configuration_file_path)
-                        .map_err(element_to_vec)?;
+                    self.configuration = self.read_configuration(configuration_file_path)?;
                     log::info!(
                         "using configuration file `{}`",
                         configuration_file_path.display()
@@ -90,8 +83,7 @@ impl<'a> Worker<'a> {
                 _ => {
                     return Err(DarkluaError::multiple_configuration_found(
                         configuration_files.into_iter().map(Path::to_path_buf),
-                    )
-                    .into())
+                    ))
                 }
             }
         };
@@ -107,7 +99,7 @@ impl<'a> Worker<'a> {
                         format!("readable ({})", column_span),
                 }
             );
-            self.configuration = self.configuration.with_generator(generator.clone());
+            self.configuration.set_generator(generator.clone());
         }
 
         log::trace!(
@@ -121,70 +113,42 @@ impl<'a> Worker<'a> {
             })
         );
 
-        log::trace!("start collecting work");
-        let collect_work_timer = Timer::now();
+        Ok(())
+    }
 
-        let collect_work_result: Result<Vec<_>, _> = work_items.collect();
-        let mut work_items = collect_work_result.map_err(element_to_vec)?;
+    pub(crate) fn configuration(&self) -> &Configuration {
+        &self.configuration
+    }
 
-        log::trace!("work collected in {}", collect_work_timer.duration_label());
+    pub(crate) fn advance_work(&mut self, work_item: &mut WorkItem) -> DarkluaResult<()> {
+        match &work_item.status {
+            WorkStatus::NotStarted => {
+                let source_display = work_item.source().display();
 
-        let mut errors = Vec::new();
-        let mut success_count = 0;
+                let content = self.resources.get(work_item.source())?;
 
-        let work_timer = Timer::now();
-        let mut created_files = Vec::new();
+                let parser = self.configuration.build_parser();
 
-        'work_loop: while !work_items.is_empty() {
-            let work_length = work_items.len();
-            log::trace!(
-                "working on batch of {} task{}",
-                work_length,
-                maybe_plural(work_length)
-            );
+                log::debug!("beginning work on `{}`", source_display);
 
-            let mut work_left = Vec::new();
+                let parser_timer = Timer::now();
 
-            for work in work_items.into_iter() {
-                let work_source_display = work.source().display().to_string();
+                let mut block = parser.parse(&content).map_err(|parser_error| {
+                    DarkluaError::parser_error(work_item.source(), parser_error)
+                })?;
 
-                let created_path = work.get_created_file_path();
+                let parser_time = parser_timer.duration_label();
+                log::debug!("parsed `{}` in {}", source_display, parser_time);
 
-                match self.do_work(work) {
-                    Ok(None) => {
-                        success_count += 1;
-                        if let Some(new_file) = created_path {
-                            created_files.push(new_file.to_path_buf());
-                        }
-                        log::info!("successfully processed `{}`", work_source_display);
-                    }
-                    Ok(Some(next_work)) => {
-                        log::trace!("work on `{}` has not completed", work_source_display);
-                        work_left.push(next_work);
-                    }
-                    Err(err) => {
-                        errors.push(err);
-                        if options.should_fail_fast() {
-                            log::debug!(
-                                "dropping all work because the fail-fast option is enabled"
-                            );
-                            break 'work_loop;
-                        }
-                    }
-                }
+                self.bundle(work_item, &mut block, &content)?;
+
+                work_item.status = WorkProgress::new(content, block).into();
+
+                self.apply_rules(work_item)
             }
-
-            if work_left.len() >= work_length {
-                errors.push(DarkluaError::cyclic_work(work_left));
-                return ProcessResult::new(success_count, created_files, errors).into();
-            }
-
-            work_items = work_left;
+            WorkStatus::InProgress(_work_progress) => self.apply_rules(work_item),
+            WorkStatus::Done(_) => Ok(()),
         }
-
-        log::info!("executed work in {}", work_timer.duration_label());
-
-        ProcessResult::new(success_count, created_files, errors).into()
     }
 
     fn read_configuration(&self, config: &Path) -> DarkluaResult<Configuration> {
@@ -206,45 +170,16 @@ impl<'a> Worker<'a> {
             })
     }
 
-    fn do_work(&mut self, work: WorkItem) -> DarkluaResult<Option<WorkItem>> {
-        let (status, data) = work.extract();
-        match status {
-            WorkStatus::NotStarted => {
-                let source_display = data.source().display();
+    fn apply_rules(&mut self, work_item: &mut WorkItem) -> DarkluaResult<()> {
+        let work_progress = match &mut work_item.status {
+            WorkStatus::InProgress(progress) => progress.as_mut(),
+            _ => return Ok(()),
+        };
 
-                let source = data.source();
-                let content = self.resources.get(source)?;
+        let progress = &mut work_progress.progress;
 
-                let parser = self.configuration.build_parser();
-
-                log::debug!("beginning work on `{}`", source_display);
-
-                let parser_timer = Timer::now();
-
-                let mut block = parser
-                    .parse(&content)
-                    .map_err(|parser_error| DarkluaError::parser_error(source, parser_error))?;
-
-                let parser_time = parser_timer.duration_label();
-                log::debug!("parsed `{}` in {}", source_display, parser_time);
-
-                self.bundle(&mut block, source, &content)?;
-
-                self.apply_rules(data, WorkProgress::new(content, block))
-            }
-            WorkStatus::InProgress(progress) => self.apply_rules(data, *progress),
-        }
-    }
-
-    fn apply_rules(
-        &mut self,
-        data: WorkData,
-        progress: WorkProgress,
-    ) -> DarkluaResult<Option<WorkItem>> {
-        let (content, mut progress) = progress.extract();
-
-        let source_display = data.source().display();
-        let normalized_source = normalize_path(data.source());
+        let source_display = work_item.data.source().display();
+        let normalized_source = normalize_path(work_item.data.source());
 
         progress.duration().start();
 
@@ -254,7 +189,8 @@ impl<'a> Worker<'a> {
             .enumerate()
             .skip(progress.next_rule())
         {
-            let mut context_builder = self.create_rule_context(data.source(), &content);
+            let mut context_builder =
+                self.create_rule_context(work_item.data.source(), &work_progress.content);
             log::trace!(
                 "[{}] apply rule `{}`{}",
                 source_display,
@@ -311,22 +247,21 @@ impl<'a> Worker<'a> {
                             )
                         }
                     );
-                    return Ok(Some(
-                        data.with_status(
-                            progress
-                                .at_rule(index)
-                                .with_required_content(required_content)
-                                .with_content(content),
-                        ),
-                    ));
+
+                    progress.set_next_rule(index);
+                    progress.set_required_content(required_content);
+                    return Ok(());
                 }
             }
 
             let context = context_builder.build();
             let block = progress.mutate_block();
             let rule_timer = Timer::now();
-            rule.process(block, &context).map_err(|rule_error| {
-                let error = DarkluaError::rule_error(data.source(), rule, index, rule_error);
+
+            let source = work_item.data.source();
+
+            let rule_result = rule.process(block, &context).map_err(|rule_error| {
+                let error = DarkluaError::rule_error(source, rule, index, rule_error);
 
                 log::trace!(
                     "[{}] rule `{}` errored: {}",
@@ -336,7 +271,14 @@ impl<'a> Worker<'a> {
                 );
 
                 error
-            })?;
+            });
+
+            work_item
+                .external_file_dependencies
+                .extend(context.into_dependencies());
+
+            rule_result?;
+
             let rule_duration = rule_timer.duration_label();
             log::trace!(
                 "[{}] ⨽completed `{}` in {}",
@@ -361,15 +303,17 @@ impl<'a> Worker<'a> {
         if cfg!(test) || (cfg!(debug_assertions) && log::log_enabled!(log::Level::Trace)) {
             log::trace!(
                 "generate AST debugging view at `{}`",
-                data.output().display()
+                work_item.data.output().display()
             );
             self.resources
-                .write(data.output(), &format!("{:#?}", progress.block()))?;
+                .write(work_item.data.output(), &format!("{:#?}", progress.block()))?;
         }
 
         let generator_timer = Timer::now();
 
-        let lua_code = self.configuration.generate_lua(progress.block(), &content);
+        let lua_code = self
+            .configuration
+            .generate_lua(progress.block(), &work_progress.content);
 
         let generator_time = generator_timer.duration_label();
         log::debug!(
@@ -378,12 +322,13 @@ impl<'a> Worker<'a> {
             generator_time,
         );
 
-        self.resources.write(data.output(), &lua_code)?;
+        self.resources.write(work_item.data.output(), &lua_code)?;
 
         self.cache
-            .link_source_to_output(normalized_source, data.output());
+            .link_source_to_output(normalized_source, work_item.data.output());
 
-        Ok(None)
+        work_item.status = WorkStatus::done();
+        Ok(())
     }
 
     fn create_rule_context<'block, 'src>(
@@ -401,8 +346,8 @@ impl<'a> Worker<'a> {
 
     fn bundle(
         &mut self,
+        work_item: &mut WorkItem,
         block: &mut Block,
-        source: &Path,
         original_code: &str,
     ) -> DarkluaResult<()> {
         if self.cached_bundler.is_none() {
@@ -415,33 +360,40 @@ impl<'a> Worker<'a> {
             None => return Ok(()),
         };
 
-        log::debug!("beginning bundling from `{}`", source.display());
+        log::debug!("beginning bundling from `{}`", work_item.source().display());
 
         let bundle_timer = Timer::now();
 
-        let context = self.create_rule_context(source, original_code).build();
+        let context = self
+            .create_rule_context(work_item.source(), original_code)
+            .build();
 
-        bundler.process(block, &context).map_err(|rule_error| {
-            let error = DarkluaError::orphan_rule_error(source, bundler, rule_error);
+        let rule_result = bundler.process(block, &context).map_err(|rule_error| {
+            let error = DarkluaError::orphan_rule_error(work_item.source(), bundler, rule_error);
 
             log::trace!(
                 "[{}] rule `{}` errored: {}",
-                source.display(),
+                work_item.source().display(),
                 bundler.get_name(),
                 error
             );
 
             error
-        })?;
+        });
+
+        work_item
+            .external_file_dependencies
+            .extend(context.into_dependencies());
+
+        rule_result?;
 
         let bundle_time = bundle_timer.duration_label();
-        log::debug!("bundled `{}` in {}", source.display(), bundle_time);
+        log::debug!(
+            "bundled `{}` in {}",
+            work_item.source().display(),
+            bundle_time
+        );
 
         Ok(())
     }
-}
-
-#[inline]
-fn element_to_vec<T>(element: impl Into<T>) -> Vec<T> {
-    vec![element.into()]
 }

@@ -12,7 +12,7 @@ pub(crate) struct FindUsage<'a> {
     identifier_tracker: IdentifierTracker,
 }
 
-impl<'a> ops::Deref for FindUsage<'a> {
+impl ops::Deref for FindUsage<'_> {
     type Target = IdentifierTracker;
 
     fn deref(&self) -> &Self::Target {
@@ -20,7 +20,7 @@ impl<'a> ops::Deref for FindUsage<'a> {
     }
 }
 
-impl<'a> ops::DerefMut for FindUsage<'a> {
+impl ops::DerefMut for FindUsage<'_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.identifier_tracker
     }
@@ -47,7 +47,7 @@ impl<'a> FindUsage<'a> {
     }
 }
 
-impl<'a> NodeProcessor for FindUsage<'a> {
+impl NodeProcessor for FindUsage<'_> {
     fn process_variable_expression(&mut self, variable: &mut Identifier) {
         self.verify_identifier(variable);
     }

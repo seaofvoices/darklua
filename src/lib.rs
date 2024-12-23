@@ -11,6 +11,6 @@ mod utils;
 
 pub use frontend::{
     convert_data, process, BundleConfiguration, Configuration, DarkluaError, GeneratorParameters,
-    Options, Resources,
+    Options, Resources, WorkerTree,
 };
 pub use parser::{Parser, ParserError};

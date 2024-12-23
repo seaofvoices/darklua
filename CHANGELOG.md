@@ -1,5 +1,7 @@
 # Changelog
 
+* improve file watching: re-process specific files, sourcemap changes re-process the project, bundling re-starts whenever a dependent file changes ([#239](https://github.com/seaofvoices/darklua/pull/239))
+
 ## 0.14.1
 
 * fix `rename_variables` rule to rename module names in types ([#233](https://github.com/seaofvoices/darklua/pull/233))
