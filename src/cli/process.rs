@@ -1,5 +1,5 @@
 use crate::cli::error::CliError;
-use crate::cli::utils::maybe_plural;
+use crate::cli::utils::report_process;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::cli::utils::FileWatcher;
 use crate::cli::{CommandResult, GlobalOptions};
@@ -60,36 +60,7 @@ fn process(resources: Resources, process_options: darklua_core::Options) -> Comm
         CliError::new(1)
     })?;
 
-    let process_duration = durationfmt::to_string(process_start_time.elapsed());
-
-    let success_count = result.success_count();
-
-    println!(
-        "successfully processed {} file{} (in {})",
-        success_count,
-        maybe_plural(success_count),
-        process_duration
-    );
-
-    let errors = result.collect_errors();
-
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        let error_count = errors.len();
-        eprintln!(
-            "{}{} error{} happened:",
-            if success_count > 0 { "but " } else { "" },
-            error_count,
-            maybe_plural(error_count)
-        );
-
-        for error in errors {
-            eprintln!("-> {}", error);
-        }
-
-        Err(CliError::new(1))
-    }
+    report_process("processed", &result, process_start_time.elapsed()).map_err(|_| CliError::new(1))
 }
 
 impl Options {

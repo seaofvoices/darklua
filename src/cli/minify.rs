@@ -1,5 +1,5 @@
 use crate::cli::error::CliError;
-use crate::cli::utils::maybe_plural;
+use crate::cli::utils::report_process;
 use crate::cli::{CommandResult, GlobalOptions};
 
 use clap::Args;
@@ -40,45 +40,5 @@ pub fn run(options: &Options, _global: &GlobalOptions) -> CommandResult {
         CliError::new(1)
     })?;
 
-    let process_duration = durationfmt::to_string(process_start_time.elapsed());
-
-    let success_count = result.success_count();
-
-    let errors = result.collect_errors();
-
-    if errors.is_empty() {
-        println!(
-            "successfully minified {} file{} (in {})",
-            success_count,
-            maybe_plural(success_count),
-            process_duration
-        );
-        Ok(())
-    } else {
-        let error_count = errors.len();
-
-        if success_count > 0 {
-            eprintln!(
-                "successfully minified {} file{} (in {})",
-                success_count,
-                maybe_plural(success_count),
-                process_duration
-            );
-            eprintln!(
-                "But {} error{} happened:",
-                error_count,
-                maybe_plural(error_count)
-            );
-        } else {
-            eprintln!(
-                "{} error{} happened:",
-                error_count,
-                maybe_plural(error_count)
-            );
-        }
-
-        errors.iter().for_each(|error| eprintln!("-> {}", error));
-
-        Err(CliError::new(1))
-    }
+    report_process("minified", &result, process_start_time.elapsed()).map_err(|_| CliError::new(1))
 }

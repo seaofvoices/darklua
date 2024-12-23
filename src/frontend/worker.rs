@@ -36,7 +36,7 @@ impl<'a> Worker<'a> {
         }
     }
 
-    pub(crate) fn setup_worker(&mut self, mut options: Options) -> DarkluaResult<()> {
+    pub(crate) fn setup_worker(&mut self, options: &mut Options) -> DarkluaResult<()> {
         let configuration_setup_timer = Timer::now();
 
         if let Some(config) = options.take_configuration() {

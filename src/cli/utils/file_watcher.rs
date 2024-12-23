@@ -5,7 +5,7 @@ use std::{
     iter,
     path::{Path, PathBuf},
     sync::mpsc::{self, Receiver, Sender},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use darklua_core::{Options, Resources, WorkerTree};
@@ -13,6 +13,8 @@ use notify::{EventKind, RecursiveMode};
 use notify_debouncer_full::{new_debouncer, DebounceEventResult, DebouncedEvent};
 
 use crate::cli::{error::CliError, process::Options as ProcessOptions, CommandResult};
+
+use super::report_process;
 
 const FILE_WATCHING_DEBOUNCE_DURATION_MILLIS: u64 = 400;
 const DEFAULT_CONFIG_PATHS: [&str; 2] = [".darklua.json", ".darklua.json5"];
@@ -54,6 +56,9 @@ impl FileWatcher {
 
     fn run_worker_tree(&mut self) {
         let options = self.build_options();
+
+        let process_start_time = Instant::now();
+
         if let Some(worker_tree) = self.worker_tree.as_mut() {
             log_darklua_error(worker_tree.process(&self.resources, options), || ());
         } else {
@@ -61,6 +66,10 @@ impl FileWatcher {
                 darklua_core::process(&self.resources, options).map(Some),
                 || None,
             );
+        }
+
+        if let Some(worker_tree) = self.worker_tree.as_mut() {
+            report_process("processed", worker_tree, process_start_time.elapsed()).ok();
         }
 
         self.update_extra_file_watch();
@@ -95,6 +104,7 @@ impl FileWatcher {
             None,
             move |events: DebounceEventResult| match events {
                 Ok(events) => {
+                    log::debug!("changes detected, re-running process");
                     self.process_events(events);
                     self.run_worker_tree();
                 }

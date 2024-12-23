@@ -82,7 +82,7 @@ impl WorkerTree {
         Ok(())
     }
 
-    pub fn process(&mut self, resources: &Resources, options: Options) -> DarkluaResult<()> {
+    pub fn process(&mut self, resources: &Resources, mut options: Options) -> DarkluaResult<()> {
         if !self.remove_files.is_empty() {
             let remove_count = self.remove_files.len();
             log::debug!(
@@ -99,7 +99,7 @@ impl WorkerTree {
         }
 
         let mut worker = Worker::new(resources);
-        worker.setup_worker(options)?;
+        worker.setup_worker(&mut options)?;
 
         if self.has_configuration_changed(worker.configuration()) {
             log::debug!("configuration change detected");
@@ -118,7 +118,7 @@ impl WorkerTree {
 
         let work_timer = Timer::now();
 
-        loop {
+        'work_loop: loop {
             let mut add_edges = Vec::new();
 
             match toposort(&self.graph, None) {
@@ -166,6 +166,12 @@ impl WorkerTree {
                                     );
                                     work_item.status = WorkStatus::err(err);
                                     done_count += 1;
+                                    if options.should_fail_fast() {
+                                        log::debug!(
+                                            "dropping all work because the fail-fast option is enabled"
+                                        );
+                                        break 'work_loop;
+                                    }
                                 }
                             }
                         }
