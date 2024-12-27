@@ -88,6 +88,10 @@ impl<'a, 'b, 'code, 'resources, T: RequirePathLocatorMode>
     }
 
     fn require_call(&self, call: &FunctionCall) -> Option<PathBuf> {
+        if let Some(x) = self.path_locator.require_call(call, &self.source) {
+            return Some(x);
+        }
+
         if is_require_call(call, self) {
             self.path_locator
                 .match_path_require_call(call, &self.source)

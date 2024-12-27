@@ -6,4 +6,7 @@ pub trait RequirePathLocatorMode {
     fn get_source(&self, name: &str) -> Option<&Path>;
     fn module_folder_name(&self) -> &str;
     fn match_path_require_call(&self, call: &FunctionCall, source: &Path) -> Option<PathBuf>;
+    fn require_call(&self, _call: &FunctionCall, _source: &Path) -> Option<PathBuf> {
+        None
+    }
 }
