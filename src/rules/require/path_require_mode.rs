@@ -52,7 +52,7 @@ impl Default for PathRequireMode {
     fn default() -> Self {
         Self {
             module_folder_name: get_default_module_folder_name(),
-            sources: Default::default(),
+            sources: default_sources(),
         }
     }
 }
@@ -72,7 +72,7 @@ impl PathRequireMode {
     pub fn new(module_folder_name: impl Into<String>) -> Self {
         Self {
             module_folder_name: module_folder_name.into(),
-            sources: Self::load_luaurc(Default::default(), None).unwrap_or_default(),
+            sources: default_sources(),
         }
     }
 
