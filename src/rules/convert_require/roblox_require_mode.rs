@@ -2,12 +2,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     frontend::DarkluaResult,
-    nodes::{Arguments, FunctionCall, Prefix},
+    nodes::{Arguments, Expression, FieldExpression, FunctionCall, IndexExpression, Prefix},
     rules::{convert_require::rojo_sourcemap::RojoSourcemap, Context},
     utils, DarkluaError,
 };
 
-use std::path::{Component, Path, PathBuf};
+use std::{
+    collections::VecDeque,
+    path::{Component, Path, PathBuf},
+};
 
 use super::{
     instance_path::{get_parent_instance, script_identifier},
@@ -56,11 +59,10 @@ impl RobloxRequireMode {
 
     pub(crate) fn find_require(
         &self,
-        _call: &FunctionCall,
-        _context: &Context,
+        call: &FunctionCall,
+        context: &Context,
     ) -> DarkluaResult<Option<PathBuf>> {
-        Err(DarkluaError::custom("unsupported initial require mode")
-            .context("Roblox require mode cannot be used as the current require mode"))
+        parse_roblox(call, context.current_path())
     }
 
     pub(crate) fn generate_require(
@@ -243,4 +245,117 @@ fn get_relative_parent_path(path: &Path) -> &Path {
         }
         None => Path::new(".."),
     }
+}
+
+pub fn parse_roblox(call: &FunctionCall, starting_path: &Path) -> DarkluaResult<Option<PathBuf>> {
+    let Arguments::Tuple(args) = call.get_arguments() else {
+        Err(
+            DarkluaError::custom("unexpected require call, only accepts tuples")
+                .context("while finding roblox requires"),
+        )?
+    };
+
+    let mut path_builder = VecDeque::<String>::new();
+    let Some(Expression::Field(field)) = args.iter_values().next() else {
+        Err(
+            DarkluaError::custom("unexpected require argument, only accepts fields")
+                .context("while getting roblox path"),
+        )?
+    };
+
+    let mut current_path = starting_path.to_path_buf();
+    parse_roblox_field(field, &mut path_builder, &mut current_path)?;
+    while let Some(x) = path_builder.pop_front() {
+        current_path.push(x)
+    }
+
+    let mut base_path = starting_path.to_path_buf();
+    base_path.pop();
+
+    Ok(Some(current_path))
+}
+
+fn parse_roblox_prefix(
+    prefix: &Prefix,
+    path_builder: &mut VecDeque<String>,
+    current_path: &mut PathBuf,
+) -> DarkluaResult<()> {
+    match prefix {
+        Prefix::Field(x) => parse_roblox_field(x, path_builder, current_path)?,
+        Prefix::Index(x) => parse_roblox_index(x, path_builder, current_path)?,
+        Prefix::Identifier(x) => {
+            handle_roblox_script_parent(x.get_name(), path_builder, current_path)?
+        }
+        _ => Err(
+            DarkluaError::custom("unexpected prefix, only constants accepted")
+                .context("while parsing roblox require"),
+        )?,
+    };
+    Ok(())
+}
+
+fn parse_roblox_expression(
+    expression: &Expression,
+    path_builder: &mut VecDeque<String>,
+    current_path: &mut PathBuf,
+) -> DarkluaResult<()> {
+    match expression {
+        Expression::Field(x) => parse_roblox_field(x, path_builder, current_path)?,
+        Expression::Index(x) => parse_roblox_index(x, path_builder, current_path)?,
+        Expression::Identifier(x) => {
+            handle_roblox_script_parent(x.get_name(), path_builder, current_path)?
+        }
+        Expression::String(x) => {
+            handle_roblox_script_parent(x.get_value(), path_builder, current_path)?
+        }
+        _ => Err(
+            DarkluaError::custom("unexpected expression, only constants accepted")
+                .context("while parsing roblox require"),
+        )?,
+    };
+    Ok(())
+}
+
+fn parse_roblox_field(
+    field: &FieldExpression,
+    path_builder: &mut VecDeque<String>,
+    current_path: &mut PathBuf,
+) -> DarkluaResult<()> {
+    handle_roblox_script_parent(field.get_field().get_name(), path_builder, current_path)?;
+    parse_roblox_prefix(field.get_prefix(), path_builder, current_path)
+}
+
+fn parse_roblox_index(
+    index: &IndexExpression,
+    path_builder: &mut VecDeque<String>,
+    current_path: &mut PathBuf,
+) -> DarkluaResult<()> {
+    parse_roblox_expression(index.get_index(), path_builder, current_path)?;
+    parse_roblox_prefix(index.get_prefix(), path_builder, current_path)
+}
+
+fn handle_roblox_script_parent(
+    str: &str,
+    path_builder: &mut VecDeque<String>,
+    current_path: &mut PathBuf,
+) -> DarkluaResult<()> {
+    match str {
+        "script" => {
+            if path_builder
+                .back()
+                .map(|x| x != "Parent")
+                .unwrap_or_default()
+            {
+                Err(DarkluaError::custom("expected .Parent after script")
+                    .context("while parsing roblox require"))?
+            }
+            path_builder.pop_back();
+        }
+        x @ "Parent" => {
+            current_path.pop();
+            path_builder.push_back(x.to_string());
+        }
+        x => path_builder.push_back(x.to_string()),
+    };
+    Ok(())
 }
