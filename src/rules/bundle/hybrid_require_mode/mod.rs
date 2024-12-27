@@ -1,8 +1,6 @@
 use crate::{
     nodes::Block,
-    rules::{
-        bundle::BundleOptions, require::HybridRequireMode, Context,
-    },
+    rules::{bundle::BundleOptions, require::HybridRequireMode, Context},
 };
 
 use super::process_block_generic;
@@ -13,5 +11,5 @@ pub(crate) fn process_block(
     options: &BundleOptions,
     hybrid_require_mode: &HybridRequireMode,
 ) -> Result<(), String> {
-    process_block_generic(block, context, options, hybrid_require_mode) 
+    process_block_generic(block, context, options, hybrid_require_mode)
 }

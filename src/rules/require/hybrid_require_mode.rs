@@ -28,12 +28,6 @@ impl RequirePathLocatorMode for HybridRequireMode {
                 source_parent.pop();
                 pathdiff::diff_paths(x, source_parent).map(|x| PathBuf::from("./").join(x))
             })
-            // .map(|x| {
-            //     println!("{x:?}");
-            //     let y = source.join(x);
-            //     println!("{y:?}");
-            //     y
-            // })
             .or(match_path_require_call(call))
     }
 }

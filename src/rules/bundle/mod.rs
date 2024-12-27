@@ -7,7 +7,8 @@ use std::path::Path;
 use crate::nodes::Block;
 use crate::process::{NodeVisitor, ScopeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, ReplaceReferencedTokens, Rule, RuleConfiguration, RuleConfigurationError, RuleProcessResult, RuleProperties
+    Context, FlawlessRule, ReplaceReferencedTokens, Rule, RuleConfiguration,
+    RuleConfigurationError, RuleProcessResult, RuleProperties,
 };
 use crate::utils::Timer;
 use crate::Parser;
