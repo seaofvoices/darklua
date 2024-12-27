@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::frontend::DarkluaResult;
 use crate::nodes::FunctionCall;
@@ -8,9 +8,29 @@ use crate::DarkluaError;
 
 use std::collections::HashMap;
 use std::ffi::OsStr;
+use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use super::RequirePathLocator;
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+struct Luaurc {
+    aliases: HashMap<String, PathBuf>,
+    // there are more but it's not needed for darklua
+}
+
+fn default_sources() -> HashMap<String, PathBuf> {
+    PathRequireMode::load_luaurc(HashMap::new(), None).unwrap_or_default()
+}
+
+fn deserialize_sources<'de, D>(deserializer: D) -> Result<HashMap<String, PathBuf>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let sources = <HashMap<String, PathBuf>>::deserialize(deserializer)?;
+    PathRequireMode::load_luaurc(sources, None).map_err(serde::de::Error::custom)
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
@@ -20,7 +40,11 @@ pub struct PathRequireMode {
         default = "get_default_module_folder_name"
     )]
     module_folder_name: String,
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    #[serde(
+        default = "default_sources",
+        deserialize_with = "deserialize_sources",
+        skip_serializing_if = "HashMap::is_empty"
+    )]
     sources: HashMap<String, PathBuf>,
 }
 
@@ -48,8 +72,32 @@ impl PathRequireMode {
     pub fn new(module_folder_name: impl Into<String>) -> Self {
         Self {
             module_folder_name: module_folder_name.into(),
-            sources: Default::default(),
+            sources: Self::load_luaurc(Default::default(), None).unwrap_or_default(),
         }
+    }
+
+    pub fn load_luaurc(
+        mut sources: HashMap<String, PathBuf>,
+        path: Option<&Path>,
+    ) -> DarkluaResult<HashMap<String, PathBuf>> {
+        let file = match path {
+            Some(path) => {
+                File::open(path).map_err(|e| DarkluaError::io_error(path, e.to_string()))?
+            }
+            None => {
+                let Ok(temp_file) = File::open("./.luaurc") else {
+                    return Ok(sources);
+                };
+                temp_file
+            }
+        };
+
+        let luaurc: Luaurc = serde_json::from_reader(file)?;
+        for (k, v) in luaurc.aliases.into_iter() {
+            sources.insert(k, v);
+        }
+
+        Ok(sources)
     }
 
     pub(crate) fn module_folder_name(&self) -> &str {
