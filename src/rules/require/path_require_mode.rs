@@ -94,7 +94,7 @@ impl PathRequireMode {
 
         let luaurc: Luaurc = serde_json::from_reader(file)?;
         for (k, v) in luaurc.aliases.into_iter() {
-            sources.insert(k, v);
+            sources.insert(String::from("@") + &k, v);
         }
 
         Ok(sources)
