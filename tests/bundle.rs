@@ -230,6 +230,18 @@ mod without_rules {
     }
 
     #[test]
+    fn require_lua_file_forward_exported_types() {
+        process_main(
+            &memory_resources!(
+                "src/value.lua" => "export type Value = string return true",
+                "src/main.lua" => "local value = require('./value.lua') export type Value = value.Value",
+                ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
+            ),
+            "require_lua_file_forward_exported_types",
+        );
+    }
+
+    #[test]
     fn require_lua_file_after_declaration() {
         let resources = memory_resources!(
             "src/value.lua" => "return true",

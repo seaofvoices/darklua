@@ -78,7 +78,7 @@ macro_rules! impl_token_fns {
             )*)?
         }
 
-        pub(crate) fn shift_token_line(&mut self, amount: usize) {
+        pub(crate) fn shift_token_line(&mut self, amount: isize) {
             $(
                 self.$field.shift_token_line(amount);
             )*

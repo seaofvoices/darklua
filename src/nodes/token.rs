@@ -263,10 +263,12 @@ impl Token {
         }
     }
 
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+    pub(crate) fn shift_token_line(&mut self, amount: isize) {
         match &mut self.position {
             Position::LineNumberReference { line_number, .. }
-            | Position::LineNumber { line_number, .. } => *line_number += amount,
+            | Position::LineNumber { line_number, .. } => {
+                *line_number = line_number.saturating_add_signed(amount);
+            }
             Position::Any { .. } => {}
         }
     }
