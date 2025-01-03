@@ -66,8 +66,8 @@ impl RenameTypeDeclarationProcessor {
         self.all_types.insert(module_name, types);
     }
 
-    fn generate_unique_type(&mut self, original_name: &String) -> String {
-        let mut new_name = original_name.clone();
+    fn generate_unique_type(&mut self, original_name: &str) -> String {
+        let mut new_name = original_name.to_owned();
         new_name.push_str(&self.suffix);
         new_name.push_str(&self.permutator.next().unwrap());
         new_name
@@ -178,7 +178,7 @@ impl NodeProcessor for RenameTypeDeclarationProcessor {
                 .and_then(|module_types| {
                     module_types.get(type_field.get_type_name().get_type_name().get_name())
                 })
-                .map(|renamed| TypeName::new(renamed))
+                .map(TypeName::new)
                 .map(Type::from),
             _ => None,
         };
@@ -203,9 +203,8 @@ impl NodePostProcessor for RenameTypeDeclarationProcessor {
                 let last_line = lines::statement_total(&current);
                 let total = 1 + last_line.saturating_sub(first_line) as isize;
 
-                let mut shift_processor = ShiftTokenLineProcessor::new(
-                    1 + self.type_lines as isize - first_line as isize,
-                );
+                let mut shift_processor =
+                    ShiftTokenLineProcessor::new(1 + self.type_lines - first_line as isize);
                 DefaultVisitor::visit_statement(&mut current, &mut shift_processor);
 
                 self.type_lines += total;
