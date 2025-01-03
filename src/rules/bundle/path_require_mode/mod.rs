@@ -15,10 +15,10 @@ use crate::nodes::{
     StringExpression,
 };
 use crate::process::{
-    to_expression, DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor,
+    to_expression, DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor,
 };
 use crate::rules::require::{
-    is_require_call, match_path_require_call, PathRequireMode, RequirePathLocator,
+    is_require_call, PathRequireMode, RequirePathLocator, RequirePathLocatorMode,
 };
 use crate::rules::{
     Context, ContextBuilder, FlawlessRule, ReplaceReferencedTokens, RuleProcessResult,
@@ -26,7 +26,7 @@ use crate::rules::{
 use crate::utils::Timer;
 use crate::{DarkluaError, Resources};
 
-use super::BundleOptions;
+use super::{process_block_generic, BundleOptions};
 
 pub(crate) enum RequiredResource {
     Block(Block),
@@ -34,10 +34,10 @@ pub(crate) enum RequiredResource {
 }
 
 #[derive(Debug)]
-struct RequirePathProcessor<'a, 'b, 'resources, 'code> {
+pub(crate) struct RequirePathProcessor<'a, 'b, 'resources, 'code, T: RequirePathLocatorMode> {
     options: &'a BundleOptions,
     identifier_tracker: IdentifierTracker,
-    path_locator: RequirePathLocator<'b, 'code, 'resources>,
+    path_locator: RequirePathLocator<'b, 'code, 'resources, T>,
     module_definitions: BuildModuleDefinitions,
     source: PathBuf,
     module_cache: HashMap<PathBuf, Expression>,
@@ -47,11 +47,13 @@ struct RequirePathProcessor<'a, 'b, 'resources, 'code> {
     errors: Vec<String>,
 }
 
-impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> {
-    fn new<'context>(
+impl<'a, 'b, 'code, 'resources, T: RequirePathLocatorMode>
+    RequirePathProcessor<'a, 'b, 'code, 'resources, T>
+{
+    pub(crate) fn new<'context>(
         context: &'context Context<'b, 'resources, 'code>,
         options: &'a BundleOptions,
-        path_require_mode: &'b PathRequireMode,
+        path_require_mode: &'b T,
     ) -> Self
     where
         'context: 'b,
@@ -76,7 +78,7 @@ impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> 
         }
     }
 
-    fn apply(self, block: &mut Block, context: &Context) -> RuleProcessResult {
+    pub(crate) fn apply(self, block: &mut Block, context: &Context) -> RuleProcessResult {
         self.module_definitions.apply(block, context);
         match self.errors.len() {
             0 => Ok(()),
@@ -87,7 +89,8 @@ impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> 
 
     fn require_call(&self, call: &FunctionCall) -> Option<PathBuf> {
         if is_require_call(call, self) {
-            match_path_require_call(call)
+            self.path_locator
+                .match_path_require_call(call, &self.source)
         } else {
             None
         }
@@ -261,7 +264,7 @@ impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> 
     }
 }
 
-impl Deref for RequirePathProcessor<'_, '_, '_, '_> {
+impl<T: RequirePathLocatorMode> Deref for RequirePathProcessor<'_, '_, '_, '_, T> {
     type Target = IdentifierTracker;
 
     fn deref(&self) -> &Self::Target {
@@ -269,7 +272,7 @@ impl Deref for RequirePathProcessor<'_, '_, '_, '_> {
     }
 }
 
-impl DerefMut for RequirePathProcessor<'_, '_, '_, '_> {
+impl<T: RequirePathLocatorMode> DerefMut for RequirePathProcessor<'_, '_, '_, '_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.identifier_tracker
     }
@@ -300,7 +303,7 @@ where
     expression
 }
 
-impl NodeProcessor for RequirePathProcessor<'_, '_, '_, '_> {
+impl<T: RequirePathLocatorMode> NodeProcessor for RequirePathProcessor<'_, '_, '_, '_, T> {
     fn process_expression(&mut self, expression: &mut Expression) {
         if let Expression::Call(call) = expression {
             if let Some(replace_with) = self.try_inline_call(call) {
@@ -344,25 +347,5 @@ pub(crate) fn process_block(
     options: &BundleOptions,
     path_require_mode: &PathRequireMode,
 ) -> Result<(), String> {
-    if options.parser().is_preserving_tokens() {
-        log::trace!(
-            "replacing token references of {}",
-            context.current_path().display()
-        );
-        let replace_tokens = ReplaceReferencedTokens::default();
-
-        let apply_replace_tokens_timer = Timer::now();
-
-        replace_tokens.flawless_process(block, context);
-
-        log::trace!(
-            "replaced token references for `{}` in {}",
-            context.current_path().display(),
-            apply_replace_tokens_timer.duration_label()
-        );
-    }
-
-    let mut processor = RequirePathProcessor::new(context, options, path_require_mode);
-    ScopeVisitor::visit_block(block, &mut processor);
-    processor.apply(block, context)
+    process_block_generic(block, context, options, path_require_mode)
 }
