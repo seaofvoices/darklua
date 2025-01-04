@@ -1,8 +1,6 @@
 ---
 source: tests/bundle.rs
-assertion_line: 85
 expression: main
-snapshot_kind: text
 ---
 type Value__DARKLUA_TYPE_a<T> = string | T
 
