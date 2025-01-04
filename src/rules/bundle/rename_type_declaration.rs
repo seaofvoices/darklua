@@ -179,7 +179,15 @@ impl NodeProcessor for RenameTypeDeclarationProcessor {
                     module_types.get(type_field.get_type_name().get_type_name().get_name())
                 })
                 .map(TypeName::new)
-                .map(Type::from),
+                .map(|type_name| {
+                    Type::from(
+                        if let Some(parameters) = type_field.get_type_name().get_type_parameters() {
+                            type_name.with_type_parameters(parameters.clone())
+                        } else {
+                            type_name
+                        },
+                    )
+                }),
             _ => None,
         };
 

@@ -242,6 +242,18 @@ mod without_rules {
     }
 
     #[test]
+    fn require_lua_file_forward_exported_types_with_generics() {
+        process_main(
+            &memory_resources!(
+                "src/value.lua" => "export type Value<T> = string | T return true",
+                "src/main.lua" => "local value = require('./value.lua') export type Value<T> = value.Value<T>",
+                ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
+            ),
+            "require_lua_file_forward_exported_types_with_generics",
+        );
+    }
+
+    #[test]
     fn require_lua_file_after_declaration() {
         let resources = memory_resources!(
             "src/value.lua" => "return true",
