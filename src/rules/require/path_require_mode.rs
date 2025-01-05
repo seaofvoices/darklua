@@ -1,36 +1,17 @@
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::frontend::DarkluaResult;
 use crate::nodes::FunctionCall;
 use crate::rules::require::match_path_require_call;
 use crate::rules::Context;
+use crate::utils::find_luau_configuration;
 use crate::DarkluaError;
 
 use std::collections::HashMap;
 use std::ffi::OsStr;
-use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use super::RequirePathLocator;
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "snake_case")]
-struct Luaurc {
-    aliases: HashMap<String, PathBuf>,
-    // there are more but it's not needed for darklua
-}
-
-fn default_sources() -> HashMap<String, PathBuf> {
-    PathRequireMode::load_luaurc(HashMap::new(), None).unwrap_or_default()
-}
-
-fn deserialize_sources<'de, D>(deserializer: D) -> Result<HashMap<String, PathBuf>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let sources = <HashMap<String, PathBuf>>::deserialize(deserializer)?;
-    PathRequireMode::load_luaurc(sources, None).map_err(serde::de::Error::custom)
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
@@ -40,19 +21,18 @@ pub struct PathRequireMode {
         default = "get_default_module_folder_name"
     )]
     module_folder_name: String,
-    #[serde(
-        default = "default_sources",
-        deserialize_with = "deserialize_sources",
-        skip_serializing_if = "HashMap::is_empty"
-    )]
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     sources: HashMap<String, PathBuf>,
+    #[serde(skip)]
+    luau_rc_aliases: Option<HashMap<String, PathBuf>>,
 }
 
 impl Default for PathRequireMode {
     fn default() -> Self {
         Self {
             module_folder_name: get_default_module_folder_name(),
-            sources: default_sources(),
+            sources: Default::default(),
+            luau_rc_aliases: Default::default(),
         }
     }
 }
@@ -72,32 +52,18 @@ impl PathRequireMode {
     pub fn new(module_folder_name: impl Into<String>) -> Self {
         Self {
             module_folder_name: module_folder_name.into(),
-            sources: default_sources(),
+            sources: Default::default(),
+            luau_rc_aliases: Default::default(),
         }
     }
 
-    pub fn load_luaurc(
-        mut sources: HashMap<String, PathBuf>,
-        path: Option<&Path>,
-    ) -> DarkluaResult<HashMap<String, PathBuf>> {
-        let file = match path {
-            Some(path) => {
-                File::open(path).map_err(|e| DarkluaError::io_error(path, e.to_string()))?
-            }
-            None => {
-                let Ok(temp_file) = File::open("./.luaurc") else {
-                    return Ok(sources);
-                };
-                temp_file
-            }
-        };
+    pub(crate) fn initialize(&mut self, context: &Context) -> Result<(), DarkluaError> {
+        self.luau_rc_aliases =
+            find_luau_configuration(context.current_path(), context.resources())?
+                .map(|config| Some(config.aliases))
+                .unwrap_or_default();
 
-        let luaurc: Luaurc = serde_json::from_reader(file)?;
-        for (k, v) in luaurc.aliases.into_iter() {
-            sources.insert(String::from("@") + &k, v);
-        }
-
-        Ok(sources)
+        Ok(())
     }
 
     pub(crate) fn module_folder_name(&self) -> &str {
@@ -105,7 +71,11 @@ impl PathRequireMode {
     }
 
     pub(crate) fn get_source(&self, name: &str) -> Option<&Path> {
-        self.sources.get(name).map(PathBuf::as_path)
+        self.luau_rc_aliases
+            .as_ref()
+            .and_then(|aliases| aliases.get(name))
+            .or_else(|| self.sources.get(name))
+            .map(PathBuf::as_path)
     }
 
     pub(crate) fn find_require(

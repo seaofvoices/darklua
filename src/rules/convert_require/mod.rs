@@ -67,7 +67,7 @@ impl RequireMode {
     fn initialize(&mut self, context: &Context) -> DarkluaResult<()> {
         match self {
             RequireMode::Roblox(roblox_mode) => roblox_mode.initialize(context),
-            RequireMode::Path(_) => Ok(()),
+            RequireMode::Path(path_mode) => path_mode.initialize(context),
         }
     }
 }
