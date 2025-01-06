@@ -1,5 +1,7 @@
 # Changelog
 
+* read Luau configuration files (`.luaurc`) to get path aliases ([#246](https://github.com/seaofvoices/darklua/pull/246))
+
 ## 0.15.0
 
 * improve file watching: re-process specific files, sourcemap changes re-process the project, bundling re-starts whenever a dependent file changes ([#239](https://github.com/seaofvoices/darklua/pull/239))
