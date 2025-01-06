@@ -6,7 +6,11 @@ use std::{
 use petgraph::{algo::toposort, graph::NodeIndex, stable_graph::StableDiGraph, visit::Dfs};
 use xxhash_rust::xxh3::xxh3_64;
 
-use crate::{frontend::utils::maybe_plural, utils::{clear_luau_configuration_cache, Timer}, DarkluaError};
+use crate::{
+    frontend::utils::maybe_plural,
+    utils::{clear_luau_configuration_cache, Timer},
+    DarkluaError,
+};
 
 use super::{
     normalize_path, work_item::WorkStatus, Configuration, DarkluaResult, Options, Resources,

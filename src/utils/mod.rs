@@ -4,7 +4,7 @@ mod serde_string_or_struct;
 mod timer;
 
 pub(crate) use expressions_as_statement::{expressions_as_expression, expressions_as_statement};
-pub(crate) use luau_config::{find_luau_configuration, clear_luau_configuration_cache};
+pub(crate) use luau_config::{clear_luau_configuration_cache, find_luau_configuration};
 pub(crate) use serde_string_or_struct::string_or_struct;
 pub use timer::Timer;
 
