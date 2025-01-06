@@ -1,9 +1,9 @@
 use std::{
+    cell::RefCell,
     collections::HashMap,
     path::{Path, PathBuf},
 };
 
-use cached::proc_macro::cached;
 use serde::Deserialize;
 
 use crate::{DarkluaError, Resources};
@@ -15,29 +15,32 @@ pub(crate) struct LuauConfiguration {
     pub(crate) aliases: HashMap<String, PathBuf>,
 }
 
-#[cached(
-    key = "Option<PathBuf>",
-    convert = r##"{ luau_file.parent().map(Path::to_path_buf) }"##,
-    result = true
-)]
-pub(crate) fn find_luau_configuration(
+fn find_luau_configuration_private(
     luau_file: &Path,
     resources: &Resources,
 ) -> Result<Option<LuauConfiguration>, DarkluaError> {
-    for ancestor in luau_file.ancestors() {
-        let possible_config = ancestor.join(LUAU_RC_FILE_NAME);
+    log::debug!(
+        "find closest {} for '{}'",
+        LUAU_RC_FILE_NAME,
+        luau_file.display()
+    );
 
-        if resources.exists(&possible_config)? {
-            let config = resources.get(&possible_config)?;
+    for ancestor in luau_file.ancestors() {
+        let config_path = ancestor.join(LUAU_RC_FILE_NAME);
+
+        if resources.exists(&config_path)? {
+            let config = resources.get(&config_path)?;
 
             return serde_json::from_str(&config)
                 .map(|mut config: LuauConfiguration| {
+                    log::debug!("found luau configuration at '{}'", config_path.display());
+
                     config.aliases = config
                         .aliases
                         .into_iter()
                         .map(|(mut key, value)| {
                             key.insert(0, '@');
-                            (key, value)
+                            (key, ancestor.join(value))
                         })
                         .collect();
 
@@ -48,4 +51,42 @@ pub(crate) fn find_luau_configuration(
     }
 
     Ok(None)
+}
+
+thread_local! {
+    static LUAU_RC_CACHE: RefCell<HashMap<Option<PathBuf>, Option<LuauConfiguration>>> =  RefCell::new(HashMap::new());
+}
+
+pub(crate) fn find_luau_configuration(
+    luau_file: &Path,
+    resources: &Resources,
+) -> Result<Option<LuauConfiguration>, DarkluaError> {
+    let key = luau_file.parent().map(Path::to_path_buf);
+
+    LUAU_RC_CACHE.with(|luau_rc_cache| {
+        {
+            let cache = luau_rc_cache.borrow();
+
+            let res = cache.get(&key);
+            if let Some(res) = res {
+                return Ok(res.clone());
+            }
+        }
+
+        let mut cache = luau_rc_cache.borrow_mut();
+
+        let value = find_luau_configuration_private(luau_file, resources)?;
+
+        cache.insert(key, value.clone());
+
+        Ok(value)
+    })
+}
+
+pub fn clear_luau_configuration_cache() {
+    LUAU_RC_CACHE.with(|luau_rc_cache| {
+        let mut cache = luau_rc_cache.borrow_mut();
+        cache.clear();
+        log::debug!("luau configuration cache cleared");
+    })
 }
