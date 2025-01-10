@@ -1,5 +1,7 @@
 # Changelog
 
+* support Luau types when bundling ([#249](https://github.com/seaofvoices/darklua/pull/249))
+
 ## 0.15.0
 
 * improve file watching: re-process specific files, sourcemap changes re-process the project, bundling re-starts whenever a dependent file changes ([#239](https://github.com/seaofvoices/darklua/pull/239))

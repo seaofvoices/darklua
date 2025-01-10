@@ -1,8 +1,11 @@
 mod expressions_as_statement;
+pub(crate) mod lines;
+mod scoped_hash_map;
 mod serde_string_or_struct;
 mod timer;
 
 pub(crate) use expressions_as_statement::{expressions_as_expression, expressions_as_statement};
+pub(crate) use scoped_hash_map::ScopedHashMap;
 pub(crate) use serde_string_or_struct::string_or_struct;
 pub use timer::Timer;
 

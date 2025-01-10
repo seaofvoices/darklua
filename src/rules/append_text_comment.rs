@@ -97,7 +97,7 @@ impl Rule for AppendTextComment {
         }
 
         let shift_lines = text.lines().count();
-        ShiftTokenLine::new(shift_lines).flawless_process(block, context);
+        ShiftTokenLine::new(shift_lines as isize).flawless_process(block, context);
 
         match self.location {
             AppendLocation::Start => {

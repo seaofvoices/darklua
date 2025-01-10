@@ -138,7 +138,7 @@ impl Arguments {
         }
     }
 
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+    pub(crate) fn shift_token_line(&mut self, amount: isize) {
         match self {
             Arguments::Tuple(tuple) => tuple.shift_token_line(amount),
             Arguments::String(_) | Arguments::Table(_) => {}

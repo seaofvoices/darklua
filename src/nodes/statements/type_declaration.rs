@@ -70,6 +70,14 @@ impl TypeDeclarationStatement {
     }
 
     #[inline]
+    pub fn remove_exported(&mut self) {
+        self.exported = false;
+        if let Some(tokens) = self.tokens.as_mut() {
+            tokens.export.take();
+        }
+    }
+
+    #[inline]
     pub fn is_exported(&self) -> bool {
         self.exported
     }
@@ -195,7 +203,7 @@ impl TypeDeclarationStatement {
         }
     }
 
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+    pub(crate) fn shift_token_line(&mut self, amount: isize) {
         self.name.shift_token_line(amount);
         if let Some(tokens) = &mut self.tokens {
             tokens.shift_token_line(amount);

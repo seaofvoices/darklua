@@ -7,17 +7,17 @@ use crate::rules::{
 use super::verify_no_rule_properties;
 
 #[derive(Debug)]
-struct Processor {
-    shift_amount: usize,
+pub(crate) struct ShiftTokenLineProcessor {
+    shift_amount: isize,
 }
 
-impl Processor {
-    fn new(shift_amount: usize) -> Self {
+impl ShiftTokenLineProcessor {
+    pub(crate) fn new(shift_amount: isize) -> Self {
         Self { shift_amount }
     }
 }
 
-impl NodeProcessor for Processor {
+impl NodeProcessor for ShiftTokenLineProcessor {
     fn process_block(&mut self, block: &mut Block) {
         block.shift_token_line(self.shift_amount);
     }
@@ -242,11 +242,11 @@ pub const SHIFT_TOKEN_LINE: &str = "shift_token_line";
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct ShiftTokenLine {
-    shift_amount: usize,
+    shift_amount: isize,
 }
 
 impl ShiftTokenLine {
-    pub(crate) fn new(shift_amount: usize) -> Self {
+    pub(crate) fn new(shift_amount: isize) -> Self {
         Self { shift_amount }
     }
 }
@@ -254,7 +254,7 @@ impl ShiftTokenLine {
 impl FlawlessRule for ShiftTokenLine {
     fn flawless_process(&self, block: &mut Block, _context: &Context) {
         if self.shift_amount != 0 {
-            let mut processor = Processor::new(self.shift_amount);
+            let mut processor = ShiftTokenLineProcessor::new(self.shift_amount);
             DefaultVisitor::visit_block(block, &mut processor);
         }
     }

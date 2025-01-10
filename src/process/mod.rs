@@ -18,5 +18,5 @@ pub use node_counter::NodeCounter;
 pub use node_processor::{NodePostProcessor, NodeProcessor};
 pub use post_visitor::{DefaultPostVisitor, NodePostVisitor};
 pub(crate) use scope_visitor::IdentifierTracker;
-pub use scope_visitor::{Scope, ScopeVisitor};
+pub use scope_visitor::{Scope, ScopePostVisitor, ScopeVisitor};
 pub use visitors::{DefaultVisitor, NodeVisitor};

@@ -273,7 +273,7 @@ impl NumberExpression {
         }
     }
 
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+    pub(crate) fn shift_token_line(&mut self, amount: isize) {
         match self {
             NumberExpression::Decimal(number) => number.shift_token_line(amount),
             NumberExpression::Hex(number) => number.shift_token_line(amount),
