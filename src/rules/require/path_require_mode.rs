@@ -58,10 +58,27 @@ impl PathRequireMode {
     }
 
     pub(crate) fn initialize(&mut self, context: &Context) -> Result<(), DarkluaError> {
-        self.luau_rc_aliases =
-            find_luau_configuration(context.current_path(), context.resources())?
-                .map(|config| Some(config.aliases))
-                .unwrap_or_default();
+        if let Some(config) = find_luau_configuration(context.current_path(), context.resources())?
+        {
+            self.luau_rc_aliases.replace(
+                config
+                    .aliases
+                    .into_iter()
+                    .map(|(alias, alias_target)| {
+                        (
+                            alias,
+                            alias_target
+                                .strip_prefix(context.project_location())
+                                .ok()
+                                .map(ToOwned::to_owned)
+                                .unwrap_or(alias_target),
+                        )
+                    })
+                    .collect(),
+            );
+        } else {
+            self.luau_rc_aliases.take();
+        }
 
         Ok(())
     }
