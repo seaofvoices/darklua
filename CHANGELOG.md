@@ -1,6 +1,7 @@
 # Changelog
 
 * read Luau configuration files (`.luaurc`) to get path aliases ([#246](https://github.com/seaofvoices/darklua/pull/246))
+* support Luau types when bundling ([#249](https://github.com/seaofvoices/darklua/pull/249))
 
 ## 0.15.0
 

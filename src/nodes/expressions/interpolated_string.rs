@@ -133,7 +133,7 @@ impl InterpolationSegment {
         }
     }
 
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+    pub(crate) fn shift_token_line(&mut self, amount: isize) {
         match self {
             InterpolationSegment::String(segment) => segment.shift_token_line(amount),
             InterpolationSegment::Value(segment) => segment.shift_token_line(amount),

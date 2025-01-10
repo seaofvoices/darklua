@@ -415,6 +415,7 @@ dependencies = [
  "env_logger",
  "full_moon",
  "include_dir",
+ "indexmap 2.7.0",
  "insta",
  "json5",
  "log",

@@ -180,7 +180,7 @@ impl TableEntry {
         }
     }
 
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+    pub(crate) fn shift_token_line(&mut self, amount: isize) {
         match self {
             TableEntry::Field(entry) => entry.shift_token_line(amount),
             TableEntry::Index(entry) => entry.shift_token_line(amount),
