@@ -12,6 +12,7 @@ const LUAU_RC_FILE_NAME: &str = ".luaurc";
 
 #[derive(Debug, Clone, Default, Deserialize, PartialEq, Eq)]
 pub(crate) struct LuauConfiguration {
+    #[serde(default)]
     pub(crate) aliases: HashMap<String, PathBuf>,
 }
 
