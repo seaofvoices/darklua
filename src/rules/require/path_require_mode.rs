@@ -23,8 +23,14 @@ pub struct PathRequireMode {
     module_folder_name: String,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     sources: HashMap<String, PathBuf>,
+    #[serde(default = "default_use_luau_configuration")]
+    use_luau_configuration: bool,
     #[serde(skip)]
     luau_rc_aliases: Option<HashMap<String, PathBuf>>,
+}
+
+fn default_use_luau_configuration() -> bool {
+    true
 }
 
 impl Default for PathRequireMode {
@@ -32,6 +38,7 @@ impl Default for PathRequireMode {
         Self {
             module_folder_name: get_default_module_folder_name(),
             sources: Default::default(),
+            use_luau_configuration: default_use_luau_configuration(),
             luau_rc_aliases: Default::default(),
         }
     }
@@ -53,11 +60,17 @@ impl PathRequireMode {
         Self {
             module_folder_name: module_folder_name.into(),
             sources: Default::default(),
+            use_luau_configuration: default_use_luau_configuration(),
             luau_rc_aliases: Default::default(),
         }
     }
 
     pub(crate) fn initialize(&mut self, context: &Context) -> Result<(), DarkluaError> {
+        if !self.use_luau_configuration {
+            self.luau_rc_aliases.take();
+            return Ok(());
+        }
+
         if let Some(config) = find_luau_configuration(context.current_path(), context.resources())?
         {
             self.luau_rc_aliases.replace(

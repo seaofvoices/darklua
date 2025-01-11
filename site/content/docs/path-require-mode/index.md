@@ -22,6 +22,9 @@ The path require mode can be defined as the string 'path' to use all the default
   sources: {
     pkg: "./Packages",
   },
+
+  // optional (defaults to true)
+  use_luau_configuration: true,
 }
 ```
 
@@ -110,7 +113,7 @@ Given this configuration file for bundling:
     require_mode: {
       name: "path",
       sources: {
-        pkg: "./Packages",
+        @pkg: "./Packages",
         // you can also map directly to a file (Lua or
         // any supported data file)
         images: "./assets/image-links.json",
@@ -123,6 +126,14 @@ Given this configuration file for bundling:
 It is possible to make these require call in any file:
 
 ```lua
-local Promise = require("pkg/Promise")
+local Promise = require("@pkg/Promise")
 local images = require("images")
 ```
+
+## Luau Configuration Files
+
+Luau configuration files are named `.luaurc` and they can contain an `aliases` parameter which acts like the [sources](#sources) parameter in darklua.
+
+The value of `use_luau_configuration` will change how darklua finds new sources. Before looking at the [sources](#sources) value, darklua will attempt to find the nearest `.luaurc` configuration file to each file it processes. If it finds one, it will load the aliases.
+
+This behavior is enabled by default. It can be disabled by setting `use_luau_configuration` to `false`.
