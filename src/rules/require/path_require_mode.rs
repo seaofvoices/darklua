@@ -73,22 +73,7 @@ impl PathRequireMode {
 
         if let Some(config) = find_luau_configuration(context.current_path(), context.resources())?
         {
-            self.luau_rc_aliases.replace(
-                config
-                    .aliases
-                    .into_iter()
-                    .map(|(alias, alias_target)| {
-                        (
-                            alias,
-                            alias_target
-                                .strip_prefix(context.project_location())
-                                .ok()
-                                .map(ToOwned::to_owned)
-                                .unwrap_or(alias_target),
-                        )
-                    })
-                    .collect(),
-            );
+            self.luau_rc_aliases.replace(config.aliases);
         } else {
             self.luau_rc_aliases.take();
         }
@@ -100,12 +85,16 @@ impl PathRequireMode {
         &self.module_folder_name
     }
 
-    pub(crate) fn get_source(&self, name: &str) -> Option<&Path> {
-        self.luau_rc_aliases
-            .as_ref()
-            .and_then(|aliases| aliases.get(name))
-            .or_else(|| self.sources.get(name))
-            .map(PathBuf::as_path)
+    pub(crate) fn get_source(&self, name: &str, rel: &Path) -> Option<PathBuf> {
+        self.sources
+            .get(name)
+            .map(|alias| rel.join(alias))
+            .or_else(|| {
+                self.luau_rc_aliases
+                    .as_ref()
+                    .and_then(|aliases| aliases.get(name))
+                    .map(ToOwned::to_owned)
+            })
     }
 
     pub(crate) fn find_require(
