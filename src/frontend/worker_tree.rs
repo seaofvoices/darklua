@@ -6,7 +6,11 @@ use std::{
 use petgraph::{algo::toposort, graph::NodeIndex, stable_graph::StableDiGraph, visit::Dfs};
 use xxhash_rust::xxh3::xxh3_64;
 
-use crate::{frontend::utils::maybe_plural, utils::Timer, DarkluaError};
+use crate::{
+    frontend::utils::maybe_plural,
+    utils::{clear_luau_configuration_cache, Timer},
+    DarkluaError,
+};
 
 use super::{
     normalize_path, work_item::WorkStatus, Configuration, DarkluaResult, Options, Resources,
@@ -83,6 +87,8 @@ impl WorkerTree {
     }
 
     pub fn process(&mut self, resources: &Resources, mut options: Options) -> DarkluaResult<()> {
+        clear_luau_configuration_cache();
+
         if !self.remove_files.is_empty() {
             let remove_count = self.remove_files.len();
             log::debug!(

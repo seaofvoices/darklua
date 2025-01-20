@@ -53,16 +53,15 @@ impl<'a, 'b, 'c> RequirePathLocator<'a, 'b, 'c> {
                     ))
                 })?;
 
-                let mut extra_module_location = self.extra_module_relative_location.join(
-                    self.path_require_mode
-                        .get_source(source_name)
-                        .ok_or_else(|| {
-                            DarkluaError::invalid_resource_path(
-                                path.display().to_string(),
-                                format!("unknown source name `{}`", source_name),
-                            )
-                        })?,
-                );
+                let mut extra_module_location = self
+                    .path_require_mode
+                    .get_source(source_name, self.extra_module_relative_location)
+                    .ok_or_else(|| {
+                        DarkluaError::invalid_resource_path(
+                            path.display().to_string(),
+                            format!("unknown source name `{}`", source_name),
+                        )
+                    })?;
                 extra_module_location.extend(components);
                 path = extra_module_location;
             }
