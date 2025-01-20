@@ -57,6 +57,9 @@ Any missing field will be replaced with its default value.
         // map `pkg` to a path to the `Packages` folder created by Wally:
         pkg: "./Packages",
       },
+
+      // Enable or disable finding `.luaurc` files to load source aliases
+      use_luau_configuration: true, // default value
     },
   },
 

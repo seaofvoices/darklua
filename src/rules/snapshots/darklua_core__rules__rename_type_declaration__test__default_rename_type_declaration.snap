@@ -1,0 +1,5 @@
+---
+source: src/rules/rename_type_declaration.rs
+expression: rule
+---
+"rename_type_declaration"

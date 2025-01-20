@@ -64,33 +64,7 @@ impl TypeName {
         self.type_parameters.as_mut()
     }
 
-    pub fn clear_comments(&mut self) {
-        self.type_name.clear_comments();
-        if let Some(parameters) = &mut self.type_parameters {
-            parameters.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.type_name.clear_comments();
-        if let Some(parameters) = &mut self.type_parameters {
-            parameters.clear_comments();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.type_name.replace_referenced_tokens(code);
-        if let Some(parameters) = &mut self.type_parameters {
-            parameters.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.type_name.shift_token_line(amount);
-        if let Some(parameters) = &mut self.type_parameters {
-            parameters.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(target = [type_name] iter = [type_parameters]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -151,29 +125,7 @@ impl TypeParameters {
         self.tokens.as_ref()
     }
 
-    pub fn clear_comments(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [tokens]);
 }
 
 impl FromIterator<TypeParameter> for TypeParameters {
@@ -222,7 +174,12 @@ pub enum TypeParameter {
 
 impl<T: Into<Type>> From<T> for TypeParameter {
     fn from(value: T) -> Self {
-        Self::Type(value.into())
+        match value.into() {
+            Type::Parenthese(parenthese) => {
+                Self::TypePack(TypePack::default().with_type(parenthese.into_inner_type()))
+            }
+            other => Self::Type(other),
+        }
     }
 }
 
@@ -252,35 +209,8 @@ pub struct TypeParametersTokens {
 }
 
 impl TypeParametersTokens {
-    pub fn clear_comments(&mut self) {
-        self.opening_list.clear_comments();
-        self.closing_list.clear_comments();
-        for comma in &mut self.commas {
-            comma.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.opening_list.clear_whitespaces();
-        self.closing_list.clear_whitespaces();
-        for comma in &mut self.commas {
-            comma.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.opening_list.replace_referenced_tokens(code);
-        self.closing_list.replace_referenced_tokens(code);
-        for comma in &mut self.commas {
-            comma.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.opening_list.shift_token_line(amount);
-        self.closing_list.shift_token_line(amount);
-        for comma in &mut self.commas {
-            comma.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(
+        target = [opening_list, closing_list]
+        iter = [commas]
+    );
 }

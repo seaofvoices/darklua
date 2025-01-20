@@ -18,7 +18,7 @@ const useCodePreview = () => {
     ref: previewRef,
   } = useMonacoEditor({ readOnly: true })
 
-  const locationCode = location.state && location.state.code
+  const locationCode = location.state?.code
   const defaultText = locationCode || DEFAULT_TEXT
   const { model, editor, ref } = useMonacoEditor({ defaultText })
 
@@ -33,7 +33,7 @@ const useCodePreview = () => {
         )
       }
     },
-    [darklua, darkluaConfig]
+    [darklua, darkluaConfig],
   )
 
   React.useEffect(() => {

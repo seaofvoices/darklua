@@ -9,55 +9,10 @@ pub struct LocalAssignTokens {
 }
 
 impl LocalAssignTokens {
-    pub fn clear_comments(&mut self) {
-        self.local.clear_comments();
-        self.variable_commas
-            .iter_mut()
-            .for_each(Token::clear_comments);
-        self.value_commas.iter_mut().for_each(Token::clear_comments);
-        if let Some(token) = &mut self.equal {
-            token.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.local.clear_whitespaces();
-        self.variable_commas
-            .iter_mut()
-            .for_each(Token::clear_whitespaces);
-        self.value_commas
-            .iter_mut()
-            .for_each(Token::clear_whitespaces);
-        if let Some(token) = &mut self.equal {
-            token.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.local.replace_referenced_tokens(code);
-        for comma in self.variable_commas.iter_mut() {
-            comma.replace_referenced_tokens(code);
-        }
-        for comma in self.value_commas.iter_mut() {
-            comma.replace_referenced_tokens(code);
-        }
-        if let Some(token) = &mut self.equal {
-            token.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.local.shift_token_line(amount);
-        for comma in self.variable_commas.iter_mut() {
-            comma.shift_token_line(amount);
-        }
-        for comma in self.value_commas.iter_mut() {
-            comma.shift_token_line(amount);
-        }
-        if let Some(token) = &mut self.equal {
-            token.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(
+        target = [local]
+        iter = [variable_commas, value_commas, equal]
+    );
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -264,41 +219,7 @@ impl LocalAssignStatement {
         }
     }
 
-    pub fn clear_comments(&mut self) {
-        self.variables
-            .iter_mut()
-            .for_each(TypedIdentifier::clear_comments);
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.variables
-            .iter_mut()
-            .for_each(TypedIdentifier::clear_whitespaces);
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        for variable in self.variables.iter_mut() {
-            variable.replace_referenced_tokens(code);
-        }
-        if let Some(tokens) = &mut self.tokens {
-            tokens.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        for variable in self.variables.iter_mut() {
-            variable.shift_token_line(amount);
-        }
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [variables, tokens]);
 }
 
 #[cfg(test)]

@@ -217,6 +217,13 @@ impl Token {
             .retain(|trivia| trivia.kind() != TriviaKind::Whitespace);
     }
 
+    pub(crate) fn filter_comments(&mut self, filter: impl Fn(&Trivia) -> bool) {
+        self.leading_trivia
+            .retain(|trivia| trivia.kind() != TriviaKind::Comment || filter(trivia));
+        self.trailing_trivia
+            .retain(|trivia| trivia.kind() != TriviaKind::Comment || filter(trivia));
+    }
+
     pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
         if let Position::LineNumberReference {
             start,
@@ -256,10 +263,12 @@ impl Token {
         }
     }
 
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+    pub(crate) fn shift_token_line(&mut self, amount: isize) {
         match &mut self.position {
             Position::LineNumberReference { line_number, .. }
-            | Position::LineNumber { line_number, .. } => *line_number += amount,
+            | Position::LineNumber { line_number, .. } => {
+                *line_number = line_number.saturating_add_signed(amount);
+            }
             Position::Any { .. } => {}
         }
     }

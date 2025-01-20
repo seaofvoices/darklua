@@ -7,25 +7,7 @@ pub struct IndexExpressionTokens {
 }
 
 impl IndexExpressionTokens {
-    pub fn clear_comments(&mut self) {
-        self.opening_bracket.clear_comments();
-        self.closing_bracket.clear_comments();
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.opening_bracket.clear_whitespaces();
-        self.closing_bracket.clear_whitespaces();
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.opening_bracket.replace_referenced_tokens(code);
-        self.closing_bracket.replace_referenced_tokens(code);
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.opening_bracket.shift_token_line(amount);
-        self.closing_bracket.shift_token_line(amount);
-    }
+    super::impl_token_fns!(target = [opening_bracket, closing_bracket]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -79,27 +61,5 @@ impl IndexExpression {
         &mut self.index
     }
 
-    pub fn clear_comments(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [tokens]);
 }

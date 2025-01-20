@@ -17,6 +17,7 @@ fn process_main_unchanged(resources: &Resources, main_code: &'static str) {
         resources,
         Options::new("src/main.lua").with_output("out.lua"),
     )
+    .unwrap()
     .result()
     .unwrap();
 
@@ -75,6 +76,7 @@ mod without_rules {
             resources,
             Options::new("src/main.lua").with_output("out.lua"),
         )
+        .unwrap()
         .result()
         .unwrap();
 
@@ -88,6 +90,7 @@ mod without_rules {
             resources,
             Options::new("src/main.lua").with_output("out.lua"),
         )
+        .unwrap()
         .result()
         .unwrap_err();
 
@@ -224,6 +227,30 @@ mod without_rules {
                 ".darklua.json" => "{ \"rules\": [], \"generator\": \"readable\", \"bundle\": { \"require_mode\": { \"name\": \"path\", \"module_folder_name\": \"__init__.lua\" } } }",
             ));
         }
+    }
+
+    #[test]
+    fn require_lua_file_forward_exported_types() {
+        process_main(
+            &memory_resources!(
+                "src/value.lua" => "export type Value = string return true",
+                "src/main.lua" => "local value = require('./value.lua') export type Value = value.Value",
+                ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
+            ),
+            "require_lua_file_forward_exported_types",
+        );
+    }
+
+    #[test]
+    fn require_lua_file_forward_exported_types_with_generics() {
+        process_main(
+            &memory_resources!(
+                "src/value.lua" => "export type Value<T> = string | T return true",
+                "src/main.lua" => "local value = require('./value.lua') export type Value<T> = value.Value<T>",
+                ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
+            ),
+            "require_lua_file_forward_exported_types_with_generics",
+        );
     }
 
     #[test]
@@ -523,18 +550,17 @@ data:
                     resource_ref,
                     Options::new("src/main.lua").with_output("out.lua"),
                 )
+                .unwrap()
                 .result()
                 .unwrap();
             });
 
             result
-                .map_err(|err| {
+                .inspect_err(|_err| {
                     std::fs::write("fuzz_bundle_failure.repro.lua", block_file).unwrap();
 
                     let out = resources.get("out.lua").unwrap();
                     std::fs::write("fuzz_bundle_failure.lua", out).unwrap();
-
-                    err
                 })
                 .unwrap();
         })

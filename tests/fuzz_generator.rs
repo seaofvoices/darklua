@@ -280,21 +280,19 @@ macro_rules! generate_fuzz_tests {
                     });
                 }
 
-                // todo: re-enable these tests once full-moon parser re-write has merged
-                // because full-moon throws stack overflow errors
-                // #[test]
-                // fn fuzz_medium_block() {
-                //     run_for_minimum_time(|| {
-                //         fuzz_test_block!(FuzzBudget::new(100, 200), generator());
-                //     });
-                // }
+                #[test]
+                fn fuzz_medium_block() {
+                    run_for_minimum_time(|| {
+                        fuzz_test_block!(FuzzBudget::new(100, 200), generator());
+                    });
+                }
 
-                // #[test]
-                // fn fuzz_large_block() {
-                //     run_for_minimum_time(|| {
-                //         fuzz_test_block!(FuzzBudget::new(200, 200), generator());
-                //     });
-                // }
+                #[test]
+                fn fuzz_large_block() {
+                    run_for_minimum_time(|| {
+                        fuzz_test_block!(FuzzBudget::new(200, 200), generator());
+                    });
+                }
 
                 $( $extra )*
             }

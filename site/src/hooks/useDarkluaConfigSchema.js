@@ -10,7 +10,7 @@ const createConfigSchema = darklua => {
     Joi.string().valid(...ruleNames),
     Joi.object({
       rule: Joi.string().valid(...ruleNames),
-    }).unknown()
+    }).unknown(),
   )
 
   return Joi.object({
@@ -28,10 +28,10 @@ const useDarkluaConfigSchema = () => {
           Joi.string(),
           Joi.object({
             rule: Joi.string(),
-          }).unknown()
-        )
+          }).unknown(),
+        ),
       ),
-    })
+    }),
   )
 
   React.useEffect(() => {

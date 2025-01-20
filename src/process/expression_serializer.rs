@@ -2,11 +2,9 @@ use std::{borrow::Cow, fmt};
 
 use serde::{ser, Serialize};
 
-// By convention, the public API of a Serde serializer is one or more `to_abc`
-// functions such as `to_string`, `to_bytes`, or `to_writer` depending on what
-// Rust types the serializer is able to produce as output.
-//
-// This basic serializer supports only `to_string`.
+type Result<T> = std::result::Result<T, LuaSerializerError>;
+
+/// Convert serializable data into a Lua Expression
 pub(crate) fn to_expression<T>(value: &T) -> Result<Expression>
 where
     T: Serialize,
@@ -59,8 +57,6 @@ impl fmt::Display for LuaSerializerError {
 }
 
 impl std::error::Error for LuaSerializerError {}
-
-type Result<T> = std::result::Result<T, LuaSerializerError>;
 
 use crate::{
     nodes::{
@@ -185,7 +181,7 @@ impl Serializer {
     }
 }
 
-impl<'a> ser::Serializer for &'a mut Serializer {
+impl ser::Serializer for &mut Serializer {
     // The output type produced by this `Serializer` during successful
     // serialization. Most serializers that produce text or binary output should
     // set `Ok = ()` and serialize into an `io::Write` or buffer contained
@@ -429,7 +425,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
 //
 // This impl is SerializeSeq so these methods are called after `serialize_seq`
 // is called on the Serializer.
-impl<'a> ser::SerializeSeq for &'a mut Serializer {
+impl ser::SerializeSeq for &mut Serializer {
     // Must match the `Ok` type of the serializer.
     type Ok = ();
     // Must match the `Error` type of the serializer.
@@ -450,7 +446,7 @@ impl<'a> ser::SerializeSeq for &'a mut Serializer {
 }
 
 // Same thing but for tuples.
-impl<'a> ser::SerializeTuple for &'a mut Serializer {
+impl ser::SerializeTuple for &mut Serializer {
     type Ok = ();
     type Error = LuaSerializerError;
 
@@ -467,7 +463,7 @@ impl<'a> ser::SerializeTuple for &'a mut Serializer {
 }
 
 // Same thing but for tuple structs.
-impl<'a> ser::SerializeTupleStruct for &'a mut Serializer {
+impl ser::SerializeTupleStruct for &mut Serializer {
     type Ok = ();
     type Error = LuaSerializerError;
 
@@ -487,7 +483,7 @@ impl<'a> ser::SerializeTupleStruct for &'a mut Serializer {
 // `serialize_tuple_variant` method above. The `end` method
 // in this impl is responsible for closing both the outer and
 // inner tables.
-impl<'a> ser::SerializeTupleVariant for &'a mut Serializer {
+impl ser::SerializeTupleVariant for &mut Serializer {
     type Ok = ();
     type Error = LuaSerializerError;
 
@@ -511,7 +507,7 @@ impl<'a> ser::SerializeTupleVariant for &'a mut Serializer {
 // There is a third optional method on the `SerializeMap` trait. The
 // `serialize_entry` method allows serializers to optimize for the case where
 // key and value are both available simultaneously.
-impl<'a> ser::SerializeMap for &'a mut Serializer {
+impl ser::SerializeMap for &mut Serializer {
     type Ok = ();
     type Error = LuaSerializerError;
 
@@ -539,7 +535,7 @@ impl<'a> ser::SerializeMap for &'a mut Serializer {
 
 // Structs are like maps in which the keys are constrained to be compile-time
 // constant strings.
-impl<'a> ser::SerializeStruct for &'a mut Serializer {
+impl ser::SerializeStruct for &mut Serializer {
     type Ok = ();
     type Error = LuaSerializerError;
 
@@ -560,7 +556,7 @@ impl<'a> ser::SerializeStruct for &'a mut Serializer {
 
 // Similar to `SerializeTupleVariant`, here the `end` method is responsible for
 // closing both of the curly braces opened by `serialize_struct_variant`.
-impl<'a> ser::SerializeStructVariant for &'a mut Serializer {
+impl ser::SerializeStructVariant for &mut Serializer {
     type Ok = ();
     type Error = LuaSerializerError;
 

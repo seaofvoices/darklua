@@ -30,6 +30,8 @@ pub use unary::*;
 
 use crate::nodes::{FunctionCall, Identifier, Token, Variable};
 
+use super::impl_token_fns;
+
 use std::num::FpCategory;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -99,7 +101,9 @@ impl From<f64> for Expression {
                 DecimalNumber::new(0.0),
             )
             .into(),
-            FpCategory::Zero => DecimalNumber::new(0.0).into(),
+            FpCategory::Zero => {
+                DecimalNumber::new(if value.is_sign_positive() { 0.0 } else { -0.0 }).into()
+            }
             FpCategory::Subnormal | FpCategory::Normal => {
                 if value < 0.0 {
                     UnaryExpression::new(UnaryOperator::Minus, Expression::from(value.abs())).into()
@@ -344,6 +348,7 @@ mod test {
             f64_1e42 => 1e42_f64,
             f64_infinity => f64::INFINITY,
             i64_minus_one => -1_i64,
+            f64_minus_zero => -0.0,
         );
     }
 }

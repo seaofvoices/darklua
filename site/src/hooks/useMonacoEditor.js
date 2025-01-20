@@ -42,7 +42,7 @@ const useMonacoEditor = ({
         newEditor.dispose()
       }
     },
-    [monaco, defaultText, language, minimap, readOnly]
+    [monaco, defaultText, language, minimap, readOnly],
   )
 
   return { model, editor, ref }

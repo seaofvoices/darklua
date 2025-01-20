@@ -80,8 +80,10 @@ const DrawerHeader = styled("div")(({ theme }) => ({
   ...theme.mixins.toolbar,
 }))
 
+const CUSTOM_PROPS = new Set(["open", "drawerWidth", "fullWidth"])
+
 const Drawer = styled(MuiDrawer, {
-  shouldForwardProp: prop => prop !== "open" && prop !== "drawerWidth",
+  shouldForwardProp: prop => !CUSTOM_PROPS.has(prop),
 })(({ theme, open, drawerWidth }) => ({
   width: drawerWidth,
   flexShrink: 0,
@@ -98,7 +100,7 @@ const Drawer = styled(MuiDrawer, {
 }))
 
 const Side = styled(Box, {
-  shouldForwardProp: prop => prop !== "open" && prop !== "drawerWidth",
+  shouldForwardProp: prop => !CUSTOM_PROPS.has(prop),
 })(({ theme, open, fullWidth, drawerWidth }) => ({
   boxSizing: "border-box",
   ...(open && {
@@ -114,7 +116,7 @@ const DocsPageLayout = ({ title, children }) => {
   const theme = useTheme()
 
   const [opened, setOpen] = React.useState(
-    location.state ? location.state.drawerOpened || false : false
+    location.state ? location.state.drawerOpened || false : false,
   )
   const forceOpenedDrawer = useMediaQuery(theme.breakpoints.up("lg"))
   const fullWidth = useMediaQuery(theme.breakpoints.down("xl"))

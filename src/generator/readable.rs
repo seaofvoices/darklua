@@ -175,6 +175,24 @@ impl ReadableLuaGenerator {
         self.pop_indentation();
     }
 
+    fn push_new_line_if_needed(&mut self, pushed_length: usize) {
+        if self.current_line_length == 0 && self.current_indentation != 0 {
+            self.write_indentation();
+        }
+
+        if self.can_add_new_line() {
+            if self.current_line_length >= self.column_span {
+                self.push_new_line();
+            } else {
+                let total_length = self.current_line_length + pushed_length;
+
+                if total_length > self.column_span {
+                    self.push_new_line();
+                }
+            }
+        }
+    }
+
     fn push_space_if_needed(&mut self, next_character: char, pushed_length: usize) {
         if self.current_line_length == 0 && self.current_indentation != 0 {
             self.write_indentation();
@@ -980,7 +998,8 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.write_prefix(field.get_prefix());
         self.pop_can_add_new_line();
 
-        self.push_char('.');
+        self.push_new_line_if_needed(1);
+        self.raw_push_char('.');
         self.raw_push_str(field.get_field().get_name());
     }
 
@@ -1187,7 +1206,8 @@ impl LuaGenerator for ReadableLuaGenerator {
 
     fn write_type_field(&mut self, type_field: &nodes::TypeField) {
         self.write_identifier(type_field.get_namespace());
-        self.push_char('.');
+        self.push_new_line_if_needed(1);
+        self.raw_push_char('.');
         self.write_type_name(type_field.get_type_name());
     }
 
@@ -1240,7 +1260,24 @@ impl LuaGenerator for ReadableLuaGenerator {
                 }
                 nodes::TableEntryType::Indexer(indexer) => {
                     self.push_char('[');
-                    self.write_type(indexer.get_key_type());
+
+                    let key_type = indexer.get_key_type();
+
+                    let need_parentheses = matches!(
+                        key_type,
+                        nodes::Type::Optional(_)
+                            | nodes::Type::Intersection(_)
+                            | nodes::Type::Union(_)
+                    );
+
+                    if need_parentheses {
+                        self.push_char('(');
+                        self.write_type(key_type);
+                        self.push_char(')');
+                    } else {
+                        self.write_type(key_type);
+                    }
+
                     self.push_char(']');
                     self.push_char(':');
                     self.push_char(' ');
@@ -1311,38 +1348,59 @@ impl LuaGenerator for ReadableLuaGenerator {
     }
 
     fn write_intersection_type(&mut self, intersection: &nodes::IntersectionType) {
-        let left = intersection.get_left();
-        if nodes::IntersectionType::left_needs_parentheses(left) {
-            self.write_type_in_parentheses(left);
-        } else {
-            self.write_type(left);
+        if intersection.has_leading_token() {
+            self.push_char('&');
         }
 
-        self.push_char('&');
+        let length = intersection.len();
+        let last_index = length.saturating_sub(1);
 
-        let right = intersection.get_right();
-        if nodes::IntersectionType::right_needs_parentheses(right) {
-            self.write_type_in_parentheses(right);
-        } else {
-            self.write_type(right);
+        for (i, r#type) in intersection.iter_types().enumerate() {
+            if i != 0 {
+                self.push_char('&');
+            }
+
+            let need_parentheses = if i == last_index {
+                nodes::IntersectionType::last_needs_parentheses(r#type)
+            } else {
+                nodes::IntersectionType::intermediate_needs_parentheses(r#type)
+            };
+
+            if need_parentheses {
+                self.write_type_in_parentheses(r#type);
+            } else {
+                self.write_type(r#type);
+            }
         }
     }
 
     fn write_union_type(&mut self, union: &nodes::UnionType) {
-        let left = union.get_left();
-        if nodes::UnionType::left_needs_parentheses(left) {
-            self.write_type_in_parentheses(left);
-        } else {
-            self.write_type(left);
+        let length = union.len();
+        let last_index = length.saturating_sub(1);
+
+        if union.has_leading_token() {
+            self.push_char('|');
+            self.push_space();
         }
 
-        self.push_char('|');
+        for (i, r#type) in union.iter_types().enumerate() {
+            if i != 0 {
+                self.push_space();
+                self.push_char('|');
+                self.push_space();
+            }
 
-        let right = union.get_right();
-        if nodes::UnionType::right_needs_parentheses(right) {
-            self.write_type_in_parentheses(right);
-        } else {
-            self.write_type(right);
+            let need_parentheses = if i == last_index {
+                nodes::UnionType::last_needs_parentheses(r#type)
+            } else {
+                nodes::UnionType::intermediate_needs_parentheses(r#type)
+            };
+
+            if need_parentheses {
+                self.write_type_in_parentheses(r#type);
+            } else {
+                self.write_type(r#type);
+            }
         }
     }
 

@@ -205,7 +205,7 @@ jobs:
 <code>
 [package]
 name = "darklua"
-version = "0.12.1"
+version = "0.15.0"
 edition = "2018"
 readme = "README.md"
 description = "Transform Lua scripts"
@@ -321,7 +321,6 @@ harness = false
 	},
 	lib = { name = "darklua_core", path = "src/lib.rs" },
 	package = {
-		authors = { "jeparlefrancais <jeparlefrancais21@gmail.com>" },
 		description = "Transform Lua scripts",
 		edition = "2018",
 		exclude = { "site" },
@@ -331,7 +330,7 @@ harness = false
 		name = "darklua",
 		readme = "README.md",
 		repository = "https://github.com/seaofvoices/darklua",
-		version = "0.12.1",
+		version = "0.15.0",
 	},
 	profile = {
 		dev = {

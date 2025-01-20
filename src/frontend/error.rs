@@ -7,10 +7,7 @@ use std::{
     path::PathBuf,
 };
 
-use crate::{
-    rules::{bundle::LuaSerializerError, Rule},
-    ParserError,
-};
+use crate::{process::LuaSerializerError, rules::Rule, ParserError};
 
 use super::{
     resources::ResourceError,
@@ -153,7 +150,7 @@ impl DarkluaError {
         })
     }
 
-    pub(crate) fn cyclic_work(work_left: Vec<WorkItem>) -> Self {
+    pub(crate) fn cyclic_work(work_left: Vec<&WorkItem>) -> Self {
         let source_left: HashSet<PathBuf> = work_left
             .iter()
             .map(|work| work.source().to_path_buf())
@@ -161,29 +158,23 @@ impl DarkluaError {
 
         let mut required_work: Vec<_> = work_left
             .into_iter()
-            .filter_map(|work| {
-                if work.total_required_content() == 0 {
-                    None
-                } else {
-                    let (status, data) = work.extract();
-
-                    match status {
-                        WorkStatus::NotStarted => None,
-                        WorkStatus::InProgress(progress) => {
-                            let mut content: Vec<_> = progress
-                                .required_content()
-                                .filter(|path| source_left.contains(*path))
-                                .map(PathBuf::from)
-                                .collect();
-                            if content.is_empty() {
-                                None
-                            } else {
-                                content.sort();
-                                Some((data, content))
-                            }
-                        }
+            .filter(|work| work.total_required_content() != 0)
+            .filter_map(|work| match &work.status {
+                WorkStatus::NotStarted => None,
+                WorkStatus::InProgress(progress) => {
+                    let mut content: Vec<_> = progress
+                        .required_content()
+                        .filter(|path| source_left.contains(*path))
+                        .map(PathBuf::from)
+                        .collect();
+                    if content.is_empty() {
+                        None
+                    } else {
+                        content.sort();
+                        Some((work.data.clone(), content))
                     }
                 }
+                WorkStatus::Done(_) => None,
             })
             .collect();
 
@@ -223,7 +214,7 @@ impl DarkluaError {
         })
     }
 
-    pub(crate) fn custom(message: impl Into<Cow<'static, str>>) -> Self {
+    pub fn custom(message: impl Into<Cow<'static, str>>) -> Self {
         Self::new(ErrorKind::Custom {
             message: message.into(),
         })

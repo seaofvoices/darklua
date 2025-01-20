@@ -9,11 +9,11 @@ parameters:
     type: string
     description: A path to a file to be used as the comment content (required if `text` is not defined)
   - name: location
-    default: "start"
+    default: start
     type: '"start" or "end"'
     description: The location where to add the comment
 examples:
-  - rules: "[{ rule: 'append_text_comment', text: 'hello!' }]"
+  - rules: "[{ rule: 'append_text_comment', text: '!native' }]"
     content: print('Print from module')
   - rules: "[{ rule: 'append_text_comment', text: 'hello!', location: 'end' }]"
     content: print('Print from module')

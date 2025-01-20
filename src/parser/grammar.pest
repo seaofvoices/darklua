@@ -78,7 +78,7 @@ parenthese_expr = { "(" ~ #expr = expr ~ ")" }
 table_field_entry = { #field = identifier ~ "=" ~ #value = expr }
 table_index_entry = { "[" ~ #key = expr ~ "]" ~ "=" ~ #value = expr }
 table_entry       = _{ table_field_entry | table_index_entry | expr }
-table_expr        = { "{" ~ (#table_entry = table_entry ~ ("," | ";"))* ~ #table_entry = table_entry? ~ "}" }
+table_expr        = { "{" ~ (table_entry ~ ("," | ";"))* ~ table_entry? ~ "}" }
 
 prefix_start = _{ identifier | parenthese_expr }
 suffix_index = { "[" ~ #index = expr ~ "]" }

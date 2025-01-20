@@ -1,14 +1,14 @@
 import * as React from "react"
 
-import ReactDOM from "react-dom"
+import { createRoot } from "react-dom/client"
 import Prism from "prismjs"
 import ViewStateLink from "../components/ViewStateLink"
 import { Button } from "@mui/material"
-import { ThemeProvider as MuiThemeProvider } from "@mui/system"
+import ThemeProvider from "../components/theme-provider"
 
-const TryItButtonLink = React.forwardRef(({ theme, code }, ref) => {
+const TryItButtonLink = React.forwardRef(({ code, configuration }, ref) => {
   return (
-    <MuiThemeProvider theme={theme}>
+    <ThemeProvider>
       <Button
         ref={ref}
         variant="contained"
@@ -16,30 +16,49 @@ const TryItButtonLink = React.forwardRef(({ theme, code }, ref) => {
         component={ViewStateLink}
         to="/try-it"
         target="_blank"
-        state={{ code }}
+        state={{ code, configuration }}
       >
         Try it
       </Button>
-    </MuiThemeProvider>
+    </ThemeProvider>
   )
 })
 
-export const usePrism = theme => {
+let registerTryItOnce = false
+
+export const usePrism = () => {
   React.useEffect(() => {
+    if (registerTryItOnce) {
+      return
+    }
+    registerTryItOnce = true
     Prism.plugins.toolbar.registerButton("try-it", env => {
       if (env.language !== "lua") {
         return null
       }
 
+      let configuration
+
+      try {
+        const context = JSON.parse(
+          env.element.parentNode.attributes.__darkluacontext.nodeValue,
+        )
+        configuration = { rules: context?.rules }
+      } catch (_) {}
+
       const container = document.createElement("div")
 
-      ReactDOM.render(
-        <TryItButtonLink theme={theme} code={env.code} />,
-        container
+      const root = createRoot(container)
+
+      root.render(
+        <TryItButtonLink code={env.code} configuration={configuration} />,
       )
 
       return container
     })
+  }, [])
+
+  React.useEffect(() => {
     Prism.highlightAll()
-  }, [theme])
+  }, [])
 }

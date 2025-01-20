@@ -9,6 +9,8 @@ import ThumbDown from "@mui/icons-material/ThumbDown"
 import MonacoContainer from "../monaco-container"
 import useDarkluaConfigSchema from "../../hooks/useDarkluaConfigSchema"
 import { SetDarkluaConfigContext } from "../darklua-config-provider"
+import { useLocation } from "../location-context"
+import { useAppEvent } from "../app-event-context"
 
 const WORD_PER_MINUTE = 85
 
@@ -75,6 +77,20 @@ const TextRuleEditor = () => {
   const [defaultConfig, setDefaultConfig] = React.useState(null)
   const [alertMessage, setAlertMessage] = React.useState(null)
 
+  const location = useLocation()
+
+  const locationConfiguration = React.useMemo(() => {
+    const params = new URLSearchParams(location.search)
+    const configurationString = params.get("configuration")
+    if (configurationString) {
+      try {
+        const configuration = JSON.parse(configurationString)
+        return configuration
+      } catch (_) {}
+    }
+    return location.state?.configuration
+  }, [location])
+
   const {
     model,
     editor,
@@ -88,11 +104,15 @@ const TextRuleEditor = () => {
 
   React.useEffect(() => {
     if (defaultConfig === null) {
-      setDefaultConfig({
-        rules: json5.parse(darklua.get_serialized_default_rules()),
-      })
+      if (locationConfiguration) {
+        setDefaultConfig(locationConfiguration)
+      } else {
+        setDefaultConfig({
+          rules: json5.parse(darklua.get_serialized_default_rules()),
+        })
+      }
     }
-  }, [defaultConfig, darklua])
+  }, [defaultConfig, locationConfiguration, darklua])
 
   React.useEffect(() => {
     if (!model) {
@@ -115,7 +135,7 @@ const TextRuleEditor = () => {
       }
 
       if (!!config) {
-        const { value, error } = configSchema.validate(config)
+        const { error } = configSchema.validate(config)
         if (error) {
           setIsConfigOk(false)
           setAlertMessage(`invalid darklua configuration: ${error.message}`)
@@ -126,7 +146,26 @@ const TextRuleEditor = () => {
       }
     })
     return () => connection.dispose()
-  }, [model, configSchema])
+  }, [model, configSchema, setDarkluaConfig])
+
+  useAppEvent(
+    "getLink",
+    () => {
+      const modelValue = model.getValue()
+      let config = null
+      try {
+        config = json5.parse(modelValue)
+      } catch (error) {}
+
+      const currentUrl = new URL(window.location.toString())
+      currentUrl.searchParams.set("configuration", JSON.stringify(config))
+
+      const newUrl = currentUrl.toString()
+
+      navigator.clipboard.writeText(newUrl)
+    },
+    [model],
+  )
 
   const formatCode = () => {
     if (!model) {
@@ -137,7 +176,7 @@ const TextRuleEditor = () => {
       model.setValue(json5.stringify(config, null, 2))
     } catch (error) {
       setAlertMessage(
-        `unable to format: ${error.message.replace("JSON5: ", "")}`
+        `unable to format: ${error.message.replace("JSON5: ", "")}`,
       )
     }
   }

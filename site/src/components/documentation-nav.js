@@ -87,6 +87,22 @@ const GroupIcon = ({ groupName }) => {
   return <MenuBook />
 }
 
+const DocumentationSection = ({ documentation }) => (
+  <>
+    <Divider />
+    <li>
+      <Typography
+        sx={{ mt: 0.5, ml: 2 }}
+        color="text.secondary"
+        display="block"
+        variant="caption"
+      >
+        {documentation}
+      </Typography>
+    </li>
+  </>
+)
+
 const DocumentationGroup = ({ name, content, drawerOpened, openDrawer }) => {
   const [open, setOpen] = React.useState(true)
 
@@ -118,19 +134,10 @@ const DocumentationGroup = ({ name, content, drawerOpened, openDrawer }) => {
             {content.map(documentation => {
               if (typeof documentation === "string") {
                 return (
-                  <>
-                    <Divider key={documentation} />
-                    <li>
-                      <Typography
-                        sx={{ mt: 0.5, ml: 2 }}
-                        color="text.secondary"
-                        display="block"
-                        variant="caption"
-                      >
-                        {documentation}
-                      </Typography>
-                    </li>
-                  </>
+                  <DocumentationSection
+                    key={documentation}
+                    documentation={documentation}
+                  />
                 )
               } else {
                 return (
@@ -162,7 +169,7 @@ export const DocumentationNavigation = ({ drawerOpened, openDrawer }) => {
       (groupName, index) => {
         groupNameToIndex.set(groupName, index)
         return { name: groupName, content: [] }
-      }
+      },
     )
 
     const documents = data.allMarkdownRemark.nodes.map(node => {
@@ -181,7 +188,7 @@ export const DocumentationNavigation = ({ drawerOpened, openDrawer }) => {
       if (typeof groupIndex !== "number") {
         const { title, slug } = document
         throw new Error(
-          `Unknown group '${groupName}' associated with '${title}' (at ${slug})`
+          `Unknown group '${groupName}' associated with '${title}' (at ${slug})`,
         )
       }
       groups[groupIndex].content.push(document)
@@ -213,7 +220,7 @@ export const DocumentationNavigation = ({ drawerOpened, openDrawer }) => {
 
         return [releasedRules, unreleasedRules]
       },
-      [[], []]
+      [[], []],
     )
     const sortByTitle = (a, b) => a.title > b.title
     releasedRules.sort(sortByTitle)

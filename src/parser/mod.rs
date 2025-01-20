@@ -495,13 +495,11 @@ mod test {
             Variable::new("var"),
             Expression::identifier("amount"),
         ),
-        // todo: once full-moon fixes this issue and the change is in a new release
-        // https://github.com/Kampfkarren/full-moon/issues/292
-        // compound_floor_division("var //= divider") => CompoundAssignStatement::new(
-        //     CompoundOperator::Plus,
-        //     Variable::new("var"),
-        //     Expression::identifier("divider"),
-        // ),
+        compound_floor_division("var //= divider") => CompoundAssignStatement::new(
+            CompoundOperator::DoubleSlash,
+            Variable::new("var"),
+            Expression::identifier("divider"),
+        ),
     );
 
     mod parse_with_tokens {
@@ -547,8 +545,7 @@ mod test {
             };
         }
 
-        macro_rules!
-        test_parse_last_statement_with_tokens {
+        macro_rules! test_parse_last_statement_with_tokens {
             ($($name:ident($input:literal) => $value:expr),* $(,)?) => {
                 test_parse_block_with_tokens!(
                     $(
@@ -987,13 +984,19 @@ mod test {
                                 UnionType::new(
                                     StringType::from_value("").with_token(token_at_first_line(19, 21)),
                                     Type::True(Some(token_at_first_line(22, 26)))
-                                ).with_token(token_at_first_line(21, 22))
+                                ).with_tokens(UnionTypeTokens {
+                                    leading_token: None,
+                                    separators: vec![token_at_first_line(21, 22)],
+                                })
                             )
                             .with_tokens(ParentheseTypeTokens {
                                 left_parenthese: token_at_first_line(18, 19),
                                 right_parenthese: token_at_first_line(26, 27),
                             })
-                        ).with_token(token_at_first_line(17, 18))
+                        ).with_tokens(IntersectionTypeTokens {
+                            leading_token: None,
+                            separators: vec![token_at_first_line(17, 18)],
+                        })
                     ).with_token(spaced_token(11, 13))
                 ).with_tokens(ReturnTokens {
                     r#return: spaced_token(0, 6),
@@ -1026,7 +1029,10 @@ mod test {
                             commas: vec![token_at_first_line(23, 24)],
                         }),
                         TypeName::new(create_identifier("T", 41, 0)),
-                    ).with_token(token_at_first_line(40, 41))
+                    ).with_tokens(IntersectionTypeTokens {
+                        leading_token: None,
+                        separators: vec![token_at_first_line(40, 41)],
+                    })
                 ).with_token(spaced_token(11, 13))
             ).with_tokens(ReturnTokens {
                 r#return: spaced_token(0, 6),
@@ -1930,6 +1936,24 @@ mod test {
                 variable_commas: Vec::new(),
                 value_commas: Vec::new(),
             }),
+            local_assignment_intersection_typed_with_no_values("local var : &string") => LocalAssignStatement::from_variable(
+                create_identifier("var", 6, 1)
+                    .with_type(
+                        IntersectionType::from(vec![
+                            TypeName::new(create_identifier("string", 13, 0)).into(),
+                        ])
+                        .with_tokens(IntersectionTypeTokens {
+                            leading_token: Some(token_at_first_line(12, 13)),
+                            separators: Vec::new(),
+                        })
+                    )
+                    .with_colon_token(spaced_token(10, 11)),
+            ).with_tokens(LocalAssignTokens {
+                local: spaced_token(0, 5),
+                equal: None,
+                variable_commas: Vec::new(),
+                value_commas: Vec::new(),
+            }),
             multiple_local_assignment_with_no_values("local foo, bar") => LocalAssignStatement::from_variable(
                 create_identifier("foo", 6, 0)
             )
@@ -2130,7 +2154,10 @@ mod test {
                     TypeName::new(create_identifier("boolean", 9, 1)),
                     Type::Nil(Some(token_at_first_line(19, 22)))
                 )
-                .with_token(spaced_token(17, 18))
+                .with_tokens(UnionTypeTokens {
+                    leading_token: None,
+                    separators: vec![spaced_token(17, 18)]
+                })
             ).with_tokens(TypeDeclarationTokens {
                 r#type: spaced_token(0, 4),
                 equal: spaced_token(7, 8),
@@ -2142,7 +2169,10 @@ mod test {
                     TypeName::new(create_identifier("U", 9, 1)),
                     TypeName::new(create_identifier("V", 13, 0)),
                 )
-                .with_token(spaced_token(11, 12))
+                .with_tokens(IntersectionTypeTokens {
+                    leading_token: None,
+                    separators: vec![spaced_token(11, 12)]
+                })
             ).with_tokens(TypeDeclarationTokens {
                 r#type: spaced_token(0, 4),
                 equal: spaced_token(7, 8),
@@ -2152,13 +2182,17 @@ mod test {
                 create_identifier("T", 5, 1),
                 IntersectionType::new(
                     TypeName::new(create_identifier("U", 9, 1)),
-                    IntersectionType::new(
-                        TypeName::new(create_identifier("V", 13, 1)),
-                        TypeName::new(create_identifier("W", 17, 0)),
-                    )
-                    .with_token(spaced_token(15, 16))
+                    TypeName::new(create_identifier("V", 13, 1)),
+                ).with_type(
+                    TypeName::new(create_identifier("W", 17, 0)),
                 )
-                .with_token(spaced_token(11, 12))
+                .with_tokens(IntersectionTypeTokens {
+                    leading_token: None,
+                    separators: vec![
+                        spaced_token(11, 12),
+                        spaced_token(15, 16),
+                    ]
+                })
             ).with_tokens(TypeDeclarationTokens {
                 r#type: spaced_token(0, 4),
                 equal: spaced_token(7, 8),
@@ -2440,7 +2474,10 @@ mod test {
                         commas: Vec::new(),
                     }),
                     TypeName::new(create_identifier("string", 20, 0))
-                ).with_token(spaced_token(18, 19))
+                ).with_tokens(IntersectionTypeTokens {
+                    leading_token: None,
+                    separators: vec![spaced_token(18, 19)]
+                })
             ).with_tokens(TypeDeclarationTokens {
                 r#type: spaced_token(0, 4),
                 equal: spaced_token(7, 8),
@@ -2463,7 +2500,10 @@ mod test {
                         commas: Vec::new(),
                     }),
                     TypeName::new(create_identifier("string", 20, 0))
-                ).with_token(spaced_token(18, 19))
+                ).with_tokens(UnionTypeTokens {
+                    leading_token: None,
+                    separators: vec![spaced_token(18, 19)]
+                })
             ).with_tokens(TypeDeclarationTokens {
                 r#type: spaced_token(0, 4),
                 equal: spaced_token(7, 8),
@@ -2488,11 +2528,16 @@ mod test {
                 FunctionType::new(
                     IntersectionType::new(
                         TypeName::new(create_identifier("A", 15, 1)),
-                        IntersectionType::new(
-                            TypeName::new(create_identifier("B", 19, 1)),
-                            TypeName::new(create_identifier("C", 23, 0)),
-                        ).with_token(spaced_token(21, 22))
-                    ).with_token(spaced_token(17, 18))
+                        TypeName::new(create_identifier("B", 19, 1)),
+                    )
+                    .with_type(TypeName::new(create_identifier("C", 23, 0)))
+                    .with_tokens(IntersectionTypeTokens {
+                        leading_token: None,
+                        separators: vec![
+                            spaced_token(17, 18),
+                            spaced_token(21, 22),
+                        ]
+                    }),
                 )
                     .with_tokens(FunctionTypeTokens {
                         opening_parenthese: token_at_first_line(9, 10),
@@ -2600,7 +2645,10 @@ mod test {
                         IntersectionType::new(
                             TypeName::new(create_identifier("string", 15, 1)),
                             TypeName::new(create_identifier("T", 24, 0)),
-                        ).with_token(spaced_token(22, 23))
+                        ).with_tokens(IntersectionTypeTokens {
+                            leading_token: None,
+                            separators: vec![spaced_token(22, 23)]
+                        })
                 )
                     .with_tokens(FunctionTypeTokens {
                         opening_parenthese: token_at_first_line(9, 10),
@@ -2619,7 +2667,10 @@ mod test {
                         UnionType::new(
                             TypeName::new(create_identifier("string", 15, 1)),
                             TypeName::new(create_identifier("T", 24, 0)),
-                        ).with_token(spaced_token(22, 23))
+                        ).with_tokens(UnionTypeTokens {
+                            leading_token: None,
+                            separators: vec![spaced_token(22, 23)]
+                        })
                 )
                     .with_tokens(FunctionTypeTokens {
                         opening_parenthese: token_at_first_line(9, 10),
@@ -2639,7 +2690,10 @@ mod test {
                         IntersectionType::new(
                             TypeName::new(create_identifier("string", 18, 1)),
                             TypeName::new(create_identifier("T", 27, 0)),
-                        ).with_token(spaced_token(25, 26))
+                        ).with_tokens(IntersectionTypeTokens {
+                            leading_token: None,
+                            separators: vec![spaced_token(25, 26)]
+                        })
                     )
                         .with_token(token_at_first_line(15, 18))
                 )
@@ -2661,7 +2715,10 @@ mod test {
                         UnionType::new(
                             TypeName::new(create_identifier("string", 18, 1)),
                             TypeName::new(create_identifier("boolean", 27, 0)),
-                        ).with_token(spaced_token(25, 26))
+                        ).with_tokens(UnionTypeTokens {
+                            leading_token: None,
+                            separators: vec![spaced_token(25, 26)]
+                        })
                     )
                         .with_token(token_at_first_line(15, 18))
                 )
@@ -2852,7 +2909,10 @@ mod test {
                 IntersectionType::new(
                     TypeName::new(create_identifier("U", 18, 1)),
                     TypeName::new(create_identifier("V", 22, 0)),
-                ).with_token(spaced_token(20, 21))
+                ).with_tokens(IntersectionTypeTokens {
+                    leading_token: None,
+                    separators: vec![spaced_token(20, 21)]
+                })
             )
             .with_generic_parameters(
                 GenericParametersWithDefaults::from_type_variable(
@@ -2927,7 +2987,10 @@ mod test {
                 UnionType::new(
                     TypeName::new(create_identifier("A", 21, 1)),
                     TypeName::new(create_identifier("B", 25, 0)),
-                ).with_token(spaced_token(23, 24))
+                ).with_tokens(UnionTypeTokens {
+                    leading_token: None,
+                    separators: vec![spaced_token(23, 24)]
+                })
             )
             .with_generic_parameters(
                 GenericParametersWithDefaults::from_type_variable(
@@ -3218,29 +3281,28 @@ mod test {
                 equal: spaced_token(7, 8),
                 export: None,
             }),
-            // todo: once https://github.com/Kampfkarren/full-moon/issues/285 is fixed, re-enable this test
-            // type_declaration_to_generic_type_with_variadic_string_literal_type_pack("type T = Fn<...'ok'>") => TypeDeclarationStatement::new(
-            //     create_identifier("T", 5, 1),
-            //     TypeName::new(create_identifier("Fn", 9, 0))
-            //     .with_type_parameters(
-            //         TypeParameters::new(
-            //             VariadicTypePack::new(
-            //                 StringType::from_value("ok").with_token(token_at_first_line(15, 19))
-            //             )
-            //                 .with_token(token_at_first_line(12, 15))
-            //         )
-            //             .with_tokens(TypeParametersTokens {
-            //                 opening_list: token_at_first_line(11, 12),
-            //                 closing_list: token_at_first_line(19, 20),
-            //                 commas: Vec::new(),
-            //             })
-            //     )
-            // )
-            // .with_tokens(TypeDeclarationTokens {
-            //     r#type: spaced_token(0, 4),
-            //     equal: spaced_token(7, 8),
-            //     export: None,
-            // }),
+            type_declaration_to_generic_type_with_variadic_string_literal_type_pack("type T = Fn<...'ok'>") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                TypeName::new(create_identifier("Fn", 9, 0))
+                .with_type_parameters(
+                    TypeParameters::new(
+                        VariadicTypePack::new(
+                            StringType::from_value("ok").with_token(token_at_first_line(15, 19))
+                        )
+                            .with_token(token_at_first_line(12, 15))
+                    )
+                        .with_tokens(TypeParametersTokens {
+                            opening_list: token_at_first_line(11, 12),
+                            closing_list: token_at_first_line(19, 20),
+                            commas: Vec::new(),
+                        })
+                )
+            )
+            .with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
             type_declaration_to_generic_type_in_namespace("type T = M.Array<string>") => TypeDeclarationStatement::new(
                 create_identifier("T", 5, 1),
                 TypeField::new(

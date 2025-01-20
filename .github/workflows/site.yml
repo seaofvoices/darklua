@@ -27,7 +27,7 @@ jobs:
           cache-dependency-path: "site/package-lock.json"
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci
 
       - name: Verify code style
         run: npm run style-check
@@ -70,10 +70,11 @@ jobs:
             site/.cache/
           key: ${{ runner.os }}-gatsby-build-${{ hashFiles('site/package-lock.json') }}
 
+      - name: Get gatsby version
+        run: npx gatsby --version
+
       - name: Build site
-        run: |
-          npx gatsby --version
-          npx gatsby build
+        run: npx gatsby build
 
       - name: Archive site
         uses: actions/upload-pages-artifact@v1

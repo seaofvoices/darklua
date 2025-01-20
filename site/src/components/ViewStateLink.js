@@ -8,11 +8,16 @@ const ViewStateLink = React.forwardRef(
     const { current: currentThemeName } = React.useContext(ThemeContext)
 
     return (
-      <Link ref={ref} to={to} state={{ currentThemeName, ...state }} {...props}>
+      <Link
+        ref={ref}
+        to={to ?? ""}
+        state={{ currentThemeName, ...state }}
+        {...props}
+      >
         {children}
       </Link>
     )
-  }
+  },
 )
 
 export default ViewStateLink

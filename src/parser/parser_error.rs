@@ -4,7 +4,7 @@ use super::{ast_converter::ConvertError, pest_parser};
 
 #[derive(Clone, Debug)]
 enum ParserErrorKind {
-    Parsing(full_moon::Error),
+    Parsing(Vec<full_moon::Error>),
     PestParsing(pest::error::Error<pest_parser::Rule>),
     Converting(ConvertError),
 }
@@ -15,7 +15,7 @@ pub struct ParserError {
 }
 
 impl ParserError {
-    pub(crate) fn parsing(err: full_moon::Error) -> Self {
+    pub(crate) fn parsing(err: Vec<full_moon::Error>) -> Self {
         Self {
             kind: ParserErrorKind::Parsing(err).into(),
         }
@@ -37,7 +37,12 @@ impl ParserError {
 impl fmt::Display for ParserError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &*self.kind {
-            ParserErrorKind::Parsing(err) => write!(f, "{}", err),
+            ParserErrorKind::Parsing(errors) => {
+                for err in errors {
+                    writeln!(f, "{}", err)?;
+                }
+                Ok(())
+            }
             ParserErrorKind::PestParsing(err) => write!(f, "{}", err),
             ParserErrorKind::Converting(err) => write!(f, "{}", err),
         }

@@ -17,7 +17,7 @@ impl<'a> Processor<'a> {
     }
 }
 
-impl<'a> NodeProcessor for Processor<'a> {
+impl NodeProcessor for Processor<'_> {
     fn process_block(&mut self, block: &mut Block) {
         block.replace_referenced_tokens(self.code);
     }

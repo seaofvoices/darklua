@@ -687,6 +687,12 @@ mod $mod_name {
                 Vec::new(),
                 false
             ),
+            empty_with_name_ending_with_number_with_field =>  FunctionStatement::new(
+                FunctionName::from_name("fn1").with_fields(vec!["bar".into()]),
+                Block::default(),
+                Vec::new(),
+                false
+            ),
             empty_with_one_typed_parameter => FunctionStatement::from_name("fn", Block::default())
                 .with_parameter(Identifier::new("a").with_type(TypeName::new("string"))),
             empty_with_two_typed_parameters => FunctionStatement::from_name("fn", Block::default())
@@ -741,6 +747,9 @@ mod $mod_name {
 
         snapshot_node!($mod_name, $generator, type_declaration, write_type_declaration_statement => (
             string_alias => TypeDeclarationStatement::new("Str", TypeName::new("string")),
+            type_field => TypeDeclarationStatement::new("Object", TypeField::new("module", TypeName::new("Object"))),
+            type_field_with_name_ending_with_number
+                => TypeDeclarationStatement::new("Object", TypeField::new("module0", TypeName::new("Object"))),
             exported_string_alias => TypeDeclarationStatement::new("Str", TypeName::new("string"))
                 .export(),
             generic_array => TypeDeclarationStatement::new("Array", ArrayType::new(TypeName::new("T")))
@@ -831,6 +840,20 @@ mod $mod_name {
             empty_with_empty_multiple_branch => IfStatement::create(false, Block::default())
                 .with_new_branch(Expression::nil(), Block::default())
                 .with_new_branch(false, Block::default()),
+        ));
+
+        snapshot_node!($mod_name, $generator, intersection_type, write_intersection_type => (
+            single_type => IntersectionType::from(vec![Type::from(true)]),
+            two_types => IntersectionType::from(vec![Type::from(true), Type::from(false)]),
+            two_types_with_leading_token => IntersectionType::from(vec![Type::from(true), Type::from(false)])
+                .with_leading_token(),
+        ));
+
+        snapshot_node!($mod_name, $generator, union_type, write_union_type => (
+            single_type => UnionType::from(vec![Type::from(true)]),
+            two_types => UnionType::from(vec![Type::from(true), Type::from(false)]),
+            two_types_with_leading_token => UnionType::from(vec![Type::from(true), Type::from(false)])
+                .with_leading_token(),
         ));
 
         snapshot_node!($mod_name, $generator, local_assign, write_statement => (
@@ -958,6 +981,7 @@ mod $mod_name {
 
         snapshot_node!($mod_name, $generator, field, write_expression => (
             identifier_prefix => FieldExpression::new(Prefix::from_name("foo"), "bar"),
+            identifier_ending_with_number_prefix => FieldExpression::new(Prefix::from_name("oof0"), "field"),
         ));
 
         snapshot_node!($mod_name, $generator, index, write_expression => (

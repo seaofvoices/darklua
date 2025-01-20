@@ -47,6 +47,19 @@ darklua process src processed-src --config ./path/config.json
 darklua process src processed-src -c ./path/config.json
 ```
 
+### Convert
+
+This command takes a data file and converts it to a Lua file. If no output path is provided, the Lua code will be printed to the console.
+
+The supported data formats are: `json`, `json5`, `yaml` or `toml`.
+
+```
+darklua convert <input-path> [output-path]
+
+optional arguments:
+  -f, --format {json, yaml, toml}
+```
+
 ### Minify
 
 This command reads Lua code and reformats it to reduce the size of the code, measured in total bytes. The input path can be a single file name or a directory name. Given a directory, darklua will find all Lua files under that directory and output them following the same hierarchy.

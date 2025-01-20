@@ -8,5 +8,8 @@ pub mod process;
 pub mod rules;
 mod utils;
 
-pub use frontend::{process, Configuration, DarkluaError, GeneratorParameters, Options, Resources};
+pub use frontend::{
+    convert_data, process, BundleConfiguration, Configuration, DarkluaError, GeneratorParameters,
+    Options, Resources, WorkerTree,
+};
 pub use parser::{Parser, ParserError};

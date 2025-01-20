@@ -1,4 +1,5 @@
 import * as React from "react"
+import * as production from "react/jsx-runtime"
 import { Link } from "gatsby"
 import rehypeReact from "rehype-react"
 
@@ -9,6 +10,7 @@ import { toHast } from "mdast-util-to-hast"
 import { fromMarkdown } from "mdast-util-from-markdown"
 import ViewStateLink from "./ViewStateLink"
 import { CompareCode } from "./compare-code"
+import { unified } from "unified"
 
 const AnchorOffsetByToolbar = styled("div")(({ theme }) => {
   const newStyle = {
@@ -27,14 +29,18 @@ const AnchorOffsetByToolbar = styled("div")(({ theme }) => {
   return newStyle
 })
 
-const createHeaderComponent = (level, linkable = false) => {
-  const LinkableHeader = ({ children, id = null }) => {
+const createTypographyComponent = (level, linkable = false) => {
+  const LinkableHeader = ({ children, id = null, ...props }) => {
     if (!linkable || !id) {
-      return <Typography variant={`h${level}`}>{children}</Typography>
+      return (
+        <Typography variant={level} {...props}>
+          {children}
+        </Typography>
+      )
     }
 
     return (
-      <Typography variant={`h${level}`}>
+      <Typography variant={level} {...props}>
         <AnchorOffsetByToolbar id={id} />
 
         {children}
@@ -60,7 +66,7 @@ const createHeaderComponent = (level, linkable = false) => {
 const visitNodes = (node, callback) => {
   callback(node)
   if (!!node.children) {
-    node.children.forEach((child, i) => {
+    node.children.forEach(child => {
       visitNodes(child, callback)
     })
   }
@@ -82,63 +88,93 @@ const TextLink = React.forwardRef((props, ref) => {
   return <ViewStateLink ref={ref} style={{ color: linkColor }} {...props} />
 })
 
-const renderAst = new rehypeReact({
-  createElement: React.createElement,
+const TypographyBody = createTypographyComponent("body1")
+const typographyParagraph = ({ children }) => {
+  return (
+    <p>
+      <TypographyBody component="span">{children}</TypographyBody>
+    </p>
+  )
+}
+
+const renderAst = unified().use(rehypeReact, {
+  ...production,
   components: {
-    h1: createHeaderComponent(1),
-    h2: createHeaderComponent(2, true),
-    h3: createHeaderComponent(3, true),
-    h4: createHeaderComponent(4),
-    h5: createHeaderComponent(5),
-    h6: createHeaderComponent(6),
+    h1: createTypographyComponent("h1"),
+    h2: createTypographyComponent("h2", true),
+    h3: createTypographyComponent("h3", true),
+    h4: createTypographyComponent("h4"),
+    h5: createTypographyComponent("h5"),
+    h6: createTypographyComponent("h6"),
+    p: typographyParagraph,
     a: TextLink,
     "rule-reference": RuleReference,
     "compare-code": CompareCode,
   },
-}).Compiler
+})
 
-export const MarkdownRenderer = ({ htmlAst, ...props }) => {
+export const MarkdownRenderer = ({ htmlAst }) => {
+  const [ast, setAst] = React.useState(null)
+
   React.useEffect(() => {
-    const generatedIds = new Set()
-
-    visitNodes(htmlAst, node => {
-      if (node.type === "element") {
-        const { tagName, properties } = node
-
-        if (tagName === "h2" || tagName === "h3") {
-          const baseId = generateId(node)
-
-          if (generatedIds.has(baseId)) {
-            let i = 0
-            let newId = ""
-            do {
-              i += 1
-              newId = `${baseId}-${i}`
-            } while (generatedIds.has(newId))
-            generatedIds.add(newId)
-
-            properties.id = newId
-          } else {
-            generatedIds.add(baseId)
-
-            properties.id = baseId
-          }
-        }
-      }
-    })
+    addIdToHtmlHeaders(htmlAst)
+    setAst(htmlAst)
   }, [htmlAst])
 
-  return renderAst(htmlAst)
+  return renderAst.stringify(ast ?? htmlAst)
 }
 
-export const RenderMarkdown = ({ markdown }) => {
-  const htmlAst = React.useMemo(
-    () => toHast(fromMarkdown(markdown)),
-    [markdown]
-  )
+const EMPTY_OBJECT = JSON.stringify({})
+
+export const RenderMarkdown = ({ markdown, ...context }) => {
+  const serializedContext = JSON.stringify(context)
+
+  const htmlAst = React.useMemo(() => {
+    const html = toHast(fromMarkdown(markdown))
+    if (serializedContext !== EMPTY_OBJECT) {
+      html.children[0].properties.__darkluacontext = serializedContext
+    }
+    return html
+  }, [markdown, serializedContext])
+
   return <MarkdownRenderer htmlAst={htmlAst} />
 }
 
-export const RenderCode = ({ code, language = "lua" }) => (
-  <RenderMarkdown markdown={`\`\`\`${language}\n` + code + "\n```"} />
+export const RenderCode = ({ code, language = "lua", ...context }) => (
+  <RenderMarkdown
+    markdown={`\`\`\`${language}\n${code}${
+      code.endsWith("\n") ? "" : "\n"
+    }\`\`\``}
+    {...context}
+  />
 )
+
+const addIdToHtmlHeaders = htmlAst => {
+  const generatedIds = new Set()
+
+  visitNodes(htmlAst, node => {
+    if (node.type === "element") {
+      const { tagName, properties } = node
+
+      if (tagName === "h2" || tagName === "h3") {
+        const baseId = generateId(node)
+
+        if (generatedIds.has(baseId)) {
+          let i = 0
+          let newId = ""
+          do {
+            i += 1
+            newId = `${baseId}-${i}`
+          } while (generatedIds.has(newId))
+          generatedIds.add(newId)
+
+          properties.id = newId
+        } else {
+          generatedIds.add(baseId)
+
+          properties.id = baseId
+        }
+      }
+    }
+  })
+}

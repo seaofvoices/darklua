@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::str::FromStr;
 
-use crate::nodes::Token;
+use crate::nodes::{Token, Trivia};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DecimalNumber {
@@ -69,29 +69,7 @@ impl DecimalNumber {
         }
     }
 
-    pub fn clear_comments(&mut self) {
-        if let Some(token) = &mut self.token {
-            token.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(token) = &mut self.token {
-            token.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(token) = &mut self.token {
-            token.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(token) = &mut self.token {
-            token.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [token]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -165,29 +143,7 @@ impl HexNumber {
         }
     }
 
-    pub fn clear_comments(&mut self) {
-        if let Some(token) = &mut self.token {
-            token.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(token) = &mut self.token {
-            token.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(token) = &mut self.token {
-            token.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(token) = &mut self.token {
-            token.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [token]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -239,29 +195,7 @@ impl BinaryNumber {
         self.value
     }
 
-    pub fn clear_comments(&mut self) {
-        if let Some(token) = &mut self.token {
-            token.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(token) = &mut self.token {
-            token.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(token) = &mut self.token {
-            token.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(token) = &mut self.token {
-            token.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [token]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -339,11 +273,19 @@ impl NumberExpression {
         }
     }
 
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
+    pub(crate) fn shift_token_line(&mut self, amount: isize) {
         match self {
             NumberExpression::Decimal(number) => number.shift_token_line(amount),
             NumberExpression::Hex(number) => number.shift_token_line(amount),
             NumberExpression::Binary(number) => number.shift_token_line(amount),
+        }
+    }
+
+    pub(crate) fn filter_comments(&mut self, filter: impl Fn(&Trivia) -> bool) {
+        match self {
+            NumberExpression::Decimal(number) => number.filter_comments(filter),
+            NumberExpression::Hex(number) => number.filter_comments(filter),
+            NumberExpression::Binary(number) => number.filter_comments(filter),
         }
     }
 }

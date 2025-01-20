@@ -1,6 +1,40 @@
 # Changelog
 
-## Unreleased
+* read Luau configuration files (`.luaurc`) to get path aliases ([#246](https://github.com/seaofvoices/darklua/pull/246))
+* support Luau types when bundling ([#249](https://github.com/seaofvoices/darklua/pull/249))
+
+## 0.15.0
+
+* improve file watching: re-process specific files, sourcemap changes re-process the project, bundling re-starts whenever a dependent file changes ([#239](https://github.com/seaofvoices/darklua/pull/239))
+
+## 0.14.1
+
+* fix `rename_variables` rule to rename module names in types ([#233](https://github.com/seaofvoices/darklua/pull/233))
+* fix string encoding containing unicode characters taking more than 1 byte ([#232](https://github.com/seaofvoices/darklua/pull/232))
+* fix `append_text_comment` to not add an extra space to comments ([#231](https://github.com/seaofvoices/darklua/pull/231))
+* add rule to remove floor divisions (`remove_floor_division`) ([#230](https://github.com/seaofvoices/darklua/pull/230))
+* fix `remove_assertions` rule to make the `assert` calls return their arguments ([#229](https://github.com/seaofvoices/darklua/pull/229))
+* add rule to remove continue statements (`remove_continue`) ([#227](https://github.com/seaofvoices/darklua/pull/227))
+* fix negative zero sign erasure ([#222](https://github.com/seaofvoices/darklua/pull/222))
+* add `remove_if_expression` rule ([#221](https://github.com/seaofvoices/darklua/pull/221))
+
+## 0.14.0
+
+* migrate parser to the latest version. Reduce stack overflow issues, add support for compound assignments using floor division and leading symbols in union and intersection types ([#219](https://github.com/seaofvoices/darklua/pull/219))
+
+## 0.13.1
+
+* fix `remove_unused_variable` rule ([#192](https://github.com/seaofvoices/darklua/pull/192))
+* add `except` parameter to skip comments when using the `remove_comments` rule ([#194](https://github.com/seaofvoices/darklua/pull/194))
+* fix generators that creates spaces when writing field expressions, function statements and field-types ([#193](https://github.com/seaofvoices/darklua/pull/193))
+
+## 0.13.0
+
+* add `convert` command to convert data files (`json`, `json5`, `yaml` and `toml`) into Lua modules ([#178](https://github.com/seaofvoices/darklua/pull/178))
+* remove previously generated files between process runs in watch mode ([#177](https://github.com/seaofvoices/darklua/pull/177))
+* fix `remove_compound_assignment` rule to avoid copying variable tokens ([#176](https://github.com/seaofvoices/darklua/pull/176))
+* add get link button to [try-it](https://darklua.com/try-it/) page ([#175](https://github.com/seaofvoices/darklua/pull/175))
+* add rule to remove unused variables (`remove_unused_variable`). Fix issue with `rename_variables` where `self` variables and some cases of variable shadowing were not correctly renamed ([#172](https://github.com/seaofvoices/darklua/pull/172))
 
 ## 0.12.1
 

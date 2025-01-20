@@ -4,7 +4,7 @@ added_in: "0.3.5"
 parameters:
   - name: identifier
     required: true
-    type: boolean
+    type: string
     description: The name of the global variable
   - name: value
     type: boolean, number or string

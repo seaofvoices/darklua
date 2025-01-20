@@ -74,8 +74,12 @@ fn ends_with_type_cast_to_type_name_without_type_parameters(expression: &Express
                                 }
                             }
                         }
-                        Type::Intersection(intersection) => current_type = intersection.get_right(),
-                        Type::Union(union) => current_type = union.get_right(),
+                        Type::Intersection(intersection) => {
+                            current_type = intersection.last_type();
+                        }
+                        Type::Union(union_type) => {
+                            current_type = union_type.last_type();
+                        }
                         Type::True(_)
                         | Type::False(_)
                         | Type::Nil(_)
@@ -261,29 +265,18 @@ impl BinaryExpression {
         self.operator
     }
 
-    pub fn clear_comments(&mut self) {
-        if let Some(token) = &mut self.token {
-            token.clear_comments();
+    #[inline]
+    pub fn set_operator(&mut self, operator: BinaryOperator) {
+        if self.operator == operator {
+            return;
+        }
+        self.operator = operator;
+        if let Some(token) = self.token.as_mut() {
+            token.replace_with_content(operator.to_str());
         }
     }
 
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(token) = &mut self.token {
-            token.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(token) = &mut self.token {
-            token.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(token) = &mut self.token {
-            token.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [token]);
 }
 
 #[cfg(test)]

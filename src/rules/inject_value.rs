@@ -1,15 +1,13 @@
 use crate::nodes::{
-    Block, DecimalNumber, Expression, LocalFunctionStatement, ParentheseExpression, Prefix,
-    StringExpression, UnaryOperator,
+    Block, DecimalNumber, Expression, ParentheseExpression, Prefix, StringExpression, UnaryOperator,
 };
-use crate::process::{NodeProcessor, NodeVisitor, Scope, ScopeVisitor};
+use crate::process::{IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
     RulePropertyValue,
 };
 
-use std::collections::HashSet;
-use std::env;
+use std::{env, ops};
 
 use super::{verify_property_collisions, verify_required_properties};
 
@@ -17,7 +15,7 @@ use super::{verify_property_collisions, verify_required_properties};
 struct ValueInjection {
     identifier: String,
     expression: Expression,
-    identifiers: Vec<HashSet<String>>,
+    identifier_tracker: IdentifierTracker,
 }
 
 impl ValueInjection {
@@ -25,44 +23,22 @@ impl ValueInjection {
         Self {
             identifier: identifier.into(),
             expression: expression.into(),
-            identifiers: Vec::new(),
-        }
-    }
-
-    fn is_identifier_used(&self, identifier: &str) -> bool {
-        self.identifiers.iter().any(|set| set.contains(identifier))
-    }
-
-    fn insert_identifier(&mut self, identifier: &str) {
-        if let Some(set) = self.identifiers.last_mut() {
-            set.insert(identifier.to_string());
-        } else {
-            let mut set = HashSet::new();
-            set.insert(identifier.to_string());
-            self.identifiers.push(set);
+            identifier_tracker: IdentifierTracker::default(),
         }
     }
 }
 
-impl Scope for ValueInjection {
-    fn push(&mut self) {
-        self.identifiers.push(HashSet::new())
-    }
+impl ops::Deref for ValueInjection {
+    type Target = IdentifierTracker;
 
-    fn pop(&mut self) {
-        self.identifiers.pop();
+    fn deref(&self) -> &Self::Target {
+        &self.identifier_tracker
     }
+}
 
-    fn insert(&mut self, identifier: &mut String) {
-        self.insert_identifier(identifier);
-    }
-
-    fn insert_local(&mut self, identifier: &mut String, _value: Option<&mut Expression>) {
-        self.insert_identifier(identifier);
-    }
-
-    fn insert_local_function(&mut self, function: &mut LocalFunctionStatement) {
-        self.insert_identifier(function.mutate_identifier().get_name());
+impl ops::DerefMut for ValueInjection {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.identifier_tracker
     }
 }
 

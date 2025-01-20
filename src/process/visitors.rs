@@ -13,13 +13,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
             .for_each(|statement| Self::visit_statement(statement, processor));
 
         if let Some(last_statement) = block.mutate_last_statement() {
-            processor.process_last_statement(last_statement);
-
-            if let LastStatement::Return(expressions) = last_statement {
-                expressions
-                    .iter_mut_expressions()
-                    .for_each(|expression| Self::visit_expression(expression, processor));
-            };
+            Self::visit_last_statement(last_statement, processor);
         };
     }
 
@@ -47,49 +41,45 @@ pub trait NodeVisitor<T: NodeProcessor> {
         };
     }
 
+    fn visit_last_statement(last_statement: &mut LastStatement, processor: &mut T) {
+        processor.process_last_statement(last_statement);
+
+        if let LastStatement::Return(expressions) = last_statement {
+            expressions
+                .iter_mut_expressions()
+                .for_each(|expression| Self::visit_expression(expression, processor));
+        };
+    }
+
     fn visit_expression(expression: &mut Expression, processor: &mut T) {
         processor.process_expression(expression);
 
         match expression {
             Expression::Binary(expression) => {
-                processor.process_binary_expression(expression);
-                Self::visit_expression(expression.mutate_left(), processor);
-                Self::visit_expression(expression.mutate_right(), processor);
+                Self::visit_binary_expression(expression, processor);
             }
             Expression::Call(expression) => Self::visit_function_call(expression, processor),
             Expression::Field(field) => Self::visit_field_expression(field, processor),
             Expression::Function(function) => Self::visit_function_expression(function, processor),
-            Expression::Identifier(identifier) => processor.process_variable_expression(identifier),
+            Expression::Identifier(identifier) => Self::visit_identifier(identifier, processor),
             Expression::If(if_expression) => Self::visit_if_expression(if_expression, processor),
             Expression::Index(index) => Self::visit_index_expression(index, processor),
-            Expression::Number(number) => processor.process_number_expression(number),
+            Expression::Number(number) => Self::visit_number_expression(number, processor),
             Expression::Parenthese(expression) => {
-                processor.process_parenthese_expression(expression);
-                Self::visit_expression(expression.mutate_inner_expression(), processor)
+                Self::visit_parenthese_expression(expression, processor);
             }
-            Expression::String(string) => processor.process_string_expression(string),
+            Expression::String(string) => {
+                Self::visit_string_expression(string, processor);
+            }
             Expression::InterpolatedString(interpolated_string) => {
-                processor.process_interpolated_string_expression(interpolated_string);
-
-                for segment in interpolated_string.iter_mut_segments() {
-                    match segment {
-                        InterpolationSegment::String(_) => {}
-                        InterpolationSegment::Value(value) => {
-                            Self::visit_expression(value.mutate_expression(), processor)
-                        }
-                    }
-                }
+                Self::visit_interpolated_string_expression(interpolated_string, processor);
             }
             Expression::Table(table) => Self::visit_table(table, processor),
             Expression::Unary(unary) => {
-                processor.process_unary_expression(unary);
-                Self::visit_expression(unary.mutate_expression(), processor);
+                Self::visit_unary_expression(unary, processor);
             }
             Expression::TypeCast(type_cast) => {
-                processor.process_type_cast_expression(type_cast);
-
-                Self::visit_expression(type_cast.mutate_expression(), processor);
-                Self::visit_type(type_cast.mutate_type(), processor);
+                Self::visit_type_cast_expression(type_cast, processor);
             }
             Expression::False(_)
             | Expression::Nil(_)
@@ -98,8 +88,57 @@ pub trait NodeVisitor<T: NodeProcessor> {
         }
     }
 
+    fn visit_binary_expression(binary: &mut BinaryExpression, processor: &mut T) {
+        processor.process_binary_expression(binary);
+        Self::visit_expression(binary.mutate_left(), processor);
+        Self::visit_expression(binary.mutate_right(), processor);
+    }
+
+    fn visit_number_expression(number: &mut NumberExpression, processor: &mut T) {
+        processor.process_number_expression(number);
+    }
+
+    fn visit_parenthese_expression(parenthese: &mut ParentheseExpression, processor: &mut T) {
+        processor.process_parenthese_expression(parenthese);
+        Self::visit_expression(parenthese.mutate_inner_expression(), processor)
+    }
+
+    fn visit_string_expression(string: &mut StringExpression, processor: &mut T) {
+        processor.process_string_expression(string);
+    }
+
+    fn visit_interpolated_string_expression(
+        interpolated_string: &mut InterpolatedStringExpression,
+        processor: &mut T,
+    ) {
+        processor.process_interpolated_string_expression(interpolated_string);
+
+        for segment in interpolated_string.iter_mut_segments() {
+            match segment {
+                InterpolationSegment::String(_) => {}
+                InterpolationSegment::Value(value) => {
+                    Self::visit_expression(value.mutate_expression(), processor)
+                }
+            }
+        }
+    }
+
+    fn visit_unary_expression(unary: &mut UnaryExpression, processor: &mut T) {
+        processor.process_unary_expression(unary);
+        Self::visit_expression(unary.mutate_expression(), processor);
+    }
+
+    fn visit_type_cast_expression(type_cast: &mut TypeCastExpression, processor: &mut T) {
+        processor.process_type_cast_expression(type_cast);
+
+        Self::visit_expression(type_cast.mutate_expression(), processor);
+        Self::visit_type(type_cast.mutate_type(), processor);
+    }
+
     fn visit_function_expression(function: &mut FunctionExpression, processor: &mut T) {
         processor.process_function_expression(function);
+
+        processor.process_scope(function.mutate_block(), None);
 
         Self::visit_block(function.mutate_block(), processor);
 
@@ -134,6 +173,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
     fn visit_do_statement(statement: &mut DoStatement, processor: &mut T) {
         processor.process_do_statement(statement);
+        processor.process_scope(statement.mutate_block(), None);
         Self::visit_block(statement.mutate_block(), processor);
     }
 
@@ -145,7 +185,13 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
     fn visit_function_statement(statement: &mut FunctionStatement, processor: &mut T) {
         processor.process_function_statement(statement);
-        processor.process_variable_expression(statement.mutate_function_name().mutate_identifier());
+
+        Self::visit_identifier(
+            statement.mutate_function_name().mutate_identifier(),
+            processor,
+        );
+
+        processor.process_scope(statement.mutate_block(), None);
         Self::visit_block(statement.mutate_block(), processor);
 
         for r#type in statement
@@ -170,6 +216,8 @@ pub trait NodeVisitor<T: NodeProcessor> {
         statement
             .iter_mut_expressions()
             .for_each(|expression| Self::visit_expression(expression, processor));
+
+        processor.process_scope(statement.mutate_block(), None);
         Self::visit_block(statement.mutate_block(), processor);
 
         for r#type in statement
@@ -185,10 +233,12 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
         statement.mutate_branches().iter_mut().for_each(|branch| {
             Self::visit_expression(branch.mutate_condition(), processor);
+            processor.process_scope(branch.mutate_block(), None);
             Self::visit_block(branch.mutate_block(), processor);
         });
 
         if let Some(block) = statement.mutate_else_block() {
+            processor.process_scope(block, None);
             Self::visit_block(block, processor);
         }
     }
@@ -210,6 +260,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
     fn visit_local_function(statement: &mut LocalFunctionStatement, processor: &mut T) {
         processor.process_local_function_statement(statement);
+        processor.process_scope(statement.mutate_block(), None);
         Self::visit_block(statement.mutate_block(), processor);
 
         for r#type in statement
@@ -234,9 +285,13 @@ pub trait NodeVisitor<T: NodeProcessor> {
                 Self::visit_type(r#type, processor);
             }
             FunctionVariadicType::GenericTypePack(generic) => {
-                processor.process_generic_type_pack(generic);
+                Self::visit_generic_type_pack(generic, processor);
             }
         }
+    }
+
+    fn visit_generic_type_pack(generic: &mut GenericTypePack, processor: &mut T) {
+        processor.process_generic_type_pack(generic);
     }
 
     fn visit_numeric_for(statement: &mut NumericForStatement, processor: &mut T) {
@@ -249,6 +304,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Self::visit_expression(step, processor);
         };
 
+        processor.process_scope(statement.mutate_block(), None);
         Self::visit_block(statement.mutate_block(), processor);
 
         if let Some(r#type) = statement.mutate_identifier().mutate_type() {
@@ -259,6 +315,9 @@ pub trait NodeVisitor<T: NodeProcessor> {
     fn visit_repeat_statement(statement: &mut RepeatStatement, processor: &mut T) {
         processor.process_repeat_statement(statement);
 
+        let (block, condition) = statement.mutate_block_and_condition();
+        processor.process_scope(block, Some(condition));
+
         Self::visit_expression(statement.mutate_condition(), processor);
         Self::visit_block(statement.mutate_block(), processor);
     }
@@ -267,6 +326,8 @@ pub trait NodeVisitor<T: NodeProcessor> {
         processor.process_while_statement(statement);
 
         Self::visit_expression(statement.mutate_condition(), processor);
+
+        processor.process_scope(statement.mutate_block(), None);
         Self::visit_block(statement.mutate_block(), processor);
     }
 
@@ -281,13 +342,14 @@ pub trait NodeVisitor<T: NodeProcessor> {
                         Self::visit_type(type_variable.mutate_default_type(), processor);
                     }
                     GenericParameterMutRef::GenericTypePack(generic_type_pack) => {
-                        processor.process_generic_type_pack(generic_type_pack);
+                        Self::visit_generic_type_pack(generic_type_pack, processor);
                     }
                     GenericParameterMutRef::GenericTypePackWithDefault(
                         generic_type_pack_with_default,
                     ) => {
-                        processor.process_generic_type_pack(
+                        Self::visit_generic_type_pack(
                             generic_type_pack_with_default.mutate_generic_type_pack(),
+                            processor,
                         );
 
                         match generic_type_pack_with_default.mutate_default_type() {
@@ -298,7 +360,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
                                 Self::visit_variadic_type_pack(variadic_type_pack, processor);
                             }
                             GenericTypePackDefault::GenericTypePack(generic_type_pack) => {
-                                processor.process_generic_type_pack(generic_type_pack);
+                                Self::visit_generic_type_pack(generic_type_pack, processor);
                             }
                         }
                     }
@@ -313,10 +375,14 @@ pub trait NodeVisitor<T: NodeProcessor> {
         processor.process_variable(variable);
 
         match variable {
-            Variable::Identifier(identifier) => processor.process_variable_expression(identifier),
+            Variable::Identifier(identifier) => Self::visit_identifier(identifier, processor),
             Variable::Field(field) => Self::visit_field_expression(field, processor),
             Variable::Index(index) => Self::visit_index_expression(index, processor),
         }
+    }
+
+    fn visit_identifier(identifier: &mut Identifier, processor: &mut T) {
+        processor.process_variable_expression(identifier);
     }
 
     fn visit_if_expression(if_expression: &mut IfExpression, processor: &mut T) {
@@ -355,7 +421,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
     fn visit_arguments(arguments: &mut Arguments, processor: &mut T) {
         match arguments {
-            Arguments::String(string) => processor.process_string_expression(string),
+            Arguments::String(string) => Self::visit_string_expression(string, processor),
             Arguments::Table(table) => Self::visit_table(table, processor),
             Arguments::Tuple(expressions) => expressions
                 .iter_mut_values()
@@ -382,11 +448,10 @@ pub trait NodeVisitor<T: NodeProcessor> {
         match prefix {
             Prefix::Call(call) => Self::visit_function_call(call, processor),
             Prefix::Field(field) => Self::visit_field_expression(field, processor),
-            Prefix::Identifier(identifier) => processor.process_variable_expression(identifier),
+            Prefix::Identifier(identifier) => Self::visit_identifier(identifier, processor),
             Prefix::Index(index) => Self::visit_index_expression(index, processor),
             Prefix::Parenthese(expression) => {
-                processor.process_parenthese_expression(expression);
-                Self::visit_expression(expression.mutate_inner_expression(), processor)
+                Self::visit_parenthese_expression(expression, processor)
             }
         };
     }
@@ -396,78 +461,20 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
         match r#type {
             Type::Name(type_name) => Self::visit_type_name(type_name, processor),
-            Type::Field(type_field) => {
-                processor.process_type_field(type_field);
-
-                Self::visit_type_name(type_field.mutate_type_name(), processor);
-            }
-            Type::Array(array) => {
-                processor.process_array_type(array);
-
-                Self::visit_type(array.mutate_element_type(), processor);
-            }
-            Type::Table(table) => {
-                processor.process_table_type(table);
-
-                for entry in table.iter_mut_entries() {
-                    match entry {
-                        TableEntryType::Property(property) => {
-                            Self::visit_type(property.mutate_type(), processor);
-                        }
-                        TableEntryType::Literal(property) => {
-                            processor.process_string_type(property.mutate_string());
-                            Self::visit_type(property.mutate_type(), processor);
-                        }
-                        TableEntryType::Indexer(indexer) => {
-                            Self::visit_type(indexer.mutate_key_type(), processor);
-                            Self::visit_type(indexer.mutate_value_type(), processor);
-                        }
-                    }
-                }
-            }
+            Type::Field(type_field) => Self::visit_type_field(type_field, processor),
+            Type::Array(array) => Self::visit_array_type(array, processor),
+            Type::Table(table) => Self::visit_table_type(table, processor),
             Type::TypeOf(expression_type) => {
-                processor.process_expression_type(expression_type);
-
-                Self::visit_expression(expression_type.mutate_expression(), processor);
+                Self::visit_expression_type(expression_type, processor)
             }
-            Type::Parenthese(parenthese) => {
-                processor.process_parenthese_type(parenthese);
-
-                Self::visit_type(parenthese.mutate_inner_type(), processor);
-            }
-            Type::Function(function) => {
-                processor.process_function_type(function);
-
-                for argument in function.iter_mut_arguments() {
-                    Self::visit_type(argument.mutate_type(), processor);
-                }
-
-                if let Some(variadic_type) = function.mutate_variadic_argument_type() {
-                    Self::visit_variadic_argument_type(variadic_type, processor);
-                }
-
-                Self::visit_function_return_type(function.mutate_return_type(), processor);
-            }
-            Type::Optional(optional) => {
-                processor.process_optional_type(optional);
-
-                Self::visit_type(optional.mutate_inner_type(), processor);
-            }
+            Type::Parenthese(parenthese) => Self::visit_parenthese_type(parenthese, processor),
+            Type::Function(function) => Self::visit_function_type(function, processor),
+            Type::Optional(optional) => Self::visit_optional_type(optional, processor),
             Type::Intersection(intersection) => {
-                processor.process_intersection_type(intersection);
-
-                Self::visit_type(intersection.mutate_left(), processor);
-                Self::visit_type(intersection.mutate_right(), processor);
+                Self::visit_intersection_type(intersection, processor)
             }
-            Type::Union(union) => {
-                processor.process_union_type(union);
-
-                Self::visit_type(union.mutate_left(), processor);
-                Self::visit_type(union.mutate_right(), processor);
-            }
-            Type::String(string) => {
-                processor.process_string_type(string);
-            }
+            Type::Union(union) => Self::visit_union_type(union, processor),
+            Type::String(string) => Self::visit_string_type(string, processor),
             Type::True(_) | Type::False(_) | Type::Nil(_) => {}
         }
     }
@@ -488,11 +495,90 @@ pub trait NodeVisitor<T: NodeProcessor> {
                         Self::visit_variadic_type_pack(variadic_type_pack, processor);
                     }
                     TypeParameter::GenericTypePack(generic_type_pack) => {
-                        processor.process_generic_type_pack(generic_type_pack);
+                        Self::visit_generic_type_pack(generic_type_pack, processor);
                     }
                 }
             }
         }
+    }
+
+    fn visit_type_field(type_field: &mut TypeField, processor: &mut T) {
+        processor.process_type_field(type_field);
+        Self::visit_type_name(type_field.mutate_type_name(), processor);
+    }
+
+    fn visit_array_type(array: &mut ArrayType, processor: &mut T) {
+        processor.process_array_type(array);
+        Self::visit_type(array.mutate_element_type(), processor);
+    }
+
+    fn visit_table_type(table: &mut TableType, processor: &mut T) {
+        processor.process_table_type(table);
+
+        for entry in table.iter_mut_entries() {
+            match entry {
+                TableEntryType::Property(property) => {
+                    Self::visit_type(property.mutate_type(), processor);
+                }
+                TableEntryType::Literal(property) => {
+                    Self::visit_string_type(property.mutate_string(), processor);
+                    Self::visit_type(property.mutate_type(), processor);
+                }
+                TableEntryType::Indexer(indexer) => {
+                    Self::visit_type(indexer.mutate_key_type(), processor);
+                    Self::visit_type(indexer.mutate_value_type(), processor);
+                }
+            }
+        }
+    }
+
+    fn visit_expression_type(expression_type: &mut ExpressionType, processor: &mut T) {
+        processor.process_expression_type(expression_type);
+        Self::visit_expression(expression_type.mutate_expression(), processor);
+    }
+
+    fn visit_parenthese_type(parenthese: &mut ParentheseType, processor: &mut T) {
+        processor.process_parenthese_type(parenthese);
+        Self::visit_type(parenthese.mutate_inner_type(), processor);
+    }
+
+    fn visit_function_type(function: &mut FunctionType, processor: &mut T) {
+        processor.process_function_type(function);
+
+        for argument in function.iter_mut_arguments() {
+            Self::visit_type(argument.mutate_type(), processor);
+        }
+
+        if let Some(variadic_type) = function.mutate_variadic_argument_type() {
+            Self::visit_variadic_argument_type(variadic_type, processor);
+        }
+
+        Self::visit_function_return_type(function.mutate_return_type(), processor);
+    }
+
+    fn visit_optional_type(optional: &mut OptionalType, processor: &mut T) {
+        processor.process_optional_type(optional);
+        Self::visit_type(optional.mutate_inner_type(), processor);
+    }
+
+    fn visit_intersection_type(intersection: &mut IntersectionType, processor: &mut T) {
+        processor.process_intersection_type(intersection);
+
+        for r#type in intersection.iter_mut_types() {
+            Self::visit_type(r#type, processor);
+        }
+    }
+
+    fn visit_union_type(union: &mut UnionType, processor: &mut T) {
+        processor.process_union_type(union);
+
+        for r#type in union.iter_mut_types() {
+            Self::visit_type(r#type, processor);
+        }
+    }
+
+    fn visit_string_type(string: &mut StringType, processor: &mut T) {
+        processor.process_string_type(string);
     }
 
     fn visit_type_pack(type_pack: &mut TypePack, processor: &mut T) {
@@ -517,7 +603,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
                 Self::visit_variadic_type_pack(variadic_type_pack, processor);
             }
             VariadicArgumentType::GenericTypePack(generic_type_pack) => {
-                processor.process_generic_type_pack(generic_type_pack);
+                Self::visit_generic_type_pack(generic_type_pack, processor);
             }
         }
     }
@@ -535,7 +621,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
                 Self::visit_variadic_type_pack(variadic_type_pack, processor);
             }
             FunctionReturnType::GenericTypePack(generic_type_pack) => {
-                processor.process_generic_type_pack(generic_type_pack);
+                Self::visit_generic_type_pack(generic_type_pack, processor);
             }
         }
     }

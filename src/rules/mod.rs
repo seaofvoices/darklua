@@ -17,11 +17,15 @@ mod remove_assertions;
 mod remove_call_match;
 mod remove_comments;
 mod remove_compound_assign;
+mod remove_continue;
 mod remove_debug_profiling;
+mod remove_floor_division;
+mod remove_if_expression;
 mod remove_interpolated_string;
 mod remove_nil_declarations;
 mod remove_spaces;
 mod remove_types;
+mod remove_unused_variable;
 mod rename_variables;
 mod replace_referenced_tokens;
 pub(crate) mod require;
@@ -45,11 +49,15 @@ pub use no_local_function::*;
 pub use remove_assertions::*;
 pub use remove_comments::*;
 pub use remove_compound_assign::*;
+pub use remove_continue::*;
 pub use remove_debug_profiling::*;
+pub use remove_floor_division::*;
+pub use remove_if_expression::*;
 pub use remove_interpolated_string::*;
 pub use remove_nil_declarations::*;
 pub use remove_spaces::*;
 pub use remove_types::*;
+pub use remove_unused_variable::*;
 pub use rename_variables::*;
 pub(crate) use replace_referenced_tokens::*;
 pub use rule_property::*;
@@ -104,6 +112,7 @@ impl<'a, 'resources, 'code> ContextBuilder<'a, 'resources, 'code> {
             original_code: self.original_code,
             blocks: self.blocks,
             project_location: self.project_location,
+            dependencies: Default::default(),
         }
     }
 
@@ -120,15 +129,29 @@ pub struct Context<'a, 'resources, 'code> {
     original_code: &'code str,
     blocks: HashMap<PathBuf, &'a Block>,
     project_location: Option<PathBuf>,
+    dependencies: std::cell::RefCell<Vec<PathBuf>>,
 }
 
-impl<'a, 'resources, 'code> Context<'a, 'resources, 'code> {
+impl Context<'_, '_, '_> {
     pub fn block(&self, path: impl AsRef<Path>) -> Option<&Block> {
         self.blocks.get(path.as_ref()).copied()
     }
 
     pub fn current_path(&self) -> &Path {
         self.path.as_ref()
+    }
+
+    pub fn add_file_dependency(&self, path: PathBuf) {
+        if let Ok(mut dependencies) = self.dependencies.try_borrow_mut() {
+            log::trace!("add file dependency {}", path.display());
+            dependencies.push(path);
+        } else {
+            log::warn!("unable to submit file dependency (internal error)");
+        }
+    }
+
+    pub fn into_dependencies(self) -> impl Iterator<Item = PathBuf> {
+        self.dependencies.into_inner().into_iter()
     }
 
     fn resources(&self) -> &Resources {
@@ -206,6 +229,7 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::<RemoveUnusedWhile>::default(),
         Box::<FilterAfterEarlyReturn>::default(),
         Box::<RemoveEmptyDo>::default(),
+        Box::<RemoveUnusedVariable>::default(),
         Box::<RemoveMethodDefinition>::default(),
         Box::<ConvertIndexToField>::default(),
         Box::<RemoveNilDeclaration>::default(),
@@ -236,8 +260,11 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         REMOVE_SPACES_RULE_NAME,
         REMOVE_TYPES_RULE_NAME,
         REMOVE_UNUSED_IF_BRANCH_RULE_NAME,
+        REMOVE_UNUSED_VARIABLE_RULE_NAME,
         REMOVE_UNUSED_WHILE_RULE_NAME,
         RENAME_VARIABLES_RULE_NAME,
+        REMOVE_IF_EXPRESSION_RULE_NAME,
+        REMOVE_CONTINUE_RULE_NAME,
     ]
 }
 
@@ -261,6 +288,7 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME => Box::<RemoveCompoundAssignment>::default(),
             REMOVE_DEBUG_PROFILING_RULE_NAME => Box::<RemoveDebugProfiling>::default(),
             REMOVE_EMPTY_DO_RULE_NAME => Box::<RemoveEmptyDo>::default(),
+            REMOVE_FLOOR_DIVISION_RULE_NAME => Box::<RemoveFloorDivision>::default(),
             REMOVE_FUNCTION_CALL_PARENS_RULE_NAME => Box::<RemoveFunctionCallParens>::default(),
             REMOVE_INTERPOLATED_STRING_RULE_NAME => Box::<RemoveInterpolatedString>::default(),
             REMOVE_METHOD_DEFINITION_RULE_NAME => Box::<RemoveMethodDefinition>::default(),
@@ -268,8 +296,11 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_SPACES_RULE_NAME => Box::<RemoveSpaces>::default(),
             REMOVE_TYPES_RULE_NAME => Box::<RemoveTypes>::default(),
             REMOVE_UNUSED_IF_BRANCH_RULE_NAME => Box::<RemoveUnusedIfBranch>::default(),
+            REMOVE_UNUSED_VARIABLE_RULE_NAME => Box::<RemoveUnusedVariable>::default(),
             REMOVE_UNUSED_WHILE_RULE_NAME => Box::<RemoveUnusedWhile>::default(),
             RENAME_VARIABLES_RULE_NAME => Box::<RenameVariables>::default(),
+            REMOVE_IF_EXPRESSION_RULE_NAME => Box::<RemoveIfExpression>::default(),
+            REMOVE_CONTINUE_RULE_NAME => Box::<RemoveContinue>::default(),
             _ => return Err(format!("invalid rule name: {}", string)),
         };
 

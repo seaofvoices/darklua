@@ -1,5 +1,5 @@
-mod expression_serializer;
 pub(crate) mod path_require_mode;
+mod rename_type_declaration;
 mod require_mode;
 
 use std::path::Path;
@@ -10,8 +10,7 @@ use crate::rules::{
 };
 use crate::Parser;
 
-pub(crate) use expression_serializer::LuaSerializerError;
-
+pub(crate) use rename_type_declaration::RenameTypeDeclarationProcessor;
 pub use require_mode::BundleRequireMode;
 use wax::Pattern;
 

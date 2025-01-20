@@ -10,37 +10,7 @@ pub struct FunctionNameTokens {
 }
 
 impl FunctionNameTokens {
-    pub fn clear_comments(&mut self) {
-        self.periods.iter_mut().for_each(Token::clear_comments);
-        if let Some(token) = &mut self.colon {
-            token.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.periods.iter_mut().for_each(Token::clear_whitespaces);
-        if let Some(token) = &mut self.colon {
-            token.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        for token in self.periods.iter_mut() {
-            token.replace_referenced_tokens(code);
-        }
-        if let Some(token) = &mut self.colon {
-            token.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        for token in self.periods.iter_mut() {
-            token.shift_token_line(amount);
-        }
-        if let Some(token) = &mut self.colon {
-            token.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [periods, colon]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -115,6 +85,11 @@ impl FunctionName {
     }
 
     #[inline]
+    pub fn has_method(&self) -> bool {
+        self.method.is_some()
+    }
+
+    #[inline]
     pub fn get_name(&self) -> &Identifier {
         &self.name
     }
@@ -134,53 +109,7 @@ impl FunctionName {
         &mut self.name
     }
 
-    pub fn clear_comments(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-        for field in self.field_names.iter_mut() {
-            field.clear_comments();
-        }
-        if let Some(method) = &mut self.method {
-            method.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_whitespaces();
-        }
-        for field in self.field_names.iter_mut() {
-            field.clear_whitespaces();
-        }
-        if let Some(method) = &mut self.method {
-            method.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.replace_referenced_tokens(code);
-        }
-        for field in self.field_names.iter_mut() {
-            field.replace_referenced_tokens(code);
-        }
-        if let Some(method) = &mut self.method {
-            method.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-        for field in self.field_names.iter_mut() {
-            field.shift_token_line(amount);
-        }
-        if let Some(method) = &mut self.method {
-            method.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(iter = [tokens, field_names, method]);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -396,55 +325,8 @@ impl FunctionStatement {
         }
     }
 
-    pub fn clear_comments(&mut self) {
-        self.name.clear_comments();
-        self.parameters
-            .iter_mut()
-            .for_each(TypedIdentifier::clear_comments);
-        if let Some(generics) = &mut self.generic_parameters {
-            generics.clear_comments();
-        }
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_comments();
-        }
-    }
-
-    pub fn clear_whitespaces(&mut self) {
-        self.name.clear_whitespaces();
-        self.parameters
-            .iter_mut()
-            .for_each(TypedIdentifier::clear_whitespaces);
-        if let Some(generics) = &mut self.generic_parameters {
-            generics.clear_whitespaces();
-        }
-        if let Some(tokens) = &mut self.tokens {
-            tokens.clear_whitespaces();
-        }
-    }
-
-    pub(crate) fn replace_referenced_tokens(&mut self, code: &str) {
-        self.name.replace_referenced_tokens(code);
-        for parameter in self.parameters.iter_mut() {
-            parameter.replace_referenced_tokens(code);
-        }
-        if let Some(generics) = &mut self.generic_parameters {
-            generics.replace_referenced_tokens(code);
-        }
-        if let Some(tokens) = &mut self.tokens {
-            tokens.replace_referenced_tokens(code);
-        }
-    }
-
-    pub(crate) fn shift_token_line(&mut self, amount: usize) {
-        self.name.shift_token_line(amount);
-        for parameter in self.parameters.iter_mut() {
-            parameter.shift_token_line(amount);
-        }
-        if let Some(generics) = &mut self.generic_parameters {
-            generics.shift_token_line(amount);
-        }
-        if let Some(tokens) = &mut self.tokens {
-            tokens.shift_token_line(amount);
-        }
-    }
+    super::impl_token_fns!(
+        target = [name]
+        iter = [parameters, generic_parameters, tokens]
+    );
 }

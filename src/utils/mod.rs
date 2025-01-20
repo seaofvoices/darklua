@@ -1,21 +1,20 @@
+mod expressions_as_statement;
+pub(crate) mod lines;
+mod luau_config;
+mod scoped_hash_map;
 mod serde_string_or_struct;
-
-#[cfg(not(target_arch = "wasm32"))]
 mod timer;
-#[cfg(target_arch = "wasm32")]
-mod wasm_timer;
 
+pub(crate) use expressions_as_statement::{expressions_as_expression, expressions_as_statement};
+pub(crate) use luau_config::{clear_luau_configuration_cache, find_luau_configuration};
+pub(crate) use scoped_hash_map::ScopedHashMap;
 pub(crate) use serde_string_or_struct::string_or_struct;
-#[cfg(not(target_arch = "wasm32"))]
-pub use timer::Timer;
-#[cfg(target_arch = "wasm32")]
-pub use wasm_timer::Timer;
-
 use std::{
     ffi::OsStr,
     iter::FromIterator,
     path::{Component, Path, PathBuf},
 };
+pub use timer::Timer;
 
 use crate::DarkluaError;
 

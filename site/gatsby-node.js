@@ -16,28 +16,26 @@ exports.createPages = async ({ graphql, actions, reporter }) => {
   const { createPage } = actions
 
   // Get all markdown documentation posts
-  const result = await graphql(
-    `
-      {
-        allMarkdownRemark(
-          limit: 1000
-          filter: { fileAbsolutePath: { regex: "/content/docs/" } }
-        ) {
-          nodes {
-            id
-            fields {
-              slug
-            }
+  const result = await graphql(`
+    {
+      allMarkdownRemark(
+        limit: 1000
+        filter: { fileAbsolutePath: { regex: "/content/docs/" } }
+      ) {
+        nodes {
+          id
+          fields {
+            slug
           }
         }
       }
-    `
-  )
+    }
+  `)
 
   if (result.errors) {
     reporter.panicOnBuild(
       `There was an error loading the documentation content`,
-      result.errors
+      result.errors,
     )
     return
   }
@@ -72,28 +70,26 @@ exports.createPages = async ({ graphql, actions, reporter }) => {
   })
 
   // Get all markdown rules information
-  const ruleResults = await graphql(
-    `
-      {
-        allMarkdownRemark(
-          limit: 1000
-          filter: { fileAbsolutePath: { regex: "/content/rules/" } }
-        ) {
-          nodes {
-            id
-            fields {
-              slug
-            }
+  const ruleResults = await graphql(`
+    {
+      allMarkdownRemark(
+        limit: 1000
+        filter: { fileAbsolutePath: { regex: "/content/rules/" } }
+      ) {
+        nodes {
+          id
+          fields {
+            slug
           }
         }
       }
-    `
-  )
+    }
+  `)
 
   if (result.errors) {
     reporter.panicOnBuild(
       `There was an error loading the documentation content`,
-      ruleResults.errors
+      ruleResults.errors,
     )
     return
   }
@@ -217,8 +213,8 @@ exports.createSchemaCustomization = ({ actions }) => {
     }
 
     type RuleParameter {
-      name: String
-      type: String
+      name: String!
+      type: String!
       default: String
       description: String
       added_in: String

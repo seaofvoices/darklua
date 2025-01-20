@@ -1,8 +1,6 @@
 ---
 source: src/rules/mod.rs
-assertion_line: 299
 expression: rules
-
 ---
 [
   "remove_spaces",
@@ -12,6 +10,7 @@ expression: rules
   "remove_unused_while",
   "filter_after_early_return",
   "remove_empty_do",
+  "remove_unused_variable",
   "remove_method_definition",
   "convert_index_to_field",
   "remove_nil_declaration",

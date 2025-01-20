@@ -14,7 +14,9 @@ use crate::nodes::{
     Block, DoStatement, Expression, FunctionCall, LocalAssignStatement, Prefix, Statement,
     StringExpression,
 };
-use crate::process::{DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
+use crate::process::{
+    to_expression, DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor,
+};
 use crate::rules::require::{
     is_require_call, match_path_require_call, PathRequireMode, RequirePathLocator,
 };
@@ -24,7 +26,6 @@ use crate::rules::{
 use crate::utils::Timer;
 use crate::{DarkluaError, Resources};
 
-use super::expression_serializer::to_expression;
 use super::BundleOptions;
 
 pub(crate) enum RequiredResource {
@@ -260,7 +261,7 @@ impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> 
     }
 }
 
-impl<'a, 'b, 'resources, 'code> Deref for RequirePathProcessor<'a, 'b, 'resources, 'code> {
+impl Deref for RequirePathProcessor<'_, '_, '_, '_> {
     type Target = IdentifierTracker;
 
     fn deref(&self) -> &Self::Target {
@@ -268,7 +269,7 @@ impl<'a, 'b, 'resources, 'code> Deref for RequirePathProcessor<'a, 'b, 'resource
     }
 }
 
-impl<'a, 'b, 'resources, 'code> DerefMut for RequirePathProcessor<'a, 'b, 'resources, 'code> {
+impl DerefMut for RequirePathProcessor<'_, '_, '_, '_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.identifier_tracker
     }
@@ -299,7 +300,7 @@ where
     expression
 }
 
-impl<'a, 'b, 'resources, 'code> NodeProcessor for RequirePathProcessor<'a, 'b, 'resources, 'code> {
+impl NodeProcessor for RequirePathProcessor<'_, '_, '_, '_> {
     fn process_expression(&mut self, expression: &mut Expression) {
         if let Expression::Call(call) = expression {
             if let Some(replace_with) = self.try_inline_call(call) {

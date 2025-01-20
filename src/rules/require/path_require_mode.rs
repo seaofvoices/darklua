@@ -4,6 +4,7 @@ use crate::frontend::DarkluaResult;
 use crate::nodes::FunctionCall;
 use crate::rules::require::match_path_require_call;
 use crate::rules::Context;
+use crate::utils::find_luau_configuration;
 use crate::DarkluaError;
 
 use std::collections::HashMap;
@@ -22,6 +23,14 @@ pub struct PathRequireMode {
     module_folder_name: String,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     sources: HashMap<String, PathBuf>,
+    #[serde(default = "default_use_luau_configuration")]
+    use_luau_configuration: bool,
+    #[serde(skip)]
+    luau_rc_aliases: Option<HashMap<String, PathBuf>>,
+}
+
+fn default_use_luau_configuration() -> bool {
+    true
 }
 
 impl Default for PathRequireMode {
@@ -29,6 +38,8 @@ impl Default for PathRequireMode {
         Self {
             module_folder_name: get_default_module_folder_name(),
             sources: Default::default(),
+            use_luau_configuration: default_use_luau_configuration(),
+            luau_rc_aliases: Default::default(),
         }
     }
 }
@@ -49,15 +60,41 @@ impl PathRequireMode {
         Self {
             module_folder_name: module_folder_name.into(),
             sources: Default::default(),
+            use_luau_configuration: default_use_luau_configuration(),
+            luau_rc_aliases: Default::default(),
         }
+    }
+
+    pub(crate) fn initialize(&mut self, context: &Context) -> Result<(), DarkluaError> {
+        if !self.use_luau_configuration {
+            self.luau_rc_aliases.take();
+            return Ok(());
+        }
+
+        if let Some(config) = find_luau_configuration(context.current_path(), context.resources())?
+        {
+            self.luau_rc_aliases.replace(config.aliases);
+        } else {
+            self.luau_rc_aliases.take();
+        }
+
+        Ok(())
     }
 
     pub(crate) fn module_folder_name(&self) -> &str {
         &self.module_folder_name
     }
 
-    pub(crate) fn get_source(&self, name: &str) -> Option<&Path> {
-        self.sources.get(name).map(PathBuf::as_path)
+    pub(crate) fn get_source(&self, name: &str, rel: &Path) -> Option<PathBuf> {
+        self.sources
+            .get(name)
+            .map(|alias| rel.join(alias))
+            .or_else(|| {
+                self.luau_rc_aliases
+                    .as_ref()
+                    .and_then(|aliases| aliases.get(name))
+                    .map(ToOwned::to_owned)
+            })
     }
 
     pub(crate) fn find_require(
@@ -89,7 +126,7 @@ impl PathRequireMode {
         _context: &Context<'_, '_, '_>,
     ) -> Result<Option<crate::nodes::Arguments>, crate::DarkluaError> {
         Err(DarkluaError::custom("unsupported target require mode")
-            .context("path require mode cannot"))
+            .context("path require mode cannot be used"))
     }
 }
 

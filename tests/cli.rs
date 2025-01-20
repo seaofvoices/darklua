@@ -157,7 +157,8 @@ impl Context {
     }
 
     pub fn replace_duration_labels(self) -> Self {
-        self.replace_snapshot_content("\\d+.\\d+[mµ]s", "{{DURATION}}")
+        self.replace_snapshot_content("\\d+\\.\\d+[µm]s", "{{DURATION}}")
+            .replace_snapshot_content("\\d+µs", "{{DURATION}}")
     }
 
     pub fn replace_backslashes(self) -> Self {
@@ -193,6 +194,14 @@ fn snapshot_minify_help_command() {
         .arg("minify")
         .arg("--help")
         .snapshot_command("minify_help_command");
+}
+
+#[test]
+fn snapshot_convert_help_command() {
+    Context::default()
+        .arg("convert")
+        .arg("--help")
+        .snapshot_command("convert_help_command");
 }
 
 #[test]
@@ -314,4 +323,62 @@ fn run_process_single_file_custom_config_command_deprecated_config_path() {
         .replace_duration_labels()
         .snapshot_command("run_process_single_file_custom_config")
         .snapshot_file("run_process_custom_config_command_out", "out.lua");
+}
+
+#[test]
+fn run_convert_command_on_json_file_with_output() {
+    Context::default()
+        .write_file("data.json", "{ \"property\": true }")
+        .arg("convert")
+        .arg("data.json")
+        .arg("out.lua")
+        .replace_duration_labels()
+        .snapshot_command("run_convert_command_on_json_file_with_output")
+        .snapshot_file("run_convert_command_on_json_file_out", "out.lua");
+}
+
+#[test]
+fn run_convert_command_on_json_without_extension_file_with_output() {
+    Context::default()
+        .write_file("data", "{ \"property\": true }")
+        .arg("convert")
+        .arg("data")
+        .arg("out.lua")
+        .arg("--format")
+        .arg("json")
+        .replace_duration_labels()
+        .snapshot_command("run_convert_command_on_json_without_extension_file_with_output")
+        .snapshot_file("run_convert_command_on_json_file_out", "out.lua");
+}
+
+#[test]
+fn run_convert_command_on_json_file() {
+    Context::default()
+        .write_file("data.json", "{ \"property\": true }")
+        .arg("convert")
+        .arg("data.json")
+        .replace_duration_labels()
+        .snapshot_command("run_convert_command_on_json_file_stdout");
+}
+
+#[test]
+fn run_convert_command_errors_when_no_extension_and_no_format() {
+    Context::default()
+        .write_file("data", "{ \"property\": true }")
+        .arg("convert")
+        .arg("data")
+        .arg("out.lua")
+        .replace_duration_labels()
+        .snapshot_command("run_convert_command_errors_when_no_extension_and_no_format");
+}
+
+#[test]
+fn run_convert_command_errors_when_unrecognized_extension() {
+    Context::default()
+        .write_file("data.yoyo", "{ \"property\": true }")
+        .arg("convert")
+        .arg("data.yoyo")
+        .arg("out.lua")
+        .replace_duration_labels()
+        .snapshot_command("run_convert_command_errors_when_unrecognized_extension");
 }

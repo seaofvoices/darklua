@@ -6,7 +6,7 @@ test_rule!(
     remove_profile_begin("debug.profilebegin('label')") => "do end",
     remove_profile_end("debug.profileend()") => "do end",
     remove_profiling_around_function_call("debug.profilebegin('label') fn() debug.profileend()") => "do end fn() do end",
-    remove_profile_begin_with_maybe_side_effects("debug.profilebegin(getLabel())") => "do local _ = getLabel() end",
+    remove_profile_begin_with_maybe_side_effects("debug.profilebegin(getLabel())") => "getLabel()",
 );
 
 test_rule!(
