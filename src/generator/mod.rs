@@ -1053,6 +1053,7 @@ mod $mod_name {
             number_100_25 => 100.25,
             number_2000_05 => 2000.05,
             binary_0b10101 => BinaryNumber::new(0b10101, false),
+            number_4_6982573308436185e159 => "4.6982573308436185e159".parse::<NumberExpression>().ok(),
         ));
 
         snapshot_node!($mod_name, $generator, table, write_expression => (

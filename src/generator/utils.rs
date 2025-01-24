@@ -1,6 +1,8 @@
 //! A module that contains the main [LuaGenerator](trait.LuaGenerator.html) trait
 //! and its implementations.
 
+use std::convert::TryInto;
+
 use crate::nodes::{
     Expression, FieldExpression, FunctionCall, IndexExpression, NumberExpression, Prefix,
     Statement, StringSegment, TableExpression, Variable,
@@ -203,21 +205,36 @@ pub fn write_number(number: &NumberExpression) -> String {
                 "(0/0)".to_owned()
             } else if float.is_infinite() {
                 format!("({}1/0)", if float.is_sign_negative() { "-" } else { "" })
-            } else {
-                format!(
-                    "{}{}",
-                    float,
+            } else if let Some(exponent) = number
+                .get_exponent()
+                .map(TryInto::try_into)
+                .and_then(Result::ok)
+            {
+                let mantissa: f64 = float / 10.0_f64.powi(exponent);
+
+                let formatted = format!(
+                    "{}{}{}",
+                    mantissa,
                     number
-                        .get_exponent()
-                        .map(|exponent| {
-                            let exponent_char = number
-                                .is_uppercase()
-                                .map(|is_uppercase| if is_uppercase { 'E' } else { 'e' })
-                                .unwrap_or('e');
-                            format!("{}{}", exponent_char, exponent)
-                        })
-                        .unwrap_or_else(|| "".to_owned())
-                )
+                        .is_uppercase()
+                        .unwrap_or_default()
+                        .then_some("E")
+                        .unwrap_or("e"),
+                    exponent
+                );
+
+                // verify if we did not lose any precision
+                if formatted.parse::<f64>() == Ok(float) {
+                    formatted
+                } else if number.is_uppercase().unwrap_or_default() {
+                    format!("{:E}", float)
+                } else {
+                    format!("{:e}", float)
+                }
+            } else if float.fract() == 0.0 {
+                format!("{}", float)
+            } else {
+                format!("{:?}", float)
             }
         }
         NumberExpression::Hex(number) => {

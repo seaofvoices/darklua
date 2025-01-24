@@ -47,7 +47,7 @@ impl DecimalNumber {
     }
 
     #[inline]
-    pub fn get_raw_float(&self) -> f64 {
+    pub(crate) fn get_raw_float(&self) -> f64 {
         self.float
     }
 
@@ -62,11 +62,7 @@ impl DecimalNumber {
     }
 
     pub fn compute_value(&self) -> f64 {
-        if let Some((exponent, _)) = self.exponent {
-            self.float * 10_f64.powf(exponent as f64)
-        } else {
-            self.float
-        }
+        self.float
     }
 
     super::impl_token_fns!(iter = [token]);
@@ -406,13 +402,18 @@ impl FromStr for NumberExpression {
                         .map(filter_underscore)
                         .and_then(|string| string.parse().ok())
                         .ok_or(Self::Err::InvalidDecimalExponent)?;
-                    let number = value
+                    let _number: f64 = value
                         .get(0..index)
                         .map(filter_underscore)
                         .and_then(|string| string.parse().ok())
                         .ok_or(Self::Err::InvalidDecimalNumber)?;
 
-                    DecimalNumber::new(number).with_exponent(exponent, exponent_is_uppercase)
+                    DecimalNumber::new(
+                        filter_underscore(value)
+                            .parse::<f64>()
+                            .map_err(|_| Self::Err::InvalidDecimalNumber)?,
+                    )
+                    .with_exponent(exponent, exponent_is_uppercase)
                 } else {
                     let number = filter_underscore(value)
                         .parse::<f64>()
@@ -528,16 +529,17 @@ mod test {
             parse_multiple_decimal_with_underscore_after_point("0._24") => DecimalNumber::new(0.24_f64),
             parse_float_with_trailing_dot("123.") => DecimalNumber::new(123_f64),
             parse_starting_with_dot(".123") => DecimalNumber::new(0.123_f64),
-            parse_digit_with_exponent("1e10") => DecimalNumber::new(1_f64).with_exponent(10, false),
-            parse_digit_with_exponent_and_underscore("1e_10") => DecimalNumber::new(1_f64).with_exponent(10, false),
-            parse_number_with_exponent("123e456") => DecimalNumber::new(123_f64).with_exponent(456, false),
-            parse_number_with_exponent_and_plus_symbol("123e+456") => DecimalNumber::new(123_f64).with_exponent(456, false),
-            parse_number_with_negative_exponent("123e-456") => DecimalNumber::new(123_f64).with_exponent(-456, false),
-            parse_number_with_upper_exponent("123E4") => DecimalNumber::new(123_f64).with_exponent(4, true),
-            parse_number_with_upper_negative_exponent("123E-456") => DecimalNumber::new(123_f64).with_exponent(-456, true),
-            parse_float_with_exponent("10.12e8") => DecimalNumber::new(10.12_f64).with_exponent(8, false),
-            parse_float_with_exponent_and_underscores("10_0.12_e_8") => DecimalNumber::new(100.12_f64).with_exponent(8, false),
-            parse_trailing_dot_with_exponent("10.e8") => DecimalNumber::new(10_f64).with_exponent(8, false),
+            parse_digit_with_exponent("1e10") => DecimalNumber::new(1e10_f64).with_exponent(10, false),
+            parse_digit_with_exponent_and_underscore("1e_10") => DecimalNumber::new(1e10_f64).with_exponent(10, false),
+            parse_number_with_exponent("123e101") => DecimalNumber::new(123e101_f64).with_exponent(101, false),
+            parse_number_with_exponent_and_plus_symbol("123e+121") => DecimalNumber::new(123e121_f64).with_exponent(121, false),
+            parse_number_with_negative_exponent("123e-456") => DecimalNumber::new(123e-456_f64).with_exponent(-456, false),
+            parse_number_with_upper_exponent("123E4") => DecimalNumber::new(123e4_f64).with_exponent(4, true),
+            parse_number_with_upper_negative_exponent("123E-456") => DecimalNumber::new(123e-456_f64).with_exponent(-456, true),
+            parse_float_with_exponent("10.12e8") => DecimalNumber::new(10.12e8_f64).with_exponent(8, false),
+            parse_float_with_exponent_and_underscores("10_0.12_e_8") => DecimalNumber::new(100.12e8_f64).with_exponent(8, false),
+            parse_float_with_exponent_2("4.6982573308436185e159") => DecimalNumber::new(4.6982573308436185e159_f64).with_exponent(159, false),
+            parse_trailing_dot_with_exponent("10.e8") => DecimalNumber::new(10e8_f64).with_exponent(8, false),
             parse_hex_number("0x12") => HexNumber::new(18, false),
             parse_hex_number_with_underscore_before_x("0_x12") => HexNumber::new(18, false),
             parse_hex_number_with_underscores_around_x("0_x_12") => HexNumber::new(18, false),

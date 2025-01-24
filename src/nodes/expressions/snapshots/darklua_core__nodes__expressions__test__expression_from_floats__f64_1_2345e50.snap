@@ -5,10 +5,10 @@ expression: result
 Number(
     Decimal(
         DecimalNumber {
-            float: 1e42,
+            float: 1.2345e50,
             exponent: Some(
                 (
-                    42,
+                    46,
                     true,
                 ),
             ),
