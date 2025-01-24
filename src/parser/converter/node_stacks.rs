@@ -7,6 +7,8 @@ use crate::{
     parser::ast_converter::ConvertError,
 };
 
+use super::{InterpolationSegment, StringSegment, ValueSegment};
+
 #[derive(Debug, Default)]
 pub(crate) struct NodeStacks {
     blocks: Vec<Block>,
@@ -24,6 +26,7 @@ pub(crate) struct NodeStacks {
     generic_type_packs: Vec<GenericTypePack>,
     type_parameters: Vec<TypeParameters>,
     type_packs: Vec<TypePack>,
+    interpolation_segments: Vec<InterpolationSegment>,
 }
 
 impl NodeStacks {
@@ -161,6 +164,18 @@ impl NodeStacks {
             .pop()
             .ok_or(ConvertError::InternalStack { kind: "TypePack" })
     }
+
+    pub(crate) fn pop_interpolation_segment(&mut self) -> Result<InterpolationSegment, ConvertError> {
+        self.interpolation_segments
+            .pop()
+            .ok_or(ConvertError::InternalStack { kind: "InterpolationSegment" })
+    }
+
+    pub(crate) fn pop_interpolation_segments(&mut self, n: usize) -> Result<Vec<InterpolationSegment>, ConvertError> {
+        std::iter::repeat_with(|| self.pop_interpolation_segment())
+            .take(n)
+            .collect()
+    }
 }
 
 pub(crate) trait PushNode<T> {
@@ -254,5 +269,25 @@ impl PushNode<TypeParameters> for NodeStacks {
 impl PushNode<TypePack> for NodeStacks {
     fn push(&mut self, node: TypePack) {
         self.type_packs.push(node);
+    }
+}
+
+impl PushNode<InterpolationSegment> for NodeStacks {
+    fn push(&mut self, node: InterpolationSegment) {
+        self.interpolation_segments.push(node);
+    }
+}
+
+impl PushNode<StringSegment> for NodeStacks {
+    fn push(&mut self, node: StringSegment) {
+        self.interpolation_segments
+            .push(InterpolationSegment::String(node));
+    }
+}
+
+impl PushNode<ValueSegment> for NodeStacks {
+    fn push(&mut self, node: ValueSegment) {
+        self.interpolation_segments
+            .push(InterpolationSegment::Value(node));
     }
 }

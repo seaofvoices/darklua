@@ -98,6 +98,7 @@ pub(crate) enum ConvertWork<C: std::fmt::Debug> {
     PushTypedIdentifier(TypedIdentifier),
     PushVariable(Variable),
     PushType(Type),
+    PushInterpolationSegment(InterpolationSegment),
     MakeBlock {
         statement_count: usize,
         has_last_statement: bool,
@@ -221,8 +222,9 @@ pub(crate) enum ConvertWork<C: std::fmt::Debug> {
         token: Option<Token>,
     },
     MakeInterpolatedString {
-        // interpolated_string: &'a ast::types::InterpolatedString,
+        segments: usize,
     },
+    MakeInterpolationValueSegment,
     MakeFunctionReturnType {
         // type_info: &'a ast::types::TypeInfo,
     },

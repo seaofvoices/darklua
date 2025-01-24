@@ -45,6 +45,9 @@ pub(crate) fn convert_block<'a, C: std::fmt::Debug + Convertable<Convert = C>>(
             ConvertWork::PushType(r#type) => {
                 stacks.push(r#type);
             }
+            ConvertWork::PushInterpolationSegment(segment) => {
+                stacks.push(segment);
+            }
             ConvertWork::MakeBlock {
                 statement_count,
                 has_last_statement,
@@ -412,9 +415,15 @@ pub(crate) fn convert_block<'a, C: std::fmt::Debug + Convertable<Convert = C>>(
 
                 stacks.push(typed_identifier);
             }
-            ConvertWork::MakeInterpolatedString {} => {
-                let string = InterpolatedStringExpression::empty();
-                stacks.push(Expression::from(string));
+            ConvertWork::MakeInterpolatedString { segments } => {
+                let interpolated_string =
+                    InterpolatedStringExpression::new(stacks.pop_interpolation_segments(segments)?);
+
+                stacks.push(Expression::from(interpolated_string));
+            }
+            ConvertWork::MakeInterpolationValueSegment => {
+                let segment = ValueSegment::new(stacks.pop_expression()?);
+                stacks.push(InterpolationSegment::Value(segment));
             }
             ConvertWork::MakeFunctionReturnType {} => todo!(),
             ConvertWork::MakeVariadicTypePack {} => todo!(),

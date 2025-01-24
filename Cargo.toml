@@ -37,8 +37,8 @@ json5 = "0.4.1"
 lazy_static = "1.4.0"
 log = "0.4.22"
 pathdiff = "0.2.3"
-pest = "2.7.5"
-pest_derive = { version = "2.7.5", features = ["grammar-extras"] }
+pest = "2.7.15"
+pest_derive = { version = "2.7.15", features = ["grammar-extras"] }
 petgraph = "0.6.5"
 regex = "1.11.1"
 serde = { version = "1.0", features = ["derive"] }

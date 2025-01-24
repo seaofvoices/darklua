@@ -12,7 +12,7 @@ use crate::{
 };
 
 use super::{
-    find_first_tagged, get_first_tagged,
+    filter_tagged, find_first_tagged, get_first_tagged,
     pratt_parser::{Op, PrattConfig, PrattContext, PrattParsing},
     submit_binding_list, submit_list, submit_table_entry_list, ConvertKind, ConvertPest,
     PrefixConverter,
@@ -59,6 +59,45 @@ where
     Ok(())
 }
 
+pub(crate) fn push_interpolated_string_expression<'i, W>(
+    primary: Pair<'i, Rule>,
+    stack: &mut W,
+) -> Result<(), ConvertError>
+where
+    W: WorkScheduler<Convert = ConvertPest<'i>>,
+{
+    let mut segments = 0;
+    for inner_pair in filter_tagged(primary.into_inner(), "interpolated_string_segment") {
+        match inner_pair.as_rule() {
+            Rule::backtick_quoted_inner => {
+                let is_empty = inner_pair.as_span().end() == inner_pair.as_span().start();
+                if !is_empty {
+                    segments += 1;
+
+                    stack.push2(ConvertWork::PushInterpolationSegment(
+                        StringSegment::from_value(inner_pair.as_str()).into(),
+                    ));
+                }
+            }
+            Rule::interpolated_string_segment => {
+                segments += 1;
+
+                let value = get_first_tagged(inner_pair.into_inner(), "expr")?;
+                stack.push2(ConvertKind::Expression.as_work(value));
+                stack.push2(ConvertWork::MakeInterpolationValueSegment);
+            }
+            _ => {
+                todo!()
+            }
+        }
+    }
+
+    // todo: tokens
+    stack.push2(ConvertWork::MakeInterpolatedString { segments });
+
+    Ok(())
+}
+
 impl<'pratt, 'i, 'w, W> PrattContext<'pratt, 'i, Rule, Result<(), ConvertError>>
     for ExpressionConverter<'i, 'w, W>
 where
@@ -99,8 +138,7 @@ where
                 ));
             }
             Rule::interpolated_string => {
-                // todo!()
-                self.stack.push2(ConvertWork::MakeInterpolatedString {});
+                push_interpolated_string_expression(primary, self.stack)?;
             }
             Rule::var_args_expr => {
                 self.stack

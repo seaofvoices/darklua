@@ -46,7 +46,7 @@ interpolated_string_segment_start = { "{" }
 interpolated_string_segment_end = { "}" }
 interpolated_string_segment = { interpolated_string_segment_start ~ #expr = expr ~ interpolated_string_segment_end }
 
-interpolated_string = ${ "`" ~ (backtick_quoted_inner ~ interpolated_string_segment)* ~ backtick_quoted_inner ~ "`"}
+interpolated_string = ${ "`" ~ (#interpolation_segment = backtick_quoted_inner ~ #interpolation_segment = interpolated_string_segment)* ~ #interpolation_segment = backtick_quoted_inner ~ "`"}
 
 backtick_quoted_inner = @{ (!("`" | "{" | "\\" | NEWLINE) ~ ANY)* ~ (backtick_escape ~ backtick_quoted_inner)? }
 
@@ -77,8 +77,8 @@ parenthese_expr = { "(" ~ #expr = expr ~ ")" }
 
 table_field_entry = { #field = identifier ~ "=" ~ #value = expr }
 table_index_entry = { "[" ~ #key = expr ~ "]" ~ "=" ~ #value = expr }
-table_entry       = _{ table_field_entry | table_index_entry | expr }
-table_expr        = { "{" ~ (table_entry ~ ("," | ";"))* ~ table_entry? ~ "}" }
+table_entry       = { table_field_entry | table_index_entry | expr }
+table_expr        = { "{" ~ (#table_entry = table_entry ~ ("," | ";"))* ~ #table_entry = table_entry? ~ "}" }
 
 prefix_start = _{ identifier | parenthese_expr }
 suffix_index = { "[" ~ #index = expr ~ "]" }
