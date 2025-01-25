@@ -201,6 +201,7 @@ pub fn write_number(number: &NumberExpression) -> String {
     match number {
         NumberExpression::Decimal(number) => {
             let float = number.get_raw_float();
+            #[allow(clippy::if_same_then_else)]
             if float.is_nan() {
                 "(0/0)".to_owned()
             } else if float.is_infinite() {
@@ -215,11 +216,11 @@ pub fn write_number(number: &NumberExpression) -> String {
                 let formatted = format!(
                     "{}{}{}",
                     mantissa,
-                    number
-                        .is_uppercase()
-                        .unwrap_or_default()
-                        .then_some("E")
-                        .unwrap_or("e"),
+                    if number.is_uppercase().unwrap_or_default() {
+                        "E"
+                    } else {
+                        "e"
+                    },
                     exponent
                 );
 
