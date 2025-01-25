@@ -42,8 +42,7 @@ impl StringExpression {
 
         match (chars.next(), chars.next_back()) {
             (Some((_, first_char)), Some((_, last_char))) if first_char == last_char => {
-                string_utils::read_escaped_string(chars, Some(string.as_bytes().len()))
-                    .map(Self::from_value)
+                string_utils::read_escaped_string(chars, Some(string.len())).map(Self::from_value)
             }
             (None, None) | (None, Some(_)) | (Some(_), None) => {
                 Err(StringError::invalid("missing quotes"))
