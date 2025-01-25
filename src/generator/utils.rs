@@ -234,7 +234,7 @@ pub fn write_number(number: &NumberExpression) -> String {
             } else if float.fract() == 0.0 {
                 format!("{}", float)
             } else {
-                format!("{:?}", float)
+                format!("{:.}", float)
             }
         }
         NumberExpression::Hex(number) => {
