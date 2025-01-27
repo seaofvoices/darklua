@@ -59,6 +59,13 @@ impl Block {
         self.statements.push(statement.into());
     }
 
+    pub fn remove_statement(&mut self, index: usize) {
+        self.statements.remove(index);
+        if let Some(tokens) = &mut self.tokens {
+            tokens.semicolons.remove(index);
+        }
+    }
+
     pub fn with_statement<T: Into<Statement>>(mut self, statement: T) -> Self {
         self.statements.push(statement.into());
         self
@@ -405,6 +412,15 @@ mod test {
                 final_token: None,
             })
         );
+    }
+
+    #[test]
+    fn remove_statement() {
+        let mut block = parse_block_with_tokens("while true do end");
+
+        block.remove_statement(0);
+
+        assert!(block.is_empty());
     }
 
     #[test]
