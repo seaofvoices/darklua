@@ -109,9 +109,8 @@ impl From<f64> for Expression {
                     UnaryExpression::new(UnaryOperator::Minus, Expression::from(value.abs())).into()
                 } else if value < 0.1 {
                     let exponent = value.log10().floor();
-                    let new_value = value / 10_f64.powf(exponent);
 
-                    DecimalNumber::new(new_value)
+                    DecimalNumber::new(value)
                         .with_exponent(exponent as i64, true)
                         .into()
                 } else if value > 999.0 && (value / 100.0).fract() == 0.0 {
@@ -123,7 +122,7 @@ impl From<f64> for Expression {
                         power /= 10.0;
                     }
 
-                    DecimalNumber::new(value / power)
+                    DecimalNumber::new(value)
                         .with_exponent(exponent as i64, true)
                         .into()
                 } else {
@@ -346,6 +345,7 @@ mod test {
         snapshot_from_expression!(
             f64_0 => 0_f64,
             f64_1e42 => 1e42_f64,
+            f64_1_2345e50 => 1.2345e50_f64,
             f64_infinity => f64::INFINITY,
             i64_minus_one => -1_i64,
             f64_minus_zero => -0.0,

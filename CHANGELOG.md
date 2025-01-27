@@ -1,5 +1,6 @@
 # Changelog
 
+* fix floating point number representation ([#251](https://github.com/seaofvoices/darklua/pull/251))
 * read Luau configuration files (`.luaurc`) to get path aliases ([#246](https://github.com/seaofvoices/darklua/pull/246))
 * support Luau types when bundling ([#249](https://github.com/seaofvoices/darklua/pull/249))
 

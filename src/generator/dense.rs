@@ -811,8 +811,8 @@ impl LuaGenerator for DenseLuaGenerator {
         use nodes::NumberExpression::*;
 
         match number {
-            Decimal(number) => {
-                let float = number.get_raw_float();
+            Decimal(decimal) => {
+                let float = decimal.get_raw_float();
                 if float.is_nan() {
                     self.push_char('(');
                     self.push_char('0');
@@ -829,17 +829,7 @@ impl LuaGenerator for DenseLuaGenerator {
                     self.push_char('0');
                     self.push_char(')');
                 } else {
-                    let mut result = format!("{}", float);
-
-                    if let Some(exponent) = number.get_exponent() {
-                        let exponent_char = number
-                            .is_uppercase()
-                            .map(|is_uppercase| if is_uppercase { 'E' } else { 'e' })
-                            .unwrap_or('e');
-
-                        result.push(exponent_char);
-                        result.push_str(&format!("{}", exponent));
-                    };
+                    let result = utils::write_number(number);
 
                     self.push_str(&result);
                 }
