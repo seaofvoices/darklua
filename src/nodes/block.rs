@@ -60,8 +60,14 @@ impl Block {
     }
 
     pub fn remove_statement(&mut self, index: usize) {
+        if self.statements.get(index).is_none() {
+            return;
+        }
         self.statements.remove(index);
         if let Some(tokens) = &mut self.tokens {
+            if tokens.semicolons.get(index).is_none() {
+                return;
+            }
             tokens.semicolons.remove(index);
         }
     }
@@ -421,6 +427,15 @@ mod test {
         block.remove_statement(0);
 
         assert!(block.is_empty());
+    }
+
+    #[test]
+    fn remove_statement_out_of_bounds() {
+        let mut block = parse_block_with_tokens("while true do end");
+
+        block.remove_statement(1);
+
+        assert!(block.statements_len() == 1);
     }
 
     #[test]
