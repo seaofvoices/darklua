@@ -59,6 +59,19 @@ impl Block {
         self.statements.push(statement.into());
     }
 
+    pub fn remove_statement(&mut self, index: usize) {
+        let statements_len = self.statements.len();
+        if index < statements_len {
+            self.statements.remove(index);
+
+            if let Some(tokens) = &mut self.tokens {
+                if tokens.semicolons.len() == statements_len {
+                    tokens.semicolons.remove(index);
+                }
+            }
+        }
+    }
+
     pub fn with_statement<T: Into<Statement>>(mut self, statement: T) -> Self {
         self.statements.push(statement.into());
         self
@@ -408,7 +421,45 @@ mod test {
     }
 
     #[test]
-    fn clean_removes_semicolon_tokens() {
+    fn attempt_to_remove_statement_from_empty_block() {
+        let mut block = parse_block_with_tokens("");
+
+        block.remove_statement(0);
+
+        assert!(block.is_empty());
+    }
+
+    #[test]
+    fn remove_first_and_only_statement() {
+        let mut block = parse_block_with_tokens("while true do end");
+
+        block.remove_statement(0);
+
+        assert!(block.is_empty());
+    }
+
+    #[test]
+    fn remove_first_statement() {
+        let mut block = parse_block_with_tokens("while true do end ; do end");
+
+        block.remove_statement(0);
+
+        insta::assert_debug_snapshot!("remove_first_statement", block);
+    }
+
+    #[test]
+    fn attempt_to_remove_statement_out_of_bounds() {
+        let mut block = parse_block_with_tokens("while true do end");
+        let original = block.clone();
+
+        block.remove_statement(1);
+        block.remove_statement(2);
+
+        assert_eq!(block, original);
+    }
+
+    #[test]
+    fn clear_removes_semicolon_tokens() {
         let mut block = Block::default()
             .with_statement(DoStatement::default())
             .with_tokens(BlockTokens {
@@ -422,7 +473,7 @@ mod test {
     }
 
     #[test]
-    fn clean_removes_last_semicolon_token() {
+    fn clear_removes_last_semicolon_token() {
         let mut block = Block::default()
             .with_last_statement(LastStatement::new_break())
             .with_tokens(BlockTokens {
