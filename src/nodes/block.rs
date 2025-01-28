@@ -61,7 +61,7 @@ impl Block {
 
     pub fn remove_statement(&mut self, index: usize) {
         let statements_len = self.statements.len();
-        if index <  statements_len {
+        if index < statements_len {
             self.statements.remove(index);
 
             if let Some(tokens) = &mut self.tokens {
