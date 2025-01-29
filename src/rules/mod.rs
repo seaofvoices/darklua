@@ -23,6 +23,7 @@ mod remove_floor_division;
 mod remove_if_expression;
 mod remove_interpolated_string;
 mod remove_nil_declarations;
+mod remove_number_literals;
 mod remove_spaces;
 mod remove_types;
 mod remove_unused_variable;
@@ -55,6 +56,7 @@ pub use remove_floor_division::*;
 pub use remove_if_expression::*;
 pub use remove_interpolated_string::*;
 pub use remove_nil_declarations::*;
+pub use remove_number_literals::*;
 pub use remove_spaces::*;
 pub use remove_types::*;
 pub use remove_unused_variable::*;
@@ -235,6 +237,7 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::<RemoveNilDeclaration>::default(),
         Box::<RenameVariables>::default(),
         Box::<RemoveFunctionCallParens>::default(),
+        Box::<RemoveNumberLiterals>::default(),
     ]
 }
 
@@ -265,6 +268,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         RENAME_VARIABLES_RULE_NAME,
         REMOVE_IF_EXPRESSION_RULE_NAME,
         REMOVE_CONTINUE_RULE_NAME,
+        REMOVE_NUMBER_LITERALS_RULE_NAME,
     ]
 }
 
@@ -301,6 +305,7 @@ impl FromStr for Box<dyn Rule> {
             RENAME_VARIABLES_RULE_NAME => Box::<RenameVariables>::default(),
             REMOVE_IF_EXPRESSION_RULE_NAME => Box::<RemoveIfExpression>::default(),
             REMOVE_CONTINUE_RULE_NAME => Box::<RemoveContinue>::default(),
+            REMOVE_NUMBER_LITERALS_RULE_NAME => Box::<RemoveNumberLiterals>::default(),
             _ => return Err(format!("invalid rule name: {}", string)),
         };
 
