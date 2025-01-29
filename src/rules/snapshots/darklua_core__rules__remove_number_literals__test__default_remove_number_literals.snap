@@ -1,0 +1,5 @@
+---
+source: src/rules/remove_number_literals.rs
+expression: rule
+---
+"remove_number_literals"
