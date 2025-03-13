@@ -418,6 +418,7 @@ macro_rules! test_rule_snapshot {
 mod append_text_comment;
 mod compute_expression;
 mod convert_index_to_field;
+mod convert_luau_numbers;
 mod convert_require;
 mod filter_early_return;
 mod group_local_assignment;
@@ -435,7 +436,6 @@ mod remove_if_expression;
 mod remove_interpolated_string;
 mod remove_method_definition;
 mod remove_nil_declaration;
-mod remove_number_literals;
 mod remove_types;
 mod remove_unused_if_branch;
 mod remove_unused_variable;
