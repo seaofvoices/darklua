@@ -1,6 +1,6 @@
 use std::fmt;
 
-use full_moon::ast::Ast;
+use full_moon::{ast::Ast, LuaVersion};
 
 use crate::{
     ast_converter::{AstConverter, ConvertError},
@@ -16,7 +16,7 @@ pub struct Parser {
 impl Parser {
     pub fn parse(&self, code: &str) -> Result<Block, ParserError> {
         let full_moon_parse_timer = Timer::now();
-        let parse_result = full_moon::parse(code);
+        let parse_result = full_moon::parse_fallible(code, LuaVersion::luau()).into_result();
         log::trace!(
             "full-moon parsing done in {}",
             full_moon_parse_timer.duration_label()
@@ -526,7 +526,7 @@ mod test {
                                     "failed to parse `{}`: {}\nfull-moon result:\n{:#?}",
                                     $input,
                                     err,
-                                    full_moon::parse($input)
+                                    full_moon::parse_fallible($input, LuaVersion::luau()).into_result()
                                 );
                             }
                         };
