@@ -22,7 +22,7 @@ pub(crate) fn get_sourcemap(
     relative_to: &Path,
 ) -> Result<Arc<RojoSourcemap>, DarkluaError> {
     let cache_key = path.to_path_buf();
-    
+
     // Try to get from cache first
     {
         let cache = SOURCEMAP_CACHE.lock().unwrap();
@@ -31,36 +31,37 @@ pub(crate) fn get_sourcemap(
             return Ok(Arc::clone(sourcemap));
         }
     }
-    
+
     // Not in cache, load and parse the sourcemap
     log::debug!("Parsing sourcemap from {}", path.display());
     let sourcemap_timer = crate::utils::Timer::now();
-    
+
     // Read the content of the sourcemap
     let content = resources.get(path)?;
-    
+
     // Check if content is empty or invalid
     if content.trim().is_empty() {
-        return Err(DarkluaError::custom(format!("Sourcemap file '{}' is empty", path.display())));
+        return Err(DarkluaError::custom(format!(
+            "Sourcemap file '{}' is empty",
+            path.display()
+        )));
     }
-    
+
     // Regular JSON parsing
-    let result = RojoSourcemap::parse(&content, relative_to)
-        .map_err(|err| DarkluaError::custom(format!("Invalid sourcemap '{}': {}", path.display(), err)))?;
-    
-    log::debug!(
-        "Parsed sourcemap in {}",
-        sourcemap_timer.duration_label()
-    );
-    
+    let result = RojoSourcemap::parse(&content, relative_to).map_err(|err| {
+        DarkluaError::custom(format!("Invalid sourcemap '{}': {}", path.display(), err))
+    })?;
+
+    log::debug!("Parsed sourcemap in {}", sourcemap_timer.duration_label());
+
     // Wrap in Arc and store in cache
     let sourcemap = Arc::new(result);
-    
+
     {
         let mut cache = SOURCEMAP_CACHE.lock().unwrap();
         cache.insert(cache_key, Arc::clone(&sourcemap));
     }
-    
+
     Ok(sourcemap)
 }
 
