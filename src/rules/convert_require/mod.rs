@@ -1,7 +1,7 @@
 mod instance_path;
 mod roblox_index_style;
 mod roblox_require_mode;
-mod rojo_sourcemap;
+pub mod rojo_sourcemap;
 
 use serde::{Deserialize, Serialize};
 

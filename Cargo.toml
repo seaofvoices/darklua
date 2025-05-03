@@ -34,13 +34,16 @@ env_logger = "0.11.5"
 full_moon = { version = "2.0.0", features = ["roblox"] }
 indexmap = "2.7.0"
 json5 = "0.4.1"
+lazy_static = "1.4.0"
 log = "0.4.22"
 pathdiff = "0.2.3"
 petgraph = "0.6.5"
+rayon = "1.8"
 regex = "1.11.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.134"
 serde_yaml = "0.9.33"
+simd-json = { version = "0.13", features = ["serde_impl"] }
 toml = "0.8.19"
 tracing = { version = "0.1", optional = true }
 wax = "0.5.0"

@@ -4,6 +4,5 @@ expression: content
 ---
 successfully minified 1 file (in {{DURATION}})
 
- INFO > successfully processed `src/init.lua`
- INFO > executed work in {{DURATION}}
-
+ INFO > Successfully processed `src/init.lua`
+ INFO > Executed work in {{DURATION}}
