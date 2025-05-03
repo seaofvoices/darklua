@@ -1,7 +1,0 @@
----
-source: tests/rule_tests/convert_require.rs
-assertion_line: 155
-expression: "process `tests/test_cases/sourcemap/main.server.lua`"
-snapshot_kind: text
----
-local Project = require("./src")
