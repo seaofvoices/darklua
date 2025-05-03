@@ -4,3 +4,6 @@
 .vscode
 
 bench_content/**/
+
+.DS_Store
+flamegraph.svg
