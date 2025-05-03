@@ -39,15 +39,19 @@ impl RobloxRequireMode {
                 rojo_sourcemap_path,
                 context.resources(),
                 sourcemap_parent_location,
-            ).map_err(|err| {
+            )
+            .map_err(|err| {
                 err.context(format!(
                     "unable to access or parse Rojo sourcemap at `{}`",
                     rojo_sourcemap_path.display()
                 ))
             })?;
-            
+
             self.cached_sourcemap = Some(sourcemap);
-            log::debug!("Successfully loaded and cached sourcemap for {}", rojo_sourcemap_path.display());
+            log::debug!(
+                "Successfully loaded and cached sourcemap for {}",
+                rojo_sourcemap_path.display()
+            );
         }
         Ok(())
     }

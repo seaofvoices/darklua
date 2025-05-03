@@ -124,41 +124,50 @@ impl WorkerTree {
         }
 
         let work_timer = Timer::now();
-        
+
         'work_loop: loop {
             let mut add_edges = Vec::new();
 
             match toposort(&self.graph, None) {
                 Ok(node_indexes) => {
                     for node_index in node_indexes {
-                        let work_item = self.graph.node_weight_mut(node_index)
+                        let work_item = self
+                            .graph
+                            .node_weight_mut(node_index)
                             .expect("node index should exist");
-                        
+
                         if !work_item.status.is_done() {
                             match worker.advance_work(work_item) {
                                 Ok(()) => {
                                     match &work_item.status {
                                         WorkStatus::Done(result) => {
                                             if result.is_ok() {
-                                                log::info!("Successfully processed `{}`", work_item.source().display());
+                                                log::info!(
+                                                    "Successfully processed `{}`",
+                                                    work_item.source().display()
+                                                );
                                             }
-                                        },
+                                        }
                                         WorkStatus::InProgress(progress) => {
                                             for content in progress.required_content() {
-                                                if let Some(content_node_index) = self.node_map.get(content) {
-                                                    add_edges.push((*content_node_index, node_index));
+                                                if let Some(content_node_index) =
+                                                    self.node_map.get(content)
+                                                {
+                                                    add_edges
+                                                        .push((*content_node_index, node_index));
                                                 }
                                             }
-                                        },
+                                        }
                                         WorkStatus::NotStarted => {}
                                     }
-                                    
+
                                     // Register external dependencies
                                     for path in work_item.external_file_dependencies.iter() {
-                                        let container = self.external_dependencies
+                                        let container = self
+                                            .external_dependencies
                                             .entry(path.to_path_buf())
                                             .or_default();
-                                        
+
                                         if !container.contains(&node_index) {
                                             log::trace!(
                                                 "Link external dependency {} to {}",
@@ -168,7 +177,7 @@ impl WorkerTree {
                                             container.insert(node_index);
                                         }
                                     }
-                                },
+                                }
                                 Err(err) => {
                                     log::error!(
                                         "An error happened while processing {}: {}",
@@ -176,7 +185,7 @@ impl WorkerTree {
                                         err
                                     );
                                     work_item.status = WorkStatus::err(err.clone());
-                                    
+
                                     if options.should_fail_fast() {
                                         log::debug!("Dropping all work because the fail-fast option is enabled");
                                         break 'work_loop;
@@ -185,15 +194,20 @@ impl WorkerTree {
                             }
                         }
                     }
-                    
+
                     // Check if we're done
-                    let done_count = self.graph
+                    let done_count = self
+                        .graph
                         .node_weights()
                         .filter(|work_item| work_item.status.is_done())
                         .count();
-                    
-                    log::debug!("Processed batch of tasks ({}/{})", done_count, total_not_done);
-                    
+
+                    log::debug!(
+                        "Processed batch of tasks ({}/{})",
+                        done_count,
+                        total_not_done
+                    );
+
                     if done_count == total_not_done {
                         break;
                     }

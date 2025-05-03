@@ -81,7 +81,7 @@ notify-debouncer-full = "0.4.0"
 opt-level = 3
 
 [profile.release]
-debug = true
+debug = false
 
 [[bench]]
 harness = false

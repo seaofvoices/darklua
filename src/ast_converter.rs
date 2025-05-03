@@ -1764,11 +1764,10 @@ impl<'a> AstConverter<'a> {
             }
             ast::Expression::Function(function) => {
                 // Use full_moon 2.0.0 style unpacking of function
-                self.work_stack
-                    .push(ConvertWork::MakeFunctionExpression { 
-                        body: function.body(),
-                        token: function.function_token(),
-                    });
+                self.work_stack.push(ConvertWork::MakeFunctionExpression {
+                    body: function.body(),
+                    token: function.function_token(),
+                });
 
                 self.push_function_body_work(function.body());
             }
@@ -1783,12 +1782,11 @@ impl<'a> AstConverter<'a> {
                 self.convert_table(table)?;
             }
             ast::Expression::Number(number) => {
-                let mut expression =
-                    NumberExpression::from_str(&number.token().to_string())
-                        .map_err(|err| ConvertError::Number {
-                            number: number.to_string(),
-                            parsing_error: err.to_string(),
-                        })?;
+                let mut expression = NumberExpression::from_str(&number.token().to_string())
+                    .map_err(|err| ConvertError::Number {
+                        number: number.to_string(),
+                        parsing_error: err.to_string(),
+                    })?;
                 if self.hold_token_data {
                     expression.set_token(self.convert_token(number)?);
                 }
@@ -2545,10 +2543,7 @@ impl<'a> AstConverter<'a> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
-    fn convert_compound_op(
-        &self,
-        operator: &CompoundOp,
-    ) -> Result<CompoundOperator, ConvertError> {
+    fn convert_compound_op(&self, operator: &CompoundOp) -> Result<CompoundOperator, ConvertError> {
         Ok(match operator {
             CompoundOp::PlusEqual(_) => CompoundOperator::Plus,
             CompoundOp::MinusEqual(_) => CompoundOperator::Minus,

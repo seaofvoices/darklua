@@ -88,10 +88,6 @@ impl WorkStatus {
     pub(crate) fn is_done(&self) -> bool {
         matches!(self, WorkStatus::Done(_))
     }
-    
-    pub(crate) fn is_error(&self) -> bool {
-        matches!(self, WorkStatus::Done(Err(_)))
-    }
 }
 
 impl Default for WorkStatus {
