@@ -1,15 +1,15 @@
 [package]
-name = "darklua"
-version = "0.16.0"
 authors = ["jeparlefrancais <jeparlefrancais21@gmail.com>"]
-edition = "2018"
-readme = "README.md"
 description = "Transform Lua scripts"
-repository = "https://github.com/seaofvoices/darklua"
-homepage = "https://darklua.com"
-license = "MIT"
-keywords = ["lua", "obsfucation", "minify"]
+edition = "2018"
 exclude = ["site"]
+homepage = "https://darklua.com"
+keywords = ["lua", "obsfucation", "minify"]
+license = "MIT"
+name = "darklua"
+readme = "README.md"
+repository = "https://github.com/seaofvoices/darklua"
+version = "0.16.0"
 
 [badges]
 github = { repository = "seaofvoices/darklua" }
@@ -31,7 +31,7 @@ clap = { version = "4.5.23", features = ["derive"] }
 durationfmt = "0.1.1"
 elsa = "1.10.0"
 env_logger = "0.11.5"
-full_moon = { version = "1.0.0", features = ["roblox"] }
+full_moon = { version = "2.0.0", features = ["roblox"] }
 indexmap = "2.7.0"
 json5 = "0.4.1"
 log = "0.4.22"
@@ -78,12 +78,12 @@ notify-debouncer-full = "0.4.0"
 opt-level = 3
 
 [[bench]]
-name = "process_bench"
 harness = false
+name = "process_bench"
 
 [[bench]]
-name = "parse_bench"
 harness = false
+name = "parse_bench"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }
