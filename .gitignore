@@ -6,3 +6,4 @@
 bench_content/**/
 
 .DS_Store
+/.trunk
