@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 use crate::{
     frontend::DarkluaResult,
@@ -21,7 +22,7 @@ pub struct RobloxRequireMode {
     #[serde(default, deserialize_with = "crate::utils::string_or_struct")]
     indexing_style: RobloxIndexStyle,
     #[serde(skip)]
-    cached_sourcemap: Option<RojoSourcemap>,
+    cached_sourcemap: Option<Arc<RojoSourcemap>>,
 }
 
 impl RobloxRequireMode {
@@ -34,22 +35,23 @@ impl RobloxRequireMode {
             context.add_file_dependency(rojo_sourcemap_path.clone());
 
             let sourcemap_parent_location = get_relative_parent_path(rojo_sourcemap_path);
-            let sourcemap = RojoSourcemap::parse(
-                &context
-                    .resources()
-                    .get(rojo_sourcemap_path)
-                    .map_err(|err| {
-                        DarkluaError::from(err).context("while initializing Roblox require mode")
-                    })?,
+            let sourcemap = utils::get_sourcemap(
+                rojo_sourcemap_path,
+                context.resources(),
                 sourcemap_parent_location,
             )
             .map_err(|err| {
                 err.context(format!(
-                    "unable to parse Rojo sourcemap at `{}`",
+                    "unable to access or parse Rojo sourcemap at `{}`",
                     rojo_sourcemap_path.display()
                 ))
             })?;
+
             self.cached_sourcemap = Some(sourcemap);
+            log::debug!(
+                "Successfully loaded and cached sourcemap for {}",
+                rojo_sourcemap_path.display()
+            );
         }
         Ok(())
     }

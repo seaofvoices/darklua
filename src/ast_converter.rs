@@ -6,6 +6,9 @@ use full_moon::{
     tokenizer::{self, InterpolatedStringKind, Symbol, TokenType},
 };
 
+// Explicitly import CompoundOp for use in convert_compound_op function
+use full_moon::ast::CompoundOp;
+
 use crate::nodes::*;
 
 #[derive(Debug, Default)]
@@ -1374,75 +1377,6 @@ impl<'a> AstConverter<'a> {
         Ok(block)
     }
 
-    fn convert_generic_type_parameters(
-        &mut self,
-        generics: &ast::luau::GenericDeclaration,
-    ) -> Result<GenericParameters, ConvertError> {
-        let mut type_variables = Vec::new();
-        let mut generic_type_packs = Vec::new();
-        for parameter in generics.generics() {
-            match parameter.parameter() {
-                ast::luau::GenericParameterInfo::Name(name) => {
-                    if !generic_type_packs.is_empty() {
-                        return Err(ConvertError::GenericDeclaration {
-                            generics: generics.to_string(),
-                        });
-                    }
-                    type_variables.push(self.convert_token_to_identifier(name)?);
-                }
-                ast::luau::GenericParameterInfo::Variadic { name, ellipsis } => {
-                    let mut generic_pack =
-                        GenericTypePack::new(self.convert_token_to_identifier(name)?);
-
-                    if self.hold_token_data {
-                        generic_pack.set_token(self.convert_token(ellipsis)?);
-                    }
-
-                    generic_type_packs.push(generic_pack);
-                }
-                _ => {
-                    return Err(ConvertError::GenericDeclaration {
-                        generics: generics.to_string(),
-                    })
-                }
-            }
-        }
-        let mut type_variables_iter = type_variables.into_iter();
-        let mut generic_type_packs_iter = generic_type_packs.into_iter();
-        let mut generic_parameters = type_variables_iter
-            .next()
-            .map(GenericParameters::from_type_variable)
-            .or_else(|| {
-                generic_type_packs_iter
-                    .next()
-                    .map(GenericParameters::from_generic_type_pack)
-            })
-            .ok_or_else(|| ConvertError::GenericDeclaration {
-                generics: generics.to_string(),
-            })?;
-
-        for type_variable in type_variables_iter {
-            generic_parameters.push_type_variable(type_variable);
-        }
-
-        for generic_pack in generic_type_packs_iter {
-            generic_parameters.push_generic_type_pack(generic_pack);
-        }
-
-        if self.hold_token_data {
-            let (opening_list, closing_list) =
-                self.extract_contained_span_tokens(generics.arrows())?;
-            let commas = self.extract_tokens_from_punctuation(generics.generics())?;
-            generic_parameters.set_tokens(GenericParametersTokens {
-                opening_list,
-                closing_list,
-                commas,
-            });
-        }
-
-        Ok(generic_parameters)
-    }
-
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_statement(&mut self, statement: &'a ast::Stmt) -> Result<(), ConvertError> {
         match statement {
@@ -1829,11 +1763,13 @@ impl<'a> AstConverter<'a> {
                 self.push_work(expression.as_ref());
             }
             ast::Expression::Function(function) => {
-                let (token, body) = function.as_ref();
-                self.work_stack
-                    .push(ConvertWork::MakeFunctionExpression { body, token });
+                // Use full_moon 2.0.0 style unpacking of function
+                self.work_stack.push(ConvertWork::MakeFunctionExpression {
+                    body: function.body(),
+                    token: function.function_token(),
+                });
 
-                self.push_function_body_work(body);
+                self.push_function_body_work(function.body());
             }
             ast::Expression::FunctionCall(call) => {
                 self.work_stack
@@ -2607,19 +2543,16 @@ impl<'a> AstConverter<'a> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
-    fn convert_compound_op(
-        &self,
-        operator: &ast::luau::CompoundOp,
-    ) -> Result<CompoundOperator, ConvertError> {
+    fn convert_compound_op(&self, operator: &CompoundOp) -> Result<CompoundOperator, ConvertError> {
         Ok(match operator {
-            ast::luau::CompoundOp::PlusEqual(_) => CompoundOperator::Plus,
-            ast::luau::CompoundOp::MinusEqual(_) => CompoundOperator::Minus,
-            ast::luau::CompoundOp::StarEqual(_) => CompoundOperator::Asterisk,
-            ast::luau::CompoundOp::SlashEqual(_) => CompoundOperator::Slash,
-            ast::luau::CompoundOp::DoubleSlashEqual(_) => CompoundOperator::DoubleSlash,
-            ast::luau::CompoundOp::PercentEqual(_) => CompoundOperator::Percent,
-            ast::luau::CompoundOp::CaretEqual(_) => CompoundOperator::Caret,
-            ast::luau::CompoundOp::TwoDotsEqual(_) => CompoundOperator::Concat,
+            CompoundOp::PlusEqual(_) => CompoundOperator::Plus,
+            CompoundOp::MinusEqual(_) => CompoundOperator::Minus,
+            CompoundOp::StarEqual(_) => CompoundOperator::Asterisk,
+            CompoundOp::SlashEqual(_) => CompoundOperator::Slash,
+            CompoundOp::DoubleSlashEqual(_) => CompoundOperator::DoubleSlash,
+            CompoundOp::PercentEqual(_) => CompoundOperator::Percent,
+            CompoundOp::CaretEqual(_) => CompoundOperator::Caret,
+            CompoundOp::TwoDotsEqual(_) => CompoundOperator::Concat,
             _ => {
                 return Err(ConvertError::CompoundOperator {
                     operator: operator.to_string(),
@@ -2714,6 +2647,75 @@ impl<'a> AstConverter<'a> {
             }
             _ => unreachable!(),
         }
+    }
+
+    fn convert_generic_type_parameters(
+        &mut self,
+        generics: &ast::luau::GenericDeclaration,
+    ) -> Result<GenericParameters, ConvertError> {
+        let mut type_variables = Vec::new();
+        let mut generic_type_packs = Vec::new();
+        for parameter in generics.generics() {
+            match parameter.parameter() {
+                ast::luau::GenericParameterInfo::Name(name) => {
+                    if !generic_type_packs.is_empty() {
+                        return Err(ConvertError::GenericDeclaration {
+                            generics: generics.to_string(),
+                        });
+                    }
+                    type_variables.push(self.convert_token_to_identifier(name)?);
+                }
+                ast::luau::GenericParameterInfo::Variadic { name, ellipsis } => {
+                    let mut generic_pack =
+                        GenericTypePack::new(self.convert_token_to_identifier(name)?);
+
+                    if self.hold_token_data {
+                        generic_pack.set_token(self.convert_token(ellipsis)?);
+                    }
+
+                    generic_type_packs.push(generic_pack);
+                }
+                _ => {
+                    return Err(ConvertError::GenericDeclaration {
+                        generics: generics.to_string(),
+                    })
+                }
+            }
+        }
+        let mut type_variables_iter = type_variables.into_iter();
+        let mut generic_type_packs_iter = generic_type_packs.into_iter();
+        let mut generic_parameters = type_variables_iter
+            .next()
+            .map(GenericParameters::from_type_variable)
+            .or_else(|| {
+                generic_type_packs_iter
+                    .next()
+                    .map(GenericParameters::from_generic_type_pack)
+            })
+            .ok_or_else(|| ConvertError::GenericDeclaration {
+                generics: generics.to_string(),
+            })?;
+
+        for type_variable in type_variables_iter {
+            generic_parameters.push_type_variable(type_variable);
+        }
+
+        for generic_pack in generic_type_packs_iter {
+            generic_parameters.push_generic_type_pack(generic_pack);
+        }
+
+        if self.hold_token_data {
+            let (opening_list, closing_list) =
+                self.extract_contained_span_tokens(generics.arrows())?;
+            let commas = self.extract_tokens_from_punctuation(generics.generics())?;
+            generic_parameters.set_tokens(GenericParametersTokens {
+                opening_list,
+                closing_list,
+                commas,
+            });
+        }
+
+        Ok(generic_parameters)
     }
 }
 
@@ -2850,7 +2852,7 @@ enum ConvertWork<'a> {
         statement: &'a ast::Assignment,
     },
     MakeCompoundAssignStatement {
-        statement: &'a ast::luau::CompoundAssignment,
+        statement: &'a ast::CompoundAssignment,
     },
     MakeIfStatement {
         statement: &'a ast::If,
@@ -3152,19 +3154,17 @@ fn get_unary_operator_token(
 }
 
 fn get_compound_operator_token(
-    operator: &ast::luau::CompoundOp,
+    operator: &ast::CompoundOp,
 ) -> Result<&tokenizer::TokenReference, ConvertError> {
-    use ast::luau::CompoundOp;
-
     match operator {
-        CompoundOp::PlusEqual(token)
-        | CompoundOp::MinusEqual(token)
-        | CompoundOp::StarEqual(token)
-        | CompoundOp::SlashEqual(token)
-        | CompoundOp::DoubleSlashEqual(token)
-        | CompoundOp::PercentEqual(token)
-        | CompoundOp::CaretEqual(token)
-        | CompoundOp::TwoDotsEqual(token) => Ok(token),
+        ast::CompoundOp::PlusEqual(token)
+        | ast::CompoundOp::MinusEqual(token)
+        | ast::CompoundOp::StarEqual(token)
+        | ast::CompoundOp::SlashEqual(token)
+        | ast::CompoundOp::DoubleSlashEqual(token)
+        | ast::CompoundOp::PercentEqual(token)
+        | ast::CompoundOp::CaretEqual(token)
+        | ast::CompoundOp::TwoDotsEqual(token) => Ok(token),
         _ => Err(ConvertError::CompoundOperator {
             operator: operator.to_string(),
         }),

@@ -8,7 +8,7 @@ use xxhash_rust::xxh3::xxh3_64;
 
 use crate::{
     frontend::utils::maybe_plural,
-    utils::{clear_luau_configuration_cache, Timer},
+    utils::{clear_luau_configuration_cache, clear_sourcemap_cache, Timer},
     DarkluaError,
 };
 
@@ -88,6 +88,7 @@ impl WorkerTree {
 
     pub fn process(&mut self, resources: &Resources, mut options: Options) -> DarkluaResult<()> {
         clear_luau_configuration_cache();
+        clear_sourcemap_cache();
 
         if !self.remove_files.is_empty() {
             let remove_count = self.remove_files.len();
@@ -129,8 +130,6 @@ impl WorkerTree {
 
             match toposort(&self.graph, None) {
                 Ok(node_indexes) => {
-                    let mut done_count = 0;
-
                     for node_index in node_indexes {
                         let work_item = self
                             .graph
@@ -139,67 +138,75 @@ impl WorkerTree {
 
                         if !work_item.status.is_done() {
                             match worker.advance_work(work_item) {
-                                Ok(()) => match &work_item.status {
-                                    WorkStatus::Done(result) => {
-                                        done_count += 1;
-                                        if result.is_ok() {
-                                            log::info!(
-                                                "successfully processed `{}`",
-                                                work_item.source().display()
-                                            );
-                                        }
-                                    }
-                                    WorkStatus::InProgress(progress) => {
-                                        for content in progress.required_content() {
-                                            if let Some(content_node_index) =
-                                                self.node_map.get(content)
-                                            {
-                                                add_edges.push((*content_node_index, node_index));
+                                Ok(()) => {
+                                    match &work_item.status {
+                                        WorkStatus::Done(result) => {
+                                            if result.is_ok() {
+                                                log::info!(
+                                                    "Successfully processed `{}`",
+                                                    work_item.source().display()
+                                                );
                                             }
                                         }
-                                        log::trace!(
-                                            "work on `{}` has not completed",
-                                            work_item.source().display()
-                                        );
+                                        WorkStatus::InProgress(progress) => {
+                                            for content in progress.required_content() {
+                                                if let Some(content_node_index) =
+                                                    self.node_map.get(content)
+                                                {
+                                                    add_edges
+                                                        .push((*content_node_index, node_index));
+                                                }
+                                            }
+                                        }
+                                        WorkStatus::NotStarted => {}
                                     }
-                                    WorkStatus::NotStarted => {}
-                                },
+
+                                    // Register external dependencies
+                                    for path in work_item.external_file_dependencies.iter() {
+                                        let container = self
+                                            .external_dependencies
+                                            .entry(path.to_path_buf())
+                                            .or_default();
+
+                                        if !container.contains(&node_index) {
+                                            log::trace!(
+                                                "Link external dependency {} to {}",
+                                                path.display(),
+                                                work_item.source().display()
+                                            );
+                                            container.insert(node_index);
+                                        }
+                                    }
+                                }
                                 Err(err) => {
                                     log::error!(
-                                        "an error happened while processing {}: {}",
+                                        "An error happened while processing {}: {}",
                                         work_item.source().display(),
                                         err
                                     );
-                                    work_item.status = WorkStatus::err(err);
-                                    done_count += 1;
+                                    work_item.status = WorkStatus::err(err.clone());
+
                                     if options.should_fail_fast() {
-                                        log::debug!(
-                                            "dropping all work because the fail-fast option is enabled"
-                                        );
+                                        log::debug!("Dropping all work because the fail-fast option is enabled");
                                         break 'work_loop;
                                     }
                                 }
                             }
                         }
-
-                        for path in work_item.external_file_dependencies.iter() {
-                            let container = self
-                                .external_dependencies
-                                .entry(path.to_path_buf())
-                                .or_default();
-
-                            if !container.contains(&node_index) {
-                                log::trace!(
-                                    "link external dependency {} to {}",
-                                    path.display(),
-                                    work_item.source().display()
-                                );
-                                container.insert(node_index);
-                            }
-                        }
                     }
 
-                    log::debug!("process batch of tasks ({}/{})", done_count, total_not_done);
+                    // Check if we're done
+                    let done_count = self
+                        .graph
+                        .node_weights()
+                        .filter(|work_item| work_item.status.is_done())
+                        .count();
+
+                    log::debug!(
+                        "Processed batch of tasks ({}/{})",
+                        done_count,
+                        total_not_done
+                    );
 
                     if done_count == total_not_done {
                         break;
@@ -220,7 +227,7 @@ impl WorkerTree {
             }
         }
 
-        log::info!("executed work in {}", work_timer.duration_label());
+        log::info!("Executed work in {}", work_timer.duration_label());
 
         Ok(())
     }

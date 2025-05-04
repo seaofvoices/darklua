@@ -3,12 +3,14 @@ pub(crate) mod lines;
 mod luau_config;
 mod scoped_hash_map;
 mod serde_string_or_struct;
+mod sourcemap_cache;
 mod timer;
 
 pub(crate) use expressions_as_statement::{expressions_as_expression, expressions_as_statement};
 pub(crate) use luau_config::{clear_luau_configuration_cache, find_luau_configuration};
 pub(crate) use scoped_hash_map::ScopedHashMap;
 pub(crate) use serde_string_or_struct::string_or_struct;
+pub(crate) use sourcemap_cache::{clear_sourcemap_cache, get_sourcemap};
 use std::{
     ffi::OsStr,
     iter::FromIterator,

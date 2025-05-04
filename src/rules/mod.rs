@@ -6,7 +6,7 @@ mod call_parens;
 mod compute_expression;
 mod configuration_error;
 mod convert_index_to_field;
-mod convert_require;
+pub mod convert_require;
 mod empty_do;
 mod filter_early_return;
 mod group_local;
