@@ -35,6 +35,29 @@ impl<'a, 'b, 'c> RequirePathLocator<'a, 'b, 'c> {
             source.display()
         );
 
+        // Add support for @self
+        let self_prefix = "@self";
+        if let Some(str_path) = path.to_str() {
+            if str_path == self_prefix || str_path.starts_with(&format!("{}/", self_prefix)) {
+                // Find the abstract module root (parent of init.luau or equivalent)
+                let mut module_root = source.parent().unwrap_or_else(|| Path::new(""));
+                // If the current file is an init.luau or module_folder_name, go up one more
+                let module_folder_name = self.path_require_mode.module_folder_name();
+                if source.file_name().and_then(|n| n.to_str()) == Some(module_folder_name)
+                    || source.file_stem().and_then(|n| n.to_str()) == Some(module_folder_name)
+                {
+                    module_root = module_root.parent().unwrap_or_else(|| Path::new(""));
+                }
+                let rel_path = str_path.strip_prefix(self_prefix).unwrap_or("");
+                let rel_path = rel_path.strip_prefix('/').unwrap_or(rel_path);
+                let mut new_path = module_root.to_path_buf();
+                if !rel_path.is_empty() {
+                    new_path.push(rel_path);
+                }
+                path = new_path;
+            }
+        }
+
         if is_require_relative(&path) {
             let mut new_path = source.to_path_buf();
             new_path.pop();

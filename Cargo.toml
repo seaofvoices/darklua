@@ -9,7 +9,7 @@ license = "MIT"
 name = "darklua"
 readme = "README.md"
 repository = "https://github.com/seaofvoices/darklua"
-version = "0.17.0"
+version = "0.18.0"
 
 [badges]
 github = { repository = "seaofvoices/darklua" }

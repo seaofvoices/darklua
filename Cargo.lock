@@ -421,7 +421,7 @@ dependencies = [
 
 [[package]]
 name = "darklua"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "anstyle",
  "assert_cmd",
