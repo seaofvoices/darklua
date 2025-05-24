@@ -5,8 +5,6 @@ use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
 };
 
-use std::iter;
-
 use super::verify_no_rule_properties;
 
 #[derive(Debug, Clone, Default)]
@@ -75,12 +73,12 @@ impl GroupLocalProcessor {
     fn merge(&self, first: &mut LocalAssignStatement, mut other: LocalAssignStatement) {
         if first.values_len() == 0 && other.values_len() != 0 {
             let variable_count = first.variables_len();
-            first.extend_values(iter::repeat(Expression::nil()).take(variable_count));
+            first.extend_values(std::iter::repeat_n(Expression::nil(), variable_count));
         }
 
         if other.values_len() == 0 && first.values_len() != 0 {
             let variable_count = other.variables_len();
-            other.extend_values(iter::repeat(Expression::nil()).take(variable_count));
+            other.extend_values(std::iter::repeat_n(Expression::nil(), variable_count));
         }
 
         let (mut variables, mut values) = other.into_assignments();
