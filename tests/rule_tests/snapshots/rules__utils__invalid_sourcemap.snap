@@ -1,4 +1,4 @@
 ---
 source: tests/utils.rs
 ---
-error processing `src/init.lua` (convert_require [#0]): Sourcemap file './sourcemap.json' is empty (unable to access or parse Rojo sourcemap at `./sourcemap.json`)
+error processing `src/init.lua` (convert_require [#0]): Sourcemap file './sourcemap.json' is empty (unable to access or parse Rojo sourcemap at './sourcemap.json') (unable to access or parse Rojo sourcemap at `./sourcemap.json`)

@@ -42,7 +42,8 @@ pub(crate) fn get_sourcemap(
     // Check if content is empty or invalid
     if content.trim().is_empty() {
         return Err(DarkluaError::custom(format!(
-            "Sourcemap file '{}' is empty",
+            "Sourcemap file '{}' is empty (unable to access or parse Rojo sourcemap at '{}')",
+            path.display(),
             path.display()
         )));
     }
