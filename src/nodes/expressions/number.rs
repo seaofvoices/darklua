@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use crate::nodes::{Token, Trivia};
 
+/// Represents a decimal number.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DecimalNumber {
     float: f64,
@@ -13,6 +14,7 @@ pub struct DecimalNumber {
 impl Eq for DecimalNumber {}
 
 impl DecimalNumber {
+    /// Creates a new decimal number with the given floating-point value.
     pub fn new(value: f64) -> Self {
         Self {
             float: value,
@@ -21,11 +23,13 @@ impl DecimalNumber {
         }
     }
 
+    /// Attaches a token to this decimal number.
     pub fn with_token(mut self, token: Token) -> Self {
         self.token = Some(token);
         self
     }
 
+    /// Attaches a token to this decimal number.
     #[inline]
     pub fn set_token(&mut self, token: Token) {
         self.token = Some(token);
@@ -36,31 +40,40 @@ impl DecimalNumber {
         self.token.as_ref()
     }
 
+    /// Sets an exponent for this decimal number and returns the updated number.
+    ///
+    /// The `is_uppercase` parameter determines whether the exponent uses uppercase 'E'
+    /// or lowercase 'e' notation.
     pub fn with_exponent(mut self, exponent: i64, is_uppercase: bool) -> Self {
         self.exponent.replace((exponent, is_uppercase));
         self
     }
 
+    /// Sets whether the exponent notation should use uppercase 'E' or lowercase 'e'.
     #[inline]
     pub fn set_uppercase(&mut self, is_uppercase: bool) {
         self.exponent = self.exponent.map(|(exponent, _)| (exponent, is_uppercase));
     }
 
+    /// Returns the raw floating-point value of this decimal number.
     #[inline]
     pub(crate) fn get_raw_float(&self) -> f64 {
         self.float
     }
 
+    /// Returns whether the exponent notation uses uppercase 'E', if an exponent is present.
     #[inline]
     pub fn is_uppercase(&self) -> Option<bool> {
         self.exponent.map(|(_, uppercase)| uppercase)
     }
 
+    /// Returns the exponent value, if one is present.
     #[inline]
     pub fn get_exponent(&self) -> Option<i64> {
         self.exponent.map(|(exponent, _)| exponent)
     }
 
+    /// Computes the actual numerical value represented by this decimal number.
     pub fn compute_value(&self) -> f64 {
         self.float
     }
@@ -68,6 +81,10 @@ impl DecimalNumber {
     super::impl_token_fns!(iter = [token]);
 }
 
+/// Represents a hexadecimal number.
+///
+/// Hexadecimal numbers are prefixed with '0x' or '0X' and can include
+/// optional binary exponents.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HexNumber {
     integer: u64,
@@ -77,6 +94,10 @@ pub struct HexNumber {
 }
 
 impl HexNumber {
+    /// Creates a new hexadecimal number with the given integer value.
+    ///
+    /// The `is_x_uppercase` parameter determines whether the hexadecimal prefix
+    /// uses uppercase 'X' (0X) or lowercase 'x' (0x).
     pub fn new(integer: u64, is_x_uppercase: bool) -> Self {
         Self {
             integer,
@@ -86,51 +107,64 @@ impl HexNumber {
         }
     }
 
+    /// Attaches a token to this hexadecimal number and returns the updated number.
     pub fn with_token(mut self, token: Token) -> Self {
         self.token = Some(token);
         self
     }
 
+    /// Attaches a token to this hexadecimal number.
     #[inline]
     pub fn set_token(&mut self, token: Token) {
         self.token = Some(token);
     }
 
+    /// Returns a reference to the token attached to this hexadecimal number, if any.
     #[inline]
     fn get_token(&self) -> Option<&Token> {
         self.token.as_ref()
     }
 
+    /// Sets a binary exponent for this hexadecimal number and returns the updated number.
+    ///
+    /// The `is_uppercase` parameter determines whether the exponent uses uppercase 'P'
+    /// or lowercase 'p' notation.
     pub fn with_exponent(mut self, exponent: u32, is_uppercase: bool) -> Self {
         self.exponent.replace((exponent, is_uppercase));
         self
     }
 
+    /// Sets whether the hexadecimal prefix and exponent notation should use uppercase letters.
     pub fn set_uppercase(&mut self, is_uppercase: bool) {
         self.exponent = self.exponent.map(|(value, _)| (value, is_uppercase));
         self.is_x_uppercase = is_uppercase;
     }
 
+    /// Returns whether the hexadecimal prefix uses uppercase 'X' (0X) or lowercase 'x' (0x).
     #[inline]
     pub fn is_x_uppercase(&self) -> bool {
         self.is_x_uppercase
     }
 
+    /// Returns whether the exponent notation uses uppercase 'P', if an exponent is present.
     #[inline]
     pub fn is_exponent_uppercase(&self) -> Option<bool> {
         self.exponent.map(|(_, uppercase)| uppercase)
     }
 
+    /// Returns the raw integer value of this hexadecimal number.
     #[inline]
     pub fn get_raw_integer(&self) -> u64 {
         self.integer
     }
 
+    /// Returns the exponent value, if one is present.
     #[inline]
     pub fn get_exponent(&self) -> Option<u32> {
         self.exponent.map(|(value, _)| value)
     }
 
+    /// Computes the actual numerical value represented by this hexadecimal number.
     pub fn compute_value(&self) -> f64 {
         if let Some((exponent, _)) = self.exponent {
             (self.integer * 2_u64.pow(exponent)) as f64
@@ -142,6 +176,9 @@ impl HexNumber {
     super::impl_token_fns!(iter = [token]);
 }
 
+/// Represents a binary number.
+///
+/// Binary numbers are prefixed with '0b' or '0B' and consist of 0s and 1s.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BinaryNumber {
     value: u64,
@@ -150,6 +187,10 @@ pub struct BinaryNumber {
 }
 
 impl BinaryNumber {
+    /// Creates a new binary number with the given value.
+    ///
+    /// The `is_b_uppercase` parameter determines whether the binary prefix
+    /// uses uppercase 'B' (0B) or lowercase 'b' (0b).
     pub fn new(value: u64, is_b_uppercase: bool) -> Self {
         Self {
             value,
@@ -158,34 +199,41 @@ impl BinaryNumber {
         }
     }
 
+    /// Attaches a token to this binary number.
     pub fn with_token(mut self, token: Token) -> Self {
         self.token = Some(token);
         self
     }
 
+    /// Attaches a token to this binary number.
     #[inline]
     pub fn set_token(&mut self, token: Token) {
         self.token = Some(token);
     }
 
+    /// Returns a reference to the token attached to this binary number, if any.
     #[inline]
     fn get_token(&self) -> Option<&Token> {
         self.token.as_ref()
     }
 
+    /// Sets whether the binary prefix should use uppercase 'B' (0B) or lowercase 'b' (0b).
     pub fn set_uppercase(&mut self, is_uppercase: bool) {
         self.is_b_uppercase = is_uppercase;
     }
 
+    /// Returns whether the binary prefix uses uppercase 'B' (0B) or lowercase 'b' (0b).
     #[inline]
     pub fn is_b_uppercase(&self) -> bool {
         self.is_b_uppercase
     }
 
+    /// Computes the actual numerical value represented by this binary number.
     pub fn compute_value(&self) -> f64 {
         self.value as f64
     }
 
+    /// Returns the raw integer value of this binary number.
     #[inline]
     pub fn get_raw_value(&self) -> u64 {
         self.value
@@ -194,14 +242,19 @@ impl BinaryNumber {
     super::impl_token_fns!(iter = [token]);
 }
 
+/// Represents a numeric literal expression.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NumberExpression {
+    /// A decimal number (e.g., `123.45`, `1e10`)
     Decimal(DecimalNumber),
+    /// A hexadecimal number (e.g., `0xFF`, `0x1p2`)
     Hex(HexNumber),
+    /// A binary number (e.g., `0b101`, `0B1010`)
     Binary(BinaryNumber),
 }
 
 impl NumberExpression {
+    /// Sets whether the number notation should use uppercase letters.
     pub fn set_uppercase(&mut self, is_uppercase: bool) {
         match self {
             Self::Decimal(number) => number.set_uppercase(is_uppercase),
@@ -210,6 +263,7 @@ impl NumberExpression {
         }
     }
 
+    /// Computes the actual numerical value represented by this number expression.
     pub fn compute_value(&self) -> f64 {
         match self {
             Self::Decimal(decimal) => decimal.compute_value(),
@@ -218,6 +272,7 @@ impl NumberExpression {
         }
     }
 
+    /// Attaches a token to this number expression.
     pub fn with_token(mut self, token: Token) -> Self {
         match &mut self {
             NumberExpression::Decimal(number) => number.set_token(token),
@@ -227,6 +282,7 @@ impl NumberExpression {
         self
     }
 
+    /// Attaches a token to this number expression.
     #[inline]
     pub fn set_token(&mut self, token: Token) {
         match self {
@@ -236,6 +292,7 @@ impl NumberExpression {
         }
     }
 
+    /// Returns a reference to the token attached to this number expression, if any.
     #[inline]
     pub fn get_token(&self) -> Option<&Token> {
         match self {
@@ -245,6 +302,7 @@ impl NumberExpression {
         }
     }
 
+    /// Clears all comments from the tokens in this node.
     pub fn clear_comments(&mut self) {
         match self {
             NumberExpression::Decimal(number) => number.clear_comments(),
@@ -253,6 +311,7 @@ impl NumberExpression {
         }
     }
 
+    /// Clears all whitespaces information from the tokens in this node.
     pub fn clear_whitespaces(&mut self) {
         match self {
             NumberExpression::Decimal(number) => number.clear_whitespaces(),
@@ -304,6 +363,18 @@ impl From<BinaryNumber> for NumberExpression {
     }
 }
 
+/// An error that can occur when parsing a number.
+///
+/// # Example
+/// ```rust
+/// # use darklua_core::nodes::NumberExpression;
+/// let number: NumberExpression = "123.45".parse().unwrap();
+/// let hex_number: NumberExpression = "0xFF".parse().unwrap();
+/// let binary_number: NumberExpression = "0b1010".parse().unwrap();
+///
+/// // Invalid numbers will return a NumberParsingError
+/// assert!("abc".parse::<NumberExpression>().is_err());
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NumberParsingError {
     InvalidHexadecimalNumber,

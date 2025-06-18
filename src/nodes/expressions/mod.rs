@@ -34,43 +34,66 @@ use super::impl_token_fns;
 
 use std::num::FpCategory;
 
+/// Represents all possible expressions.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Expression {
+    /// A binary operation (e.g., `a + b`, `x == y`)
     Binary(Box<BinaryExpression>),
+    /// A function call (e.g., `print("Hello")`)
     Call(Box<FunctionCall>),
+    /// The `false` keyword
     False(Option<Token>),
+    /// A field access (e.g., `object.field`)
     Field(Box<FieldExpression>),
+    /// A function definition (e.g., `function(...) ... end`)
     Function(FunctionExpression),
+    /// An identifier (e.g., variable name)
     Identifier(Identifier),
+    /// An if expression (e.g., `if a then b else c`)
     If(Box<IfExpression>),
+    /// A table index access (e.g., `table[key]`)
     Index(Box<IndexExpression>),
+    /// The `nil` keyword
     Nil(Option<Token>),
+    /// A numeric literal (e.g., `42`, `3.14`)
     Number(NumberExpression),
+    /// An expression in parentheses (e.g., `(1 + 2)`)
     Parenthese(Box<ParentheseExpression>),
+    /// A string literal (e.g., `"hello"`)
     String(StringExpression),
+    /// An interpolated string (e.g., `` `Hello ${name}` ``)
     InterpolatedString(InterpolatedStringExpression),
+    /// A table constructor (e.g., `{key = value, [expr] = value}`)
     Table(TableExpression),
+    /// The `true` keyword
     True(Option<Token>),
+    /// A unary operation (e.g., `-x`, `not condition`)
     Unary(Box<UnaryExpression>),
+    /// The variable arguments symbol (`...`)
     VariableArguments(Option<Token>),
+    /// A type cast expression (e.g., `value :: Type`)
     TypeCast(TypeCastExpression),
 }
 
 impl Expression {
+    /// Creates a new nil expression.
     #[inline]
     pub fn nil() -> Self {
         Self::Nil(None)
     }
 
+    /// Creates a new variable arguments expression.
     #[inline]
     pub fn variable_arguments() -> Self {
         Self::VariableArguments(None)
     }
 
+    /// Creates a new identifier expression.
     pub fn identifier<S: Into<Identifier>>(identifier: S) -> Self {
         Self::Identifier(identifier.into())
     }
 
+    /// Wraps this expression in parentheses.
     pub fn in_parentheses(self) -> Self {
         Self::Parenthese(ParentheseExpression::new(self).into())
     }

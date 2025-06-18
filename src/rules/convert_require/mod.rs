@@ -22,10 +22,13 @@ use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+/// A representation of how require calls are handled and transformed.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "snake_case", tag = "name")]
 pub enum RequireMode {
+    /// Handles requires using file system paths
     Path(PathRequireMode),
+    /// Handles requires using Roblox's instance-based require system
     Roblox(RobloxRequireMode),
 }
 

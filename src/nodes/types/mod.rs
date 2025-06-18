@@ -34,29 +34,46 @@ use crate::nodes::Token;
 
 use super::impl_token_fns;
 
+/// Represents a type annotation in Luau.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Type {
+    /// A named type, such as `string` or a user-defined type.
     Name(TypeName),
+    /// A field access on a type, such as `Module.Type`.
     Field(TypeField),
+    /// The boolean literal type `true`.
     True(Option<Token>),
+    /// The boolean literal type `false`.
     False(Option<Token>),
+    /// The `nil` type.
     Nil(Option<Token>),
+    /// A string literal type, such as `"hello"`.
     String(StringType),
+    /// An array type, such as `{ string }`.
     Array(ArrayType),
+    /// A table type, such as `{ field: Type }`.
     Table(TableType),
+    /// A `typeof(expression)` type.
     TypeOf(ExpressionType),
+    /// A type in parentheses, such as `(string | number)`.
     Parenthese(ParentheseType),
+    /// A function type, such as `(number) -> string`.
     Function(FunctionType),
+    /// An optional type, such as `string?`.
     Optional(OptionalType),
+    /// An intersection type, such as `string & Serializable`.
     Intersection(IntersectionType),
+    /// A union type, such as `string | number`.
     Union(UnionType),
 }
 
 impl Type {
+    /// Creates a new `nil` type.
     pub fn nil() -> Self {
         Self::Nil(None)
     }
 
+    /// Wraps this type in parentheses.
     pub fn in_parentheses(self) -> Type {
         Self::Parenthese(ParentheseType::new(self))
     }

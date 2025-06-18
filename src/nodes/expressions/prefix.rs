@@ -2,16 +2,26 @@ use crate::nodes::{
     Expression, FieldExpression, FunctionCall, Identifier, IndexExpression, ParentheseExpression,
 };
 
+/// Represents a prefix expression.
+///
+/// Prefix expressions form the base for more complex expressions like method calls
+/// and property access chains.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Prefix {
+    /// A function call expression (e.g., `func()`)
     Call(FunctionCall),
+    /// A field access expression (e.g., `object.field`)
     Field(Box<FieldExpression>),
+    /// A simple name/variable (e.g., `variable_name`)
     Identifier(Identifier),
+    /// An indexed access expression (e.g., `table[key]`)
     Index(Box<IndexExpression>),
+    /// A parenthesized expression (e.g., `(expression)`)
     Parenthese(ParentheseExpression),
 }
 
 impl Prefix {
+    /// Creates a new prefix from a name/identifier.
     pub fn from_name<S: Into<Identifier>>(name: S) -> Self {
         Self::Identifier(name.into())
     }

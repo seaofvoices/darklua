@@ -1,5 +1,14 @@
 use crate::nodes::{LastStatement, ReturnStatement, Statement, Token};
 
+/// Represents the tokens associated with a Lua code block, maintaining
+/// syntax information like semicolons that separate statements.
+///
+/// Fields:
+/// - `semicolons`: Optional tokens for semicolons between statements
+/// - `last_semicolon`: Optional semicolon after the last statement
+/// - `final_token`: Optional token at the end of the block (e.g., `end` or `until`)
+///
+/// Typically created by the parser to preserve source formatting for roundtrip transformations.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlockTokens {
     pub semicolons: Vec<Option<Token>>,
@@ -14,6 +23,7 @@ impl BlockTokens {
     );
 }
 
+/// Represents a block, a collection of [`Statement`]s that can end with a [`LastStatement`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Block {
     statements: Vec<Statement>,
@@ -22,6 +32,7 @@ pub struct Block {
 }
 
 impl Block {
+    /// Creates a new Block with the given statements and optional last statement.
     pub fn new(statements: Vec<Statement>, last_statement: Option<LastStatement>) -> Self {
         Self {
             statements,
@@ -30,26 +41,33 @@ impl Block {
         }
     }
 
+    /// Attaches token information to this block and returns the updated block.
     pub fn with_tokens(mut self, tokens: BlockTokens) -> Self {
         self.tokens = Some(tokens.into());
         self
     }
 
+    /// Attaches token information to this block.
     #[inline]
     pub fn set_tokens(&mut self, tokens: BlockTokens) {
         self.tokens = Some(tokens.into());
     }
 
+    /// Returns a reference to the token information attached to this block, if any.
     #[inline]
     pub fn get_tokens(&self) -> Option<&BlockTokens> {
         self.tokens.as_ref().map(|tokens| tokens.as_ref())
     }
 
+    /// Returns a mutable reference to the token information attached to this block, if any.
     #[inline]
     pub fn mutate_tokens(&mut self) -> Option<&mut BlockTokens> {
         self.tokens.as_mut().map(|tokens| tokens.as_mut())
     }
 
+    /// Adds a statement to the end of the block. Updates token information if present.
+    ///
+    /// This method maintains consistency between the statements and their token information.
     pub fn push_statement<T: Into<Statement>>(&mut self, statement: T) {
         if let Some(tokens) = &mut self.tokens {
             if self.statements.len() == tokens.semicolons.len() {
@@ -59,6 +77,9 @@ impl Block {
         self.statements.push(statement.into());
     }
 
+    /// Removes a statement at the specified index. Updates token information if present.
+    ///
+    /// Does nothing if the index is out of bounds.
     pub fn remove_statement(&mut self, index: usize) {
         let statements_len = self.statements.len();
         if index < statements_len {
@@ -72,11 +93,16 @@ impl Block {
         }
     }
 
+    /// Adds a statement to the end of the block and returns the updated block.
     pub fn with_statement<T: Into<Statement>>(mut self, statement: T) -> Self {
         self.statements.push(statement.into());
         self
     }
 
+    /// Inserts a statement at the specified index, appending if the index is beyond the end.
+    /// Updates token information if present.
+    ///
+    /// This method maintains consistency between the statements and their token information.
     pub fn insert_statement(&mut self, index: usize, statement: impl Into<Statement>) {
         if index > self.statements.len() {
             self.push_statement(statement.into());
@@ -91,41 +117,52 @@ impl Block {
         }
     }
 
+    /// Sets the last statement of the block.
     #[inline]
     pub fn set_last_statement(&mut self, last_statement: impl Into<LastStatement>) {
         self.last_statement = Some(last_statement.into());
     }
 
+    /// Sets the last statement of the block and returns the updated block.
     pub fn with_last_statement(mut self, last_statement: impl Into<LastStatement>) -> Self {
         self.last_statement = Some(last_statement.into());
         self
     }
 
+    /// Checks if the block is empty (contains no statements or last statement).
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.last_statement.is_none() && self.statements.is_empty()
     }
 
+    /// Returns the number of statements in the block.
     #[inline]
     pub fn statements_len(&self) -> usize {
         self.statements.len()
     }
 
+    /// Returns an iterator over references to the statements in the block.
     #[inline]
     pub fn iter_statements(&self) -> impl Iterator<Item = &Statement> {
         self.statements.iter()
     }
 
+    /// Returns an iterator over references to the statements in the block in reverse order.
     #[inline]
     pub fn reverse_iter_statements(&self) -> impl Iterator<Item = &Statement> {
         self.statements.iter().rev()
     }
 
+    /// Returns a reference to the last statement of the block, if any.
     #[inline]
     pub fn get_last_statement(&self) -> Option<&LastStatement> {
         self.last_statement.as_ref()
     }
 
+    /// Filters statements in the block, removing those for which the predicate returns `false`.
+    /// Updates token information if present.
+    ///
+    /// This method ensures token information stays consistent with the statements collection.
     pub fn filter_statements<F>(&mut self, mut f: F)
     where
         F: FnMut(&Statement) -> bool,
@@ -147,6 +184,10 @@ impl Block {
         }
     }
 
+    /// Filters statements with mutable access, removing those for which the predicate returns `false`.
+    /// Updates token information if present.
+    ///
+    /// This method gives mutable access to statements during filtering.
     pub fn filter_mut_statements<F>(&mut self, mut f: F)
     where
         F: FnMut(&mut Statement) -> bool,
@@ -168,6 +209,9 @@ impl Block {
         }
     }
 
+    /// Truncates the statements to the specified length.
+    ///
+    /// Updates token information if present.
     pub fn truncate(&mut self, length: usize) {
         self.statements.truncate(length);
         if let Some(tokens) = &mut self.tokens {
@@ -175,21 +219,27 @@ impl Block {
         }
     }
 
+    /// Returns a mutable iterator over the statements in the block.
     #[inline]
     pub fn iter_mut_statements(&mut self) -> impl Iterator<Item = &mut Statement> {
         self.statements.iter_mut()
     }
 
+    /// Returns a reference to the first statement in the block, if any.
     #[inline]
     pub fn first_statement(&self) -> Option<&Statement> {
         self.statements.first()
     }
 
+    /// Returns a mutable reference to the first statement in the block, if any.
     #[inline]
     pub fn first_mut_statement(&mut self) -> Option<&mut Statement> {
         self.statements.first_mut()
     }
 
+    /// Removes all statements from the block and returns them.
+    ///
+    /// Clears token information if present.
     pub fn take_statements(&mut self) -> Vec<Statement> {
         if let Some(tokens) = &mut self.tokens {
             tokens.semicolons.clear();
@@ -197,6 +247,9 @@ impl Block {
         self.statements.drain(..).collect()
     }
 
+    /// Removes and returns the last statement of the block, if any.
+    ///
+    /// Clears the last semicolon token if present.
     pub fn take_last_statement(&mut self) -> Option<LastStatement> {
         if let Some(tokens) = &mut self.tokens {
             tokens.last_semicolon.take();
@@ -204,6 +257,9 @@ impl Block {
         self.last_statement.take()
     }
 
+    /// Sets the statements of the block.
+    ///
+    /// Clears any existing semicolon tokens.
     pub fn set_statements(&mut self, statements: Vec<Statement>) {
         self.statements = statements;
 
@@ -212,11 +268,13 @@ impl Block {
         }
     }
 
+    /// Returns a mutable reference to the last statement of the block, if any.
     #[inline]
     pub fn mutate_last_statement(&mut self) -> Option<&mut LastStatement> {
         self.last_statement.as_mut()
     }
 
+    /// Replaces the last statement with the given statement and returns the old one, if any.
     #[inline]
     pub fn replace_last_statement<S: Into<LastStatement>>(
         &mut self,
@@ -225,6 +283,9 @@ impl Block {
         self.last_statement.replace(statement.into())
     }
 
+    /// Clears all statements and the last statement from the block.
+    ///
+    /// Also clears all token information if present.
     pub fn clear(&mut self) {
         self.statements.clear();
         self.last_statement.take();

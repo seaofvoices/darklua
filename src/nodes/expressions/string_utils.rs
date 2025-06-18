@@ -6,6 +6,7 @@ enum StringErrorKind {
     MalformedEscapeSequence { position: usize, message: String },
 }
 
+/// Represents an error that occurred while parsing a string.
 #[derive(Debug, Clone)]
 pub struct StringError {
     kind: StringErrorKind,

@@ -2,6 +2,7 @@ use crate::nodes::{
     GenericParameterMutRef, GenericParametersWithDefaults, Identifier, Token, Trivia, Type,
 };
 
+/// Tokens associated with a type declaration statement.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeDeclarationTokens {
     pub r#type: Token,
@@ -16,6 +17,7 @@ impl TypeDeclarationTokens {
     );
 }
 
+/// Represents a type declaration statement.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeDeclarationStatement {
     name: Identifier,
@@ -26,6 +28,7 @@ pub struct TypeDeclarationStatement {
 }
 
 impl TypeDeclarationStatement {
+    /// Creates a new type declaration with the given name and type.
     pub fn new(name: impl Into<Identifier>, r#type: impl Into<Type>) -> Self {
         Self {
             name: name.into(),
@@ -36,6 +39,7 @@ impl TypeDeclarationStatement {
         }
     }
 
+    /// Sets the generic parameters for this type declaration.
     pub fn with_generic_parameters(
         mut self,
         generic_parameters: GenericParametersWithDefaults,
@@ -44,31 +48,37 @@ impl TypeDeclarationStatement {
         self
     }
 
+    /// Sets the generic parameters for this type declaration.
     #[inline]
     pub fn set_generic_parameters(&mut self, generic_parameters: GenericParametersWithDefaults) {
         self.generic_parameters = Some(generic_parameters);
     }
 
+    /// Returns the generic parameters, if any.
     #[inline]
     pub fn get_generic_parameters(&self) -> Option<&GenericParametersWithDefaults> {
         self.generic_parameters.as_ref()
     }
 
+    /// Returns a mutable reference to the generic parameters, if any.
     #[inline]
     pub fn mutate_generic_parameters(&mut self) -> Option<&mut GenericParametersWithDefaults> {
         self.generic_parameters.as_mut()
     }
 
+    /// Marks this type declaration as exported.
     pub fn export(mut self) -> Self {
         self.exported = true;
         self
     }
 
+    /// Marks this type declaration as exported.
     #[inline]
     pub fn set_exported(&mut self) {
         self.exported = true;
     }
 
+    /// Removes the exported status from this type declaration.
     #[inline]
     pub fn remove_exported(&mut self) {
         self.exported = false;
@@ -77,51 +87,61 @@ impl TypeDeclarationStatement {
         }
     }
 
+    /// Returns whether this type declaration is exported.
     #[inline]
     pub fn is_exported(&self) -> bool {
         self.exported
     }
 
+    /// Returns the declared type.
     #[inline]
     pub fn get_type(&self) -> &Type {
         &self.r#type
     }
 
+    /// Returns a mutable reference to the declared type.
     #[inline]
     pub fn mutate_type(&mut self) -> &mut Type {
         &mut self.r#type
     }
 
+    /// Returns the name of this type declaration.
     #[inline]
     pub fn get_name(&self) -> &Identifier {
         &self.name
     }
 
+    /// Returns a mutable reference to the name.
     #[inline]
     pub fn mutate_name(&mut self) -> &mut Identifier {
         &mut self.name
     }
 
+    /// Sets the tokens for this type declaration.
     pub fn with_tokens(mut self, tokens: TypeDeclarationTokens) -> Self {
         self.tokens = Some(tokens);
         self
     }
 
+    /// Sets the tokens for this type declaration.
     #[inline]
     pub fn set_tokens(&mut self, tokens: TypeDeclarationTokens) {
         self.tokens = Some(tokens);
     }
 
+    /// Returns the tokens for this type declaration, if any.
     #[inline]
     pub fn get_tokens(&self) -> Option<&TypeDeclarationTokens> {
         self.tokens.as_ref()
     }
 
+    /// Returns a mutable reference to the tokens, if any.
     #[inline]
     pub fn mutate_tokens(&mut self) -> Option<&mut TypeDeclarationTokens> {
         self.tokens.as_mut()
     }
 
+    /// Clears all comments from the tokens in this node.
     pub fn clear_comments(&mut self) {
         self.name.clear_comments();
         if let Some(tokens) = &mut self.tokens {
@@ -149,6 +169,7 @@ impl TypeDeclarationStatement {
         }
     }
 
+    /// Clears all whitespaces information from the tokens in this node.
     pub fn clear_whitespaces(&mut self) {
         self.name.clear_whitespaces();
         if let Some(tokens) = &mut self.tokens {

@@ -1,5 +1,6 @@
 use crate::nodes::{Expression, Token};
 
+/// Represents a `typeof(expression)` type annotation.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExpressionType {
     expression: Box<Expression>,
@@ -7,6 +8,7 @@ pub struct ExpressionType {
 }
 
 impl ExpressionType {
+    /// Creates a new `typeof` type with the given expression.
     pub fn new(expression: impl Into<Expression>) -> Self {
         Self {
             expression: Box::new(expression.into()),
@@ -14,26 +16,31 @@ impl ExpressionType {
         }
     }
 
+    /// Returns the expression whose type is being referenced.
     #[inline]
     pub fn get_expression(&self) -> &Expression {
         &self.expression
     }
 
+    /// Returns a mutable reference to the expression whose type is being referenced.
     #[inline]
     pub fn mutate_expression(&mut self) -> &mut Expression {
         &mut self.expression
     }
 
+    /// Associates tokens with this expression type and returns the modified type.
     pub fn with_tokens(mut self, tokens: ExpressionTypeTokens) -> Self {
         self.tokens = Some(tokens);
         self
     }
 
+    /// Sets the tokens associated with this expression type.
     #[inline]
     pub fn set_tokens(&mut self, tokens: ExpressionTypeTokens) {
         self.tokens = Some(tokens);
     }
 
+    /// Returns the tokens associated with this expression type, if any.
     #[inline]
     pub fn get_tokens(&self) -> Option<&ExpressionTypeTokens> {
         self.tokens.as_ref()
@@ -42,10 +49,16 @@ impl ExpressionType {
     super::impl_token_fns!(iter = [tokens]);
 }
 
+/// Contains the tokens that define the `typeof` expression syntax.
+///
+/// These tokens represent the `typeof` keyword and the parentheses around the expression.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExpressionTypeTokens {
+    /// The `typeof` keyword token.
     pub r#typeof: Token,
+    /// The opening parenthesis token.
     pub opening_parenthese: Token,
+    /// The closing parenthesis token.
     pub closing_parenthese: Token,
 }
 
