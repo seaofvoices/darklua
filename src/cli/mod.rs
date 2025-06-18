@@ -59,7 +59,7 @@ impl Command {
 ///
 /// For specific help about each command, run `darklua <command> --help`
 ///
-/// Site: https://darklua.com
+/// Site: <https://darklua.com>
 pub struct Darklua {
     #[command(flatten)]
     global_options: GlobalOptions,

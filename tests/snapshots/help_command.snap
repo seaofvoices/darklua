@@ -6,7 +6,7 @@ Transform Lua scripts
 
 For specific help about each command, run `darklua <command> --help`
 
-Site: https://darklua.com
+Site: <https://darklua.com>
 
 Usage: darklua [OPTIONS] <COMMAND>
 
@@ -25,4 +25,3 @@ Options:
 
   -V, --version
           Print version
-
