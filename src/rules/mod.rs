@@ -64,6 +64,7 @@ pub use remove_types::*;
 pub use remove_unused_variable::*;
 pub use rename_variables::*;
 pub(crate) use replace_referenced_tokens::*;
+pub use require::PathRequireMode;
 pub use rule_property::*;
 pub(crate) use shift_token_line::*;
 pub use unused_if_branch::*;
