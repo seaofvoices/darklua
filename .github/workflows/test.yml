@@ -33,7 +33,7 @@ jobs:
         run: cargo build --release
 
       - name: Setup Lua
-        uses: leafo/gh-actions-lua@11
+        uses: leafo/gh-actions-lua@v11
         with:
           luaVersion: "5.1.5"
 
