@@ -114,7 +114,7 @@ impl<Args, T: CallMatch<Args>> RemoveFunctionCallProcessor<Args, T> {
                         }
                         TableEntry::Value(value) => {
                             if self.evaluator.has_side_effects(value) {
-                                expressions.push(value.clone());
+                                expressions.push(*value.clone());
                             }
                         }
                     }

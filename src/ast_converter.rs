@@ -613,7 +613,7 @@ impl<'a> AstConverter<'a> {
                 }
                 ConvertWork::MakePrefixFromExpression { prefix } => match self.pop_expression()? {
                     Expression::Parenthese(parenthese) => {
-                        self.prefixes.push(Prefix::Parenthese(*parenthese));
+                        self.prefixes.push(Prefix::Parenthese(parenthese));
                     }
                     _ => {
                         return Err(ConvertError::Prefix {
@@ -1684,7 +1684,7 @@ impl<'a> AstConverter<'a> {
                     }
                     Ok(entry.into())
                 }
-                ast::Field::NoKey(_) => Ok(TableEntry::Value(self.pop_expression()?)),
+                ast::Field::NoKey(_) => Ok(TableEntry::from_value(self.pop_expression()?)),
                 _ => Err(ConvertError::TableEntry {
                     entry: field.to_string(),
                 }),
@@ -1710,7 +1710,7 @@ impl<'a> AstConverter<'a> {
     ) -> Result<FunctionCall, ConvertError> {
         let prefix = self.make_prefix_with_suffixes(call.suffixes())?;
         match prefix {
-            Prefix::Call(call) => Ok(call),
+            Prefix::Call(call) => Ok(*call),
             _ => panic!(
                 "FunctionCall should convert to a call statement, but got {:#?}",
                 prefix,

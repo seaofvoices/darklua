@@ -1,22 +1,39 @@
 use crate::nodes::{Expression, FunctionReturnType, Token, Type};
 
+/// Represents binary operators used in a binary expression.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BinaryOperator {
+    /// Logical AND operator (`and`)
     And,
+    /// Logical OR operator (`or`)
     Or,
+    /// Equality operator (`==`)
     Equal,
+    /// Inequality operator (`~=`)
     NotEqual,
+    /// Less than operator (`<`)
     LowerThan,
+    /// Less than or equal operator (`<=`)
     LowerOrEqualThan,
+    /// Greater than operator (`>`)
     GreaterThan,
+    /// Greater than or equal operator (`>=`)
     GreaterOrEqualThan,
+    /// Addition operator (`+`)
     Plus,
+    /// Subtraction operator (`-`)
     Minus,
+    /// Multiplication operator (`*`)
     Asterisk,
+    /// Division operator (`/`)
     Slash,
+    /// Integer division operator (`//`)
     DoubleSlash,
+    /// Modulo operator (`%`)
     Percent,
+    /// Exponentiation operator (`^`)
     Caret,
+    /// String concatenation operator (`..`)
     Concat,
 }
 
@@ -111,26 +128,39 @@ fn ends_with_type_cast_to_type_name_without_type_parameters(expression: &Express
 }
 
 impl BinaryOperator {
+    /// Checks if this operator has higher precedence than another operator.
     #[inline]
     pub fn precedes(&self, other: Self) -> bool {
         self.get_precedence() > other.get_precedence()
     }
 
+    /// Checks if this operator has higher precedence than unary expressions.
+    ///
+    /// Currently only the exponentiation operator (`^`) has this property.
     #[inline]
     pub fn precedes_unary_expression(&self) -> bool {
         matches!(self, Self::Caret)
     }
 
+    /// Determines if this operator is left associative.
+    ///
+    /// Left associative operators like `+` evaluate expressions from left to right:
+    /// `a + b + c` is evaluated as `(a + b) + c`.
     #[inline]
     pub fn is_left_associative(&self) -> bool {
         !matches!(self, Self::Caret | Self::Concat)
     }
 
+    /// Determines if this operator is right associative.
+    ///
+    /// Right associative operators like `^` evaluate expressions from right to left:
+    /// `a ^ b ^ c` is evaluated as `a ^ (b ^ c)`.
     #[inline]
     pub fn is_right_associative(&self) -> bool {
         matches!(self, Self::Caret | Self::Concat)
     }
 
+    /// Determines if the left operand needs parentheses when generating code.
     pub fn left_needs_parentheses(&self, left: &Expression) -> bool {
         let needs_parentheses = match left {
             Expression::Binary(left) => {
@@ -150,6 +180,7 @@ impl BinaryOperator {
                 && ends_with_type_cast_to_type_name_without_type_parameters(left))
     }
 
+    /// Determines if the right operand needs parentheses when generating code.
     pub fn right_needs_parentheses(&self, right: &Expression) -> bool {
         match right {
             Expression::Binary(right) => {
@@ -164,6 +195,7 @@ impl BinaryOperator {
         }
     }
 
+    /// Returns the string representation of this operator.
     pub fn to_str(&self) -> &'static str {
         match self {
             Self::And => "and",
@@ -185,6 +217,7 @@ impl BinaryOperator {
         }
     }
 
+    /// Returns the precedence level of this operator (higher value = higher precedence).
     fn get_precedence(&self) -> u8 {
         match self {
             Self::Or => 0,
@@ -203,6 +236,7 @@ impl BinaryOperator {
     }
 }
 
+/// Represents a binary operation in expressions.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BinaryExpression {
     operator: BinaryOperator,
@@ -212,6 +246,7 @@ pub struct BinaryExpression {
 }
 
 impl BinaryExpression {
+    /// Creates a new binary expression with the given operator and operands.
     pub fn new<T: Into<Expression>, U: Into<Expression>>(
         operator: BinaryOperator,
         left: T,
@@ -225,46 +260,55 @@ impl BinaryExpression {
         }
     }
 
+    /// Associates a token with this expression.
     pub fn with_token(mut self, token: Token) -> Self {
         self.token = Some(token);
         self
     }
 
+    /// Associates a token with this expression.
     #[inline]
     pub fn set_token(&mut self, token: Token) {
         self.token = Some(token);
     }
 
+    /// Returns the token associated with this expression, if any.
     #[inline]
     pub fn get_token(&self) -> Option<&Token> {
         self.token.as_ref()
     }
 
+    /// Returns a mutable reference to the left operand.
     #[inline]
     pub fn mutate_left(&mut self) -> &mut Expression {
         &mut self.left
     }
 
+    /// Returns a mutable reference to the right operand.
     #[inline]
     pub fn mutate_right(&mut self) -> &mut Expression {
         &mut self.right
     }
 
+    /// Returns a reference to the left operand.
     #[inline]
     pub fn left(&self) -> &Expression {
         &self.left
     }
 
+    /// Returns a reference to the right operand.
     #[inline]
     pub fn right(&self) -> &Expression {
         &self.right
     }
 
+    /// Returns the binary operator.
     #[inline]
     pub fn operator(&self) -> BinaryOperator {
         self.operator
     }
 
+    /// Changes the operator and updates the associated token's content if present.
     #[inline]
     pub fn set_operator(&mut self, operator: BinaryOperator) {
         if self.operator == operator {

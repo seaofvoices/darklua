@@ -224,16 +224,24 @@ impl FunctionBuilder {
     }
 }
 
+/// Represents the token information associated with a function body.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FunctionBodyTokens {
+    /// The 'function' keyword token.
     pub function: Token,
+    /// The opening parenthesis token for parameter list.
     pub opening_parenthese: Token,
+    /// The closing parenthesis token for parameter list.
     pub closing_parenthese: Token,
+    /// The 'end' keyword token that terminates the function definition.
     pub end: Token,
+    /// Tokens for commas separating parameters.
     pub parameter_commas: Vec<Token>,
+    /// The '...' token for variadic functions, if present.
     pub variable_arguments: Option<Token>,
-
+    /// The colon token before the variadic type annotation, if present.
     pub variable_arguments_colon: Option<Token>,
+    /// The colon token before the return type annotation, if present.
     pub return_type_colon: Option<Token>,
 }
 

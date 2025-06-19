@@ -4,6 +4,10 @@ use crate::nodes::{StringError, Token};
 
 use super::string_utils;
 
+/// Represents a string literal in Lua source code.
+///
+/// String literals in Lua can be written with single quotes, double quotes,
+/// or with long brackets (`[[...]]` or `[=[...]=]` etc.) for multi-line strings.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StringExpression {
     value: String,
@@ -11,6 +15,17 @@ pub struct StringExpression {
 }
 
 impl StringExpression {
+    /// Creates a new `StringExpression` from a raw Lua string literal.
+    ///
+    /// Handles quoted strings (with either ' or " delimiters), long bracket strings,
+    /// and processes escape sequences in quoted strings.
+    ///
+    /// ```
+    /// # use darklua_core::nodes::StringExpression;
+    /// let single_quoted = StringExpression::new("'hello'").unwrap();
+    /// let double_quoted = StringExpression::new("\"world\"").unwrap();
+    /// let bracket_string = StringExpression::new("[[multi\nline]]").unwrap();
+    /// ```
     pub fn new(string: &str) -> Result<Self, StringError> {
         if string.starts_with('[') {
             return string
@@ -51,6 +66,7 @@ impl StringExpression {
         }
     }
 
+    /// Creates an empty string expression.
     pub fn empty() -> Self {
         Self {
             value: "".to_owned(),
@@ -58,6 +74,7 @@ impl StringExpression {
         }
     }
 
+    /// Creates a new `StringExpression` from a string value.
     pub fn from_value<T: Into<String>>(value: T) -> Self {
         Self {
             value: value.into(),
@@ -65,39 +82,51 @@ impl StringExpression {
         }
     }
 
+    /// Attaches a token to this string expression.
     pub fn with_token(mut self, token: Token) -> Self {
         self.token = Some(token);
         self
     }
 
+    /// Sets the token for this string expression.
     #[inline]
     pub fn set_token(&mut self, token: Token) {
         self.token = Some(token);
     }
 
+    /// Returns the token associated with this string expression, if any.
     #[inline]
     pub fn get_token(&self) -> Option<&Token> {
         self.token.as_ref()
     }
 
+    /// Returns the string value.
     #[inline]
     pub fn get_value(&self) -> &str {
         &self.value
     }
 
+    /// Consumes the string expression and returns the inner string value.
     #[inline]
     pub fn into_value(self) -> String {
         self.value
     }
 
+    /// Checks if the string contains newline characters.
     pub fn is_multiline(&self) -> bool {
         self.value.contains('\n')
     }
 
+    /// Checks if the string contains single quotes.
+    ///
+    /// Useful when determining the best quote style to use when serializing the string.
     pub fn has_single_quote(&self) -> bool {
         self.find_not_escaped('\'').is_some()
     }
 
+    /// Checks if the string contains double quotes.
+    ///
+    /// Useful when determining the best quote style to use when serializing the string.
     pub fn has_double_quote(&self) -> bool {
         self.find_not_escaped('"').is_some()
     }

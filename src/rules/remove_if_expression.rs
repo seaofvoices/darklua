@@ -16,7 +16,7 @@ struct Processor {
 
 impl Processor {
     fn wrap_in_table(&self, expression: Expression) -> Expression {
-        TableExpression::new(vec![TableEntry::Value({
+        TableExpression::new(vec![TableEntry::from_value({
             if self.evaluator.can_return_multiple_values(&expression) {
                 expression.in_parentheses()
             } else {

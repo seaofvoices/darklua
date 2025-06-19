@@ -68,8 +68,14 @@ enum ErrorKind {
     },
 }
 
+/// A type alias for `Result<T, DarkluaError>`.
 pub type DarkluaResult<T> = Result<T, DarkluaError>;
 
+/// The main error type for the darklua library.
+///
+/// This error type represents all possible errors that can occur during
+/// the processing of Lua files. It includes errors from parsing, file I/O,
+/// configuration, and rule application.
 #[derive(Debug, Clone)]
 pub struct DarkluaError {
     kind: Box<ErrorKind>,
@@ -214,6 +220,7 @@ impl DarkluaError {
         })
     }
 
+    /// Creates a custom error with the given message.
     pub fn custom(message: impl Into<Cow<'static, str>>) -> Self {
         Self::new(ErrorKind::Custom {
             message: message.into(),
