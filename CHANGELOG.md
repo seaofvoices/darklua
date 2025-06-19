@@ -1,5 +1,6 @@
 # Changelog
 
+* add rule to convert Luau numbers (`convert_luau_number`) ([#274](https://github.com/seaofvoices/darklua/pull/274))
 * export the `PathRequireMode` struct when using the darklua library and refactor AST node types to reduce size difference between variants ([#273](https://github.com/seaofvoices/darklua/pull/273))
 
 ## 0.16.0

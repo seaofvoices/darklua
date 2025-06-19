@@ -10,6 +10,7 @@ mod call_parens;
 mod compute_expression;
 mod configuration_error;
 mod convert_index_to_field;
+mod convert_luau_number;
 mod convert_require;
 mod empty_do;
 mod filter_early_return;
@@ -43,6 +44,7 @@ pub use call_parens::*;
 pub use compute_expression::*;
 pub use configuration_error::RuleConfigurationError;
 pub use convert_index_to_field::*;
+pub use convert_luau_number::*;
 pub use convert_require::*;
 pub use empty_do::*;
 pub use filter_early_return::*;
@@ -290,6 +292,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         COMPUTE_EXPRESSIONS_RULE_NAME,
         CONVERT_INDEX_TO_FIELD_RULE_NAME,
         CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME,
+        CONVERT_LUAU_NUMBER_RULE_NAME,
         CONVERT_REQUIRE_RULE_NAME,
         FILTER_AFTER_EARLY_RETURN_RULE_NAME,
         GROUP_LOCAL_ASSIGNMENT_RULE_NAME,
@@ -325,6 +328,7 @@ impl FromStr for Box<dyn Rule> {
             CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => {
                 Box::<ConvertLocalFunctionToAssign>::default()
             }
+            CONVERT_LUAU_NUMBER_RULE_NAME => Box::<ConvertLuauNumber>::default(),
             CONVERT_REQUIRE_RULE_NAME => Box::<ConvertRequire>::default(),
             FILTER_AFTER_EARLY_RETURN_RULE_NAME => Box::<FilterAfterEarlyReturn>::default(),
             GROUP_LOCAL_ASSIGNMENT_RULE_NAME => Box::<GroupLocalAssignment>::default(),

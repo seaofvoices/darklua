@@ -35,9 +35,16 @@ impl DecimalNumber {
         self.token = Some(token);
     }
 
+    /// Returns a reference to the token attached to this decimal number, if any.
     #[inline]
-    fn get_token(&self) -> Option<&Token> {
+    pub fn get_token(&self) -> Option<&Token> {
         self.token.as_ref()
+    }
+
+    /// Returns a mutable reference to the token attached to this decimal number, if any.
+    #[inline]
+    pub fn mutate_token(&mut self) -> Option<&mut Token> {
+        self.token.as_mut()
     }
 
     /// Sets an exponent for this decimal number and returns the updated number.
@@ -121,8 +128,14 @@ impl HexNumber {
 
     /// Returns a reference to the token attached to this hexadecimal number, if any.
     #[inline]
-    fn get_token(&self) -> Option<&Token> {
+    pub fn get_token(&self) -> Option<&Token> {
         self.token.as_ref()
+    }
+
+    /// Returns a mutable reference to the token attached to this hexadecimal number, if any.
+    #[inline]
+    pub fn mutate_token(&mut self) -> Option<&mut Token> {
+        self.token.as_mut()
     }
 
     /// Sets a binary exponent for this hexadecimal number and returns the updated number.
@@ -213,8 +226,14 @@ impl BinaryNumber {
 
     /// Returns a reference to the token attached to this binary number, if any.
     #[inline]
-    fn get_token(&self) -> Option<&Token> {
+    pub fn get_token(&self) -> Option<&Token> {
         self.token.as_ref()
+    }
+
+    /// Returns a mutable reference to the token attached to this binary number, if any.
+    #[inline]
+    pub fn mutate_token(&mut self) -> Option<&mut Token> {
+        self.token.as_mut()
     }
 
     /// Sets whether the binary prefix should use uppercase 'B' (0B) or lowercase 'b' (0b).
@@ -299,6 +318,16 @@ impl NumberExpression {
             NumberExpression::Decimal(number) => number.get_token(),
             NumberExpression::Hex(number) => number.get_token(),
             NumberExpression::Binary(number) => number.get_token(),
+        }
+    }
+
+    /// Returns a mutable reference to the token attached to this number expression, if any.
+    #[inline]
+    pub fn mutate_token(&mut self) -> Option<&mut Token> {
+        match self {
+            NumberExpression::Decimal(number) => number.mutate_token(),
+            NumberExpression::Hex(number) => number.mutate_token(),
+            NumberExpression::Binary(number) => number.mutate_token(),
         }
     }
 
