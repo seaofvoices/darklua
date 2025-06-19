@@ -1,5 +1,7 @@
 # Changelog
 
+* export the `PathRequireMode` struct when using the darklua library ([#273](https://github.com/seaofvoices/darklua/pull/273))
+
 ## 0.16.0
 
 * add `remove_statement(index)` method to `Block` ([#254](https://github.com/seaofvoices/darklua/pull/254))
