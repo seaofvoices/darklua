@@ -1012,7 +1012,9 @@ impl AstFuzzer {
                         entries
                             .into_iter()
                             .map(|entry| match entry {
-                                TableEntryKind::Value => TableEntry::from_value(self.pop_expression()),
+                                TableEntryKind::Value => {
+                                    TableEntry::from_value(self.pop_expression())
+                                }
                                 TableEntryKind::Field => TableFieldEntry::new(
                                     self.random.identifier(),
                                     self.pop_expression(),
