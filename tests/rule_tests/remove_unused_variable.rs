@@ -56,6 +56,9 @@ test_rule!(
     remove_unused_variable_but_keep_require_side_effect("local _requireZero = require('./requireZero.roblox.lua')") => "require('./requireZero.roblox.lua')",
     remove_unused_variable_but_keep_require_side_effect_in_parens("local _requireZero = (require('./requireZero.roblox.lua'))") => "require('./requireZero.roblox.lua')",
     remove_unused_variable_but_keep_require_side_effect_in_parens_with_type_cast("local _requireZero = (require('./requireZero.roblox.lua') :: any)") => "require('./requireZero.roblox.lua')",
+    remove_unused_variable_but_not_initially_assigned_variable("local a, b = true b = false") => "local b = nil b = false",
+    remove_unused_variable_but_not_initially_assigned_variable_with_unused_trailing_variable("local a, b, c = true b = false") => "local b = nil b = false",
+    keep_used_variable_bounded_by_unused_variable_with_side_effect("local a, b, c = call() b = false") => "local a, b = call() b = false",
     // remove variables that are used more than once, but never read
     // remove_if_only_assigned("local a = true a = false") => "",
     // remove_if_only_field_assigned("local a = {} a.foo = false") => "",
