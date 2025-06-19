@@ -155,14 +155,19 @@ impl TableIndexEntry {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TableEntry {
     /// A named field entry (e.g., `{ field = value }`)
-    Field(TableFieldEntry),
+    Field(Box<TableFieldEntry>),
     /// A computed index entry (e.g., `{ [expr] = value }`)
-    Index(TableIndexEntry),
+    Index(Box<TableIndexEntry>),
     /// A value entry for array-like tables (e.g., `{ value }`)
-    Value(Expression),
+    Value(Box<Expression>),
 }
 
 impl TableEntry {
+    /// Creates an array-like table entry from a value.
+    pub fn from_value(value: impl Into<Expression>) -> Self {
+        Self::Value(Box::new(value.into()))
+    }
+
     /// Creates a table entry from a string key and value.
     ///
     /// If the key is a valid Lua identifier, a `Field` entry is created.
@@ -171,17 +176,17 @@ impl TableEntry {
         let key = key.into();
         let value = value.into();
         if is_valid_identifier(&key) {
-            Self::Field(TableFieldEntry {
+            Self::Field(Box::new(TableFieldEntry {
                 field: Identifier::new(key),
                 value,
                 token: None,
-            })
+            }))
         } else {
-            Self::Index(TableIndexEntry {
+            Self::Index(Box::new(TableIndexEntry {
                 key: Expression::String(StringExpression::from_value(key)),
                 value,
                 tokens: None,
-            })
+            }))
         }
     }
 
@@ -230,13 +235,13 @@ impl TableEntry {
 
 impl From<TableFieldEntry> for TableEntry {
     fn from(entry: TableFieldEntry) -> Self {
-        Self::Field(entry)
+        Self::Field(Box::new(entry))
     }
 }
 
 impl From<TableIndexEntry> for TableEntry {
     fn from(entry: TableIndexEntry) -> Self {
-        Self::Index(entry)
+        Self::Index(Box::new(entry))
     }
 }
 
@@ -357,7 +362,7 @@ impl TableExpression {
 
     /// Appends a new value entry to this table expression.
     pub fn append_array_value<E: Into<Expression>>(mut self, value: E) -> Self {
-        self.entries.push(TableEntry::Value(value.into()));
+        self.entries.push(TableEntry::from_value(value));
         self
     }
 

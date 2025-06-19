@@ -9,7 +9,7 @@ use super::verify_no_rule_properties;
 enum FilterResult {
     Keep,
     Remove,
-    Replace(Statement),
+    Replace(Box<Statement>),
 }
 
 #[derive(Debug, Clone, Default)]
@@ -60,13 +60,13 @@ impl IfFilter {
                 if block_replacer.is_empty() {
                     FilterResult::Remove
                 } else {
-                    FilterResult::Replace(DoStatement::new(block_replacer).into())
+                    FilterResult::Replace(Box::new(DoStatement::new(block_replacer).into()))
                 }
             } else if let Some(else_block) = if_statement.take_else_block() {
                 if else_block.is_empty() {
                     FilterResult::Remove
                 } else {
-                    FilterResult::Replace(DoStatement::new(else_block).into())
+                    FilterResult::Replace(Box::new(DoStatement::new(else_block).into()))
                 }
             } else {
                 FilterResult::Remove
@@ -180,7 +180,7 @@ impl NodeProcessor for IfFilter {
                     FilterResult::Keep => true,
                     FilterResult::Remove => false,
                     FilterResult::Replace(new_statement) => {
-                        *statement = new_statement;
+                        *statement = *new_statement;
                         true
                     }
                 }

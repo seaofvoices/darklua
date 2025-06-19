@@ -8,7 +8,7 @@ use super::{GenericTypePack, Type, TypePack, VariadicTypePack};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeName {
     type_name: Identifier,
-    type_parameters: Option<TypeParameters>,
+    type_parameters: Option<Box<TypeParameters>>,
 }
 
 impl TypeName {
@@ -22,7 +22,7 @@ impl TypeName {
 
     /// Associates type parameters with this type name.
     pub fn with_type_parameters(mut self, type_parameters: TypeParameters) -> Self {
-        self.type_parameters = Some(type_parameters);
+        self.type_parameters = Some(Box::new(type_parameters));
         self
     }
 
@@ -37,10 +37,10 @@ impl TypeName {
         if let Some(parameters) = &mut self.type_parameters {
             parameters.push_parameter(parameter.into());
         } else {
-            self.type_parameters = Some(TypeParameters {
+            self.type_parameters = Some(Box::new(TypeParameters {
                 parameters: vec![parameter.into()],
                 tokens: None,
-            })
+            }))
         }
     }
 
@@ -59,7 +59,7 @@ impl TypeName {
     /// Returns the type parameters of this type name, if any.
     #[inline]
     pub fn get_type_parameters(&self) -> Option<&TypeParameters> {
-        self.type_parameters.as_ref()
+        self.type_parameters.as_deref()
     }
 
     /// Returns whether this type name has type parameters.
@@ -71,7 +71,7 @@ impl TypeName {
     /// Returns a mutable reference to the type parameters of this type name, if any.
     #[inline]
     pub fn mutate_type_parameters(&mut self) -> Option<&mut TypeParameters> {
-        self.type_parameters.as_mut()
+        self.type_parameters.as_deref_mut()
     }
 
     super::impl_token_fns!(target = [type_name] iter = [type_parameters]);

@@ -40,7 +40,7 @@ pub enum Type {
     /// A named type, such as `string` or a user-defined type.
     Name(TypeName),
     /// A field access on a type, such as `Module.Type`.
-    Field(TypeField),
+    Field(Box<TypeField>),
     /// The boolean literal type `true`.
     True(Option<Token>),
     /// The boolean literal type `false`.
@@ -58,7 +58,7 @@ pub enum Type {
     /// A type in parentheses, such as `(string | number)`.
     Parenthese(ParentheseType),
     /// A function type, such as `(number) -> string`.
-    Function(FunctionType),
+    Function(Box<FunctionType>),
     /// An optional type, such as `string?`.
     Optional(OptionalType),
     /// An intersection type, such as `string & Serializable`.
@@ -105,13 +105,13 @@ impl From<TypeName> for Type {
 
 impl From<TypeField> for Type {
     fn from(type_field: TypeField) -> Self {
-        Self::Field(type_field)
+        Self::Field(Box::new(type_field))
     }
 }
 
 impl From<FunctionType> for Type {
     fn from(function: FunctionType) -> Self {
-        Self::Function(function)
+        Self::Function(Box::new(function))
     }
 }
 

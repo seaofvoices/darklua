@@ -88,9 +88,9 @@ pub enum FunctionReturnType {
     /// A single type return value.
     Type(Box<Type>),
     /// A pack of types as return values.
-    TypePack(TypePack),
+    TypePack(Box<TypePack>),
     /// A generic type pack as return values.
-    GenericTypePack(GenericTypePack),
+    GenericTypePack(Box<GenericTypePack>),
     /// A variadic type pack as return values.
     VariadicTypePack(VariadicTypePack),
 }
@@ -99,7 +99,7 @@ impl<T: Into<Type>> From<T> for FunctionReturnType {
     fn from(r#type: T) -> Self {
         match r#type.into() {
             Type::Parenthese(parenthese) => {
-                Self::TypePack(TypePack::default().with_type(parenthese.into_inner_type()))
+                Self::TypePack(Box::new(TypePack::default().with_type(parenthese.into_inner_type())))
             }
             other => Self::Type(Box::new(other)),
         }
@@ -108,13 +108,13 @@ impl<T: Into<Type>> From<T> for FunctionReturnType {
 
 impl From<TypePack> for FunctionReturnType {
     fn from(type_pack: TypePack) -> Self {
-        Self::TypePack(type_pack)
+        Self::TypePack(Box::new(type_pack))
     }
 }
 
 impl From<GenericTypePack> for FunctionReturnType {
     fn from(generic_type_pack: GenericTypePack) -> Self {
-        Self::GenericTypePack(generic_type_pack)
+        Self::GenericTypePack(Box::new(generic_type_pack))
     }
 }
 

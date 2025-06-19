@@ -46,7 +46,7 @@ pub enum Expression {
     /// A field access (e.g., `object.field`)
     Field(Box<FieldExpression>),
     /// A function definition (e.g., `function(...) ... end`)
-    Function(FunctionExpression),
+    Function(Box<FunctionExpression>),
     /// An identifier (e.g., variable name)
     Identifier(Identifier),
     /// An if expression (e.g., `if a then b else c`)
@@ -236,7 +236,7 @@ impl From<FieldExpression> for Expression {
 
 impl From<FunctionExpression> for Expression {
     fn from(function: FunctionExpression) -> Self {
-        Expression::Function(function)
+        Expression::Function(Box::new(function))
     }
 }
 
@@ -285,11 +285,11 @@ impl From<BinaryNumber> for Expression {
 impl From<Prefix> for Expression {
     fn from(prefix: Prefix) -> Self {
         match prefix {
-            Prefix::Call(call) => Self::Call(Box::new(call)),
+            Prefix::Call(call) => Self::Call(call),
             Prefix::Field(field) => Self::Field(field),
             Prefix::Identifier(name) => Self::Identifier(name),
             Prefix::Index(index) => Self::Index(index),
-            Prefix::Parenthese(expression) => expression.into(),
+            Prefix::Parenthese(expression) => (*expression).into(),
         }
     }
 }

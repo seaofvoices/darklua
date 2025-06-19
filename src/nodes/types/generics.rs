@@ -196,7 +196,7 @@ impl GenericParametersTokens {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GenericTypePackDefault {
     /// A type pack default.
-    TypePack(TypePack),
+    TypePack(Box<TypePack>),
     /// A variadic type pack default.
     VariadicTypePack(VariadicTypePack),
     /// A generic type pack default.
@@ -205,7 +205,7 @@ pub enum GenericTypePackDefault {
 
 impl From<TypePack> for GenericTypePackDefault {
     fn from(type_pack: TypePack) -> Self {
-        Self::TypePack(type_pack)
+        Self::TypePack(Box::new(type_pack))
     }
 }
 
@@ -555,11 +555,11 @@ pub enum GenericParameter {
     /// A simple type variable like `T`.
     TypeVariable(Identifier),
     /// A type variable with a default value like `T = string`.
-    TypeVariableWithDefault(TypeVariableWithDefault),
+    TypeVariableWithDefault(Box<TypeVariableWithDefault>),
     /// A generic type pack like `T...`.
-    GenericTypePack(GenericTypePack),
+    GenericTypePack(Box<GenericTypePack>),
     /// A generic type pack with a default value like `T... = ...string`.
-    GenericTypePackWithDefault(GenericTypePackWithDefault),
+    GenericTypePackWithDefault(Box<GenericTypePackWithDefault>),
 }
 
 impl From<Identifier> for GenericParameter {
@@ -570,19 +570,19 @@ impl From<Identifier> for GenericParameter {
 
 impl From<TypeVariableWithDefault> for GenericParameter {
     fn from(value: TypeVariableWithDefault) -> Self {
-        Self::TypeVariableWithDefault(value)
+        Self::TypeVariableWithDefault(Box::new(value))
     }
 }
 
 impl From<GenericTypePack> for GenericParameter {
     fn from(value: GenericTypePack) -> Self {
-        Self::GenericTypePack(value)
+        Self::GenericTypePack(Box::new(value))
     }
 }
 
 impl From<GenericTypePackWithDefault> for GenericParameter {
     fn from(value: GenericTypePackWithDefault) -> Self {
-        Self::GenericTypePackWithDefault(value)
+        Self::GenericTypePackWithDefault(Box::new(value))
     }
 }
 

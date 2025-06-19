@@ -5,8 +5,8 @@ use super::{StringType, Type};
 /// Represents an indexer in a table type annotation.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TableIndexerType {
-    key_type: Type,
-    value_type: Type,
+    key_type: Box<Type>,
+    value_type: Box<Type>,
     tokens: Option<TableIndexTypeTokens>,
 }
 
@@ -14,8 +14,8 @@ impl TableIndexerType {
     /// Creates a new table indexer with the specified key and value types.
     pub fn new(key_type: impl Into<Type>, value_type: impl Into<Type>) -> Self {
         Self {
-            key_type: key_type.into(),
-            value_type: value_type.into(),
+            key_type: Box::new(key_type.into()),
+            value_type: Box::new(value_type.into()),
             tokens: None,
         }
     }
@@ -84,7 +84,7 @@ impl TableIndexTypeTokens {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TablePropertyType {
     property: Identifier,
-    r#type: Type,
+    r#type: Box<Type>,
     token: Option<Token>,
 }
 
@@ -93,7 +93,7 @@ impl TablePropertyType {
     pub fn new(property: impl Into<Identifier>, r#type: impl Into<Type>) -> Self {
         Self {
             property: property.into(),
-            r#type: r#type.into(),
+            r#type: Box::new(r#type.into()),
             token: None,
         }
     }
@@ -147,7 +147,7 @@ impl TablePropertyType {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TableLiteralPropertyType {
     string: StringType,
-    r#type: Type,
+    r#type: Box<Type>,
     tokens: Option<TableIndexTypeTokens>,
 }
 
@@ -156,7 +156,7 @@ impl TableLiteralPropertyType {
     pub fn new(string: StringType, r#type: impl Into<Type>) -> Self {
         Self {
             string,
-            r#type: r#type.into(),
+            r#type: Box::new(r#type.into()),
             tokens: None,
         }
     }
@@ -329,7 +329,7 @@ impl TableType {
     /// Returns the previous indexer type if one existed.
     #[inline]
     pub fn set_indexer_type(&mut self, indexer_type: TableIndexerType) -> Option<TableIndexerType> {
-        match indexer_type.key_type {
+        match *indexer_type.key_type {
             Type::String(string_type) => {
                 self.entries
                     .push(TableEntryType::Literal(TableLiteralPropertyType {

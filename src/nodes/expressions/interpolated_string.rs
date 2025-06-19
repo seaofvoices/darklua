@@ -75,7 +75,7 @@ impl StringSegment {
 /// when the interpolated string is evaluated.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ValueSegment {
-    value: Expression,
+    value: Box<Expression>,
     tokens: Option<ValueSegmentTokens>,
 }
 
@@ -83,7 +83,7 @@ impl ValueSegment {
     /// Creates a new value segment with the given expression.
     pub fn new(value: impl Into<Expression>) -> Self {
         Self {
-            value: value.into(),
+            value: Box::new(value.into()),
             tokens: None,
         }
     }

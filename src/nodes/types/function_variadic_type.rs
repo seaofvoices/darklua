@@ -4,7 +4,7 @@ use super::{GenericTypePack, Type};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FunctionVariadicType {
     /// A specific type for variadic arguments.
-    Type(Type),
+    Type(Box<Type>),
     /// A generic type pack for variadic arguments.
     GenericTypePack(GenericTypePack),
 }
@@ -17,6 +17,6 @@ impl From<GenericTypePack> for FunctionVariadicType {
 
 impl<T: Into<Type>> From<T> for FunctionVariadicType {
     fn from(value: T) -> Self {
-        Self::Type(value.into())
+        Self::Type(Box::new(value.into()))
     }
 }

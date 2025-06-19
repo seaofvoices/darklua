@@ -6,7 +6,7 @@ use crate::nodes::{Expression, Token, Type};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeCastExpression {
     expression: Box<Expression>,
-    r#type: Type,
+    r#type: Box<Type>,
     token: Option<Token>,
 }
 
@@ -15,7 +15,7 @@ impl TypeCastExpression {
     pub fn new(expression: impl Into<Expression>, r#type: impl Into<Type>) -> Self {
         Self {
             expression: Box::new(expression.into()),
-            r#type: r#type.into(),
+            r#type: Box::new(r#type.into()),
             token: None,
         }
     }

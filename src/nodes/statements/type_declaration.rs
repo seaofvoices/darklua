@@ -21,7 +21,7 @@ impl TypeDeclarationTokens {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeDeclarationStatement {
     name: Identifier,
-    r#type: Type,
+    r#type: Box<Type>,
     exported: bool,
     generic_parameters: Option<GenericParametersWithDefaults>,
     tokens: Option<TypeDeclarationTokens>,
@@ -32,7 +32,7 @@ impl TypeDeclarationStatement {
     pub fn new(name: impl Into<Identifier>, r#type: impl Into<Type>) -> Self {
         Self {
             name: name.into(),
-            r#type: r#type.into(),
+            r#type: Box::new(r#type.into()),
             exported: false,
             generic_parameters: None,
             tokens: None,

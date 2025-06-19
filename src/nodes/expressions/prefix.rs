@@ -9,7 +9,7 @@ use crate::nodes::{
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Prefix {
     /// A function call expression (e.g., `func()`)
-    Call(FunctionCall),
+    Call(Box<FunctionCall>),
     /// A field access expression (e.g., `object.field`)
     Field(Box<FieldExpression>),
     /// A simple name/variable (e.g., `variable_name`)
@@ -17,7 +17,7 @@ pub enum Prefix {
     /// An indexed access expression (e.g., `table[key]`)
     Index(Box<IndexExpression>),
     /// A parenthesized expression (e.g., `(expression)`)
-    Parenthese(ParentheseExpression),
+    Parenthese(Box<ParentheseExpression>),
 }
 
 impl Prefix {
@@ -30,11 +30,11 @@ impl Prefix {
 impl From<Expression> for Prefix {
     fn from(expression: Expression) -> Self {
         match expression {
-            Expression::Call(call) => Prefix::Call(*call),
+            Expression::Call(call) => Prefix::Call(call),
             Expression::Field(field) => Prefix::Field(field),
             Expression::Identifier(identifier) => Prefix::Identifier(identifier),
             Expression::Index(index) => Prefix::Index(index),
-            Expression::Parenthese(parenthese) => Prefix::Parenthese(*parenthese),
+            Expression::Parenthese(parenthese) => Prefix::Parenthese(parenthese),
             Expression::Binary(_)
             | Expression::False(_)
             | Expression::Function(_)
@@ -48,7 +48,7 @@ impl From<Expression> for Prefix {
             | Expression::TypeCast(_)
             | Expression::Unary(_)
             | Expression::VariableArguments(_) => {
-                Prefix::Parenthese(ParentheseExpression::new(expression))
+                Prefix::Parenthese(Box::new(ParentheseExpression::new(expression)))
             }
         }
     }
@@ -56,7 +56,7 @@ impl From<Expression> for Prefix {
 
 impl From<FunctionCall> for Prefix {
     fn from(call: FunctionCall) -> Self {
-        Self::Call(call)
+        Self::Call(Box::new(call))
     }
 }
 
@@ -92,6 +92,6 @@ impl From<Box<IndexExpression>> for Prefix {
 
 impl From<ParentheseExpression> for Prefix {
     fn from(expression: ParentheseExpression) -> Self {
-        Self::Parenthese(expression)
+        Self::Parenthese(Box::new(expression))
     }
 }

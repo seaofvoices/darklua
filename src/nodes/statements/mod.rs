@@ -42,7 +42,7 @@ pub enum Statement {
     /// A compound assignment statement (e.g., `a += 1`)
     CompoundAssign(CompoundAssignStatement),
     /// A function declaration statement (e.g., `function name() ... end`)
-    Function(FunctionStatement),
+    Function(Box<FunctionStatement>),
     /// A generic for loop (e.g., `for k, v in pairs(t) do ... end`)
     GenericFor(GenericForStatement),
     /// An if statement (e.g., `if condition then ... elseif ... else ... end`)
@@ -50,7 +50,7 @@ pub enum Statement {
     /// A local variable assignment (e.g., `local a, b = 1, 2`)
     LocalAssign(LocalAssignStatement),
     /// A local function declaration (e.g., `local function name() ... end`)
-    LocalFunction(LocalFunctionStatement),
+    LocalFunction(Box<LocalFunctionStatement>),
     /// A numeric for loop (e.g., `for i = 1, 10, 2 do ... end`)
     NumericFor(Box<NumericForStatement>),
     /// A repeat loop (e.g., `repeat ... until condition`)
@@ -87,7 +87,7 @@ impl From<FunctionCall> for Statement {
 
 impl From<FunctionStatement> for Statement {
     fn from(function: FunctionStatement) -> Statement {
-        Statement::Function(function)
+        Statement::Function(Box::new(function))
     }
 }
 
@@ -111,7 +111,7 @@ impl From<LocalAssignStatement> for Statement {
 
 impl From<LocalFunctionStatement> for Statement {
     fn from(function: LocalFunctionStatement) -> Statement {
-        Statement::LocalFunction(function)
+        Statement::LocalFunction(Box::new(function))
     }
 }
 
