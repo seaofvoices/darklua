@@ -30,6 +30,7 @@ macro_rules! impl_token_fns {
         $(iter = [ $( $iter_field:ident),* $(,)? ])?
         $(iter_flatten = [ $( $iter_flatten_field:ident),* $(,)? ])?
     ) => {
+        /// Clears all comments from the tokens in this node.
         pub fn clear_comments(&mut self) {
             $(
                 self.$field.clear_comments();
@@ -46,6 +47,7 @@ macro_rules! impl_token_fns {
             )*)?
         }
 
+        /// Clears all whitespaces information from the tokens in this node.
         pub fn clear_whitespaces(&mut self) {
             $(
                 self.$field.clear_whitespaces();

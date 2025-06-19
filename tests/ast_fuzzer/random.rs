@@ -363,8 +363,7 @@ fn generate_string_content(poisson_lambda: f64) -> String {
                 0123456789\
                 ()[]{}=<>.!?,:;+-*/%^|&#";
 
-    iter::repeat(())
-        .take(length)
+    iter::repeat_n((), length)
         .map(|()| GEN_CHARSET[rng.gen_range(0..GEN_CHARSET.len())] as char)
         .collect()
 }

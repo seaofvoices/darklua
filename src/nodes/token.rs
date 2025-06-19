@@ -1,22 +1,27 @@
 use std::borrow::Cow;
 
+/// Represents a position in the source code.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Position {
+    /// A position that references a specific range in the source code
+    /// with line number information.
     LineNumberReference {
         start: usize,
         end: usize,
         line_number: usize,
     },
+    /// A position that contains content and line number information.
     LineNumber {
         content: Cow<'static, str>,
         line_number: usize,
     },
-    Any {
-        content: Cow<'static, str>,
-    },
+    /// A position that only contains content without any line number
+    /// information.
+    Any { content: Cow<'static, str> },
 }
 
 impl Position {
+    /// Creates a new position with line number information and content.
     #[inline]
     pub fn line_number(content: impl Into<Cow<'static, str>>, line_number: usize) -> Position {
         Self::LineNumber {
@@ -26,13 +31,17 @@ impl Position {
     }
 }
 
+/// An enum to represent source code text.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TriviaKind {
+    /// A comment.
     Comment,
+    /// Whitespace characters.
     Whitespace,
 }
 
 impl TriviaKind {
+    /// Creates a new trivia with line number reference information.
     pub fn at(self, start: usize, end: usize, line_number: usize) -> Trivia {
         Trivia {
             position: Position::LineNumberReference {
@@ -44,6 +53,7 @@ impl TriviaKind {
         }
     }
 
+    /// Creates a new trivia with content.
     pub fn with_content<IntoCowStr: Into<Cow<'static, str>>>(self, content: IntoCowStr) -> Trivia {
         Trivia {
             position: Position::Any {
@@ -54,6 +64,7 @@ impl TriviaKind {
     }
 }
 
+/// Represents a piece of trivia (whitespace or comments) in the source code.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Trivia {
     position: Position,
@@ -61,6 +72,10 @@ pub struct Trivia {
 }
 
 impl Trivia {
+    /// Reads the content of the trivia from the source code.
+    ///
+    /// # Panics
+    /// Panics if the position is a line number reference and the range is invalid.
     pub fn read<'a: 'b, 'b>(&'a self, code: &'b str) -> &'b str {
         match &self.position {
             Position::LineNumberReference { start, end, .. } => {
@@ -72,6 +87,9 @@ impl Trivia {
         }
     }
 
+    /// Attempts to read the content of the trivia without requiring source code.
+    ///
+    /// Returns `None` if the position is a line number reference, as it requires source code to read.
     pub fn try_read(&self) -> Option<&str> {
         match &self.position {
             Position::LineNumberReference { .. } => None,
@@ -79,10 +97,12 @@ impl Trivia {
         }
     }
 
+    /// Returns the kind of trivia.
     pub fn kind(&self) -> TriviaKind {
         self.kind.clone()
     }
 
+    /// Returns the line number of the trivia, if available.
     pub fn get_line_number(&self) -> Option<usize> {
         match &self.position {
             Position::LineNumber { line_number, .. }
@@ -92,6 +112,7 @@ impl Trivia {
     }
 }
 
+/// Represents a token in the source code with its position and associated comments or whitespaces.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Token {
     position: Position,
@@ -114,7 +135,7 @@ impl Token {
         }
     }
 
-    /// Creates a new token that is not contrained to any existing position.
+    /// Creates a new token that is not constrained to any existing position.
     pub fn from_content<IntoCowStr: Into<Cow<'static, str>>>(content: IntoCowStr) -> Self {
         Self {
             position: Position::Any {
@@ -134,41 +155,52 @@ impl Token {
         }
     }
 
+    /// Adds leading trivia to the token and returns the updated token.
     pub fn with_leading_trivia(mut self, trivia: Trivia) -> Self {
         self.leading_trivia.push(trivia);
         self
     }
 
+    /// Adds trailing trivia to the token and returns the updated token.
     pub fn with_trailing_trivia(mut self, trivia: Trivia) -> Self {
         self.trailing_trivia.push(trivia);
         self
     }
 
+    /// Returns whether the token has any trivia (leading or trailing).
     #[inline]
     pub fn has_trivia(&self) -> bool {
         !self.leading_trivia.is_empty() || !self.trailing_trivia.is_empty()
     }
 
+    /// Adds leading trivia to the token.
     #[inline]
     pub fn push_leading_trivia(&mut self, trivia: Trivia) {
         self.leading_trivia.push(trivia);
     }
 
+    /// Adds trailing trivia to the token.
     #[inline]
     pub fn push_trailing_trivia(&mut self, trivia: Trivia) {
         self.trailing_trivia.push(trivia);
     }
 
+    /// Returns an iterator over the leading trivia.
     #[inline]
     pub fn iter_leading_trivia(&self) -> impl Iterator<Item = &Trivia> {
         self.leading_trivia.iter()
     }
 
+    /// Returns an iterator over the trailing trivia.
     #[inline]
     pub fn iter_trailing_trivia(&self) -> impl Iterator<Item = &Trivia> {
         self.trailing_trivia.iter()
     }
 
+    /// Reads the content of the token from the source code.
+    ///
+    /// # Panics
+    /// Panics if the position is a line number reference and the range is invalid.
     pub fn read<'a: 'b, 'b>(&'a self, code: &'b str) -> &'b str {
         match &self.position {
             Position::LineNumberReference { start, end, .. } => code
@@ -178,6 +210,7 @@ impl Token {
         }
     }
 
+    /// Returns the line number of the token, if available.
     pub fn get_line_number(&self) -> Option<usize> {
         match &self.position {
             Position::LineNumber { line_number, .. }
@@ -186,6 +219,7 @@ impl Token {
         }
     }
 
+    /// Replaces the token's content with new content while preserving line number information.
     pub fn replace_with_content<IntoCowStr: Into<Cow<'static, str>>>(
         &mut self,
         content: IntoCowStr,
@@ -203,6 +237,7 @@ impl Token {
         };
     }
 
+    /// Clears all comments from the tokens in this node.
     pub fn clear_comments(&mut self) {
         self.leading_trivia
             .retain(|trivia| trivia.kind() != TriviaKind::Comment);
@@ -210,6 +245,7 @@ impl Token {
             .retain(|trivia| trivia.kind() != TriviaKind::Comment);
     }
 
+    /// Clears all whitespaces information from the tokens in this node.
     pub fn clear_whitespaces(&mut self) {
         self.leading_trivia
             .retain(|trivia| trivia.kind() != TriviaKind::Whitespace);

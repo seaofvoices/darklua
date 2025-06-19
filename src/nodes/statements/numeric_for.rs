@@ -1,12 +1,15 @@
 use crate::nodes::{Block, Expression, Token, TypedIdentifier};
 
+/// Tokens associated with a numeric for statement.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NumericForTokens {
     pub r#for: Token,
     pub equal: Token,
     pub r#do: Token,
     pub end: Token,
+    /// The token for the comma between the start and end values.
     pub end_comma: Token,
+    /// The token for the comma between the end and step values.
     pub step_comma: Option<Token>,
 }
 
@@ -17,6 +20,7 @@ impl NumericForTokens {
     );
 }
 
+/// Represents a numeric for loop statement.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NumericForStatement {
     identifier: TypedIdentifier,
@@ -28,6 +32,7 @@ pub struct NumericForStatement {
 }
 
 impl NumericForStatement {
+    /// Creates a new numeric for statement.
     pub fn new<
         S: Into<TypedIdentifier>,
         E1: Into<Expression>,
@@ -50,81 +55,97 @@ impl NumericForStatement {
         }
     }
 
+    /// Sets the tokens for this numeric for statement.
     pub fn with_tokens(mut self, tokens: NumericForTokens) -> Self {
         self.tokens = Some(tokens);
         self
     }
 
+    /// Sets the tokens for this numeric for statement.
     #[inline]
     pub fn set_tokens(&mut self, tokens: NumericForTokens) {
         self.tokens = Some(tokens);
     }
 
+    /// Returns the tokens for this numeric for statement, if any.
     #[inline]
     pub fn get_tokens(&self) -> Option<&NumericForTokens> {
         self.tokens.as_ref()
     }
 
+    /// Returns a mutable reference to the tokens, if any.
     #[inline]
     pub fn mutate_tokens(&mut self) -> Option<&mut NumericForTokens> {
         self.tokens.as_mut()
     }
 
+    /// Returns the loop's block.
     #[inline]
     pub fn get_block(&self) -> &Block {
         &self.block
     }
 
+    /// Returns a mutable reference to the block.
     #[inline]
     pub fn mutate_block(&mut self) -> &mut Block {
         &mut self.block
     }
 
+    /// Returns the start expression for the range.
     #[inline]
     pub fn get_start(&self) -> &Expression {
         &self.start
     }
 
+    /// Returns a mutable reference to the start expression.
     #[inline]
     pub fn mutate_start(&mut self) -> &mut Expression {
         &mut self.start
     }
 
+    /// Returns the end expression for the range.
     #[inline]
     pub fn get_end(&self) -> &Expression {
         &self.end
     }
 
+    /// Returns a mutable reference to the end expression.
     #[inline]
     pub fn mutate_end(&mut self) -> &mut Expression {
         &mut self.end
     }
 
+    /// Returns the step expression for the range, if any.
     #[inline]
     pub fn get_step(&self) -> Option<&Expression> {
         self.step.as_ref()
     }
 
+    /// Returns a mutable reference to the step expression option.
     #[inline]
     pub fn mutate_step(&mut self) -> &mut Option<Expression> {
         &mut self.step
     }
 
+    /// Returns the loop variable identifier.
     #[inline]
     pub fn get_identifier(&self) -> &TypedIdentifier {
         &self.identifier
     }
 
+    /// Returns a mutable reference to the loop variable identifier.
     #[inline]
     pub fn mutate_identifier(&mut self) -> &mut TypedIdentifier {
         &mut self.identifier
     }
 
+    /// Sets the loop variable identifier.
     #[inline]
     pub fn set_identifier<S: Into<TypedIdentifier>>(&mut self, identifier: S) {
         self.identifier = identifier.into();
     }
 
+    /// Removes type annotations from the loop variable.
     pub fn clear_types(&mut self) {
         self.identifier.remove_type();
     }

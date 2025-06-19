@@ -2,6 +2,7 @@ use crate::nodes::Token;
 
 use super::{Type, TypedIdentifier};
 
+/// Represents an identifier (variable name).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Identifier {
     name: String,
@@ -9,6 +10,7 @@ pub struct Identifier {
 }
 
 impl Identifier {
+    /// Creates a new identifier with the given name.
     pub fn new<S: Into<String>>(name: S) -> Self {
         Self {
             name: name.into(),
@@ -16,40 +18,50 @@ impl Identifier {
         }
     }
 
+    /// Converts this identifier into a typed identifier.
     pub fn with_type(self, r#type: impl Into<Type>) -> TypedIdentifier {
         TypedIdentifier::from(self).with_type(r#type.into())
     }
 
+    /// Attaches token information to this identifier.
     pub fn with_token(mut self, token: Token) -> Self {
         self.token = Some(token);
         self
     }
 
+    /// Sets the token information for this identifier.
     #[inline]
     pub fn set_token(&mut self, token: Token) {
         self.token = Some(token);
     }
 
+    /// Returns a reference to the token information attached to this identifier, if any.
     #[inline]
     pub fn get_token(&self) -> Option<&Token> {
         self.token.as_ref()
     }
 
+    /// Returns a mutable reference to the token information attached to this identifier, if any.
     #[inline]
     pub fn mutate_token(&mut self) -> Option<&mut Token> {
         self.token.as_mut()
     }
 
+    /// Returns a reference to the name of this identifier.
     #[inline]
     pub fn get_name(&self) -> &String {
         &self.name
     }
 
+    /// Returns a mutable reference to the name of this identifier.
     #[inline]
     pub fn mutate_name(&mut self) -> &mut String {
         &mut self.name
     }
 
+    /// Changes the name of this identifier.
+    ///
+    /// If token information is attached, it's updated to reflect the new name.
     #[inline]
     pub fn set_name<IntoString: Into<String>>(&mut self, name: IntoString) {
         let name = name.into();
@@ -59,6 +71,7 @@ impl Identifier {
         self.name = name;
     }
 
+    /// Consumes the identifier and returns just the name as a String.
     #[inline]
     pub fn into_name(self) -> String {
         self.name

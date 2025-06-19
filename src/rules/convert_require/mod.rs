@@ -8,24 +8,27 @@ use serde::{Deserialize, Serialize};
 use crate::frontend::DarkluaResult;
 use crate::nodes::{Arguments, Block, FunctionCall};
 use crate::process::{DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor};
-use crate::rules::require::{is_require_call, PathRequireMode};
+use crate::rules::require::is_require_call;
 use crate::rules::{Context, RuleConfiguration, RuleConfigurationError, RuleProperties};
 
 use instance_path::InstancePath;
 pub use roblox_index_style::RobloxIndexStyle;
 pub use roblox_require_mode::RobloxRequireMode;
 
-use super::{verify_required_properties, Rule, RuleProcessResult};
+use super::{verify_required_properties, PathRequireMode, Rule, RuleProcessResult};
 
 use std::ffi::OsStr;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+/// A representation of how require calls are handled and transformed.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "snake_case", tag = "name")]
 pub enum RequireMode {
+    /// Handles requires using file system paths
     Path(PathRequireMode),
+    /// Handles requires using Roblox's instance-based require system
     Roblox(RobloxRequireMode),
 }
 

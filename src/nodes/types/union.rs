@@ -4,6 +4,7 @@ use crate::nodes::Token;
 
 use super::Type;
 
+/// Represents a union type annotation.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UnionType {
     types: Vec<Type>,
@@ -12,6 +13,7 @@ pub struct UnionType {
 }
 
 impl UnionType {
+    /// Creates a new union type with two alternative types.
     pub fn new(left_type: impl Into<Type>, right_type: impl Into<Type>) -> Self {
         Self {
             types: vec![left_type.into(), right_type.into()],
@@ -20,11 +22,13 @@ impl UnionType {
         }
     }
 
+    /// Associates tokens with this union type and returns the modified type.
     pub fn with_tokens(mut self, tokens: UnionTypeTokens) -> Self {
         self.set_tokens(tokens);
         self
     }
 
+    /// Sets the tokens associated with this union type.
     #[inline]
     pub fn set_tokens(&mut self, tokens: UnionTypeTokens) {
         if tokens.leading_token.is_some() {
@@ -33,36 +37,43 @@ impl UnionType {
         self.tokens = Some(tokens);
     }
 
+    /// Returns the tokens associated with this union type, if any.
     #[inline]
     pub fn get_token(&self) -> Option<&UnionTypeTokens> {
         self.tokens.as_ref()
     }
 
+    /// Returns the number of type alternatives in this union.
     #[inline]
     pub(crate) fn len(&self) -> usize {
         self.types.len()
     }
 
+    /// Returns an iterator over the type alternatives in this union.
     #[inline]
     pub fn iter_types(&self) -> impl Iterator<Item = &Type> {
         self.types.iter()
     }
 
+    /// Returns the first type alternative in this union.
     #[inline]
     pub fn first_type(&self) -> &Type {
         self.types.first().unwrap()
     }
 
+    /// Returns the last type alternative in this union.
     #[inline]
     pub fn last_type(&self) -> &Type {
         self.types.last().unwrap()
     }
 
+    /// Returns a mutable iterator over the type alternatives in this union.
     #[inline]
     pub fn iter_mut_types(&mut self) -> impl Iterator<Item = &mut Type> {
         self.types.iter_mut()
     }
 
+    /// Returns whether this union type has a leading token.
     pub fn has_leading_token(&self) -> bool {
         self.leading_operator
             || self.types.len() < 2
@@ -73,15 +84,18 @@ impl UnionType {
                 .unwrap_or_default()
     }
 
+    /// Marks this union type as having a leading token and returns the modified type.
     pub fn with_leading_token(mut self) -> Self {
         self.put_leading_token();
         self
     }
 
+    /// Marks this union type as having a leading token.
     pub fn put_leading_token(&mut self) {
         self.leading_operator = true;
     }
 
+    /// Removes the leading token from this union type.
     pub fn remove_leading_token(&mut self) {
         self.leading_operator = false;
         if let Some(tokens) = &mut self.tokens {
@@ -89,6 +103,7 @@ impl UnionType {
         }
     }
 
+    /// Determines if a type needs parentheses when used within a union type.
     pub fn intermediate_needs_parentheses(r#type: &Type) -> bool {
         matches!(
             r#type,
@@ -96,6 +111,7 @@ impl UnionType {
         )
     }
 
+    /// Determines if the last type in a union needs parentheses.
     pub fn last_needs_parentheses(r#type: &Type) -> bool {
         matches!(
             r#type,
@@ -127,9 +143,12 @@ impl iter::FromIterator<Type> for UnionType {
     }
 }
 
+/// Contains the tokens that define the union type syntax.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UnionTypeTokens {
+    /// Optional leading `|` token before the first type.
     pub leading_token: Option<Token>,
+    /// The `|` tokens separating the type alternatives.
     pub separators: Vec<Token>,
 }
 

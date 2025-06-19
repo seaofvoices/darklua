@@ -22,6 +22,7 @@ fn get_default_column_span() -> usize {
     DEFAULT_COLUMN_SPAN
 }
 
+/// Configuration for processing files (rules, generator, bundling).
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Configuration {
@@ -36,8 +37,7 @@ pub struct Configuration {
 }
 
 impl Configuration {
-    /// Creates a configuration object without any rules and with the default
-    /// generator
+    /// Creates a configuration object without any rules and with the default generator.
     pub fn empty() -> Self {
         Self {
             rules: Vec::new(),
@@ -47,35 +47,41 @@ impl Configuration {
         }
     }
 
+    /// Sets the generator parameters for this configuration.
     #[inline]
     pub fn with_generator(mut self, generator: GeneratorParameters) -> Self {
         self.generator = generator;
         self
     }
 
+    /// Sets the generator parameters for this configuration.
     #[inline]
     pub fn set_generator(&mut self, generator: GeneratorParameters) {
         self.generator = generator;
     }
 
+    /// Adds a rule to this configuration.
     #[inline]
     pub fn with_rule(mut self, rule: impl Into<Box<dyn Rule>>) -> Self {
         self.push_rule(rule);
         self
     }
 
+    /// Sets the bundle configuration for this configuration.
     #[inline]
     pub fn with_bundle_configuration(mut self, configuration: BundleConfiguration) -> Self {
         self.bundle = Some(configuration);
         self
     }
 
+    /// Sets the location of this configuration.
     #[inline]
     pub fn with_location(mut self, location: impl Into<PathBuf>) -> Self {
         self.location = Some(location.into());
         self
     }
 
+    /// Adds a rule to this configuration.
     #[inline]
     pub fn push_rule(&mut self, rule: impl Into<Box<dyn Rule>>) {
         self.rules.push(rule.into());
@@ -153,16 +159,25 @@ impl std::fmt::Debug for Configuration {
     }
 }
 
+/// Parameters for configuring the Lua code generator.
+///
+/// This enum defines different modes for generating Lua code, each with its own
+/// formatting characteristics.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "snake_case", tag = "name")]
 pub enum GeneratorParameters {
+    /// Retains the original line structure of the input code.
     #[serde(alias = "retain-lines")]
     RetainLines,
+    /// Generates dense, compact code with a specified column span.
     Dense {
+        /// The maximum number of characters per line.
         #[serde(default = "get_default_column_span")]
         column_span: usize,
     },
+    /// Attempts to generate readable code, with a specified column span.
     Readable {
+        /// The maximum number of characters per line.
         #[serde(default = "get_default_column_span")]
         column_span: usize,
     },
@@ -175,12 +190,14 @@ impl Default for GeneratorParameters {
 }
 
 impl GeneratorParameters {
+    /// Creates a new dense generator with default column span.
     pub fn default_dense() -> Self {
         Self::Dense {
             column_span: DEFAULT_COLUMN_SPAN,
         }
     }
 
+    /// Creates a new readable generator with default column span.
     pub fn default_readable() -> Self {
         Self::Readable {
             column_span: DEFAULT_COLUMN_SPAN,
@@ -233,6 +250,10 @@ impl FromStr for GeneratorParameters {
     }
 }
 
+/// Configuration for bundling modules.
+///
+/// This struct defines how modules should be bundled together, including
+/// how requires are handled.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub struct BundleConfiguration {
@@ -245,6 +266,7 @@ pub struct BundleConfiguration {
 }
 
 impl BundleConfiguration {
+    /// Creates a new bundle configuration with the specified require mode.
     pub fn new(require_mode: impl Into<BundleRequireMode>) -> Self {
         Self {
             require_mode: require_mode.into(),
@@ -253,11 +275,13 @@ impl BundleConfiguration {
         }
     }
 
+    /// Sets the modules identifier for this bundle configuration.
     pub fn with_modules_identifier(mut self, modules_identifier: impl Into<String>) -> Self {
         self.modules_identifier = Some(modules_identifier.into());
         self
     }
 
+    /// Adds a module to exclude from bundling.
     pub fn with_exclude(mut self, exclude: impl Into<String>) -> Self {
         self.excludes.insert(exclude.into());
         self

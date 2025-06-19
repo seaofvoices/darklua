@@ -203,24 +203,35 @@ fn walk_file_system(location: PathBuf) -> impl Iterator<Item = PathBuf> {
     })
 }
 
+/// A resource manager for handling file operations.
+///
+/// This struct provides an abstraction over file system operations, allowing
+/// operations to be performed either on the actual file system or in memory.
+/// It handles reading, writing, and managing files and directories.
 #[derive(Debug, Clone)]
 pub struct Resources {
     source: Source,
 }
 
 impl Resources {
+    /// Creates a new resource manager that operates on the file system.
     pub fn from_file_system() -> Self {
         Self {
             source: Source::FileSystem,
         }
     }
 
+    /// Creates a new resource manager that operates in memory.
+    ///
+    /// This is useful for testing or when you want to process files without
+    /// writing to disk.
     pub fn from_memory() -> Self {
         Self {
-            source: Source::Memory(Default::default()),
+            source: Source::Memory(Arc::new(Mutex::new(HashMap::new()))),
         }
     }
 
+    /// Collects all Lua and Luau files in the specified location.
     pub fn collect_work(&self, location: impl AsRef<Path>) -> impl Iterator<Item = PathBuf> {
         self.source.walk(location.as_ref()).filter(|path| {
             matches!(
@@ -230,38 +241,48 @@ impl Resources {
         })
     }
 
+    /// Checks if a path exists.
     pub fn exists(&self, location: impl AsRef<Path>) -> ResourceResult<bool> {
         self.source.exists(location.as_ref())
     }
 
+    /// Checks if a path is a directory.
     pub fn is_directory(&self, location: impl AsRef<Path>) -> ResourceResult<bool> {
         self.source.is_directory(location.as_ref())
     }
 
+    /// Checks if a path is a file.
     pub fn is_file(&self, location: impl AsRef<Path>) -> ResourceResult<bool> {
         self.source.is_file(location.as_ref())
     }
 
+    /// Reads the contents of a file.
     pub fn get(&self, location: impl AsRef<Path>) -> ResourceResult<String> {
         self.source.get(location.as_ref())
     }
 
+    /// Writes content to a file.
     pub fn write(&self, location: impl AsRef<Path>, content: &str) -> ResourceResult<()> {
         self.source.write(location.as_ref(), content)
     }
 
+    /// Removes a file or directory.
     pub fn remove(&self, location: impl AsRef<Path>) -> ResourceResult<()> {
         self.source.remove(location.as_ref())
     }
 
+    /// Walks through all files in a directory.
     pub fn walk(&self, location: impl AsRef<Path>) -> impl Iterator<Item = PathBuf> {
         self.source.walk(location.as_ref())
     }
 }
 
+/// An error that can occur during operations on [`Resource`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResourceError {
+    /// The requested resource was not found.
     NotFound(PathBuf),
+    /// An I/O error occurred while accessing the resource.
     IO { path: PathBuf, error: String },
 }
 
@@ -278,6 +299,7 @@ impl ResourceError {
     }
 }
 
+/// A type alias for `Result<T, ResourceError>`.
 type ResourceResult<T> = Result<T, ResourceError>;
 
 #[cfg(test)]

@@ -84,7 +84,7 @@ impl Serializer {
         if let Some(mut operation) = self.operation.pop() {
             let keep = match &mut operation {
                 SerializeOperation::Table(entries) => {
-                    entries.push(TableEntry::Value(expression));
+                    entries.push(TableEntry::from_value(expression));
                     true
                 }
                 SerializeOperation::TableEntryKey => {

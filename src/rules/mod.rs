@@ -1,4 +1,8 @@
-//! A module that contains the different rules that mutates a Lua block.
+//! A module that contains the different rules that mutates a Lua/Luau block.
+//!
+//! Rules are transformations that can be applied to Lua code blocks to modify their structure
+//! or behavior while preserving functionality. Each rule implements the [`Rule`] trait and can
+//! be configured through properties.
 
 mod append_text_comment;
 pub mod bundle;
@@ -62,6 +66,7 @@ pub use remove_types::*;
 pub use remove_unused_variable::*;
 pub use rename_variables::*;
 pub(crate) use replace_referenced_tokens::*;
+pub use require::PathRequireMode;
 pub use rule_property::*;
 pub(crate) use shift_token_line::*;
 pub use unused_if_branch::*;
@@ -78,6 +83,10 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+/// A builder for creating a [`Context`] with optional configuration.
+///
+/// This builder allows for incremental construction of a [`Context`] by adding
+/// blocks and project location information before building the final context.
 #[derive(Debug, Clone)]
 pub struct ContextBuilder<'a, 'resources, 'code> {
     path: PathBuf,
@@ -88,6 +97,7 @@ pub struct ContextBuilder<'a, 'resources, 'code> {
 }
 
 impl<'a, 'resources, 'code> ContextBuilder<'a, 'resources, 'code> {
+    /// Creates a new context builder with the specified path, resources, and original code.
     pub fn new(
         path: impl Into<PathBuf>,
         resources: &'resources Resources,
@@ -102,11 +112,13 @@ impl<'a, 'resources, 'code> ContextBuilder<'a, 'resources, 'code> {
         }
     }
 
+    /// Sets the project location for this context.
     pub fn with_project_location(mut self, path: impl Into<PathBuf>) -> Self {
         self.project_location = Some(path.into());
         self
     }
 
+    /// Builds the final context with all configured options.
     pub fn build(self) -> Context<'a, 'resources, 'code> {
         Context {
             path: self.path,
@@ -118,12 +130,16 @@ impl<'a, 'resources, 'code> ContextBuilder<'a, 'resources, 'code> {
         }
     }
 
+    /// Inserts a block into the context with the specified path.
     pub fn insert_block<'block: 'a>(&mut self, path: impl Into<PathBuf>, block: &'block Block) {
         self.blocks.insert(path.into(), block);
     }
 }
 
-/// The intent of this struct is to hold data shared across all rules applied to a file.
+/// A context that holds data shared across all rules applied to a file.
+///
+/// The context provides access to resources, file paths, and blocks that may be needed
+/// during rule processing.
 #[derive(Debug, Clone)]
 pub struct Context<'a, 'resources, 'code> {
     path: PathBuf,
@@ -135,14 +151,19 @@ pub struct Context<'a, 'resources, 'code> {
 }
 
 impl Context<'_, '_, '_> {
+    /// Returns the block associated with the given path, if any.
     pub fn block(&self, path: impl AsRef<Path>) -> Option<&Block> {
         self.blocks.get(path.as_ref()).copied()
     }
 
+    /// Returns the path of the current file being processed.
     pub fn current_path(&self) -> &Path {
         self.path.as_ref()
     }
 
+    /// Adds a file dependency to the context.
+    ///
+    /// This is used to track which files are required by the current file being processed.
     pub fn add_file_dependency(&self, path: PathBuf) {
         if let Ok(mut dependencies) = self.dependencies.try_borrow_mut() {
             log::trace!("add file dependency {}", path.display());
@@ -152,6 +173,7 @@ impl Context<'_, '_, '_> {
         }
     }
 
+    /// Consumes the context and returns an iterator over all file dependencies.
     pub fn into_dependencies(self) -> impl Iterator<Item = PathBuf> {
         self.dependencies.into_inner().into_iter()
     }
@@ -178,37 +200,57 @@ impl Context<'_, '_, '_> {
     }
 }
 
+/// The result type for rule processing operations.
 pub type RuleProcessResult = Result<(), String>;
 
-/// Defines an interface that will be used to mutate blocks and how to serialize and deserialize
-/// the rule configuration.
+/// Defines an interface for rules that can transform Lua blocks.
+///
+/// Rules implement this trait to define how they process blocks and how their configuration
+/// can be serialized and deserialized.
 pub trait Rule: RuleConfiguration + fmt::Debug {
-    /// This method should mutate the given block to apply the rule
+    /// Processes the given block to apply the rule's transformation.
+    ///
+    /// Returns `Ok(())` if the transformation was successful, or an error message if it failed.
     fn process(&self, block: &mut Block, context: &Context) -> RuleProcessResult;
 
-    /// Return the list of paths to Lua files that is necessary to apply this rule. This will load
-    /// each AST block from these files into the context object.
+    /// Returns a list of paths to Lua files that are required to apply this rule.
+    ///
+    /// These files will be loaded into the context for use during processing.
     fn require_content(&self, _current_source: &Path, _current_block: &Block) -> Vec<PathBuf> {
         Vec::new()
     }
 }
 
+/// Defines the configuration interface for rules.
+///
+/// This trait provides methods for configuring rules through properties and serializing
+/// their configuration state.
 pub trait RuleConfiguration {
-    /// The rule deserializer will construct the default rule and then send the properties through
-    /// this method to modify the behavior of the rule.
+    /// Configures the rule with the given properties.
+    ///
+    /// Returns an error if the configuration is invalid.
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError>;
-    /// This method should return the unique name of the rule.
+
+    /// Returns the unique name of the rule.
     fn get_name(&self) -> &'static str;
-    /// For implementing the serialize trait on the Rule trait, this method should return all
-    /// properties that differs from their default value.
+
+    /// Serializes the rule's configuration to properties.
+    ///
+    /// Only properties that differ from their default values are included.
     fn serialize_to_properties(&self) -> RuleProperties;
-    /// Returns `true` if the rule has at least one property.
+
+    /// Returns whether the rule has any non-default properties.
     fn has_properties(&self) -> bool {
         !self.serialize_to_properties().is_empty()
     }
 }
 
+/// A trait for rules that are guaranteed to succeed without errors.
+///
+/// Rules implementing this trait can be automatically converted to the `Rule` trait
+/// with error handling.
 pub trait FlawlessRule {
+    /// Processes the block without the possibility of failure.
     fn flawless_process(&self, block: &mut Block, context: &Context);
 }
 
@@ -219,9 +261,10 @@ impl<T: FlawlessRule + RuleConfiguration + fmt::Debug> Rule for T {
     }
 }
 
-/// A function to get the default rule stack for darklua. All the rules here must preserve all the
-/// functionalities of the original code after being applied. They must guarantee that the
-/// processed block will work as much as the original one.
+/// Returns the default set of rules that preserve code functionality.
+///
+/// These rules are guaranteed to maintain the original behavior of the code
+/// while performing their transformations.
 pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
     vec![
         Box::<RemoveSpaces>::default(),
@@ -240,6 +283,9 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
     ]
 }
 
+/// Returns a list of all available rule names.
+///
+/// This includes both default and optional rules that can be used for code transformation.
 pub fn get_all_rule_names() -> Vec<&'static str> {
     vec![
         APPEND_TEXT_COMMENT_RULE_NAME,

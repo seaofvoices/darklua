@@ -1,18 +1,28 @@
 use crate::nodes::{BinaryOperator, Expression, Token, Variable};
 
+/// Represents compound assignment operators (e.g., `+=`, `-=`, etc.).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CompoundOperator {
+    /// Addition and assignment (`+=`)
     Plus,
+    /// Subtraction and assignment (`-=`)
     Minus,
+    /// Multiplication and assignment (`*=`)
     Asterisk,
+    /// Division and assignment (`/=`)
     Slash,
+    /// Floor division and assignment (`//=`)
     DoubleSlash,
+    /// Modulo and assignment (`%=`)
     Percent,
+    /// Exponentiation and assignment (`^=`)
     Caret,
+    /// Concatenation and assignment (`..=`)
     Concat,
 }
 
 impl CompoundOperator {
+    /// Returns the string representation of the operator.
     pub fn to_str(&self) -> &'static str {
         match self {
             Self::Plus => "+=",
@@ -26,6 +36,7 @@ impl CompoundOperator {
         }
     }
 
+    /// Converts this compound operator to its corresponding binary operator.
     pub fn to_binary_operator(&self) -> BinaryOperator {
         match self {
             Self::Plus => BinaryOperator::Plus,
@@ -40,8 +51,10 @@ impl CompoundOperator {
     }
 }
 
+/// Tokens associated with a compound assignment statement.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompoundAssignTokens {
+    /// The operator token for the compound assignment.
     pub operator: Token,
 }
 
@@ -49,6 +62,7 @@ impl CompoundAssignTokens {
     super::impl_token_fns!(target = [operator]);
 }
 
+/// Represents a compound assignment statement (e.g., `a += 1`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompoundAssignStatement {
     operator: CompoundOperator,
@@ -58,6 +72,7 @@ pub struct CompoundAssignStatement {
 }
 
 impl CompoundAssignStatement {
+    /// Creates a new compound assignment statement.
     pub fn new<V: Into<Variable>, E: Into<Expression>>(
         operator: CompoundOperator,
         variable: V,
@@ -71,46 +86,55 @@ impl CompoundAssignStatement {
         }
     }
 
+    /// Sets the tokens for this compound assignment statement.
     pub fn with_tokens(mut self, tokens: CompoundAssignTokens) -> Self {
         self.tokens = Some(tokens);
         self
     }
 
+    /// Sets the tokens for this compound assignment statement.
     #[inline]
     pub fn set_tokens(&mut self, tokens: CompoundAssignTokens) {
         self.tokens = Some(tokens);
     }
 
+    /// Returns the tokens for this compound assignment statement, if any.
     #[inline]
     pub fn get_tokens(&self) -> Option<&CompoundAssignTokens> {
         self.tokens.as_ref()
     }
 
+    /// Returns the compound operator used in this statement.
     #[inline]
     pub fn get_operator(&self) -> CompoundOperator {
         self.operator
     }
 
+    /// Returns the variable being assigned to.
     #[inline]
     pub fn get_variable(&self) -> &Variable {
         &self.variable
     }
 
+    /// Returns the value expression in the assignment.
     #[inline]
     pub fn get_value(&self) -> &Expression {
         &self.value
     }
 
+    /// Extracts the variable and value from this statement.
     #[inline]
     pub fn extract_assignment(self) -> (Variable, Expression) {
         (self.variable, self.value)
     }
 
+    /// Returns a mutable reference to the variable.
     #[inline]
     pub fn mutate_variable(&mut self) -> &mut Variable {
         &mut self.variable
     }
 
+    /// Returns a mutable reference to the value expression.
     #[inline]
     pub fn mutate_value(&mut self) -> &mut Expression {
         &mut self.value
