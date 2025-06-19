@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: "npm"
@@ -36,7 +36,7 @@ jobs:
         with:
           version: "latest"
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -62,7 +62,7 @@ jobs:
           mv darklua-wasm/pkg darklua-wasm/node-pkg
           wasm-pack build darklua-wasm -t bundler --release
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         if: github.ref != 'refs/heads/main'
         with:
           path: |
@@ -77,7 +77,7 @@ jobs:
         run: npx gatsby build
 
       - name: Archive site
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v3
         with:
           path: site/public
 
@@ -98,4 +98,4 @@ jobs:
     steps:
       - name: Deploy site to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v1
+        uses: actions/deploy-pages@v4
