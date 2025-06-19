@@ -7,6 +7,7 @@ expression: rule_names
   "compute_expression",
   "convert_index_to_field",
   "convert_local_function_to_assign",
+  "convert_luau_number",
   "convert_require",
   "filter_after_early_return",
   "group_local_assignment",
@@ -27,6 +28,5 @@ expression: rule_names
   "remove_unused_while",
   "rename_variables",
   "remove_if_expression",
-  "remove_continue",
-  "convert_luau_number"
+  "remove_continue"
 ]

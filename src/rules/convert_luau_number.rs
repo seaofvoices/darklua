@@ -1,5 +1,5 @@
 use crate::{
-    nodes::{Block, DecimalNumber, NumberExpression},
+    nodes::{Block, HexNumber, NumberExpression, Token},
     process::{DefaultVisitor, NodeProcessor, NodeVisitor},
     rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties},
 };
@@ -11,30 +11,32 @@ struct Processor<'a> {
     code: &'a str,
 }
 
-impl NodeProcessor for Processor<'_> {
-    fn process_number_expression(&mut self, num_exp: &mut NumberExpression) {
-        if let NumberExpression::Binary(binary) = num_exp {
-            let value = binary.compute_value();
-            *num_exp = DecimalNumber::new(value).into();
-            return;
-        }
-        if let Some(token) = num_exp.get_token() {
-            let content = token.read(self.code);
-            let mut underscore_removed = String::with_capacity(content.len());
-            let mut changed = false;
+impl Processor<'_> {
+    fn trim_underscores(&self, token: &mut Token) {
+        let content = token.read(self.code);
 
-            for c in content.chars() {
-                if c != '_' {
-                    underscore_removed.push(c);
-                } else {
-                    changed = true;
+        if content.contains('_') {
+            token.replace_with_content(content.chars().filter(|c| *c != '_').collect::<String>());
+        }
+    }
+}
+
+impl NodeProcessor for Processor<'_> {
+    fn process_number_expression(&mut self, number: &mut NumberExpression) {
+        match number {
+            NumberExpression::Binary(binary) => {
+                let value = binary.get_raw_value();
+                *number = HexNumber::new(value, false).into();
+            }
+            NumberExpression::Hex(hex_number) => {
+                if let Some(token) = hex_number.mutate_token() {
+                    self.trim_underscores(token);
                 }
             }
-
-            if changed {
-                let mut new_token = token.clone();
-                new_token.replace_with_content(underscore_removed);
-                num_exp.set_token(new_token);
+            NumberExpression::Decimal(decimal_number) => {
+                if let Some(token) = decimal_number.mutate_token() {
+                    self.trim_underscores(token);
+                }
             }
         }
     }

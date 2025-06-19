@@ -3,16 +3,16 @@ use darklua_core::rules::{ConvertLuauNumber, Rule};
 test_rule!(
     convert_luau_number,
     ConvertLuauNumber::default(),
-    binary_literal_lowercase("local a = 0b01010101")
-        => "local a = 85",
-    binary_literal_uppercase("local b = 0B01010101")
-        => "local b = 85",
-    binary_literal_lowercase_with_underscores("local c = 0b_0101_0101")
-        => "local c = 85",
-    binary_literal_uppercase_with_underscores("local d = 0B_0101_0101")
-        => "local d = 85",
-    binary_literal_with_multiple_underscores("local e = 0b__________0101_0101")
-        => "local e = 85",
+    binary_literal_lowercase("local a = 0b10101010")
+        => "local a = 0xAA",
+    binary_literal_uppercase("local b = 0B11001100")
+        => "local b = 0xCC",
+    binary_literal_lowercase_with_underscores("local c = 0b_1111_0000")
+        => "local c = 0xF0",
+    binary_literal_uppercase_with_underscores("local d = 0B_0000_1111")
+        => "local d = 0x0F",
+    binary_literal_with_multiple_underscores("local e = 0b__________1010_1010")
+        => "local e = 0xAA",
     decimal_with_underscores("local a = 1_048_576")
         => "local a = 1048576",
     decimal_with_multiple_underscores("local a1 = 1___048__576__")
