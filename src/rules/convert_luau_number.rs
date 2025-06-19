@@ -46,20 +46,20 @@ impl<'a> Processor<'a> {
     }
 }
 
-pub const CONVERT_LUAU_NUMBERS_RULE_NAME: &str = "convert_luau_numbers";
+pub const CONVERT_LUAU_NUMBER_RULE_NAME: &str = "convert_luau_number";
 
-/// A rule that converts Luau number literals to decimal numbers.
+/// A rule that converts Luau number literals to regular Lua numbers.
 #[derive(Default, Debug, PartialEq, Eq)]
-pub struct ConvertLuauNumbers {}
+pub struct ConvertLuauNumber {}
 
-impl FlawlessRule for ConvertLuauNumbers {
+impl FlawlessRule for ConvertLuauNumber {
     fn flawless_process(&self, block: &mut Block, context: &Context) {
         let mut processor = Processor::new(context.original_code());
         DefaultVisitor::visit_block(block, &mut processor);
     }
 }
 
-impl RuleConfiguration for ConvertLuauNumbers {
+impl RuleConfiguration for ConvertLuauNumber {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         verify_no_rule_properties(&properties)?;
 
@@ -67,7 +67,7 @@ impl RuleConfiguration for ConvertLuauNumbers {
     }
 
     fn get_name(&self) -> &'static str {
-        CONVERT_LUAU_NUMBERS_RULE_NAME
+        CONVERT_LUAU_NUMBER_RULE_NAME
     }
 
     fn serialize_to_properties(&self) -> RuleProperties {
@@ -82,22 +82,22 @@ mod test {
 
     use insta::assert_json_snapshot;
 
-    fn new_rule() -> ConvertLuauNumbers {
-        ConvertLuauNumbers::default()
+    fn new_rule() -> ConvertLuauNumber {
+        ConvertLuauNumber::default()
     }
 
     #[test]
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_convert_luau_numbers", rule);
+        assert_json_snapshot!("default_convert_luau_number", rule);
     }
 
     #[test]
     fn configure_with_extra_field_error() {
         let result = json5::from_str::<Box<dyn Rule>>(
             r#"{
-            rule: 'convert_luau_numbers',
+            rule: 'convert_luau_number',
             prop: "something",
         }"#,
         );

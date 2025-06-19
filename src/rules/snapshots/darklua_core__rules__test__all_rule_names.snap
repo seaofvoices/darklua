@@ -28,5 +28,5 @@ expression: rule_names
   "rename_variables",
   "remove_if_expression",
   "remove_continue",
-  "convert_luau_numbers"
+  "convert_luau_number"
 ]
