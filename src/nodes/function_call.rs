@@ -98,6 +98,12 @@ impl FunctionCall {
         self.method.as_ref()
     }
 
+    /// Returns if this call uses a method.
+    #[inline]
+    pub fn has_method(&self) -> bool {
+        self.method.is_some()
+    }
+
     /// Returns the prefix (what is being called) of this function call.
     #[inline]
     pub fn get_prefix(&self) -> &Prefix {
@@ -107,7 +113,11 @@ impl FunctionCall {
     /// Removes and returns the method name, if any.
     #[inline]
     pub fn take_method(&mut self) -> Option<Identifier> {
-        self.method.take()
+        let method = self.method.take();
+        if let Some(tokens) = self.tokens.as_mut() {
+            tokens.colon = None;
+        }
+        method
     }
 
     /// Sets the arguments for this function call.
@@ -135,4 +145,30 @@ impl FunctionCall {
     }
 
     super::impl_token_fns!(iter = [tokens, method]);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{nodes::Statement, Parser};
+
+    fn parse_call(code: &str) -> FunctionCall {
+        let parser = Parser::default().preserve_tokens();
+        let block = parser.parse(code).expect("code should parse");
+        if let Some(statement) = block.first_statement() {
+            if let Statement::Call(call) = statement {
+                return call.clone();
+            }
+        }
+        panic!("failed to parse call from: {}", code);
+    }
+
+    #[test]
+    fn test_take_method_removes_colon_token() {
+        let mut call = parse_call("obj:method()");
+
+        assert!(call.get_tokens().unwrap().colon.is_some());
+        call.take_method();
+        assert!(call.get_tokens().unwrap().colon.is_none());
+    }
 }

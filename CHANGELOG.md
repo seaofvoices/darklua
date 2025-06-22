@@ -1,5 +1,7 @@
 # Changelog
 
+* add rule to remove method call syntax (`remove_method_call`) ([#276](https://github.com/seaofvoices/darklua/pull/276))
+* fix `remove_unused_variable` rule to correctly handle trailing unassigned (but used!) variables ([#275](https://github.com/seaofvoices/darklua/pull/275))
 * add rule to convert Luau numbers (`convert_luau_number`) ([#274](https://github.com/seaofvoices/darklua/pull/274))
 * export the `PathRequireMode` struct when using the darklua library and refactor AST node types to reduce size difference between variants ([#273](https://github.com/seaofvoices/darklua/pull/273))
 

@@ -27,6 +27,7 @@ mod remove_debug_profiling;
 mod remove_floor_division;
 mod remove_if_expression;
 mod remove_interpolated_string;
+mod remove_method_call;
 mod remove_nil_declarations;
 mod remove_spaces;
 mod remove_types;
@@ -60,6 +61,7 @@ pub use remove_debug_profiling::*;
 pub use remove_floor_division::*;
 pub use remove_if_expression::*;
 pub use remove_interpolated_string::*;
+pub use remove_method_call::*;
 pub use remove_nil_declarations::*;
 pub use remove_spaces::*;
 pub use remove_types::*;
@@ -304,6 +306,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         REMOVE_EMPTY_DO_RULE_NAME,
         REMOVE_FUNCTION_CALL_PARENS_RULE_NAME,
         REMOVE_INTERPOLATED_STRING_RULE_NAME,
+        REMOVE_METHOD_CALL_RULE_NAME,
         REMOVE_METHOD_DEFINITION_RULE_NAME,
         REMOVE_NIL_DECLARATION_RULE_NAME,
         REMOVE_SPACES_RULE_NAME,
@@ -341,6 +344,7 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_FLOOR_DIVISION_RULE_NAME => Box::<RemoveFloorDivision>::default(),
             REMOVE_FUNCTION_CALL_PARENS_RULE_NAME => Box::<RemoveFunctionCallParens>::default(),
             REMOVE_INTERPOLATED_STRING_RULE_NAME => Box::<RemoveInterpolatedString>::default(),
+            REMOVE_METHOD_CALL_RULE_NAME => Box::<RemoveMethodCall>::default(),
             REMOVE_METHOD_DEFINITION_RULE_NAME => Box::<RemoveMethodDefinition>::default(),
             REMOVE_NIL_DECLARATION_RULE_NAME => Box::<RemoveNilDeclaration>::default(),
             REMOVE_SPACES_RULE_NAME => Box::<RemoveSpaces>::default(),

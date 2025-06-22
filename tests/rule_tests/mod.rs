@@ -434,6 +434,7 @@ mod remove_empty_do;
 mod remove_floor_division;
 mod remove_if_expression;
 mod remove_interpolated_string;
+mod remove_method_call;
 mod remove_method_definition;
 mod remove_nil_declaration;
 mod remove_types;

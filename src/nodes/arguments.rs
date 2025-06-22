@@ -1,4 +1,4 @@
-use std::iter;
+use std::{iter, mem};
 
 use crate::nodes::{Expression, StringExpression, TableExpression, Token};
 
@@ -59,8 +59,39 @@ impl TupleArguments {
 
     /// Adds an argument to this tuple.
     pub fn with_argument<T: Into<Expression>>(mut self, argument: T) -> Self {
-        self.values.push(argument.into());
+        self.push(argument.into());
         self
+    }
+
+    /// Pushes an argument to this tuple.
+    pub fn push(&mut self, argument: impl Into<Expression>) {
+        let argument = argument.into();
+        let initial_len = self.values.len();
+
+        self.values.push(argument);
+
+        if initial_len != 0 {
+            if let Some(tokens) = &mut self.tokens {
+                if tokens.commas.len() == initial_len - 1 {
+                    tokens.commas.push(Token::from_content(","));
+                }
+            }
+        }
+    }
+
+    /// Inserts an argument at the specified index.
+    pub fn insert(&mut self, index: usize, argument: impl Into<Expression>) {
+        if index >= self.values.len() {
+            self.push(argument.into());
+        } else {
+            self.values.insert(index, argument.into());
+
+            if let Some(tokens) = &mut self.tokens {
+                if index <= tokens.commas.len() {
+                    tokens.commas.insert(index, Token::from_content(","));
+                }
+            }
+        }
     }
 
     /// Returns the number of arguments in this tuple.
@@ -135,6 +166,47 @@ impl Arguments {
         TupleArguments::from(self).with_argument(argument).into()
     }
 
+    /// Pushes an argument to these arguments, converting to a tuple if needed.
+    pub fn push(&mut self, argument: impl Into<Expression>) {
+        let argument = argument.into();
+
+        let tuple_args = match self {
+            Arguments::Tuple(tuple) => {
+                tuple.push(argument);
+                return;
+            }
+            Arguments::String(value) => TupleArguments::default()
+                .with_argument(mem::replace(value, StringExpression::empty())),
+            Arguments::Table(value) => TupleArguments::default().with_argument(mem::take(value)),
+        };
+
+        *self = tuple_args.with_argument(argument).into();
+    }
+
+    /// Inserts an argument at the specified index, converting to a tuple if needed.
+    pub fn insert(&mut self, index: usize, argument: impl Into<Expression>) {
+        let argument = argument.into();
+
+        let mut tuple_args = match self {
+            Arguments::Tuple(tuple) => {
+                tuple.insert(index, argument);
+                return;
+            }
+            Arguments::String(value) => {
+                let string = mem::replace(value, StringExpression::empty());
+                TupleArguments::default().with_argument(Expression::from(string))
+            }
+            Arguments::Table(value) => {
+                let table = mem::take(value);
+                TupleArguments::default().with_argument(Expression::from(table))
+            }
+        };
+
+        tuple_args.insert(index, argument);
+
+        *self = tuple_args.into();
+    }
+
     /// Removes all comments from these arguments.
     pub fn clear_comments(&mut self) {
         match self {
@@ -197,5 +269,71 @@ impl From<TableExpression> for Arguments {
 impl From<StringExpression> for Arguments {
     fn from(string: StringExpression) -> Self {
         Self::String(string)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        nodes::{Identifier, Statement},
+        Parser,
+    };
+
+    fn parse_arguments_with_tokens(lua: &str) -> Arguments {
+        let parser = Parser::default().preserve_tokens();
+
+        let code = format!("f {}", lua);
+
+        let block = parser.parse(&code).expect("code should parse");
+        if let Some(statement) = block.first_statement() {
+            if let Statement::Call(call) = statement {
+                return call.get_arguments().clone();
+            }
+        }
+        panic!("failed to parse call arguments from: {}", lua);
+    }
+
+    fn get_tuple_tokens(args: &Arguments) -> &TupleArgumentsTokens {
+        match args {
+            Arguments::Tuple(tuple) => tuple.get_tokens().expect("tuple should have tokens"),
+            Arguments::String(_) | Arguments::Table(_) => panic!("expected tuple arguments"),
+        }
+    }
+
+    fn expect_comma_tokens(args: &Arguments, index: usize) {
+        let tokens = get_tuple_tokens(args);
+        assert_eq!(tokens.commas[index], Token::from_content(","));
+    }
+
+    #[test]
+    fn push_argument_handles_commas() {
+        let mut args = parse_arguments_with_tokens("()");
+
+        args.push(Identifier::new("first"));
+        assert_eq!(get_tuple_tokens(&args).commas.len(), 0);
+
+        args.push(Identifier::new("second"));
+        assert_eq!(get_tuple_tokens(&args).commas.len(), 1);
+        expect_comma_tokens(&args, 0);
+
+        args.push(Identifier::new("third"));
+        assert_eq!(get_tuple_tokens(&args).commas.len(), 2);
+        expect_comma_tokens(&args, 1);
+    }
+
+    #[test]
+    fn insert_argument_handles_commas() {
+        let mut args = parse_arguments_with_tokens("(first, third)");
+
+        args.insert(1, Identifier::new("second"));
+        assert_eq!(get_tuple_tokens(&args).commas.len(), 2);
+        expect_comma_tokens(&args, 1);
+
+        args.insert(3, Identifier::new("fourth"));
+        assert_eq!(get_tuple_tokens(&args).commas.len(), 3);
+
+        args.insert(0, Identifier::new("zero"));
+        assert_eq!(get_tuple_tokens(&args).commas.len(), 4);
     }
 }

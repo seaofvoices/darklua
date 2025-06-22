@@ -19,6 +19,7 @@ expression: rule_names
   "remove_empty_do",
   "remove_function_call_parens",
   "remove_interpolated_string",
+  "remove_method_call",
   "remove_method_definition",
   "remove_nil_declaration",
   "remove_spaces",
