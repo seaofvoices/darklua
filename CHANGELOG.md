@@ -1,5 +1,6 @@
 # Changelog
 
+* improve `inject_global_value` to support structured data. Add the `env_json` property to inject JSON encoded data and the `default_value` property to inject data when the provided environment variable is not defined ([#277](https://github.com/seaofvoices/darklua/pull/277))
 * add rule to remove method call syntax (`remove_method_call`) ([#276](https://github.com/seaofvoices/darklua/pull/276))
 * fix `remove_unused_variable` rule to correctly handle trailing unassigned (but used!) variables ([#275](https://github.com/seaofvoices/darklua/pull/275))
 * add rule to convert Luau numbers (`convert_luau_number`) ([#274](https://github.com/seaofvoices/darklua/pull/274))
