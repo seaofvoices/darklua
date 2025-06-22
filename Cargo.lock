@@ -421,6 +421,7 @@ dependencies = [
  "log",
  "notify",
  "notify-debouncer-full",
+ "num-traits",
  "paste",
  "pathdiff",
  "petgraph",
