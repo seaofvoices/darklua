@@ -493,15 +493,16 @@ fn verify_property_collisions(
     properties: &RuleProperties,
     names: &[&str],
 ) -> Result<(), RuleConfigurationError> {
-    let mut exists = false;
+    let mut exists: Option<&str> = None;
     for name in names.iter() {
         if properties.contains_key(*name) {
-            if exists {
-                return Err(RuleConfigurationError::PropertyCollision(
-                    names.iter().map(ToString::to_string).collect(),
-                ));
+            if let Some(existing_name) = &exists {
+                return Err(RuleConfigurationError::PropertyCollision(vec![
+                    existing_name.to_string(),
+                    name.to_string(),
+                ]));
             } else {
-                exists = true;
+                exists = Some(*name);
             }
         }
     }

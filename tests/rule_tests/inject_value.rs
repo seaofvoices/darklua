@@ -52,6 +52,48 @@ test_rule_without_effects!(
     does_not_inline_if_global_table_is_redefined("local _G return _G.foo"),
 );
 
+test_rule!(
+    inject_global_empty_array,
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
+        rule: 'inject_global_value',
+        identifier: 'VALUE',
+        value: [],
+    }"#,
+    )
+    .unwrap(),
+    inject_value("return VALUE") => "return {}",
+    inject_value_from_global_table("return _G.VALUE") => "return {}",
+);
+
+test_rule!(
+    inject_global_mixed_array,
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
+        rule: 'inject_global_value',
+        identifier: 'VALUE',
+        value: [1, "hello", true],
+    }"#,
+    )
+    .unwrap(),
+    inject_value("return VALUE") => "return {1, 'hello', true}",
+    inject_value_from_global_table("return _G.VALUE") => "return {1, 'hello', true}",
+);
+
+test_rule!(
+    inject_global_object,
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
+        rule: 'inject_global_value',
+        identifier: 'VALUE',
+        value: {a: 1, b: "hello", c: true},
+    }"#,
+    )
+    .unwrap(),
+    inject_value("return VALUE") => "return { a = 1, b = 'hello', c = true }",
+    inject_value_from_global_table("return _G.VALUE") => "return { a = 1, b = 'hello', c = true }",
+);
+
 #[test]
 fn deserialize_from_object_notation_without_value() {
     json5::from_str::<Box<dyn Rule>>(
@@ -181,6 +223,19 @@ test_rule!(
     }"#,
     ).unwrap(),
     inject_negative_integer("return _G.num") => "return 1E49",
+);
+
+test_rule!(
+    inject_global_variable_default_value,
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
+        rule: 'inject_global_value',
+        identifier: 'num',
+        env: 'NUM',
+        default_value: 10,
+    }"#,
+    ).unwrap(),
+    inject_negative_integer("return _G.num") => "return 10",
 );
 
 #[test]

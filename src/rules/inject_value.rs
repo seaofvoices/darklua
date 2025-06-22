@@ -1,7 +1,7 @@
-use crate::nodes::{
-    Block, DecimalNumber, Expression, ParentheseExpression, Prefix, StringExpression, UnaryOperator,
-};
-use crate::process::{IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
+use num_traits::ToPrimitive;
+
+use crate::nodes::{Block, Expression, ParentheseExpression, Prefix, StringExpression};
+use crate::process::{to_expression, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
     RulePropertyValue,
@@ -84,38 +84,58 @@ impl NodeProcessor for ValueInjection {
 pub const INJECT_GLOBAL_VALUE_RULE_NAME: &str = "inject_global_value";
 
 /// A rule to replace global variables with values.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub struct InjectGlobalValue {
     identifier: String,
     value: Expression,
+    original_properties: RuleProperties,
+}
+
+fn properties_with_value(value: impl Into<RulePropertyValue>) -> RuleProperties {
+    let mut properties = RuleProperties::new();
+    properties.insert("value".to_owned(), value.into());
+    properties
 }
 
 impl InjectGlobalValue {
-    pub fn nil<S: Into<String>>(identifier: S) -> Self {
+    pub fn nil(identifier: impl Into<String>) -> Self {
         Self {
             identifier: identifier.into(),
             value: Expression::nil(),
+            original_properties: properties_with_value(RulePropertyValue::None),
         }
     }
 
-    pub fn boolean<S: Into<String>>(identifier: S, value: bool) -> Self {
+    pub fn boolean(identifier: impl Into<String>, value: bool) -> Self {
         Self {
             identifier: identifier.into(),
             value: Expression::from(value),
+            original_properties: properties_with_value(value),
         }
     }
 
-    pub fn string<S: Into<String>, S2: Into<String>>(identifier: S, value: S2) -> Self {
+    pub fn string(identifier: impl Into<String>, value: impl Into<String>) -> Self {
+        let value = value.into();
+        let original_properties = properties_with_value(&value);
         Self {
             identifier: identifier.into(),
             value: StringExpression::from_value(value).into(),
+            original_properties,
         }
     }
 
-    pub fn number<S: Into<String>>(identifier: S, value: f64) -> Self {
+    pub fn number(identifier: impl Into<String>, value: f64) -> Self {
         Self {
             identifier: identifier.into(),
             value: Expression::from(value),
+            original_properties: if let Some(integer) = value
+                .to_usize()
+                .filter(|integer| integer.to_f64() == Some(value))
+            {
+                properties_with_value(integer)
+            } else {
+                properties_with_value(value)
+            },
         }
     }
 }
@@ -125,6 +145,7 @@ impl Default for InjectGlobalValue {
         Self {
             identifier: "".to_owned(),
             value: Expression::nil(),
+            original_properties: RuleProperties::new(),
         }
     }
 }
@@ -139,34 +160,63 @@ impl FlawlessRule for InjectGlobalValue {
 impl RuleConfiguration for InjectGlobalValue {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         verify_required_properties(&properties, &["identifier"])?;
-        verify_property_collisions(&properties, &["value", "env"])?;
+        verify_property_collisions(&properties, &["value", "env", "env_json"])?;
+        verify_property_collisions(&properties, &["value", "default_value"])?;
+
+        let mut default_value_expected = None;
+        let mut has_default_value = false;
+
+        self.original_properties = properties.clone();
 
         for (key, value) in properties {
             match key.as_str() {
                 "identifier" => {
                     self.identifier = value.expect_string(&key)?;
                 }
-                "value" => match value {
-                    RulePropertyValue::None => {}
-                    RulePropertyValue::String(value) => {
-                        self.value = StringExpression::from_value(value).into();
+                "value" => {
+                    if let Some(value) = value.into_expression() {
+                        self.value = value
+                    } else {
+                        return Err(RuleConfigurationError::UnexpectedValueType(key));
                     }
-                    RulePropertyValue::Boolean(value) => {
-                        self.value = Expression::from(value);
+                }
+                "default_value" => {
+                    has_default_value = true;
+                    if let Some(value) = value.into_expression() {
+                        self.value = value
+                    } else {
+                        return Err(RuleConfigurationError::UnexpectedValueType(key));
                     }
-                    RulePropertyValue::Usize(value) => {
-                        self.value = DecimalNumber::new(value as f64).into();
-                    }
-                    RulePropertyValue::Float(value) => {
-                        self.value = Expression::from(value);
-                    }
-                    _ => return Err(RuleConfigurationError::UnexpectedValueType(key)),
-                },
-                "env" => {
+                }
+                "env" | "env_json" => {
                     let variable_name = value.expect_string(&key)?;
                     if let Some(os_value) = env::var_os(&variable_name) {
                         if let Some(value) = os_value.to_str() {
-                            self.value = StringExpression::from_value(value).into();
+                            self.value = if key.as_str() == "env_json" {
+                                let json_value = json5::from_str::<serde_json::Value>(value).map_err(|err| {
+                                    RuleConfigurationError::UnexpectedValue {
+                                        property: key.clone(),
+                                        message: format!(
+                                            "invalid json data assigned to the `{}` environment variable: {}",
+                                            &variable_name,
+                                            err
+                                        ),
+                                    }
+                                })?;
+
+                                to_expression(&json_value).map_err(|err| {
+                                    RuleConfigurationError::UnexpectedValue {
+                                        property: key,
+                                        message: format!(
+                                            "unable to convert json data assigned to the `{}` environment variable to a lua expression: {}",
+                                            &variable_name,
+                                            err
+                                        ),
+                                    }
+                                })?
+                            } else {
+                                StringExpression::from_value(value).into()
+                            };
                         } else {
                             return Err(RuleConfigurationError::UnexpectedValue {
                                 property: key,
@@ -177,14 +227,20 @@ impl RuleConfiguration for InjectGlobalValue {
                             });
                         }
                     } else {
-                        log::warn!(
-                            "environment variable `{}` is not defined. The rule `{}` will use `nil`",
-                            variable_name,
-                            INJECT_GLOBAL_VALUE_RULE_NAME,
-                        );
+                        default_value_expected = Some(variable_name);
                     };
                 }
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
+            }
+        }
+
+        if !has_default_value {
+            if let Some(variable_name) = default_value_expected {
+                log::warn!(
+                    "environment variable `{}` is not defined. The rule `{}` will use `nil`",
+                    &variable_name,
+                    INJECT_GLOBAL_VALUE_RULE_NAME,
+                );
             }
         }
 
@@ -196,42 +252,12 @@ impl RuleConfiguration for InjectGlobalValue {
     }
 
     fn serialize_to_properties(&self) -> RuleProperties {
-        let mut rules = RuleProperties::new();
+        let mut rules = self.original_properties.clone();
+
         rules.insert(
             "identifier".to_owned(),
             RulePropertyValue::String(self.identifier.clone()),
         );
-
-        let property_value = match &self.value {
-            Expression::True(_) => RulePropertyValue::Boolean(true),
-            Expression::False(_) => RulePropertyValue::Boolean(false),
-            Expression::Nil(_) => RulePropertyValue::None,
-            Expression::Number(number) => {
-                let value = number.compute_value();
-                if value.trunc() == value && value >= 0.0 && value < usize::MAX as f64 {
-                    RulePropertyValue::Usize(value as usize)
-                } else {
-                    RulePropertyValue::Float(value)
-                }
-            }
-            Expression::String(string) => RulePropertyValue::from(string.get_value()),
-            Expression::Unary(unary) => {
-                if matches!(unary.operator(), UnaryOperator::Minus) {
-                    if let Expression::Number(number) = unary.get_expression() {
-                        RulePropertyValue::Float(-number.compute_value())
-                    } else {
-                        unreachable!(
-                            "unexpected expression for unary minus {:?}",
-                            unary.get_expression()
-                        );
-                    }
-                } else {
-                    unreachable!("unexpected unary operator {:?}", unary.operator());
-                }
-            }
-            _ => unreachable!("unexpected expression {:?}", self.value),
-        };
-        rules.insert("value".to_owned(), property_value);
 
         rules
     }
@@ -252,7 +278,7 @@ mod test {
         }"#,
         );
 
-        assert!(result.is_err());
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"missing required field 'identifier'");
     }
 
     #[test]
@@ -260,19 +286,34 @@ mod test {
         let result = json5::from_str::<Box<dyn Rule>>(
             r#"{
             rule: 'inject_global_value',
+            identifier: 'DEV',
             value: false,
             env: "VAR",
         }"#,
         );
 
-        assert!(result.is_err());
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"the fields `value` and `env` cannot be defined together");
+    }
+
+    #[test]
+    fn configure_with_value_and_default_value_properties_should_error() {
+        let result = json5::from_str::<Box<dyn Rule>>(
+            r#"{
+            rule: 'inject_global_value',
+            identifier: 'DEV',
+            value: false,
+            default_value: true,
+        }"#,
+        );
+
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"the fields `value` and `default_value` cannot be defined together");
     }
 
     #[test]
     fn deserialize_from_string_notation_should_error() {
         let result = json5::from_str::<Box<dyn Rule>>("'inject_global_value'");
 
-        assert!(result.is_err());
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"missing required field 'identifier'");
     }
 
     #[test]
@@ -322,5 +363,69 @@ mod test {
         let rule: Box<dyn Rule> = Box::new(InjectGlobalValue::number("VAR", 123.45));
 
         assert_json_snapshot!("inject_float_value_as_var", rule);
+    }
+
+    #[test]
+    fn serialization_round_trip_with_mixed_array() {
+        let rule: Box<dyn Rule> = json5::from_str(
+            r#"{
+            rule: 'inject_global_value',
+            identifier: 'foo',
+            value: ["hello", true, 1, 0.5, -1.35],
+        }"#,
+        )
+        .unwrap();
+
+        assert_json_snapshot!(rule, @r###"
+        {
+          "rule": "inject_global_value",
+          "identifier": "foo",
+          "value": [
+            "hello",
+            true,
+            1,
+            0.5,
+            -1.35
+          ]
+        }
+        "###);
+    }
+
+    #[test]
+    fn serialization_round_trip_with_object_value() {
+        let rule: Box<dyn Rule> = json5::from_str(
+            r#"{
+            rule: 'inject_global_value',
+            identifier: 'foo',
+            value: {
+                f0: 'world',
+                f1: true,
+                f2: 1,
+                f3: 0.5,
+                f4: -1.35,
+                f5: [1, 2, 3],
+            },
+        }"#,
+        )
+        .unwrap();
+
+        assert_json_snapshot!(rule, @r###"
+        {
+          "rule": "inject_global_value",
+          "identifier": "foo",
+          "value": {
+            "f0": "world",
+            "f1": true,
+            "f2": 1,
+            "f3": 0.5,
+            "f4": -1.35,
+            "f5": [
+              1,
+              2,
+              3
+            ]
+          }
+        }
+        "###);
     }
 }
