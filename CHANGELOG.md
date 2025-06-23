@@ -1,5 +1,6 @@
 # Changelog
 
+* add support for path requires ending with an extension different than `.luau` or `.lua` ([#280](https://github.com/seaofvoices/darklua/pull/280))
 * add rule to convert `math.sqrt()` calls into an exponent form (using the `^` operator) (`convert_square_root_call`) ([#278](https://github.com/seaofvoices/darklua/pull/278))
 * improve `inject_global_value` to support structured data. Add the `env_json` property to inject JSON encoded data and the `default_value` property to inject data when the provided environment variable is not defined ([#277](https://github.com/seaofvoices/darklua/pull/277))
 * add rule to remove method call syntax (`remove_method_call`) ([#276](https://github.com/seaofvoices/darklua/pull/276))
