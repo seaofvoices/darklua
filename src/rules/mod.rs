@@ -12,6 +12,7 @@ mod configuration_error;
 mod convert_index_to_field;
 mod convert_luau_number;
 mod convert_require;
+mod convert_square_root_call;
 mod empty_do;
 mod filter_early_return;
 mod group_local;
@@ -47,6 +48,7 @@ pub use configuration_error::RuleConfigurationError;
 pub use convert_index_to_field::*;
 pub use convert_luau_number::*;
 pub use convert_require::*;
+pub use convert_square_root_call::*;
 pub use empty_do::*;
 pub use filter_early_return::*;
 pub use group_local::*;
@@ -296,6 +298,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME,
         CONVERT_LUAU_NUMBER_RULE_NAME,
         CONVERT_REQUIRE_RULE_NAME,
+        CONVERT_SQUARE_ROOT_CALL_RULE_NAME,
         FILTER_AFTER_EARLY_RETURN_RULE_NAME,
         GROUP_LOCAL_ASSIGNMENT_RULE_NAME,
         INJECT_GLOBAL_VALUE_RULE_NAME,
@@ -333,6 +336,7 @@ impl FromStr for Box<dyn Rule> {
             }
             CONVERT_LUAU_NUMBER_RULE_NAME => Box::<ConvertLuauNumber>::default(),
             CONVERT_REQUIRE_RULE_NAME => Box::<ConvertRequire>::default(),
+            CONVERT_SQUARE_ROOT_CALL_RULE_NAME => Box::<ConvertSquareRootCall>::default(),
             FILTER_AFTER_EARLY_RETURN_RULE_NAME => Box::<FilterAfterEarlyReturn>::default(),
             GROUP_LOCAL_ASSIGNMENT_RULE_NAME => Box::<GroupLocalAssignment>::default(),
             INJECT_GLOBAL_VALUE_RULE_NAME => Box::<InjectGlobalValue>::default(),

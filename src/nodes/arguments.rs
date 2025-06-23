@@ -152,6 +152,24 @@ pub enum Arguments {
 }
 
 impl Arguments {
+    /// Returns the total number of arguments.
+    #[inline]
+    pub fn len(&self) -> usize {
+        match self {
+            Self::Tuple(tuple) => tuple.len(),
+            Self::String(_) | Self::Table(_) => 1,
+        }
+    }
+
+    /// Returns true if this is an empty tuple of arguments.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::Tuple(tuple) => tuple.is_empty(),
+            Self::String(_) | Self::Table(_) => false,
+        }
+    }
+
     /// Converts these arguments into a vector of expressions.
     pub fn to_expressions(self) -> Vec<Expression> {
         match self {
@@ -304,6 +322,85 @@ mod tests {
     fn expect_comma_tokens(args: &Arguments, index: usize) {
         let tokens = get_tuple_tokens(args);
         assert_eq!(tokens.commas[index], Token::from_content(","));
+    }
+
+    mod arguments_len {
+        use super::*;
+
+        #[test]
+        fn empty_tuple() {
+            let empty_tuple = Arguments::Tuple(TupleArguments::new(vec![]));
+            assert_eq!(empty_tuple.len(), 0);
+        }
+
+        #[test]
+        fn single_tuple() {
+            let single_tuple = Arguments::Tuple(TupleArguments::new(vec![Expression::Identifier(
+                Identifier::new("x"),
+            )]));
+            assert_eq!(single_tuple.len(), 1);
+        }
+
+        #[test]
+        fn multi_tuple() {
+            let multi_tuple = Arguments::Tuple(TupleArguments::new(vec![
+                Expression::Identifier(Identifier::new("x")),
+                Expression::Identifier(Identifier::new("y")),
+                Expression::Identifier(Identifier::new("z")),
+            ]));
+            assert_eq!(multi_tuple.len(), 3);
+        }
+
+        #[test]
+        fn string() {
+            let string_args = Arguments::String(StringExpression::from_value("test"));
+            assert_eq!(string_args.len(), 1);
+        }
+
+        #[test]
+        fn table() {
+            let table_args = Arguments::Table(TableExpression::new(vec![]));
+            assert_eq!(table_args.len(), 1);
+        }
+    }
+
+    mod arguments_is_empty {
+        use super::*;
+
+        #[test]
+        fn empty_tuple() {
+            let empty_tuple = Arguments::Tuple(TupleArguments::new(vec![]));
+            assert!(empty_tuple.is_empty());
+        }
+
+        #[test]
+        fn single_tuple() {
+            let single_tuple = Arguments::Tuple(TupleArguments::new(vec![Expression::Identifier(
+                Identifier::new("x"),
+            )]));
+            assert!(!single_tuple.is_empty());
+        }
+
+        #[test]
+        fn multi_tuple() {
+            let multi_tuple = Arguments::Tuple(TupleArguments::new(vec![
+                Expression::Identifier(Identifier::new("x")),
+                Expression::Identifier(Identifier::new("y")),
+            ]));
+            assert!(!multi_tuple.is_empty());
+        }
+
+        #[test]
+        fn string() {
+            let string_args = Arguments::String(StringExpression::from_value("test"));
+            assert!(!string_args.is_empty());
+        }
+
+        #[test]
+        fn table() {
+            let table_args = Arguments::Table(TableExpression::new(vec![]));
+            assert!(!table_args.is_empty());
+        }
     }
 
     #[test]

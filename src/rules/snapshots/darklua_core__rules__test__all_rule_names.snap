@@ -9,6 +9,7 @@ expression: rule_names
   "convert_local_function_to_assign",
   "convert_luau_number",
   "convert_require",
+  "convert_square_root_call",
   "filter_after_early_return",
   "group_local_assignment",
   "inject_global_value",
