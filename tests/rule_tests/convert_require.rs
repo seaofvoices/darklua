@@ -204,6 +204,20 @@ fn convert_parent_init_module_from_init_module() {
     );
 }
 
+#[test]
+fn convert_sibling_module_from_init_module_with_non_luau_extension() {
+    let resources = memory_resources!(
+        "src/init.lua" => "local value = require('./value.global')",
+        "src/value.global.lua" => "return nil",
+        ".darklua.json" => CONVERT_PATH_TO_ROBLOX_DEFAULT_CONFIG,
+    );
+    expect_file_process(
+        &resources,
+        "src/init.lua",
+        "local value = require(script:FindFirstChild('value.global'))",
+    );
+}
+
 mod luaurc {
     use super::*;
 
