@@ -420,6 +420,7 @@ mod compute_expression;
 mod convert_index_to_field;
 mod convert_luau_number;
 mod convert_require;
+mod convert_square_root_call;
 mod filter_early_return;
 mod group_local_assignment;
 mod inject_value;
