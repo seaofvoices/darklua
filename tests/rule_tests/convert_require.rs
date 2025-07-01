@@ -251,6 +251,21 @@ mod luaurc {
             "local value = require(script:FindFirstChild('value'):FindFirstChild('default'))",
         );
     }
+
+    #[test]
+    fn convert_self_from_init_module() {
+        let resources = memory_resources!(
+            "src/init.lua" => "local value = require('@self/default')",
+            "src/default.lua" => "return nil",
+            ".darklua.json" => CONVERT_PATH_TO_ROBLOX_DEFAULT_CONFIG,
+        );
+        
+        expect_file_process(
+            &resources,
+            "src/init.lua",
+            "local value = require(script:FindFirstChild('default'))",
+        );
+    }
 }
 
 mod sourcemap {
