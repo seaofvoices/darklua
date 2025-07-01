@@ -24,7 +24,32 @@ use crate::{
     utils::normalize_path,
 };
 
-/// Convert serializable data into a Lua module
+/// Convert serializable data into a Lua module.
+///
+/// This function takes any value that implements `Serialize` and converts it into a Lua module
+/// that returns the serialized data. The resulting Lua code will be a module that returns
+/// a table containing the serialized data.
+///
+/// # Example
+///
+/// ```rust
+/// # use serde::Serialize;
+/// # use darklua_core::convert_data;
+/// #[derive(Serialize)]
+/// struct ExampleData {
+///     name: String,
+///     value: i32,
+/// }
+///
+/// let config = ExampleData {
+///     name: "test".to_string(),
+///     value: 42,
+/// };
+///
+/// let lua_code = convert_data(config).unwrap();
+///
+/// assert_eq!(lua_code, "return{name='test',value=42}");
+/// ```
 pub fn convert_data(value: impl Serialize) -> Result<String, DarkluaError> {
     let expression = to_expression(&value).map_err(DarkluaError::from)?;
 
@@ -36,6 +61,10 @@ pub fn convert_data(value: impl Serialize) -> Result<String, DarkluaError> {
     Ok(generator.into_string())
 }
 
+/// Process resources according to the given options.
+///
+/// This function is the main entry point for processing resources. It creates a [`WorkerTree`],
+/// collects work items based on the provided resources and options, and then processes them.
 pub fn process(resources: &Resources, options: Options) -> DarkluaResult<WorkerTree> {
     let mut worker_tree = WorkerTree::default();
 

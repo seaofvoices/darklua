@@ -2,11 +2,13 @@ use std::collections::HashMap;
 use std::{iter, ops};
 
 use crate::nodes::{
-    Arguments, DoStatement, Expression, FunctionCall, Identifier, LocalAssignStatement, Prefix,
-    Statement, TableEntry, TypedIdentifier,
+    DoStatement, Expression, FunctionCall, Identifier, LocalAssignStatement, Prefix, Statement,
+    TypedIdentifier,
 };
 use crate::process::{Evaluator, IdentifierTracker, NodeProcessor};
-use crate::utils::{expressions_as_expression, expressions_as_statement};
+use crate::utils::{
+    expressions_as_expression, expressions_as_statement, preserve_arguments_side_effects,
+};
 
 pub(crate) trait CallMatch<T> {
     fn matches(&self, identifiers: &IdentifierTracker, prefix: &Prefix) -> bool;
@@ -83,49 +85,6 @@ impl<Args, T: CallMatch<Args>> RemoveFunctionCallProcessor<Args, T> {
         }
     }
 
-    fn preserve_side_effects(&self, arguments: &Arguments) -> Vec<Expression> {
-        match arguments {
-            Arguments::Tuple(tuple) => tuple
-                .iter_values()
-                .filter(|value| self.evaluator.has_side_effects(value))
-                .cloned()
-                .collect(),
-            Arguments::Table(table) => {
-                let mut expressions = Vec::new();
-
-                for entry in table.iter_entries() {
-                    match entry {
-                        TableEntry::Field(field) => {
-                            let expression = field.get_value();
-                            if self.evaluator.has_side_effects(expression) {
-                                expressions.push(expression.clone());
-                            }
-                        }
-                        TableEntry::Index(index) => {
-                            let key = index.get_key();
-                            let value = index.get_value();
-
-                            if self.evaluator.has_side_effects(key) {
-                                expressions.push(key.clone());
-                            }
-                            if self.evaluator.has_side_effects(value) {
-                                expressions.push(value.clone());
-                            }
-                        }
-                        TableEntry::Value(value) => {
-                            if self.evaluator.has_side_effects(value) {
-                                expressions.push(value.clone());
-                            }
-                        }
-                    }
-                }
-
-                expressions
-            }
-            Arguments::String(_) => Vec::new(),
-        }
-    }
-
     fn get_reserved_global(&mut self) -> String {
         self.global_counter += 1;
         format!("__DARKLUA_REMOVE_CALL_RESERVED_{}", self.global_counter)
@@ -155,7 +114,10 @@ impl<Args, T: CallMatch<Args>> NodeProcessor for RemoveFunctionCallProcessor<Arg
                     .matches(&self.identifier_tracker, call.get_prefix())
             {
                 *statement = if self.preserve_args_side_effects {
-                    expressions_as_statement(self.preserve_side_effects(call.get_arguments()))
+                    expressions_as_statement(preserve_arguments_side_effects(
+                        &self.evaluator,
+                        call.get_arguments(),
+                    ))
                 } else {
                     DoStatement::default().into()
                 };
@@ -188,7 +150,10 @@ impl<Args, T: CallMatch<Args>> NodeProcessor for RemoveFunctionCallProcessor<Arg
                     *expression = result;
                 } else {
                     *expression = if self.preserve_args_side_effects {
-                        expressions_as_expression(self.preserve_side_effects(call.get_arguments()))
+                        expressions_as_expression(preserve_arguments_side_effects(
+                            &self.evaluator,
+                            call.get_arguments(),
+                        ))
                     } else {
                         Expression::nil()
                     };

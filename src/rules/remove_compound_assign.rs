@@ -170,7 +170,7 @@ impl Processor {
                         if let Expression::Identifier(identifier) = parenthese.inner_expression() {
                             Prefix::from(identifier.clone())
                         } else {
-                            parenthese.clone().into()
+                            (*parenthese.clone()).into()
                         };
                     let new_variable = FieldExpression::new(new_prefix, field.get_field().clone());
 

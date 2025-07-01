@@ -8,12 +8,14 @@ use crate::{
     utils::Timer,
 };
 
+/// A parser for Luau code that converts it into an abstract syntax tree.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Parser {
     hold_token_data: bool,
 }
 
 impl Parser {
+    /// Parses Lua code into a [`Block`].
     pub fn parse(&self, code: &str) -> Result<Block, ParserError> {
         let full_moon_parse_timer = Timer::now();
         let parse_result = full_moon::parse(code);
@@ -33,6 +35,7 @@ impl Parser {
         })
     }
 
+    /// Configures the parser to preserve token data (line numbers, whitespace and comments).
     pub fn preserve_tokens(mut self) -> Self {
         self.hold_token_data = true;
         self
@@ -54,6 +57,7 @@ enum ParserErrorKind {
     Converting(ConvertError),
 }
 
+/// The error type that can occur when parsing code.
 #[derive(Clone, Debug)]
 pub struct ParserError {
     kind: Box<ParserErrorKind>,

@@ -5,12 +5,20 @@ group: Guides
 order: 1
 ---
 
+## Rokit
+
+When using [Rokit](https://github.com/rojo-rbx/rokit), install darklua with the following command:
+
+```bash
+rokit add seaofvoices/darklua
+```
+
 ## Foreman
 
 If you are already using [Foreman](https://github.com/Roblox/foreman), then installing darklua is as simple as adding this line in the `foreman.toml` file:
 
 ```toml
-darklua = { github = "seaofvoices/darklua", version = "=0.13.1" }
+darklua = { github = "seaofvoices/darklua", version = "=0.16.0" }
 ```
 
 ## Download a Release

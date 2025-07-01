@@ -17,6 +17,12 @@ use super::{
     WorkItem, Worker,
 };
 
+/// A structure that manages the processing of Lua/Luau files and their dependencies.
+///
+/// Under the hood, the `WorkerTree` maintains a directed graph of work items, where each node
+/// represents a file to be processed and edges represent dependencies between files. It handles
+/// the collection and processing of work items, manages file dependencies, and tracks the status
+/// of each work item.
 #[derive(Debug, Default)]
 pub struct WorkerTree {
     graph: StableDiGraph<WorkItem, ()>,
@@ -27,6 +33,11 @@ pub struct WorkerTree {
 }
 
 impl WorkerTree {
+    /// Collects work items based on the provided resources and options.
+    ///
+    /// This method traverses the input directory or file specified in the options and
+    /// creates work items for each Lua/Luau file that needs to be processed. It also sets up
+    /// the output paths based on the provided options.
     pub fn collect_work(&mut self, resources: &Resources, options: &Options) -> DarkluaResult<()> {
         log::trace!("start collecting work");
         let collect_work_timer = Timer::now();
@@ -86,6 +97,10 @@ impl WorkerTree {
         Ok(())
     }
 
+    /// Processes all collected work items according to the provided options.
+    ///
+    /// This method performs the actual processing of work items in topological order,
+    /// respecting dependencies between files.
     pub fn process(&mut self, resources: &Resources, mut options: Options) -> DarkluaResult<()> {
         clear_luau_configuration_cache();
 
@@ -225,6 +240,10 @@ impl WorkerTree {
         Ok(())
     }
 
+    /// Returns the final result of processing all work items.
+    ///
+    /// This method consumes the `WorkerTree` and returns either Ok(()) if all work items
+    /// were processed successfully, or a vector of errors if any work items failed.
     pub fn result(self) -> Result<(), Vec<DarkluaError>> {
         let errors: Vec<_> = self.iter_errors().cloned().collect();
         if errors.is_empty() {
@@ -234,6 +253,7 @@ impl WorkerTree {
         }
     }
 
+    /// Collects all errors that occurred during processing.
     pub fn collect_errors(&self) -> Vec<&DarkluaError> {
         self.iter_errors().collect()
     }
@@ -247,6 +267,7 @@ impl WorkerTree {
             })
     }
 
+    /// Returns the number of successfully processed work items.
     pub fn success_count(&self) -> usize {
         self.graph
             .node_weights()
@@ -257,12 +278,14 @@ impl WorkerTree {
             .count()
     }
 
+    /// Returns an iterator over all external dependencies.
     pub fn iter_external_dependencies(&self) -> impl Iterator<Item = &Path> {
         self.external_dependencies
             .iter()
             .filter_map(|(path, container)| (!container.is_empty()).then_some(path.as_path()))
     }
 
+    /// Resets the worker tree to its initial state.
     pub fn reset(&mut self) {
         self.graph.node_weights_mut().for_each(|work_item| {
             work_item.reset();
@@ -270,6 +293,7 @@ impl WorkerTree {
         self.external_dependencies.clear();
     }
 
+    /// Notifies the worker tree that a source file has changed.
     pub fn source_changed(&mut self, path: impl AsRef<Path>) {
         let path = normalize_path(path.as_ref());
 
@@ -304,6 +328,7 @@ impl WorkerTree {
         }
     }
 
+    /// Removes a source file from the worker tree.
     pub fn remove_source(&mut self, path: impl AsRef<Path>) {
         let path = normalize_path(path.as_ref());
 
@@ -347,11 +372,13 @@ impl WorkerTree {
         self.update_external_dependencies(&path);
     }
 
+    /// Checks if a source file is present in the worker tree.
     pub fn contains(&mut self, path: impl AsRef<Path>) -> bool {
         let path = normalize_path(path.as_ref());
         self.node_map.contains_key(&path)
     }
 
+    /// Adds a source file to the worker tree.
     pub fn add_source(&mut self, path: impl AsRef<Path>, output: Option<PathBuf>) {
         let path = normalize_path(path.as_ref());
 

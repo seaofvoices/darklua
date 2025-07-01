@@ -4,13 +4,15 @@ use crate::nodes::{Identifier, Token};
 
 use super::{GenericTypePack, Type, TypePack, VariadicTypePack};
 
+/// Represents a named type.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeName {
     type_name: Identifier,
-    type_parameters: Option<TypeParameters>,
+    type_parameters: Option<Box<TypeParameters>>,
 }
 
 impl TypeName {
+    /// Creates a new type name with the specified identifier.
     pub fn new(type_name: impl Into<Identifier>) -> Self {
         Self {
             type_name: type_name.into(),
@@ -18,55 +20,67 @@ impl TypeName {
         }
     }
 
+    /// Associates type parameters with this type name.
     pub fn with_type_parameters(mut self, type_parameters: TypeParameters) -> Self {
-        self.type_parameters = Some(type_parameters);
+        self.type_parameters = Some(Box::new(type_parameters));
         self
     }
 
+    /// Adds a type parameter to this type name.
     pub fn with_type_parameter(mut self, parameter: impl Into<TypeParameter>) -> Self {
         self.push_type_parameter(parameter.into());
         self
     }
 
+    /// Adds a type parameter to this type name.
     pub fn push_type_parameter(&mut self, parameter: impl Into<TypeParameter>) {
         if let Some(parameters) = &mut self.type_parameters {
             parameters.push_parameter(parameter.into());
         } else {
-            self.type_parameters = Some(TypeParameters {
+            self.type_parameters = Some(Box::new(TypeParameters {
                 parameters: vec![parameter.into()],
                 tokens: None,
-            })
+            }))
         }
     }
 
+    /// Returns the identifier of this type name.
     #[inline]
     pub fn get_type_name(&self) -> &Identifier {
         &self.type_name
     }
 
+    /// Returns a mutable reference to the identifier of this type name.
     #[inline]
     pub fn mutate_type_name(&mut self) -> &mut Identifier {
         &mut self.type_name
     }
 
+    /// Returns the type parameters of this type name, if any.
     #[inline]
     pub fn get_type_parameters(&self) -> Option<&TypeParameters> {
-        self.type_parameters.as_ref()
+        self.type_parameters.as_deref()
     }
 
+    /// Returns whether this type name has type parameters.
     #[inline]
     pub fn has_type_parameters(&self) -> bool {
         self.type_parameters.is_some()
     }
 
+    /// Returns a mutable reference to the type parameters of this type name, if any.
     #[inline]
     pub fn mutate_type_parameters(&mut self) -> Option<&mut TypeParameters> {
-        self.type_parameters.as_mut()
+        self.type_parameters.as_deref_mut()
     }
 
     super::impl_token_fns!(target = [type_name] iter = [type_parameters]);
 }
 
+/// Represents a collection of type parameters in a generic type.
+///
+/// Type parameters are used in generic types, written as `Array<T>`
+/// or `Map<K, V>` in type annotations.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeParameters {
     parameters: Vec<TypeParameter>,
@@ -74,6 +88,7 @@ pub struct TypeParameters {
 }
 
 impl TypeParameters {
+    /// Creates new type parameters with a single initial parameter.
     pub fn new(parameter: impl Into<TypeParameter>) -> Self {
         Self {
             parameters: vec![parameter.into()],
@@ -81,45 +96,54 @@ impl TypeParameters {
         }
     }
 
+    /// Adds a type parameter and returns the modified parameters.
     pub fn with_parameter(mut self, parameter: impl Into<TypeParameter>) -> Self {
         self.parameters.push(parameter.into());
         self
     }
 
+    /// Adds a type parameter.
     pub fn push_parameter(&mut self, parameter: impl Into<TypeParameter>) {
         self.parameters.push(parameter.into());
     }
 
+    /// Associates tokens with these type parameters.
     pub fn with_tokens(mut self, tokens: TypeParametersTokens) -> Self {
         self.tokens = Some(tokens);
         self
     }
 
+    /// Returns an iterator over the type parameters.
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = &TypeParameter> {
         self.parameters.iter()
     }
 
+    /// Returns a mutable iterator over the type parameters.
     #[inline]
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut TypeParameter> {
         self.parameters.iter_mut()
     }
 
+    /// Returns the number of type parameters.
     #[inline]
     pub fn len(&self) -> usize {
         self.parameters.len()
     }
 
+    /// Returns whether there are no type parameters.
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.parameters.is_empty()
     }
 
+    /// Sets the tokens associated with these type parameters.
     #[inline]
     pub fn set_tokens(&mut self, tokens: TypeParametersTokens) {
         self.tokens = Some(tokens);
     }
 
+    /// Returns the tokens associated with these type parameters, if any.
     #[inline]
     pub fn get_tokens(&self) -> Option<&TypeParametersTokens> {
         self.tokens.as_ref()
@@ -164,11 +188,16 @@ impl<'a> IntoIterator for &'a TypeParameters {
     }
 }
 
+/// Represents a type parameter in a generic type.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TypeParameter {
+    /// A single type parameter.
     Type(Type),
+    /// A type pack parameter.
     TypePack(TypePack),
+    /// A variadic type pack parameter.
     VariadicTypePack(VariadicTypePack),
+    /// A generic type pack parameter.
     GenericTypePack(GenericTypePack),
 }
 
@@ -201,10 +230,14 @@ impl From<GenericTypePack> for TypeParameter {
     }
 }
 
+/// Contains the tokens that define the type parameters syntax.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeParametersTokens {
+    /// The opening angle bracket token.
     pub opening_list: Token,
+    /// The closing angle bracket token.
     pub closing_list: Token,
+    /// The comma tokens separating the parameters.
     pub commas: Vec<Token>,
 }
 

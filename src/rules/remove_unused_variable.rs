@@ -129,22 +129,33 @@ impl NodeProcessor for RemoveUnusedVariableProcessor {
                                 .collect();
 
                             let length = assignments.len();
+                            let mut remaining_unassigned_variables = Vec::new();
+
                             if let Some((last, value)) = assignments.last_mut() {
+                                let remaining =
+                                    assign.iter_variables().zip(usages.iter()).skip(length);
                                 if self.evaluator.can_return_multiple_values(value) {
-                                    last.extend(
-                                        assign.iter_variables().zip(usages.iter()).skip(length),
+                                    last.extend(remaining);
+                                } else {
+                                    remaining_unassigned_variables.extend(
+                                        remaining
+                                            .filter(|(_, used)| **used)
+                                            .map(|(identifier, _)| identifier.clone()),
                                     );
                                 }
                             }
 
-                            let mut variables = Vec::new();
-                            let mut values = Vec::new();
+                            let mut values: Vec<_> = remaining_unassigned_variables
+                                .iter()
+                                .map(|_| Expression::nil())
+                                .collect();
+                            let mut variables = remaining_unassigned_variables;
 
                             for (mut identifiers, value) in assignments {
-                                if !self.evaluator.has_side_effects(value) {
-                                    while identifiers.last().filter(|(_, used)| !*used).is_some() {
-                                        identifiers.pop();
-                                    }
+                                let mut last_popped = None;
+
+                                while identifiers.last().filter(|(_, used)| !*used).is_some() {
+                                    last_popped = identifiers.pop();
                                 }
 
                                 if !identifiers.is_empty() {
@@ -154,6 +165,11 @@ impl NodeProcessor for RemoveUnusedVariableProcessor {
                                             .map(|(identifier, _)| identifier.clone()),
                                     );
                                     values.push(value.clone());
+                                } else if self.evaluator.has_side_effects(value) {
+                                    if let Some((last_identifier, _)) = last_popped {
+                                        variables.push(last_identifier.clone());
+                                        values.push(value.clone());
+                                    }
                                 }
                             }
 

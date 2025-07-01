@@ -1010,7 +1010,7 @@ mod $mod_name {
 
         snapshot_node!($mod_name, $generator, prefix, write_prefix => (
             identifier => Prefix::from_name("foo"),
-            identifier_in_parenthese => Prefix::Parenthese(ParentheseExpression::new(Expression::identifier("foo"))),
+            identifier_in_parenthese => Prefix::from(ParentheseExpression::new(Expression::identifier("foo"))),
         ));
 
         snapshot_node!($mod_name, $generator, string, write_expression => (
@@ -1059,11 +1059,11 @@ mod $mod_name {
         snapshot_node!($mod_name, $generator, table, write_expression => (
             empty => TableExpression::default(),
             list_with_single_value => TableExpression::new(vec![
-                TableEntry::Value(Expression::from(true)),
+                TableEntry::from_value(Expression::from(true)),
             ]),
             list_with_two_values => TableExpression::new(vec![
-                TableEntry::Value(Expression::from(true)),
-                TableEntry::Value(Expression::from(false)),
+                TableEntry::from_value(Expression::from(true)),
+                TableEntry::from_value(Expression::from(false)),
             ]),
             with_field_entry => TableExpression::new(vec![
                 TableFieldEntry::new("field", true).into(),
@@ -1072,7 +1072,7 @@ mod $mod_name {
                 TableIndexEntry::new(false, true).into(),
             ]),
             mixed_table => TableExpression::new(vec![
-                TableEntry::Value(Expression::from(true)),
+                TableEntry::from_value(Expression::from(true)),
                 TableFieldEntry::new("field", true).into(),
                 TableIndexEntry::new(false, true).into(),
             ]),

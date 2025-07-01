@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 
 use super::RequirePathLocator;
 
+/// A require mode for handling content from file system paths.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub struct PathRequireMode {
@@ -56,6 +57,7 @@ fn is_default_module_folder_name(value: &String) -> bool {
 }
 
 impl PathRequireMode {
+    /// Creates a new path require mode with the specified module folder name.
     pub fn new(module_folder_name: impl Into<String>) -> Self {
         Self {
             module_folder_name: module_folder_name.into(),
