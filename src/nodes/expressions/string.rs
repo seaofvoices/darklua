@@ -54,16 +54,13 @@ impl StringExpression {
         let mut chars = string.char_indices();
 
         match (chars.next(), chars.next_back()) {
-            (Some((_, '"')), Some((_, '"')))
-            |(Some((_, '\'')), Some((_, '\''))) =>
-                // if (first_char == '"' || first_char == '\'') && first_char == last_char =>
-            {
+            (Some((_, '"')), Some((_, '"'))) | (Some((_, '\'')), Some((_, '\''))) => {
                 string_utils::read_escaped_string(chars, Some(string.len())).map(Self::from_value)
             }
-            (None, None) | (None, Some(_)) | (Some(_), None) => {
-                Err(StringError::invalid("missing quotes"))
+            (Some((_, '"')), Some((_, '\''))) | (Some((_, '\'')), Some((_, '"'))) => {
+                Err(StringError::invalid("quotes do not match"))
             }
-            (Some(_), Some(_)) => Err(StringError::invalid("quotes do not match")),
+            _ => Err(StringError::invalid("missing quotes")),
         }
     }
 
@@ -360,12 +357,12 @@ mod test {
 
         #[test]
         fn missing_quotes() {
-            insta::assert_snapshot!(StringExpression::new("hello").unwrap_err().to_string(), @"invalid string: quotes do not match");
+            insta::assert_snapshot!(StringExpression::new("hello").unwrap_err().to_string(), @"invalid string: missing quotes");
         }
 
         #[test]
         fn delimiters_matching_but_not_quotes() {
-            insta::assert_snapshot!(StringExpression::new("aa").unwrap_err().to_string(), @"invalid string: quotes do not match");
+            insta::assert_snapshot!(StringExpression::new("aa").unwrap_err().to_string(), @"invalid string: missing quotes");
         }
 
         #[test]
