@@ -7,7 +7,7 @@ pub enum LuaValue {
     Function,
     Nil,
     Number(f64),
-    String(String),
+    String(Vec<u8>),
     Table,
     True,
     Unknown,
@@ -27,7 +27,7 @@ impl LuaValue {
     /// assert!(LuaValue::True.is_truthy().unwrap());
     /// assert!(LuaValue::Table.is_truthy().unwrap());
     /// assert!(LuaValue::Number(0.0).is_truthy().unwrap());
-    /// assert!(LuaValue::String("hello".to_owned()).is_truthy().unwrap());
+    /// assert!(LuaValue::from("hello").is_truthy().unwrap());
     ///
     /// // unknown case
     /// assert!(LuaValue::Unknown.is_truthy().is_none());
@@ -84,23 +84,24 @@ impl LuaValue {
     /// possible and return the same value otherwise.
     pub fn number_coercion(self) -> Self {
         match &self {
-            Self::String(string) => {
-                let string = string.trim();
+            Self::String(string) => str::from_utf8(string)
+                .ok()
+                .map(str::trim)
+                .and_then(|string| {
+                    let number = if string.starts_with('-') {
+                        string
+                            .get(1..)
+                            .and_then(|string| string.parse::<NumberExpression>().ok())
+                            .map(|number| number.compute_value() * -1.0)
+                    } else {
+                        string
+                            .parse::<NumberExpression>()
+                            .ok()
+                            .map(|number| number.compute_value())
+                    };
 
-                let number = if string.starts_with('-') {
-                    string
-                        .get(1..)
-                        .and_then(|string| string.parse::<NumberExpression>().ok())
-                        .map(|number| number.compute_value() * -1.0)
-                } else {
-                    string
-                        .parse::<NumberExpression>()
-                        .ok()
-                        .map(|number| number.compute_value())
-                };
-
-                number.map(LuaValue::Number)
-            }
+                    number.map(LuaValue::Number)
+                }),
             _ => None,
         }
         .unwrap_or(self)
@@ -110,7 +111,7 @@ impl LuaValue {
     /// possible and return the same value otherwise.
     pub fn string_coercion(self) -> Self {
         match &self {
-            Self::Number(value) => Some(Self::String(format!("{}", value))),
+            Self::Number(value) => Some(Self::from(value.to_string())),
             _ => None,
         }
         .unwrap_or(self)
@@ -135,13 +136,31 @@ impl From<bool> for LuaValue {
 
 impl From<String> for LuaValue {
     fn from(value: String) -> Self {
-        Self::String(value)
+        Self::String(value.into_bytes())
     }
 }
 
 impl From<&str> for LuaValue {
     fn from(value: &str) -> Self {
-        Self::String(value.to_owned())
+        Self::String(value.as_bytes().to_vec())
+    }
+}
+
+impl From<Vec<u8>> for LuaValue {
+    fn from(value: Vec<u8>) -> Self {
+        Self::String(value)
+    }
+}
+
+impl From<&[u8]> for LuaValue {
+    fn from(value: &[u8]) -> Self {
+        Self::String(value.to_vec())
+    }
+}
+
+impl<const N: usize> From<&[u8; N]> for LuaValue {
+    fn from(value: &[u8; N]) -> Self {
+        Self::String(value.to_vec())
     }
 }
 
@@ -182,7 +201,7 @@ mod test {
 
     #[test]
     fn string_value_is_truthy() {
-        assert!(LuaValue::String("".to_owned()).is_truthy().unwrap());
+        assert!(LuaValue::String(b"".to_vec()).is_truthy().unwrap());
     }
 
     #[test]

@@ -1,6 +1,6 @@
 use std::iter::FromIterator;
 
-use crate::nodes::{StringError, Token, Trivia};
+use crate::nodes::{IntoLuaStringValue, StringError, Token, Trivia};
 
 use super::{string_utils, Expression};
 
@@ -10,20 +10,22 @@ use super::{string_utils, Expression};
 /// appearing between expression segments.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StringSegment {
-    value: String,
+    value: Vec<u8>,
     token: Option<Token>,
 }
 
 impl StringSegment {
     /// Creates a new string segment from a string value, processing escape sequences.
     pub fn new(value: impl AsRef<str>) -> Result<Self, StringError> {
-        string_utils::read_escaped_string(value.as_ref().char_indices(), None).map(Self::from_value)
+        let value = value.as_ref();
+        string_utils::read_escaped_string(value.char_indices(), Some(value.len()))
+            .map(Self::from_value)
     }
 
     /// Creates a new string segment from a string value without processing escapes.
-    pub fn from_value(value: impl Into<String>) -> Self {
+    pub fn from_value(value: impl IntoLuaStringValue) -> Self {
         Self {
-            value: value.into(),
+            value: value.into_lua_string_value(),
             token: None,
         }
     }
@@ -44,9 +46,15 @@ impl StringSegment {
         self.token.as_ref()
     }
 
-    /// Returns a reference to the string value of this segment.
-    pub fn get_value(&self) -> &str {
-        self.value.as_str()
+    /// Returns the string value of this segment.
+    pub fn get_value(&self) -> &[u8] {
+        &self.value
+    }
+
+    /// Returns the string value if it is valid UTF-8.
+    #[inline]
+    pub fn get_string_value(&self) -> Option<&str> {
+        str::from_utf8(&self.value).ok()
     }
 
     fn append(&mut self, mut other: Self) {

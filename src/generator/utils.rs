@@ -3,6 +3,8 @@
 
 use std::convert::TryInto;
 
+use bstr::ByteSlice;
+
 use crate::nodes::{
     Expression, FieldExpression, FunctionCall, IndexExpression, NumberExpression, Prefix,
     Statement, StringSegment, TableExpression, Variable,
@@ -265,68 +267,64 @@ pub fn write_number(number: &NumberExpression) -> String {
     }
 }
 
-fn needs_escaping(character: char) -> bool {
-    !(character.is_ascii_graphic() || character == ' ') || character == '\\'
+fn needs_escaping(character: u8) -> bool {
+    !(character.is_ascii_graphic() || character == b' ') || character == b'\\'
 }
 
-fn needs_quoted_string(character: char) -> bool {
-    !(character.is_ascii_graphic() || character == ' ' || character == '\n')
+fn needs_quoted_string(character: &u8) -> bool {
+    !(character.is_ascii_graphic() || *character == b' ' || *character == b'\n')
 }
 
-fn escape(character: char) -> String {
+fn escape(character: u8) -> String {
     match character {
-        '\n' => "\\n".to_owned(),
-        '\t' => "\\t".to_owned(),
-        '\\' => "\\\\".to_owned(),
-        '\r' => "\\r".to_owned(),
-        '\u{7}' => "\\a".to_owned(),
-        '\u{8}' => "\\b".to_owned(),
-        '\u{B}' => "\\v".to_owned(),
-        '\u{C}' => "\\f".to_owned(),
-        _ => {
-            if character.len_utf8() == 1 {
-                format!("\\{}", character as u8)
-            } else {
-                format!("\\u{{{:x}}}", character as u32)
-            }
+        b'\n' => "\\n".to_owned(),
+        b'\t' => "\\t".to_owned(),
+        b'\\' => "\\\\".to_owned(),
+        b'\r' => "\\r".to_owned(),
+        b'\x07' => "\\a".to_owned(),
+        b'\x08' => "\\b".to_owned(),
+        b'\x0B' => "\\v".to_owned(),
+        b'\x0C' => "\\f".to_owned(),
+        character => {
+            format!("\\{}", character)
         }
     }
 }
 
 #[inline]
-pub fn count_new_lines(string: &str) -> usize {
-    string.chars().filter(|c| *c == '\n').count()
+pub fn count_new_lines(string: &[u8]) -> usize {
+    string.into_iter().filter(|c| **c == b'\n').count()
 }
 
-pub fn write_string(value: &str) -> String {
+pub fn write_string(value: &[u8]) -> String {
     if value.is_empty() {
         return "''".to_owned();
     }
 
     if value.len() == 1 {
         let character = value
-            .chars()
+            .into_iter()
             .next()
             .expect("string should have at least one character");
-        match character {
-            '\'' => return "\"'\"".to_owned(),
-            '"' => return "'\"'".to_owned(),
-            _ => {
+        match *character {
+            b'\'' => return "\"'\"".to_owned(),
+            b'"' => return "'\"'".to_owned(),
+            character => {
                 if needs_escaping(character) {
                     return format!("'{}'", escape(character));
                 } else {
-                    return format!("'{}'", character);
+                    return format!("'{}'", character as char);
                 }
             }
         }
     }
 
-    if !value.contains(needs_quoted_string)
+    if !value.into_iter().any(needs_quoted_string)
         && value.len() >= LONG_STRING_MIN_LENGTH
         && (value.len() >= QUOTED_STRING_MAX_LENGTH
             || count_new_lines(value) >= FORCE_LONG_STRING_NEW_LINE_THRESHOLD)
     {
-        write_long_bracket(value)
+        write_long_bracket(value).unwrap_or_else(|| write_quoted(value))
     } else {
         write_quoted(value)
     }
@@ -343,17 +341,17 @@ pub fn write_interpolated_string_segment(segment: &StringSegment) -> String {
 
     result.reserve(value.len());
 
-    for character in value.chars() {
+    for character in value.into_iter() {
         match character {
-            '`' | '{' => {
+            b'`' | b'{' => {
                 result.push('\\');
-                result.push(character);
+                result.push(*character as char);
             }
-            _ if needs_escaping(character) => {
-                result.push_str(&escape(character));
+            _ if needs_escaping(*character) => {
+                result.push_str(&escape(*character));
             }
             _ => {
-                result.push(character);
+                result.push(*character as char);
             }
         }
     }
@@ -361,36 +359,66 @@ pub fn write_interpolated_string_segment(segment: &StringSegment) -> String {
     result
 }
 
-fn write_long_bracket(value: &str) -> String {
-    let mut i: usize = value.ends_with(']').into();
-    let mut equals = "=".repeat(i);
+fn write_long_bracket(value: &[u8]) -> Option<String> {
+    let stringified = str::from_utf8(value).ok()?;
+
+    let mut i: usize = value.ends_with(b"]").into();
+    let mut equals = b"=".repeat(i);
+    equals.insert(0, b']');
+    equals.push(b']');
+
     loop {
-        if !value.contains(&format!("]{}]", equals)) {
+        if value.find(&equals).is_none() {
             break;
         } else {
             i += 1;
-            equals = "=".repeat(i);
+            equals[i] = b'=';
+            equals.push(b']');
         };
     }
-    let needs_extra_new_line = if value.starts_with('\n') { "\n" } else { "" };
-    format!("[{}[{}{}]{}]", equals, needs_extra_new_line, value, equals)
+    let needs_extra_new_line = if value.starts_with(b"\n") { "\n" } else { "" };
+    let equal_signs = "=".repeat(i);
+
+    Some(format!(
+        "[{}[{}{}]{}]",
+        equal_signs, needs_extra_new_line, stringified, equal_signs
+    ))
 }
 
-fn write_quoted(value: &str) -> String {
+fn write_quoted(value: &[u8]) -> String {
     let mut quoted = String::new();
     quoted.reserve(value.len() + 2);
 
     let quote_symbol = get_quote_symbol(value);
     quoted.push(quote_symbol);
 
-    for character in value.chars() {
-        if character == quote_symbol {
-            quoted.push('\\');
-            quoted.push(quote_symbol);
-        } else if needs_escaping(character) {
-            quoted.push_str(&escape(character));
-        } else {
-            quoted.push(character);
+    if let Some(stringified) = str::from_utf8(value).ok() {
+        for character in stringified.chars() {
+            if character == quote_symbol {
+                quoted.push('\\');
+                quoted.push(quote_symbol);
+            } else if !character.is_ascii() || needs_escaping(character as u8) {
+                if character.is_ascii() {
+                    quoted.push_str(&escape(character as u8));
+                } else {
+                    quoted.push_str("\\u{");
+                    quoted.push_str(&format!("{:x}", character as u32));
+                    quoted.push('}');
+                }
+            } else {
+                quoted.push(character);
+            }
+        }
+    } else {
+        for character in value {
+            if *character == quote_symbol as u8 {
+                quoted.push('\\');
+                quoted.push(quote_symbol);
+            } else if needs_escaping(*character) {
+                quoted.push_str(&escape(*character));
+            } else {
+                quoted.push(*character as char);
+            }
         }
     }
 
@@ -399,10 +427,10 @@ fn write_quoted(value: &str) -> String {
     quoted
 }
 
-fn get_quote_symbol(value: &str) -> char {
-    if value.contains('"') {
+fn get_quote_symbol(value: &[u8]) -> char {
+    if value.contains(&b'"') {
         '\''
-    } else if value.contains('\'') {
+    } else if value.contains(&b'\'') {
         '"'
     } else {
         '\''
@@ -421,7 +449,7 @@ mod test {
                 $(
                     #[test]
                     fn $name() {
-                        assert_eq!($value, write_string(&$input));
+                        assert_eq!($value, write_string($input.as_bytes()));
                     }
                 )*
             };

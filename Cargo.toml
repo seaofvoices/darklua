@@ -27,6 +27,7 @@ tracing = ["dep:tracing"]
 
 [dependencies]
 anstyle = "1.0.10"
+bstr = "1.12.0"
 clap = { version = "4.5.23", features = ["derive"] }
 durationfmt = "0.1.1"
 elsa = "1.10.0"

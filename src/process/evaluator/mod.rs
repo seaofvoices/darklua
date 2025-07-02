@@ -38,25 +38,25 @@ impl Evaluator {
             }
             Expression::If(if_expression) => self.evaluate_if(if_expression),
             Expression::InterpolatedString(interpolated_string) => {
-                let mut result = String::new();
+                let mut result = Vec::new();
                 for segment in interpolated_string.iter_segments() {
                     match segment {
                         InterpolationSegment::String(string) => {
-                            result.push_str(string.get_value());
+                            result.extend_from_slice(string.get_value());
                         }
                         InterpolationSegment::Value(value) => {
                             match self.evaluate(value.get_expression()) {
                                 LuaValue::False => {
-                                    result.push_str("false");
+                                    result.extend_from_slice(b"false");
                                 }
                                 LuaValue::True => {
-                                    result.push_str("true");
+                                    result.extend_from_slice(b"true");
                                 }
                                 LuaValue::Nil => {
-                                    result.push_str("nil");
+                                    result.extend_from_slice(b"nil");
                                 }
                                 LuaValue::String(string) => {
-                                    result.push_str(&string);
+                                    result.extend_from_slice(&string);
                                 }
                                 LuaValue::Function
                                 | LuaValue::Number(_)
@@ -321,7 +321,7 @@ impl Evaluator {
                     self.evaluate(expression.right()).string_coercion(),
                 ) {
                     (LuaValue::String(mut left), LuaValue::String(right)) => {
-                        left.push_str(&right);
+                        left.extend_from_slice(&right);
                         LuaValue::String(left)
                     }
                     _ => LuaValue::Unknown,
@@ -402,7 +402,7 @@ impl Evaluator {
         }
     }
 
-    fn compare_strings(&self, left: &str, right: &str, operator: BinaryOperator) -> LuaValue {
+    fn compare_strings(&self, left: &[u8], right: &[u8], operator: BinaryOperator) -> LuaValue {
         LuaValue::from(match operator {
             BinaryOperator::Equal => left == right,
             BinaryOperator::NotEqual => left != right,
@@ -478,31 +478,31 @@ mod test {
         nil_expression(Expression::nil()) => LuaValue::Nil,
         number_expression(DecimalNumber::new(0.0)) => LuaValue::Number(0.0),
         number_expression_negative_zero(DecimalNumber::new(-0.0)) => LuaValue::Number(-0.0),
-        string_expression(StringExpression::from_value("foo")) => LuaValue::String("foo".to_owned()),
-        empty_interpolated_string_expression(InterpolatedStringExpression::empty()) => LuaValue::String("".to_owned()),
+        string_expression(StringExpression::from_value("foo")) => LuaValue::from("foo"),
+        empty_interpolated_string_expression(InterpolatedStringExpression::empty()) => LuaValue::from(""),
         interpolated_string_expression_with_one_string(InterpolatedStringExpression::empty().with_segment("hello"))
-            => LuaValue::String("hello".to_owned()),
+            => LuaValue::from("hello"),
         interpolated_string_expression_with_multiple_string_segments(
             InterpolatedStringExpression::empty()
                 .with_segment("hello")
                 .with_segment("-")
                 .with_segment("bye")
-        ) => LuaValue::String("hello-bye".to_owned()),
+        ) => LuaValue::from("hello-bye"),
         interpolated_string_expression_with_true_segment(
             InterpolatedStringExpression::empty().with_segment(Expression::from(true))
-        ) => LuaValue::String("true".to_owned()),
+        ) => LuaValue::from("true"),
         interpolated_string_expression_with_false_segment(
             InterpolatedStringExpression::empty().with_segment(Expression::from(false))
-        ) => LuaValue::String("false".to_owned()),
+        ) => LuaValue::from("false"),
         interpolated_string_expression_with_nil_segment(
             InterpolatedStringExpression::empty().with_segment(Expression::nil())
-        ) => LuaValue::String("nil".to_owned()),
+        ) => LuaValue::from("nil"),
         interpolated_string_expression_with_mixed_segments(
             InterpolatedStringExpression::empty()
                 .with_segment("variable = ")
                 .with_segment(Expression::from(true))
                 .with_segment("?")
-        ) => LuaValue::String("variable = true?".to_owned()),
+        ) => LuaValue::from("variable = true?"),
         interpolated_string_expression_with_mixed_segments_unknown(
             InterpolatedStringExpression::empty()
                 .with_segment("variable = ")
@@ -591,7 +591,7 @@ mod test {
                 BinaryOperator::And,
                 true,
                 Expression::String(StringExpression::from_value("foo"))
-            ) => LuaValue::String("foo".to_owned()),
+            ) => LuaValue::from("foo"),
             true_and_table(
                 BinaryOperator::And,
                 true,

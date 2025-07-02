@@ -1,5 +1,7 @@
 use std::{iter, ops};
 
+use bstr::ByteSlice;
+
 use crate::nodes::{
     Block, Expression, FieldExpression, FunctionCall, Identifier, InterpolatedStringExpression,
     InterpolationSegment, LocalAssignStatement, Prefix, StringExpression, TupleArguments,
@@ -87,17 +89,18 @@ impl RemoveInterpolatedStringProcessor {
         } else {
             let arguments = iter::once(
                 StringExpression::from_value(string.iter_segments().fold(
-                    String::new(),
+                    Vec::new(),
                     |mut format_string, segment| {
                         match segment {
                             InterpolationSegment::String(string_segment) => {
-                                format_string
-                                    .push_str(&string_segment.get_value().replace('%', "%%"));
+                                format_string.extend_from_slice(
+                                    &string_segment.get_value().replace(b"%", b"%%"),
+                                );
                             }
                             InterpolationSegment::Value(_) => {
-                                format_string.push_str(match self.strategy {
-                                    ReplacementStrategy::StringSpecifier => "%s",
-                                    ReplacementStrategy::ToStringSpecifier => "%*",
+                                format_string.extend_from_slice(match self.strategy {
+                                    ReplacementStrategy::StringSpecifier => b"%s",
+                                    ReplacementStrategy::ToStringSpecifier => b"%*",
                                 });
                             }
                         }

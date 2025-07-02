@@ -46,14 +46,26 @@ impl StringType {
 
     /// Returns the string value of this type.
     #[inline]
-    pub fn get_value(&self) -> &str {
+    pub fn get_value(&self) -> &[u8] {
         self.value.get_value()
+    }
+
+    /// Returns the string value if it is valid UTF-8.
+    #[inline]
+    pub fn get_string_value(&self) -> Option<&str> {
+        self.value.get_string_value()
     }
 
     /// Consumes this string type and returns its string value.
     #[inline]
-    pub fn into_value(self) -> String {
+    pub fn into_value(self) -> Vec<u8> {
         self.value.into_value()
+    }
+
+    /// Consumes the string expression and returns the inner string value if it is valid UTF-8.
+    #[inline]
+    pub fn into_string(self) -> Option<String> {
+        self.value.into_string()
     }
 
     /// Returns whether this string type is a multiline string.

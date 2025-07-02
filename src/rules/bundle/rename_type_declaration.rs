@@ -16,11 +16,11 @@ pub(crate) struct RenameTypeDeclarationProcessor {
     /// a map from the original type name to its newly generated name
     renamed_types: ScopedHashMap<String, String>,
     /// a map from identifiers to module names
-    type_namespace: ScopedHashMap<String, String>,
+    type_namespace: ScopedHashMap<String, Vec<u8>>,
     /// the exported types found
     exported_types: HashMap<String, String>,
     /// a map from module names to their exported types
-    all_types: HashMap<String, HashMap<String, String>>,
+    all_types: HashMap<Vec<u8>, HashMap<String, String>>,
     /// permutator to generate unique type identifier suffixes
     permutator: CharPermutator,
     modules_identifier: String,
@@ -63,7 +63,7 @@ impl RenameTypeDeclarationProcessor {
         module_name: String,
         types: HashMap<String, String>,
     ) {
-        self.all_types.insert(module_name, types);
+        self.all_types.insert(module_name.into_bytes(), types);
     }
 
     fn generate_unique_type(&mut self, original_name: &str) -> String {
@@ -73,7 +73,7 @@ impl RenameTypeDeclarationProcessor {
         new_name
     }
 
-    fn get_module_name(&self, value: &Expression) -> Option<String> {
+    fn get_module_name(&self, value: &Expression) -> Option<Vec<u8>> {
         if let Expression::Call(value) = value {
             if let Prefix::Field(field) = value.get_prefix() {
                 if field.get_field().get_name() == self.module_load_field {

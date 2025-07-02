@@ -1,7 +1,9 @@
 use std::path::{Path, PathBuf};
 
+use bstr::{BStr, ByteSlice};
+
 use crate::{
-    nodes::{Arguments, Expression, FunctionCall, Prefix},
+    nodes::{Arguments, Expression, FunctionCall, Prefix, StringExpression},
     process::IdentifierTracker,
     utils,
 };
@@ -22,19 +24,25 @@ pub(crate) fn is_require_call(call: &FunctionCall, identifier_tracker: &Identifi
     }
 }
 
+fn convert_string_expression_to_path<'a>(string: &'a StringExpression) -> Option<&'a Path> {
+    string
+        .get_string_value()
+        .map(Path::new)
+        .or_else(|| BStr::new(string.get_value()).to_path().ok())
+}
+
 pub(crate) fn match_path_require_call(call: &FunctionCall) -> Option<PathBuf> {
     match call.get_arguments() {
-        Arguments::String(string) => Some(string.get_value()),
+        Arguments::String(string) => convert_string_expression_to_path(string),
         Arguments::Tuple(tuple) if tuple.len() == 1 => {
             let expression = tuple.iter_values().next().unwrap();
 
             match expression {
-                Expression::String(string) => Some(string.get_value()),
+                Expression::String(string) => convert_string_expression_to_path(string),
                 _ => None,
             }
         }
         _ => None,
     }
-    .map(Path::new)
     .map(utils::normalize_path_with_current_dir)
 }
