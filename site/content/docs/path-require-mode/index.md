@@ -36,17 +36,14 @@ The first step consist of figuring out the head of the path or where to start lo
 - **if the path starts with `/`:** the path is considered like a regular absolute path
 - **else:** the first component of the path is used to find a matching [source](#sources)
 
-The next step is to resolve the tail of the path:
+The next step is to resolve the tail of the path. Darklua will find the first available file based on the given path:
 
-- **if the path has an extension:** the resource is expected exactly as is
-- **else:** darklua will find the first available file based on the given path:
-
-  1. the given path
-  1. the given path with a `luau` extension
-  1. the given path with a `lua` extension
-  1. the given path joined with the module folder name
-  1. (if the module folder name does not have an extension) the given path joined with the module folder name and a `luau` extension
-  1. (if the module folder name does not have an extension) the given path joined with the module folder name and a `lua` extension
+1. the given path
+1. the given path with a `luau` extension
+1. the given path with a `lua` extension
+1. the given path joined with the module folder name
+1. (if the module folder name does not have an extension) the given path joined with the module folder name and a `luau` extension
+1. (if the module folder name does not have an extension) the given path joined with the module folder name and a `lua` extension
 
 Here is a concrete example of these steps with a require to `./example`. darklua will try the following paths and find the first file:
 
