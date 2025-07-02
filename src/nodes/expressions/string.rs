@@ -54,7 +54,10 @@ impl StringExpression {
         let mut chars = string.char_indices();
 
         match (chars.next(), chars.next_back()) {
-            (Some((_, first_char)), Some((_, last_char))) if first_char == last_char => {
+            (Some((_, '"')), Some((_, '"')))
+            |(Some((_, '\'')), Some((_, '\''))) =>
+                // if (first_char == '"' || first_char == '\'') && first_char == last_char =>
+            {
                 string_utils::read_escaped_string(chars, Some(string.len())).map(Self::from_value)
             }
             (None, None) | (None, Some(_)) | (Some(_), None) => {
@@ -297,39 +300,89 @@ mod test {
         escaped_unicode_last_value("\\u{10FFFF}") => "\u{10FFFF}",
     );
 
-    macro_rules! test_quoted_failures {
-        ($($name:ident => $input:literal),* $(,)?) => {
-            mod single_quoted_failures {
-                use super::*;
-                $(
-                    #[test]
-                    fn $name() {
-                        let quoted = format!("'{}'", $input);
-                        assert!(StringExpression::new(&quoted).is_err());
-                    }
-                )*
-            }
+    mod invalid_string_errors {
+        use super::*;
 
-            mod double_quoted_failures {
-                use super::*;
-                $(
-                    #[test]
-                    fn $name() {
-                        let quoted = format!("\"{}\"", $input);
-                        assert!(StringExpression::new(&quoted).is_err());
-                    }
-                )*
-            }
-        };
+        #[test]
+        fn double_quoted_single_backslash() {
+            insta::assert_snapshot!(StringExpression::new("\"\\\"").unwrap_err().to_string(), @r###"malformed escape sequence at 1: string ended after '\'"###);
+        }
+
+        #[test]
+        fn single_quoted_single_backslash() {
+            insta::assert_snapshot!(StringExpression::new("'\\'").unwrap_err().to_string(), @r###"malformed escape sequence at 1: string ended after '\'"###);
+        }
+
+        #[test]
+        fn double_quoted_escaped_too_large_ascii() {
+            insta::assert_snapshot!(StringExpression::new("\"\\256\"").unwrap_err().to_string(), @"malformed escape sequence at 1: cannot escape ascii character greater than 256");
+        }
+
+        #[test]
+        fn single_quoted_escaped_too_large_ascii() {
+            insta::assert_snapshot!(StringExpression::new("'\\256'").unwrap_err().to_string(), @"malformed escape sequence at 1: cannot escape ascii character greater than 256");
+        }
+
+        #[test]
+        fn double_quoted_escaped_too_large_unicode() {
+            insta::assert_snapshot!(StringExpression::new("\"\\u{110000}\"").unwrap_err().to_string(), @"malformed escape sequence at 1: invalid unicode value");
+        }
+
+        #[test]
+        fn single_quoted_escaped_too_large_unicode() {
+            insta::assert_snapshot!(StringExpression::new("'\\u{110000}'").unwrap_err().to_string(), @"malformed escape sequence at 1: invalid unicode value");
+        }
+
+        #[test]
+        fn double_quoted_escaped_missing_opening_brace_unicode() {
+            insta::assert_snapshot!(StringExpression::new("\"\\uAB\"").unwrap_err().to_string(), @"malformed escape sequence at 1: expected opening curly brace");
+        }
+
+        #[test]
+        fn single_quoted_escaped_missing_opening_brace_unicode() {
+            insta::assert_snapshot!(StringExpression::new("'\\uAB'").unwrap_err().to_string(), @"malformed escape sequence at 1: expected opening curly brace");
+        }
+
+        #[test]
+        fn double_quoted_escaped_missing_closing_brace_unicode() {
+            insta::assert_snapshot!(StringExpression::new("\"\\u{0p\"").unwrap_err().to_string(), @"malformed escape sequence at 1: expected closing curly brace");
+        }
+
+        #[test]
+        fn single_quoted_escaped_missing_closing_brace_unicode() {
+            insta::assert_snapshot!(StringExpression::new("'\\u{0p'").unwrap_err().to_string(), @"malformed escape sequence at 1: expected closing curly brace");
+        }
+
+        #[test]
+        fn empty_string() {
+            insta::assert_snapshot!(StringExpression::new("").unwrap_err().to_string(), @"invalid string: missing quotes");
+        }
+
+        #[test]
+        fn missing_quotes() {
+            insta::assert_snapshot!(StringExpression::new("hello").unwrap_err().to_string(), @"invalid string: quotes do not match");
+        }
+
+        #[test]
+        fn delimiters_matching_but_not_quotes() {
+            insta::assert_snapshot!(StringExpression::new("aa").unwrap_err().to_string(), @"invalid string: quotes do not match");
+        }
+
+        #[test]
+        fn single_quote() {
+            insta::assert_snapshot!(StringExpression::new("'").unwrap_err().to_string(), @"invalid string: missing quotes");
+        }
+
+        #[test]
+        fn double_quote() {
+            insta::assert_snapshot!(StringExpression::new("\"").unwrap_err().to_string(), @"invalid string: missing quotes");
+        }
+
+        #[test]
+        fn quotes_not_matching() {
+            insta::assert_snapshot!(StringExpression::new("'\"").unwrap_err().to_string(), @"invalid string: quotes do not match");
+        }
     }
-
-    test_quoted_failures!(
-        single_backslash => "\\",
-        escaped_too_large_ascii => "\\256",
-        escaped_too_large_unicode => "\\u{110000}",
-        escaped_missing_opening_brace_unicode => "\\uAB",
-        escaped_missing_closing_brace_unicode => "\\u{0p",
-    );
 
     #[test]
     fn new_removes_double_quotes() {
