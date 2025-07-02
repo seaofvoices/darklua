@@ -45,12 +45,6 @@ impl Iterator for PathIterator<'_, '_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index == 0 {
-            println!(
-                "PATH ITERATOR = {} \n extension = '{}' \n file_name = '{}'",
-                self.path.display(),
-                self.extension.and_then(OsStr::to_str).unwrap_or_default(),
-                self.file_name.and_then(OsStr::to_str).unwrap_or_default(),
-            );
             return self.return_next(self.path.to_path_buf());
         }
 
