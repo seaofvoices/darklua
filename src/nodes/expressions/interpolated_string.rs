@@ -58,7 +58,7 @@ impl StringSegment {
     }
 
     fn append(&mut self, mut other: Self) {
-        self.value.extend(other.value.drain(..));
+        self.value.append(&mut other.value);
         self.token = None;
     }
 

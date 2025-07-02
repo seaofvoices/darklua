@@ -142,7 +142,7 @@ impl StringExpression {
     }
 
     fn find_not_escaped(&self, pattern: u8) -> Option<usize> {
-        self.find_not_escaped_from(pattern, &mut self.value.iter().map(|b| *b).enumerate())
+        self.find_not_escaped_from(pattern, &mut self.value.iter().copied().enumerate())
     }
 
     fn find_not_escaped_from(

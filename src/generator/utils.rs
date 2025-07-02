@@ -293,7 +293,7 @@ fn escape(character: u8) -> String {
 
 #[inline]
 pub fn count_new_lines(string: &[u8]) -> usize {
-    string.into_iter().filter(|c| **c == b'\n').count()
+    string.iter().filter(|c| **c == b'\n').count()
 }
 
 pub fn write_string(value: &[u8]) -> String {
@@ -303,7 +303,7 @@ pub fn write_string(value: &[u8]) -> String {
 
     if value.len() == 1 {
         let character = value
-            .into_iter()
+            .iter()
             .next()
             .expect("string should have at least one character");
         match *character {
@@ -319,7 +319,7 @@ pub fn write_string(value: &[u8]) -> String {
         }
     }
 
-    if !value.into_iter().any(needs_quoted_string)
+    if !value.iter().any(needs_quoted_string)
         && value.len() >= LONG_STRING_MIN_LENGTH
         && (value.len() >= QUOTED_STRING_MAX_LENGTH
             || count_new_lines(value) >= FORCE_LONG_STRING_NEW_LINE_THRESHOLD)
@@ -341,7 +341,7 @@ pub fn write_interpolated_string_segment(segment: &StringSegment) -> String {
 
     result.reserve(value.len());
 
-    for character in value.into_iter() {
+    for character in value.iter() {
         match character {
             b'`' | b'{' => {
                 result.push('\\');
@@ -392,7 +392,7 @@ fn write_quoted(value: &[u8]) -> String {
     let quote_symbol = get_quote_symbol(value);
     quoted.push(quote_symbol);
 
-    if let Some(stringified) = str::from_utf8(value).ok() {
+    if let Ok(stringified) = str::from_utf8(value) {
         for character in stringified.chars() {
             if character == quote_symbol {
                 quoted.push('\\');

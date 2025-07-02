@@ -24,7 +24,7 @@ pub(crate) fn is_require_call(call: &FunctionCall, identifier_tracker: &Identifi
     }
 }
 
-fn convert_string_expression_to_path<'a>(string: &'a StringExpression) -> Option<&'a Path> {
+fn convert_string_expression_to_path(string: &StringExpression) -> Option<&Path> {
     string
         .get_string_value()
         .map(Path::new)
