@@ -56,7 +56,7 @@ impl NodeProcessor for ValueInjection {
             }
             Expression::Index(index) => {
                 !self.is_identifier_used("_G")
-                    && matches!(index.get_index(), Expression::String(string) if string.get_value() == self.identifier)
+                    && matches!(index.get_index(), Expression::String(string) if string.get_string_value() == Some(&self.identifier))
                     && matches!(index.get_prefix(), Prefix::Identifier(prefix) if prefix.get_name() == "_G")
             }
             _ => false,

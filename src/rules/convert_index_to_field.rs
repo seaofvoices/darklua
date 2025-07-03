@@ -26,11 +26,12 @@ impl Converter {
 
     fn convert_to_field(&self, key_expression: &Expression) -> Option<String> {
         if let LuaValue::String(string) = self.evaluator.evaluate(key_expression) {
-            if is_valid_identifier(&string) {
-                return Some(string);
-            }
+            String::from_utf8(string)
+                .ok()
+                .filter(|string| is_valid_identifier(string))
+        } else {
+            None
         }
-        None
     }
 }
 

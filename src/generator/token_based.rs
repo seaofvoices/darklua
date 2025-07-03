@@ -26,7 +26,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
     }
 
     fn push_str(&mut self, string: &str) {
-        self.current_line += utils::count_new_lines(string);
+        self.current_line += utils::count_new_lines(string.as_bytes());
         self.output.push_str(string);
     }
 

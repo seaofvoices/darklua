@@ -118,10 +118,12 @@ impl Serializer {
             match last_operation {
                 SerializeOperation::Table(entries) => {
                     if let Expression::String(string) = key {
-                        if is_valid_identifier(string.get_value()) {
-                            entries.push(
-                                TableFieldEntry::new(string.into_value(), entry_value).into(),
-                            );
+                        if let Some(value) = string
+                            .get_string_value()
+                            .filter(|value| is_valid_identifier(value))
+                        {
+                            entries
+                                .push(TableFieldEntry::new(value.to_owned(), entry_value).into());
                         } else {
                             entries.push(TableIndexEntry::new(string, entry_value).into());
                         }

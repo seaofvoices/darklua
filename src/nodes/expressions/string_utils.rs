@@ -46,10 +46,10 @@ impl StringError {
 pub(crate) fn read_escaped_string(
     chars: CharIndices,
     reserve_size: Option<usize>,
-) -> Result<String, StringError> {
+) -> Result<Vec<u8>, StringError> {
     let mut chars = chars.peekable();
 
-    let mut value = String::new();
+    let mut value = Vec::new();
     if let Some(reserve_size) = reserve_size {
         value.reserve(reserve_size);
     }
@@ -58,19 +58,19 @@ pub(crate) fn read_escaped_string(
         if char == '\\' {
             if let Some((_, next_char)) = chars.next() {
                 match next_char {
-                    '\n' | '"' | '\'' | '\\' => value.push(next_char),
-                    'n' => value.push('\n'),
-                    't' => value.push('\t'),
-                    'a' => value.push('\u{7}'),
-                    'b' => value.push('\u{8}'),
-                    'v' => value.push('\u{B}'),
-                    'f' => value.push('\u{C}'),
-                    'r' => value.push('\r'),
+                    '\n' | '"' | '\'' | '\\' => value.push(next_char as u8),
+                    'n' => value.push(b'\n'),
+                    't' => value.push(b'\t'),
+                    'a' => value.extend("\u{7}".as_bytes()),
+                    'b' => value.extend("\u{8}".as_bytes()),
+                    'v' => value.extend("\u{B}".as_bytes()),
+                    'f' => value.extend("\u{C}".as_bytes()),
+                    'r' => value.push(b'\r'),
                     first_digit if first_digit.is_ascii_digit() => {
                         let number = read_number(&mut chars, Some(first_digit), 10, 3);
 
                         if number < 256 {
-                            value.push(number as u8 as char);
+                            value.push(number as u8);
                         } else {
                             return Err(StringError::malformed_escape_sequence(
                                 position,
@@ -87,7 +87,7 @@ pub(crate) fn read_escaped_string(
                                 + second_digit.to_digit(16).unwrap();
 
                             if number < 256 {
-                                value.push(number as u8 as char);
+                                value.push(number as u8);
                             } else {
                                 return Err(StringError::malformed_escape_sequence(
                                     position,
@@ -125,7 +125,14 @@ pub(crate) fn read_escaped_string(
                             ));
                         }
 
-                        value.push(char::from_u32(number).expect("unable to convert u32 to char"));
+                        let mut buf = [0u8; 4];
+
+                        value.extend(
+                            char::from_u32(number)
+                                .expect("unable to convert u32 to char")
+                                .encode_utf8(&mut buf)
+                                .as_bytes(),
+                        );
                     }
                     'z' => {
                         while chars
@@ -138,7 +145,9 @@ pub(crate) fn read_escaped_string(
                     }
                     _ => {
                         // an invalid escape does not error: it simply skips the backslash
-                        value.push(next_char);
+                        let mut buf = [0u8; 4];
+
+                        value.extend(next_char.encode_utf8(&mut buf).as_bytes());
                     }
                 }
             } else {
@@ -148,7 +157,7 @@ pub(crate) fn read_escaped_string(
                 ));
             }
         } else {
-            value.push(char);
+            value.extend(char.to_string().as_bytes());
         }
     }
 
