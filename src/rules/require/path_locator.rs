@@ -40,12 +40,18 @@ impl<'a, 'b, 'c> RequirePathLocator<'a, 'b, 'c> {
             new_path.pop();
             new_path.push(path);
             path = new_path;
+        } else if path.starts_with("@self") {
+            path = source
+                .parent()
+                .unwrap()
+                .join(path.strip_prefix("@self").unwrap());
         } else if !path.is_absolute() {
             {
                 let mut components = path.components();
                 let root = components.next().ok_or_else(|| {
                     DarkluaError::invalid_resource_path(path.display().to_string(), "path is empty")
                 })?;
+
                 let source_name = utils::convert_os_string(root.as_os_str()).map_err(|err| {
                     err.context(format!(
                         "cannot convert source name to utf-8 in `{}`",
