@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::{self, Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -31,7 +31,9 @@ impl RojoSourcemapNode {
         while let Some(node) = queue.pop() {
             node.id = index;
             for file_path in &mut node.file_paths {
-                *file_path = utils::normalize_path(relative_to.join(&file_path));
+                if file_path.is_relative() {
+                    *file_path = utils::normalize_path(relative_to.join(&file_path));
+                }
             }
             for child in &mut node.children {
                 child.parent_id = index;
@@ -215,10 +217,17 @@ impl RojoSourcemap {
         ids
     }
 
-    fn find_node(&self, path: &Path) -> Option<&RojoSourcemapNode> {
-        self.root_node
-            .iter()
-            .find(|node| node.file_paths.iter().any(|file_path| file_path == path))
+    fn find_node(&self, target_path: &Path) -> Option<&RojoSourcemapNode> {
+        self.root_node.iter().find(|node| {
+            node.file_paths.iter().any(|file_path| {
+                if file_path.is_absolute() {
+                    file_path.to_path_buf()
+                        == path::absolute(target_path).expect("failed to convert")
+                } else {
+                    file_path == target_path
+                }
+            })
+        })
     }
 }
 
