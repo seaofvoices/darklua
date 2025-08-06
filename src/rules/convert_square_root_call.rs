@@ -97,6 +97,7 @@ impl NodeProcessor for Processor {
     }
 }
 
+/// A rule that converts square root calls (`math.sqrt(x)`) to exponentiation calls (`x ^ 0.5`).
 #[derive(Debug, Default)]
 pub struct ConvertSquareRootCall {}
 

@@ -372,6 +372,23 @@ mod test {
             f64_infinity => f64::INFINITY,
             i64_minus_one => -1_i64,
             f64_minus_zero => -0.0,
+            f32_0_5 => 0.5_f32,
+            f32_infinity => f32::INFINITY,
+            f32_nan => f32::NAN,
+            f64_nan => f64::NAN,
+        );
+    }
+
+    mod expression_from_integers {
+        snapshot_from_expression!(
+            u8_max => u8::MAX,
+            u16_max => u16::MAX,
+            u32_max => u32::MAX,
+            u64_max => u64::MAX,
+            i8_max => i8::MIN,
+            i16_max => i16::MIN,
+            i32_max => i32::MIN,
+            i64_max => i64::MIN,
         );
     }
 }

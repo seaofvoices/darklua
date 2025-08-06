@@ -8,10 +8,36 @@ use super::{string_utils, Expression};
 ///
 /// String segments are the literal text parts of an interpolated string,
 /// appearing between expression segments.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct StringSegment {
     value: Vec<u8>,
     token: Option<Token>,
+}
+
+impl std::fmt::Debug for StringSegment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StringSegment")
+            .field("token", &self.token)
+            .field("value", &{
+                if let Ok(s) = str::from_utf8(&self.value) {
+                    format!("{:?}", s)
+                } else {
+                    let escaped = self
+                        .value
+                        .iter()
+                        .flat_map(|&b| {
+                            if b <= 0x7f {
+                                vec![b as char]
+                            } else {
+                                format!("\\x{:02x}", b).chars().collect()
+                            }
+                        })
+                        .collect::<String>();
+                    format!("{:?}", escaped)
+                }
+            })
+            .finish()
+    }
 }
 
 impl StringSegment {
