@@ -139,6 +139,103 @@ test_rule!(
 );
 
 test_rule!(
+    convert_path_require_to_path,
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
+            rule: 'convert_require',
+            current: {
+                name: 'path',
+                sources: { '@value': './value', '@format': '../format' }
+            },
+            target: {
+                name: 'path',
+                sources: { '@value': './value' },
+            },
+        }"#
+    ).unwrap(),
+    resources = memory_resources!(
+        "src/test/module.luau" => "return nil",
+        "src/test/value/default.luau" => "return nil",
+        "src/test/value/init.luau" => "return nil",
+        "src/test/init.luau" => "return nil",
+        "src/test/folder/lib.luau" => "return nil",
+        "src/sub/lib.luau" => "return nil",
+        "src/format.luau" => "return nil",
+        "project.luau" => "return nil",
+        // specific to alias tests
+        "src/test/while.luau" => "return nil",
+        "src/test/a module.luau" => "return nil",
+    ),
+    test_file_name = "src/test/runner.luau",
+    // alias conversions
+    alias_conversion("local module = require('@value')")
+        => "local module = require('@value')",
+    removed_alias("local module = require('@format')")
+        => "local module = require('../format')",
+    nested_alias_conversion("local module = require('@value/default')")
+        => "local module = require('@value/default')",
+    // Relative path conversions
+    relative_path_conversion("local module = require('./module')")
+        => "local module = require('./module')",
+    relative_path_conversion_with_extension("local module = require('./module.luau')")
+        => "local module = require('./module')",
+    parent_path_conversion("local module = require('../format')")
+        => "local module = require('../format')",
+    nested_parent_path_conversion("local module = require('../sub/lib')")
+        => "local module = require('../sub/lib')",
+    double_parent_path_conversion("local module = require('../../project')")
+        => "local module = require('../../project')",
+    // Init file conversions
+    init_file_conversion("local module = require('./init')")
+        => "local module = require('.')",
+);
+
+test_rule!(
+    convert_path_require_to_path_from_init_module,
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
+            rule: 'convert_require',
+            current: {
+                name: 'path',
+                sources: { '@value': './value', '@format': '../format' }
+            },
+            target: {
+                name: 'path',
+                sources: { '@value': './value' },
+            },
+        }"#
+    ).unwrap(),
+    resources = memory_resources!(
+        "src/test/module.luau" => "return nil",
+        "src/test/value/default.luau" => "return nil",
+        "src/test/value/init.luau" => "return nil",
+        "src/test/folder/lib.luau" => "return nil",
+        "src/sub/lib.luau" => "return nil",
+        "src/format.luau" => "return nil",
+        "project.luau" => "return nil",
+    ),
+    test_file_name = "src/test/init.luau",
+    // alias conversions
+    alias_conversion("local module = require('@value')")
+        => "local module = require('@value')",
+    removed_alias("local module = require('@format')")
+        => "local module = require('../format')",
+    nested_alias_conversion("local module = require('@value/default')")
+        => "local module = require('@value/default')",
+    // Relative path conversions
+    relative_path_conversion("local module = require('./module')")
+        => "local module = require('./module')",
+    relative_path_conversion_with_extension("local module = require('./module.luau')")
+        => "local module = require('./module')",
+    parent_path_conversion("local module = require('../format')")
+        => "local module = require('../format')",
+    nested_parent_path_conversion("local module = require('../sub/lib')")
+        => "local module = require('../sub/lib')",
+    double_parent_path_conversion("local module = require('../../project')")
+        => "local module = require('../../project')",
+);
+
+test_rule!(
     convert_path_require_to_luau,
     json5::from_str::<Box<dyn Rule>>(
         r#"{
