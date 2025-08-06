@@ -214,6 +214,10 @@ fn get_relative_path(
     source_path: &Path,
     use_current_dir_prefix: bool,
 ) -> Result<Option<PathBuf>, DarkluaError> {
+    if require_path.is_absolute() {
+        return Ok(Some(require_path.to_path_buf()));
+    }
+
     Ok(
         pathdiff::diff_paths(require_path, get_relative_parent_path(source_path))
             .map(|path| {
