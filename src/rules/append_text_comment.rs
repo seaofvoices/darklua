@@ -547,4 +547,16 @@ mod test {
         );
         pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
     }
+
+    #[test]
+    fn configure_with_invalid_location_error() {
+        let result = json5::from_str::<Box<dyn Rule>>(
+            r#"{
+            rule: 'append_text_comment',
+            text: 'hello',
+            location: 'oops',
+        }"#,
+        );
+        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected value for field 'location': invalid value `oops` (must be `start` or `end`)");
+    }
 }
