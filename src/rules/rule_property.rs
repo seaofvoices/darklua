@@ -8,7 +8,10 @@ use crate::{
     process::to_expression,
 };
 
-use super::{require::PathRequireMode, RequireMode, RobloxRequireMode, RuleConfigurationError};
+use super::{
+    require::{LuauRequireMode, PathRequireMode},
+    RequireMode, RobloxRequireMode, RuleConfigurationError,
+};
 
 pub type RuleProperties = HashMap<String, RulePropertyValue>;
 
@@ -159,6 +162,11 @@ impl From<&RequireMode> for RulePropertyValue {
             RequireMode::Path(mode) => {
                 if mode == &PathRequireMode::default() {
                     return Self::from("path");
+                }
+            }
+            RequireMode::Luau(mode) => {
+                if mode == &LuauRequireMode::default() {
+                    return Self::from("luau");
                 }
             }
             RequireMode::Roblox(mode) => {
@@ -362,6 +370,11 @@ mod test {
         }
 
         #[test]
+        fn parse_require_mode_luau_string() {
+            parse_rule_property(r#""luau""#, RulePropertyValue::String("luau".to_owned()));
+        }
+
+        #[test]
         fn parse_require_mode_roblox_string() {
             parse_rule_property(
                 r#""roblox""#,
@@ -403,6 +416,14 @@ mod test {
                     )
                     .unwrap(),
                 )),
+            );
+        }
+
+        #[test]
+        fn parse_require_mode_luau_object() {
+            parse_rule_property(
+                r#"{ "name": "luau" }"#,
+                RulePropertyValue::RequireMode(RequireMode::Luau(LuauRequireMode::default())),
             );
         }
 

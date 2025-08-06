@@ -5,4 +5,3 @@ expression: "process `tests/test_cases/sourcemap/src/d/d2.lua`"
 local c = require(script.Parent.Parent:FindFirstChild('c'))
 
 return c .. c
-

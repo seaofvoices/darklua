@@ -16,6 +16,7 @@ pub use roblox_index_style::RobloxIndexStyle;
 pub use roblox_require_mode::RobloxRequireMode;
 
 use super::{verify_required_properties, PathRequireMode, Rule, RuleProcessResult};
+use crate::rules::require::LuauRequireMode;
 
 use std::ffi::OsStr;
 use std::ops::{Deref, DerefMut};
@@ -28,18 +29,21 @@ use std::str::FromStr;
 pub enum RequireMode {
     /// Handles requires using file system paths
     Path(PathRequireMode),
+    /// Handles requires using Luau module paths
+    Luau(LuauRequireMode),
     /// Handles requires using Roblox's instance-based require system
     Roblox(RobloxRequireMode),
 }
 
 impl RequireMode {
-    fn find_require(
+    pub(crate) fn find_require(
         &self,
         call: &FunctionCall,
         context: &Context,
     ) -> DarkluaResult<Option<PathBuf>> {
         match self {
             RequireMode::Path(path_mode) => path_mode.find_require(call, context),
+            RequireMode::Luau(luau_mode) => luau_mode.find_require(call, context),
             RequireMode::Roblox(roblox_mode) => roblox_mode.find_require(call, context),
         }
     }
@@ -52,6 +56,7 @@ impl RequireMode {
     ) -> DarkluaResult<Option<Arguments>> {
         match self {
             RequireMode::Path(path_mode) => path_mode.generate_require(path, current_mode, context),
+            RequireMode::Luau(luau_mode) => luau_mode.generate_require(path, current_mode, context),
             RequireMode::Roblox(roblox_mode) => {
                 roblox_mode.generate_require(path, current_mode, context)
             }
@@ -61,6 +66,7 @@ impl RequireMode {
     fn is_module_folder_name(&self, path: &Path) -> bool {
         match self {
             RequireMode::Path(path_mode) => path_mode.is_module_folder_name(path),
+            RequireMode::Luau(luau_mode) => luau_mode.is_module_folder_name(path),
             RequireMode::Roblox(_roblox_mode) => {
                 matches!(path.file_stem().and_then(OsStr::to_str), Some("init"))
             }
@@ -71,6 +77,7 @@ impl RequireMode {
         match self {
             RequireMode::Roblox(roblox_mode) => roblox_mode.initialize(context),
             RequireMode::Path(path_mode) => path_mode.initialize(context),
+            RequireMode::Luau(luau_mode) => luau_mode.initialize(context),
         }
     }
 }
@@ -81,6 +88,7 @@ impl FromStr for RequireMode {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s {
             "path" => Self::Path(Default::default()),
+            "luau" => Self::Luau(Default::default()),
             "roblox" => Self::Roblox(Default::default()),
             _ => return Err(format!("invalid require mode name `{}`", s)),
         })

@@ -54,3 +54,24 @@ object . --[[get field]] field : method --
 { if --[[condition]]  value   then --[[true]]   ok   else --[[false]]  err, { --[[empty table]] }, --[[trailing comma]] }
 
 local string = `-{ true }-{ object --[[ok]] }={ c + 8 }` -- interpolated string
+
+
+-- type related nodes
+
+local var: string | number -- string var
+
+local bvar = var :: number
+
+local function fn2<T --[[]], U, R... --[[for variadic ]]>(first: T & U, opts: { [number --[[index type]] ]: string }? --[[opts]], ...: R... ) : ()
+    return first :: --[[cast]] T
+end
+
+type MyT = {
+    true --[[only true values ]]
+}
+
+export --[[ this is exported ]] type PublicMyT = (MyT)
+
+type Opt<T> = Module . OtherType --[[extract a type from a module]]
+
+type Try = (... 'a' --[[literal type]] ) -> typeof ( fn() --[[get the return type]] )

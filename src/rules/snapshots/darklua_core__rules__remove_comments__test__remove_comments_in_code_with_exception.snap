@@ -74,7 +74,7 @@ type MyT = {
     true 
 }
 
-export  type PublicMyT = (MyT)
+export --[[ this is exported ]] type PublicMyT = (MyT)
 
 type Opt<T> = Module . OtherType 
 
