@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::frontend::DarkluaResult;
 use crate::nodes::{Arguments, FunctionCall, StringExpression};
 use crate::rules::require::path_utils::get_relative_path;
-use crate::rules::require::{match_path_require_call, path_utils};
+use crate::rules::require::{match_path_require_call, path_utils, PathLocator};
 use crate::rules::{Context, RequireMode};
 use crate::utils;
 use crate::DarkluaError;

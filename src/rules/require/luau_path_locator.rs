@@ -25,8 +25,10 @@ impl<'a, 'b, 'c> LuauPathLocator<'a, 'b, 'c> {
             resources,
         }
     }
+}
 
-    pub(crate) fn find_require_path(
+impl super::PathLocator for LuauPathLocator<'_, '_, '_> {
+    fn find_require_path(
         &self,
         path: impl Into<PathBuf>,
         source: &Path,
@@ -71,11 +73,6 @@ impl<'a, 'b, 'c> LuauPathLocator<'a, 'b, 'c> {
                 extra_module_location.extend(components);
                 path = extra_module_location;
             }
-        } else {
-            return Err(DarkluaError::custom(format!(
-                "Require path '{}' must have explicit prefix (@, ./, or ../) in Luau require mode",
-                path.display()
-            )));
         }
 
         let normalized_path = utils::normalize_path_with_current_dir(&path);

@@ -8,6 +8,9 @@ use utils::memory_resources;
 const DARKLUA_BUNDLE_ONLY_READABLE_CONFIG: &str =
     "{ \"rules\": [], \"generator\": \"readable\", \"bundle\": { \"require_mode\": \"path\" } }";
 
+const DARKLUA_BUNDLE_ONLY_READABLE_CONFIG_LUAU_MODE: &str =
+    "{ \"rules\": [], \"generator\": \"readable\", \"bundle\": { \"require_mode\": \"luau\" } }";
+
 const DARKLUA_BUNDLE_ONLY_RETAIN_LINES_CONFIG: &str =
     "{ \"rules\": [], \"generator\": \"retain_lines\", \"bundle\": { \"require_mode\": \"path\" } }";
 
@@ -85,6 +88,20 @@ mod without_rules {
         insta::assert_snapshot!(format!("bundle_without_rules_{}", snapshot_name), main);
     }
 
+    fn process_init(resources: &Resources, snapshot_name: &'static str) {
+        process(
+            resources,
+            Options::new("src/init.lua").with_output("out.lua"),
+        )
+        .unwrap()
+        .result()
+        .unwrap();
+
+        let main = resources.get("out.lua").unwrap();
+
+        insta::assert_snapshot!(format!("bundle_without_rules_{}", snapshot_name), main);
+    }
+
     fn process_main_with_errors(resources: &Resources, snapshot_name: &str) {
         let errors = process(
             resources,
@@ -110,6 +127,12 @@ mod without_rules {
             // we can re-use the same snapshot because the output file should
             // resolve to the same code
             process_main(&resources, "require_lua_file");
+        }
+
+        fn process_init_require_value(resources: Resources) {
+            // we can re-use the same snapshot because the output file should
+            // resolve to the same code
+            process_init(&resources, "require_lua_file");
         }
 
         #[test]
@@ -226,6 +249,135 @@ mod without_rules {
                 "src/main.lua" => "local value = require('./value')",
                 ".darklua.json" => "{ \"rules\": [], \"generator\": \"readable\", \"bundle\": { \"require_mode\": { \"name\": \"path\", \"module_folder_name\": \"__init__.lua\" } } }",
             ));
+        }
+
+        mod luau_mode {
+            use super::*;
+
+            #[test]
+            fn require_lua_file() {
+                process_main_require_value(memory_resources!(
+                    "src/value.lua" => "return true",
+                    "src/main.lua" => "local value = require('./value.lua')",
+                    ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG_LUAU_MODE,
+                ));
+            }
+
+            #[test]
+            fn require_lua_file_in_init() {
+                process_init_require_value(memory_resources!(
+                    "src/value.lua" => "return true",
+                    "src/init.lua" => "local value = require('@self/value.lua')",
+                    ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG_LUAU_MODE,
+                ));
+            }
+
+            #[test]
+            fn require_lua_file_with_string_call() {
+                process_main_require_value(memory_resources!(
+                    "src/value.lua" => "return true",
+                    "src/main.lua" => "local value = require './value.lua'",
+                    ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG_LUAU_MODE,
+                ));
+            }
+
+            #[test]
+            fn require_lua_file_in_sibling_nested_file() {
+                process_main_require_value(memory_resources!(
+                    "src/constants/value.lua" => "return true",
+                    "src/main.lua" => "local value = require('./constants/value.lua')",
+                    ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG_LUAU_MODE,
+                ));
+            }
+
+            #[test]
+            fn require_lua_file_in_sibling_nested_file_in_init() {
+                process_init_require_value(memory_resources!(
+                    "src/constants/value.lua" => "return true",
+                    "src/init.lua" => "local value = require('@self/constants/value.lua')",
+                    ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG_LUAU_MODE,
+                ));
+            }
+
+            #[test]
+            fn require_lua_file_in_parent_directory() {
+                process_main_require_value(memory_resources!(
+                    "value.lua" => "return true",
+                    "src/main.lua" => "local value = require('../value.lua')",
+                    ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG_LUAU_MODE,
+                ));
+            }
+            #[test]
+            fn require_lua_file_without_extension() {
+                process_main_require_value(memory_resources!(
+                    "src/value.lua" => "return true",
+                    "src/main.lua" => "local value = require('./value')",
+                    ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG_LUAU_MODE,
+                ));
+            }
+
+            #[test]
+            fn require_lua_file_in_parent_directory_without_extension() {
+                process_main_require_value(memory_resources!(
+                    "value.lua" => "return true",
+                    "src/main.lua" => "local value = require('../value')",
+                    ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG_LUAU_MODE,
+                ));
+            }
+
+            #[test]
+            fn require_luau_file_in_parent_directory_without_extension() {
+                process_main_require_value(memory_resources!(
+                    "value.luau" => "return true",
+                    "src/main.lua" => "local value = require('../value')",
+                    ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG_LUAU_MODE,
+                ));
+            }
+
+            #[test]
+            fn require_luau_file_without_extension() {
+                process_main_require_value(memory_resources!(
+                    "src/value.luau" => "return true",
+                    "src/main.lua" => "local value = require('./value')",
+                    ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG_LUAU_MODE,
+                ));
+            }
+
+            #[test]
+            fn require_directory_with_init_lua_file() {
+                process_main_require_value(memory_resources!(
+                    "src/value/init.lua" => "return true",
+                    "src/main.lua" => "local value = require('./value')",
+                    ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG_LUAU_MODE,
+                ));
+            }
+
+            #[test]
+            fn require_directory_with_init_luau_file() {
+                process_main_require_value(memory_resources!(
+                    "src/value/init.luau" => "return true",
+                    "src/main.lua" => "local value = require('./value')",
+                    ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG_LUAU_MODE,
+                ));
+            }
+
+            #[test]
+            fn require_in_parent_directory() {
+                process_main_require_value(memory_resources!(
+                    "value.lua" => "return true",
+                    "src/main.lua" => "local value = require('../value.lua')",
+                    ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG_LUAU_MODE,
+                ));
+            }
+
+            #[test]
+            fn require_in_packages_directory() {
+                process_main_require_value(memory_resources!(
+                    "packages/value.lua" => "return true",
+                    "src/main.lua" => "local value = require('@Packages/value.lua')",
+                    ".darklua.json" => "{ \"rules\": [], \"generator\": \"readable\", \"bundle\": { \"require_mode\": { \"name\": \"luau\", \"sources\": { \"@Packages\": \"./packages\" } } } }",
+                ));
+            }
         }
     }
 

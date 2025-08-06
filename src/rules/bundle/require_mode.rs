@@ -2,7 +2,10 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
-use crate::rules::{require::PathRequireMode, RuleProcessResult};
+use crate::rules::{
+    require::{LuauPathLocator, LuauRequireMode, PathRequireMode, RequirePathLocator},
+    RuleProcessResult,
+};
 use crate::{nodes::Block, rules::Context};
 
 use super::{path_require_mode, BundleOptions};
@@ -11,6 +14,7 @@ use super::{path_require_mode, BundleOptions};
 #[serde(deny_unknown_fields, rename_all = "snake_case", tag = "name")]
 pub enum BundleRequireMode {
     Path(PathRequireMode),
+    Luau(LuauRequireMode),
 }
 
 impl From<PathRequireMode> for BundleRequireMode {
@@ -25,6 +29,7 @@ impl FromStr for BundleRequireMode {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s {
             "path" => Self::Path(Default::default()),
+            "luau" => Self::Luau(Default::default()),
             _ => return Err(format!("invalid require mode `{}`", s)),
         })
     }
@@ -49,7 +54,28 @@ impl BundleRequireMode {
                 require_mode
                     .initialize(context)
                     .map_err(|err| err.to_string())?;
-                path_require_mode::process_block(block, context, options, &require_mode)
+
+                let locator = RequirePathLocator::new(
+                    path_require_mode,
+                    context.project_location(),
+                    context.resources(),
+                );
+
+                path_require_mode::process_block(block, context, options, locator)
+            }
+            Self::Luau(luau_require_mode) => {
+                let mut require_mode = luau_require_mode.clone();
+                require_mode
+                    .initialize(context)
+                    .map_err(|err| err.to_string())?;
+
+                let locator = LuauPathLocator::new(
+                    luau_require_mode,
+                    context.project_location(),
+                    context.resources(),
+                );
+
+                path_require_mode::process_block(block, context, options, locator)
             }
         }
     }

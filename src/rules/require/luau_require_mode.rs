@@ -2,8 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::frontend::DarkluaResult;
 use crate::nodes::{Arguments, FunctionCall, StringExpression};
-use crate::rules::require::path_utils::{self, get_relative_path};
-use crate::rules::require::{match_path_require_call, LuauPathLocator};
+use crate::rules::require::{match_path_require_call, path_utils, LuauPathLocator, PathLocator};
 use crate::rules::{Context, RequireMode};
 use crate::utils;
 use crate::DarkluaError;
@@ -184,7 +183,7 @@ impl LuauRequireMode {
 
                 new_path
             } else if let Some(relative_require_path) =
-                get_relative_path(&normalized_require_path, &source_path, true)?
+                path_utils::get_relative_path(&normalized_require_path, &source_path, true)?
             {
                 log::trace!(
                     " ⨽ adjust relative path from source: `{}`",
