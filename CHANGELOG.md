@@ -1,5 +1,6 @@
 # Changelog
 
+* improve warning messages when a path can't be found in a Rojo sourcemap (when using the `roblox` require mode) ([#294](https://github.com/seaofvoices/darklua/pull/294))
 * fix missing trailing commas when writing table types using the `retain_lines` generator ([#293](https://github.com/seaofvoices/darklua/pull/293))
 * fix string value generation to properly use decimal escape codes (e.g. `"\12"`) ([#292](https://github.com/seaofvoices/darklua/pull/292))
 * add a new require mode for the Luau require semantics (supporting the usage of `@self`) ([#290](https://github.com/seaofvoices/darklua/pull/290))
