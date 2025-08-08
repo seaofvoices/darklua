@@ -65,6 +65,12 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Display cargo version
+        run: cargo --version
+
+      - name: Display cargo clippy version
+        run: cargo clippy --version
+
       - name: Run clippy
         run: cargo clippy -- -D warnings
 
