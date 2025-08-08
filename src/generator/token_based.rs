@@ -823,12 +823,10 @@ impl<'a> TokenBasedLuaGenerator<'a> {
                 }
             }
 
-            if i < last_index {
-                if let Some(comma) = tokens.separators.get(i) {
-                    self.write_token(comma);
-                } else {
-                    self.write_symbol(",");
-                }
+            if let Some(comma) = tokens.separators.get(i) {
+                self.write_token(comma);
+            } else if i < last_index {
+                self.write_symbol(",");
             }
         }
 
