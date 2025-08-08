@@ -10,37 +10,37 @@
         {
           "name": "Project",
           "className": "ModuleScript",
-          "filePaths": ["src\\init.lua"],
+          "filePaths": ["src/init.lua"],
           "children": [
             {
               "name": "a",
               "className": "ModuleScript",
-              "filePaths": ["src\\a.lua"]
+              "filePaths": ["src/a.lua"]
             },
             {
               "name": "b",
               "className": "ModuleScript",
-              "filePaths": ["src\\b.lua"]
+              "filePaths": ["src/b.lua"]
             },
             {
               "name": "c",
               "className": "ModuleScript",
-              "filePaths": ["src\\c.lua"]
+              "filePaths": ["src/c.lua"]
             },
             {
               "name": "d",
               "className": "ModuleScript",
-              "filePaths": ["src\\d\\init.lua"],
+              "filePaths": ["src/d/init.lua"],
               "children": [
                 {
                   "name": "d1",
                   "className": "ModuleScript",
-                  "filePaths": ["src\\d\\d1.lua"]
+                  "filePaths": ["src/d/d1.lua"]
                 },
                 {
                   "name": "d2",
                   "className": "ModuleScript",
-                  "filePaths": ["src\\d\\d2.lua"]
+                  "filePaths": ["src/d/d2.lua"]
                 }
               ]
             },
@@ -51,12 +51,12 @@
                 {
                   "name": "Package1",
                   "className": "ModuleScript",
-                  "filePaths": ["Packages\\Package1\\init.lua"],
+                  "filePaths": ["Packages/Package1/init.lua"],
                   "children": [
                     {
                       "name": "value",
                       "className": "ModuleScript",
-                      "filePaths": ["Packages\\Package1\\value.lua"]
+                      "filePaths": ["Packages/Package1/value.lua"]
                     }
                   ]
                 }
