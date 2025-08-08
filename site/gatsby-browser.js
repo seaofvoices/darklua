@@ -1,5 +1,5 @@
 // custom typefaces
-import "@fontsource-variable/comfortaa"
+import "@fontsource-variable/open-sans"
 
 // normalize CSS across browsers
 import "./src/normalize.css"

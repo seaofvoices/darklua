@@ -1,10 +1,11 @@
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::DarkluaResult;
-use crate::nodes::FunctionCall;
-use crate::rules::require::match_path_require_call;
-use crate::rules::Context;
-use crate::utils::find_luau_configuration;
+use crate::nodes::{Arguments, FunctionCall, StringExpression};
+use crate::rules::require::path_utils::get_relative_path;
+use crate::rules::require::{match_path_require_call, path_utils, PathLocator};
+use crate::rules::{Context, RequireMode};
+use crate::utils;
 use crate::DarkluaError;
 
 use std::collections::HashMap;
@@ -73,7 +74,8 @@ impl PathRequireMode {
             return Ok(());
         }
 
-        if let Some(config) = find_luau_configuration(context.current_path(), context.resources())?
+        if let Some(config) =
+            utils::find_luau_configuration(context.current_path(), context.resources())?
         {
             self.luau_rc_aliases.replace(config.aliases);
         } else {
@@ -123,13 +125,91 @@ impl PathRequireMode {
 
     pub(crate) fn generate_require(
         &self,
-        _path: &Path,
-        _current_mode: &crate::rules::RequireMode,
-        _context: &Context<'_, '_, '_>,
+        require_path: &Path,
+        _current: &RequireMode,
+        context: &Context<'_, '_, '_>,
     ) -> Result<Option<crate::nodes::Arguments>, crate::DarkluaError> {
-        Err(DarkluaError::custom("unsupported target require mode")
-            .context("path require mode cannot be used"))
+        let source_path = utils::normalize_path(context.current_path());
+        log::debug!(
+            "generate path require for `{}` from `{}`",
+            require_path.display(),
+            source_path.display(),
+        );
+
+        let mut generated_path = if path_utils::is_require_relative(require_path) {
+            require_path.to_path_buf()
+        } else {
+            let normalized_require_path = utils::normalize_path(require_path);
+            log::trace!(
+                " ⨽ adjust non-relative path `{}` (normalized to `{}`) from `{}`",
+                require_path.display(),
+                normalized_require_path.display(),
+                source_path.display()
+            );
+
+            let mut potential_aliases: Vec<_> = self
+                .sources
+                .iter()
+                .map(|(alias_name, alias_path)| {
+                    (
+                        alias_name,
+                        utils::normalize_path(context.project_location().join(alias_path)),
+                    )
+                })
+                .filter(|(_, alias_path)| normalized_require_path.starts_with(alias_path))
+                .inspect(|(alias_name, alias_path)| {
+                    log::trace!(
+                        "   > alias candidate `{}` (`{}`)",
+                        alias_name,
+                        alias_path.display()
+                    );
+                })
+                .collect();
+            potential_aliases.sort_by_cached_key(|(_, alias_path)| alias_path.components().count());
+
+            if let Some((alias_name, alias_path)) = potential_aliases.into_iter().next_back() {
+                let mut new_path = PathBuf::from(alias_name);
+
+                new_path.extend(
+                    normalized_require_path
+                        .components()
+                        .skip(alias_path.components().count()),
+                );
+
+                new_path
+            } else if let Some(relative_require_path) =
+                get_relative_path(&normalized_require_path, &source_path, true)?
+            {
+                log::trace!(
+                    "   found relative path from source: `{}`",
+                    relative_require_path.display()
+                );
+
+                if !(relative_require_path.starts_with(".")
+                    || relative_require_path.starts_with(".."))
+                {
+                    Path::new(".").join(relative_require_path)
+                } else {
+                    relative_require_path
+                }
+            } else {
+                normalized_require_path
+            }
+        };
+
+        if self.is_module_folder_name(&generated_path) {
+            generated_path.pop();
+        } else if matches!(generated_path.extension(), Some(extension) if extension == "lua" || extension == "luau")
+        {
+            generated_path.set_extension("");
+        }
+
+        path_utils::write_require_path(&generated_path).map(generate_require_arguments)
     }
+}
+
+fn generate_require_arguments(value: String) -> Option<Arguments> {
+    Some(Arguments::default().with_argument(StringExpression::from_value(value)))
 }
 
 #[cfg(test)]

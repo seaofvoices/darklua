@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use super::{path_iterator, PathRequireMode};
-use crate::{utils, DarkluaError, Resources};
+use crate::{rules::require::path_utils::is_require_relative, utils, DarkluaError, Resources};
 
 #[derive(Debug)]
 pub(crate) struct RequirePathLocator<'a, 'b, 'resources> {
@@ -22,8 +22,10 @@ impl<'a, 'b, 'c> RequirePathLocator<'a, 'b, 'c> {
             resources,
         }
     }
+}
 
-    pub(crate) fn find_require_path(
+impl super::PathLocator for RequirePathLocator<'_, '_, '_> {
+    fn find_require_path(
         &self,
         path: impl Into<PathBuf>,
         source: &Path,
@@ -91,10 +93,4 @@ impl<'a, 'b, 'c> RequirePathLocator<'a, 'b, 'c> {
             )),
         )
     }
-}
-
-// the `is_relative` method from std::path::Path is not what darklua needs
-// to consider a require relative, which are paths that starts with `.` or `..`
-fn is_require_relative(path: &Path) -> bool {
-    path.starts_with(Path::new(".")) || path.starts_with(Path::new(".."))
 }

@@ -2,7 +2,7 @@
 title: Roblox Require Mode
 description: How darklua understands Roblox require calls
 group: Configuration
-order: 5
+order: 6
 ---
 
 This require mode is specific to Roblox, as it will interpret require calls to Roblox instances. Right now, it is only available to use as the target require mode when using the [`convert_require` rule](../rules/convert_require).

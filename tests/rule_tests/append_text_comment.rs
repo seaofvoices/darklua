@@ -39,6 +39,15 @@ test_rule_with_tokens!(
 );
 
 test_rule_with_tokens!(
+    append_text_comment_with_brackets,
+    json5::from_str::<Box<dyn Rule>>(r#"{
+        rule: 'append_text_comment',
+        text: '[[ ]]\n[=[  ]=]',
+    }"#).unwrap(),
+    empty_do("do end") => "--[==[\n[[ ]]\n[=[  ]=]\n]==]\ndo end",
+);
+
+test_rule_with_tokens!(
     append_text_comment_multiline,
     json5::from_str::<Box<dyn Rule>>(r#"{
         rule: 'append_text_comment',

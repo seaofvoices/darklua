@@ -59,3 +59,23 @@ object .  field : method
 
 local string = `-{ true }-{ object  }={ c + 8 }` 
 
+
+
+
+local var: string | number 
+
+local bvar = var :: number
+
+local function fn2<T , U, R...>(first: T & U, opts: { [number  ]: string }? , ...: R...) : ()
+    return first ::  T
+end
+
+type MyT = {
+    true 
+}
+
+export  type PublicMyT = (MyT)
+
+type Opt<T> = Module . OtherType 
+
+type Try = (...'a'  ) -> typeof ( fn()  )

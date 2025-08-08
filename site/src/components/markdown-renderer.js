@@ -4,7 +4,17 @@ import { Link } from "gatsby"
 import rehypeReact from "rehype-react"
 
 import { styled, useTheme } from "@mui/system"
-import { Typography, Link as MuiLink } from "@mui/material"
+import {
+  Typography,
+  Link as MuiLink,
+  TableRow,
+  TableCell,
+  TableHead,
+  TableBody,
+  TableContainer,
+  Paper,
+  Table,
+} from "@mui/material"
 import { RuleReference } from "./rule-reference"
 import { toHast } from "mdast-util-to-hast"
 import { fromMarkdown } from "mdast-util-from-markdown"
@@ -97,6 +107,20 @@ const typographyParagraph = ({ children }) => {
   )
 }
 
+const TableContainerWrapper = ({
+  children,
+  "aria-label": ariaLabel,
+  ...props
+}) => (
+  <TableContainer component={Paper} {...props}>
+    <Table sx={{ minWidth: 650 }} aria-label={ariaLabel}>
+      {children}
+    </Table>
+  </TableContainer>
+)
+
+const MarkdownLink = ({ href, ...props }) => <TextLink to={href} {...props} />
+
 const renderAst = unified().use(rehypeReact, {
   ...production,
   components: {
@@ -107,9 +131,14 @@ const renderAst = unified().use(rehypeReact, {
     h5: createTypographyComponent("h5"),
     h6: createTypographyComponent("h6"),
     p: typographyParagraph,
-    a: TextLink,
+    a: MarkdownLink,
     "rule-reference": RuleReference,
     "compare-code": CompareCode,
+    "table-container": TableContainerWrapper,
+    "table-row": TableRow,
+    "table-cell": TableCell,
+    "table-head": TableHead,
+    "table-body": TableBody,
   },
 })
 

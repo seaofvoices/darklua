@@ -14,7 +14,7 @@ import { usePrism } from "../../hooks/usePrism"
 const COMMON_OPTIONS = {
   typography: {
     allVariants: {
-      fontFamily: "'Comfortaa Variable', system-ui",
+      fontFamily: "'Open Sans Variable', system-ui",
     },
     h1: { fontSize: "3.8rem", marginTop: "3rem" },
     h2: { fontSize: "2.7rem", marginTop: "2.3rem" },

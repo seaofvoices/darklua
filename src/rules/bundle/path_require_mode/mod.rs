@@ -17,9 +17,7 @@ use crate::nodes::{
 use crate::process::{
     to_expression, DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor,
 };
-use crate::rules::require::{
-    is_require_call, match_path_require_call, PathRequireMode, RequirePathLocator,
-};
+use crate::rules::require::{is_require_call, match_path_require_call, PathLocator};
 use crate::rules::{
     Context, ContextBuilder, FlawlessRule, ReplaceReferencedTokens, RuleProcessResult,
 };
@@ -34,10 +32,10 @@ pub(crate) enum RequiredResource {
 }
 
 #[derive(Debug)]
-struct RequirePathProcessor<'a, 'b, 'resources, 'code> {
+struct RequirePathProcessor<'a, 'b, 'resources, PathLocatorImpl> {
     options: &'a BundleOptions,
     identifier_tracker: IdentifierTracker,
-    path_locator: RequirePathLocator<'b, 'code, 'resources>,
+    path_locator: &'b PathLocatorImpl,
     module_definitions: BuildModuleDefinitions,
     source: PathBuf,
     module_cache: HashMap<PathBuf, Expression>,
@@ -47,11 +45,13 @@ struct RequirePathProcessor<'a, 'b, 'resources, 'code> {
     errors: Vec<String>,
 }
 
-impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> {
-    fn new<'context>(
+impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator>
+    RequirePathProcessor<'a, 'b, 'resources, PathLocatorImpl>
+{
+    fn new<'context, 'code>(
         context: &'context Context<'b, 'resources, 'code>,
         options: &'a BundleOptions,
-        path_require_mode: &'b PathRequireMode,
+        path_locator: &'b PathLocatorImpl,
     ) -> Self
     where
         'context: 'b,
@@ -61,11 +61,7 @@ impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> 
         Self {
             options,
             identifier_tracker: IdentifierTracker::new(),
-            path_locator: RequirePathLocator::new(
-                path_require_mode,
-                context.project_location(),
-                context.resources(),
-            ),
+            path_locator,
             module_definitions: BuildModuleDefinitions::new(options.modules_identifier()),
             source: context.current_path().to_path_buf(),
             module_cache: Default::default(),
@@ -261,7 +257,9 @@ impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> 
     }
 }
 
-impl Deref for RequirePathProcessor<'_, '_, '_, '_> {
+impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator> Deref
+    for RequirePathProcessor<'a, 'b, 'resources, PathLocatorImpl>
+{
     type Target = IdentifierTracker;
 
     fn deref(&self) -> &Self::Target {
@@ -269,7 +267,9 @@ impl Deref for RequirePathProcessor<'_, '_, '_, '_> {
     }
 }
 
-impl DerefMut for RequirePathProcessor<'_, '_, '_, '_> {
+impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator> DerefMut
+    for RequirePathProcessor<'a, 'b, 'resources, PathLocatorImpl>
+{
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.identifier_tracker
     }
@@ -300,7 +300,9 @@ where
     expression
 }
 
-impl NodeProcessor for RequirePathProcessor<'_, '_, '_, '_> {
+impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator> NodeProcessor
+    for RequirePathProcessor<'a, 'b, 'resources, PathLocatorImpl>
+{
     fn process_expression(&mut self, expression: &mut Expression) {
         if let Expression::Call(call) = expression {
             if let Some(replace_with) = self.try_inline_call(call) {
@@ -342,7 +344,7 @@ pub(crate) fn process_block(
     block: &mut Block,
     context: &Context,
     options: &BundleOptions,
-    path_require_mode: &PathRequireMode,
+    locator: impl PathLocator,
 ) -> Result<(), String> {
     if options.parser().is_preserving_tokens() {
         log::trace!(
@@ -362,7 +364,7 @@ pub(crate) fn process_block(
         );
     }
 
-    let mut processor = RequirePathProcessor::new(context, options, path_require_mode);
+    let mut processor = RequirePathProcessor::new(context, options, &locator);
     ScopeVisitor::visit_block(block, &mut processor);
     processor.apply(block, context)
 }

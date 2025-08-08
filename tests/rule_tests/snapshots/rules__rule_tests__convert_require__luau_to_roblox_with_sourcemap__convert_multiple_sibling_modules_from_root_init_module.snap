@@ -1,6 +1,6 @@
 ---
 source: tests/rule_tests/convert_require.rs
-expression: "process `tests/test_cases/sourcemap/src/init.lua`"
+expression: "process `tests/test_cases/sourcemap_luau/src/init.lua`"
 ---
 local b = require(script:FindFirstChild('b'))
 local c = require(script:FindFirstChild('c'))
@@ -14,4 +14,3 @@ return {
     d = d,
     Package1 = Package1,
 }
-

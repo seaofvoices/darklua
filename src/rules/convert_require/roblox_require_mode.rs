@@ -3,7 +3,11 @@ use serde::{Deserialize, Serialize};
 use crate::{
     frontend::DarkluaResult,
     nodes::{Arguments, FunctionCall, Prefix},
-    rules::{convert_require::rojo_sourcemap::RojoSourcemap, Context},
+    rules::{
+        convert_require::rojo_sourcemap::RojoSourcemap,
+        require::path_utils::{get_relative_parent_path, get_relative_path},
+        Context,
+    },
     utils, DarkluaError,
 };
 
@@ -206,41 +210,5 @@ impl RobloxRequireMode {
                 source_path.display(),
             )))
         }
-    }
-}
-
-fn get_relative_path(
-    require_path: &Path,
-    source_path: &Path,
-    use_current_dir_prefix: bool,
-) -> Result<Option<PathBuf>, DarkluaError> {
-    Ok(
-        pathdiff::diff_paths(require_path, get_relative_parent_path(source_path))
-            .map(|path| {
-                if use_current_dir_prefix && !path.starts_with(".") && !path.starts_with("..") {
-                    Path::new(".").join(path)
-                } else if !use_current_dir_prefix && path.starts_with(".") {
-                    path.strip_prefix(".")
-                        .map(Path::to_path_buf)
-                        .ok()
-                        .unwrap_or(path)
-                } else {
-                    path
-                }
-            })
-            .map(utils::normalize_path_with_current_dir),
-    )
-}
-
-fn get_relative_parent_path(path: &Path) -> &Path {
-    match path.parent() {
-        Some(parent) => {
-            if parent == Path::new("") {
-                Path::new(".")
-            } else {
-                parent
-            }
-        }
-        None => Path::new(".."),
     }
 }

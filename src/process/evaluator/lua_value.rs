@@ -92,7 +92,7 @@ impl LuaValue {
                         string
                             .get(1..)
                             .and_then(|string| string.parse::<NumberExpression>().ok())
-                            .map(|number| number.compute_value() * -1.0)
+                            .map(|number| -number.compute_value())
                     } else {
                         string
                             .parse::<NumberExpression>()

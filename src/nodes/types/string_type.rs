@@ -88,3 +88,36 @@ impl StringType {
 
     super::impl_token_fns!(target = [value]);
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn empty_string_get_empty_string_value() {
+        let string_type = StringType::empty();
+
+        assert_eq!(string_type.get_string_value().unwrap(), "");
+    }
+
+    #[test]
+    fn empty_string_get_bytes_is_empty() {
+        let string_type = StringType::empty();
+
+        assert_eq!(string_type.get_value(), b"");
+    }
+
+    #[test]
+    fn empty_string_is_not_multiline() {
+        let string_type = StringType::empty();
+
+        assert!(!string_type.is_multiline());
+    }
+
+    #[test]
+    fn has_single_quote_is_false_if_no_single_quotes() {
+        let string = StringType::from_value("hello");
+
+        assert!(!string.has_single_quote());
+    }
+}

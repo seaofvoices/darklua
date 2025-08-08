@@ -482,6 +482,25 @@ pub struct RemoveComments {
     except: Vec<Regex>,
 }
 
+impl RemoveComments {
+    pub fn with_exception(mut self, exception_pattern: &str) -> Self {
+        match Regex::new(exception_pattern) {
+            Ok(regex_value) => {
+                self.except.push(regex_value);
+            }
+            Err(err) => {
+                log::warn!(
+                    "unable to compile regex pattern '{}': {}",
+                    exception_pattern,
+                    err
+                );
+            }
+        };
+
+        self
+    }
+}
+
 impl FlawlessRule for RemoveComments {
     fn flawless_process(&self, block: &mut Block, context: &Context) {
         if self.except.is_empty() {
@@ -585,5 +604,29 @@ mod test {
         let code_output = &generator.into_string();
 
         insta::assert_snapshot!("remove_comments_in_code", code_output);
+    }
+
+    #[test]
+    fn remove_comments_in_code_with_exception() {
+        let code = include_str!("../../tests/test_cases/spaces_and_comments.lua");
+
+        let parser = Parser::default().preserve_tokens();
+
+        let mut block = parser.parse(code).expect("unable to parse code");
+
+        RemoveComments::default()
+            .with_exception("this.*")
+            .flawless_process(
+                &mut block,
+                &ContextBuilder::new(".", &Resources::from_memory(), code).build(),
+            );
+
+        let mut generator = TokenBasedLuaGenerator::new(code);
+
+        generator.write_block(&block);
+
+        let code_output = &generator.into_string();
+
+        insta::assert_snapshot!("remove_comments_in_code_with_exception", code_output);
     }
 }

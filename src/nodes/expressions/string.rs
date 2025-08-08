@@ -6,10 +6,36 @@ use super::string_utils;
 ///
 /// String literals in Lua can be written with single quotes, double quotes,
 /// or with long brackets (`[[...]]` or `[=[...]=]` etc.) for multi-line strings.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct StringExpression {
     value: Vec<u8>,
     token: Option<Token>,
+}
+
+impl std::fmt::Debug for StringExpression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StringExpression")
+            .field("token", &self.token)
+            .field("value", &{
+                if let Ok(s) = str::from_utf8(&self.value) {
+                    format!("{:?}", s)
+                } else {
+                    let escaped = self
+                        .value
+                        .iter()
+                        .flat_map(|&b| {
+                            if b <= 0x7f {
+                                vec![b as char]
+                            } else {
+                                format!("\\x{:02x}", b).chars().collect()
+                            }
+                        })
+                        .collect::<String>();
+                    format!("{:?}", escaped)
+                }
+            })
+            .finish()
+    }
 }
 
 impl StringExpression {
