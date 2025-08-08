@@ -275,7 +275,7 @@ fn needs_quoted_string(character: &u8) -> bool {
     !(character.is_ascii_graphic() || *character == b' ' || *character == b'\n')
 }
 
-fn escape(character: u8) -> String {
+fn escape(character: u8, next_character: Option<u8>) -> String {
     match character {
         b'\n' => "\\n".to_owned(),
         b'\t' => "\\t".to_owned(),
@@ -286,7 +286,11 @@ fn escape(character: u8) -> String {
         b'\x0B' => "\\v".to_owned(),
         b'\x0C' => "\\f".to_owned(),
         character => {
-            format!("\\{}", character)
+            if next_character.filter(|c: &u8| c.is_ascii_digit()).is_some() {
+                format!("\\{:03}", character)
+            } else {
+                format!("\\{}", character)
+            }
         }
     }
 }
@@ -311,7 +315,7 @@ pub fn write_string(value: &[u8]) -> String {
             b'"' => return "'\"'".to_owned(),
             character => {
                 if needs_escaping(character) {
-                    return format!("'{}'", escape(character));
+                    return format!("'{}'", escape(character, None));
                 } else {
                     return format!("'{}'", character as char);
                 }
@@ -341,14 +345,14 @@ pub fn write_interpolated_string_segment(segment: &StringSegment) -> String {
 
     result.reserve(value.len());
 
-    for character in value.iter() {
+    for (character, next_character) in iter_with_next(value, value) {
         match character {
             b'`' | b'{' => {
                 result.push('\\');
                 result.push(*character as char);
             }
             _ if needs_escaping(*character) => {
-                result.push_str(&escape(*character));
+                result.push_str(&escape(*character, next_character.copied()));
             }
             _ => {
                 result.push(*character as char);
@@ -357,6 +361,19 @@ pub fn write_interpolated_string_segment(segment: &StringSegment) -> String {
     }
 
     result
+}
+
+fn iter_with_next<T>(
+    value: impl IntoIterator<Item = T>,
+    same_iterable: impl IntoIterator<Item = T>,
+) -> impl Iterator<Item = (T, Option<T>)> {
+    value.into_iter().zip(
+        same_iterable
+            .into_iter()
+            .skip(1)
+            .map(Some)
+            .chain(std::iter::once(None)),
+    )
 }
 
 fn write_long_bracket(value: &[u8]) -> Option<String> {
@@ -393,13 +410,14 @@ fn write_quoted(value: &[u8]) -> String {
     quoted.push(quote_symbol);
 
     if let Ok(stringified) = str::from_utf8(value) {
-        for character in stringified.chars() {
+        for (character, next_character) in iter_with_next(stringified.chars(), stringified.chars())
+        {
             if character == quote_symbol {
                 quoted.push('\\');
                 quoted.push(quote_symbol);
             } else if !character.is_ascii() || needs_escaping(character as u8) {
                 if character.is_ascii() {
-                    quoted.push_str(&escape(character as u8));
+                    quoted.push_str(&escape(character as u8, next_character.map(|c| c as u8)));
                 } else {
                     quoted.push_str("\\u{");
                     quoted.push_str(&format!("{:x}", character as u32));
@@ -410,12 +428,12 @@ fn write_quoted(value: &[u8]) -> String {
             }
         }
     } else {
-        for character in value {
+        for (character, next_character) in iter_with_next(value, value) {
             if *character == quote_symbol as u8 {
                 quoted.push('\\');
                 quoted.push(quote_symbol);
             } else if needs_escaping(*character) {
-                quoted.push_str(&escape(*character));
+                quoted.push_str(&escape(*character, next_character.copied()));
             } else {
                 quoted.push(*character as char);
             }
@@ -474,7 +492,9 @@ mod test {
             single_quote("'") => "\"'\"",
             double_quote("\"") => "'\"'",
             null("\0") => "'\\0'",
-            escape("\u{1B}") => "'\\27'",
+            escape_as_digits("\u{1B}") => "'\\27'",
+            escape_as_digits_followed_by_digit("\u{1B}0") => "'\\0270'",
+            escape_as_single_digit_followed_by_digit("\u{1}0") => "'\\0010'",
             extended_ascii("\u{C3}") => "'\\u{c3}'",
             unicode("\u{25C1}") => "'\\u{25c1}'",
             escape_degree_symbol("°") => "'\\u{b0}'",
