@@ -5,9 +5,17 @@ group: Configuration
 order: 4
 ---
 
-This require mode can be configured in the bundle part of the configuration file. For a quick overview of the bundling configuration, see [the documentation page](../bundle/).
+This require mode is meant to be used for resolving content using regular file paths.
+
+**_Warning!_** The _path_ require mode should not be confused with the _luau_ require mode. Both require modes are used with strings looking like file paths, but they resolve to actual files differently.
 
 Once enabled, darklua will find all require calls made with strings (single or double quotes) and resolve them.
+
+## Bundling Support
+
+It can be configured in the **bundle** part of the configuration file. For a quick overview of the bundling configuration, see [the documentation page](../bundle/).
+
+## Configuration Overview
 
 The path require mode can be defined as the string 'path' to use all the default values, or with its object format:
 
@@ -33,25 +41,37 @@ The path require mode can be defined as the string 'path' to use all the default
 The first step consist of figuring out the head of the path or where to start looking for the resource:
 
 - **if the path starts with `.` or `..`:** the path is considered relative to the file where the require call is made
+
 - **if the path starts with `/`:** the path is considered like a regular absolute path
+
 - **else:** the first component of the path is used to find a matching [source](#sources)
 
 The next step is to resolve the tail of the path. Darklua will find the first available file based on the given path:
 
 1. the given path
+
 1. the given path with a `luau` extension
+
 1. the given path with a `lua` extension
+
 1. the given path joined with the module folder name
+
 1. (if the module folder name does not have an extension) the given path joined with the module folder name and a `luau` extension
+
 1. (if the module folder name does not have an extension) the given path joined with the module folder name and a `lua` extension
 
 Here is a concrete example of these steps with a require to `./example`. darklua will try the following paths and find the first file:
 
 1. `./example`
+
 1. `./example.luau`
+
 1. `./example.lua`
+
 1. `./example/init`
+
 1. `./example/init.luau`
+
 1. `./example/init.lua`
 
 ## Module Folder Name

@@ -13,12 +13,34 @@ parameters:
 examples: []
 ---
 
-This rule is particularly useful if you are writing Lua code that needs to be portable to Roblox, as you can automatically convert requires by file path to Roblox instances.
+This rule is particularly useful if you are writing Lua code that needs to be portable to Roblox, as you can automatically convert requires using file paths (like "./src/mod.lua") to different path system (like the luau module paths used by [Lune](https://lune-org.github.io/docs/)) Roblox instances.
 
 Right now, the current and target require modes have certain restrictions:
 
-- current: can only be the `path` require mode
-- target: can only be the `roblox` require mode
+<table-container aria-label="require mode support matrix">
+  <table-head>
+    <table-row>
+      <table-cell>Mode</table-cell>
+      <table-cell align="center">path</table-cell>
+      <table-cell align="center">luau</table-cell>
+      <table-cell align="center">roblox</table-cell>
+    </table-row>
+  </table-head>
+  <table-body>
+    <table-row>
+      <table-cell>current</table-cell>
+      <table-cell align="center">✅</table-cell>
+      <table-cell align="center">✅</table-cell>
+      <table-cell align="center">❌</table-cell>
+    </table-row>
+    <table-row>
+      <table-cell>target</table-cell>
+      <table-cell align="center">✅</table-cell>
+      <table-cell align="center">✅</table-cell>
+      <table-cell align="center">✅</table-cell>
+    </table-row>
+  </table-body>
+</table-container>
 
 ## Configuration Overview
 
@@ -35,7 +57,7 @@ Here is an overview of the rule configuration format:
 
     // optional
     sources: {
-      pkg: "./Packages",
+      "@pkg": "./Packages",
     },
   },
   target: {
@@ -50,4 +72,10 @@ Here is an overview of the rule configuration format:
 }
 ```
 
-For more information about how to configure each of require mode, visit the [path require mode documentation](/docs/path-require-mode/) and the [roblox require mode documentation](/docs/roblox-require-mode/).
+For more information about how to configure each of require mode, visit:
+
+- [path require mode documentation](/docs/path-require-mode/)
+
+- [luau require mode documentation](/docs/path-require-mode/)
+
+- [roblox require mode documentation](/docs/roblox-require-mode/)

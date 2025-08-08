@@ -35,16 +35,34 @@ Given the `entry-point.lua`, darklua will recursively follow the requires and in
 
 Require modes are what darklua uses to interpret require calls to other modules. They are useful when bundling or when converting require calls using the [`convert_require` rule](../rules/convert_require). When bundling code, darklua uses the require mode defined in the configuration file (in the bundling part) to find the source files.
 
-Currently, there is only **one require mode available for bundling**:
+Currently, there is **2 require mode available for bundling**:
 
-- `path`: support requires using file paths
+<table-container aria-label="bundling require mode support">
+  <table-head>
+    <table-row>
+      <table-cell>Mode name</table-cell>
+      <table-cell>Usage</table-cell>
+      <table-cell>Example</table-cell>
+      <table-cell>Documentation</table-cell>
+    </table-row>
+  </table-head>
+  <table-body>
+    <table-row>
+      <table-cell>path</table-cell>
+      <table-cell>with regular file paths</table-cell>
+      <table-cell>require("./module")</table-cell>
+      <table-cell><a href="../path-require-mode/">documentation</a></table-cell>
+    </table-row>
+    <table-row>
+      <table-cell>luau</table-cell>
+      <table-cell>with Luau module paths</table-cell>
+      <table-cell>require("@self/module")</table-cell>
+      <table-cell><a href="../luau-require-mode/">documentation</a></table-cell>
+    </table-row>
+  </table-body>
+</table-container>
 
-  ```lua
-  local Config = require("./Config")
-  local Promise = require("Packages/Promise")
-  ```
-
-For more information about how to configure the require mode, take a look at the [path require mode configuration page](../path-require-mode/).
+For more information about how to configure the require mode, take a look at the [path require mode](../path-require-mode/) or the [luau require mode](../luau-require-mode/) configuration pages.
 
 ### Excludes
 
@@ -82,7 +100,9 @@ When darklua bundles multiple modules into a single file, it uses a variable to 
 When bundling, the `path` require mode is able to require data files and convert them into Lua data. All that is needed is that the file has one of the recognized extensions:
 
 - [JSON](https://en.wikipedia.org/wiki/JSON) with `.json` or `.json5`
+
 - [YAML](https://en.wikipedia.org/wiki/YAML) with `.yml` or `.yaml`
+
 - [Toml](https://toml.io/en/) with `.toml`
 
 Text files (ending with `.txt`) are also supported and they will simply map to a string with the file content.

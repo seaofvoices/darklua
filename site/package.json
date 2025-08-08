@@ -11,7 +11,7 @@
     "@babel/eslint-parser": "^7.28.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@fontsource-variable/comfortaa": "^5.2.6",
+    "@fontsource-variable/open-sans": "^5.2.6",
     "@mui/icons-material": "^5.15.13",
     "@mui/material": "^5.15.13",
     "acorn": "^8.15.0",

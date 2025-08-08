@@ -83,7 +83,7 @@ const Home = () => {
         </Paper>
         <Box sx={{ mt: 4, pb: 2 }}>
           <Typography variant="h4" align="center">
-            Transform Lua code.
+            Transform Lua and Luau code.
           </Typography>
         </Box>
         <Box
