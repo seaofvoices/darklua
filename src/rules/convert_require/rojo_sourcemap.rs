@@ -116,6 +116,10 @@ impl RojoSourcemap {
         })
     }
 
+    pub(crate) fn exists(&self, path: &Path) -> bool {
+        self.find_node(path).is_some()
+    }
+
     pub(crate) fn get_instance_path(
         &self,
         from_file: impl AsRef<Path>,
