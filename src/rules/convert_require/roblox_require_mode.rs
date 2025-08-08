@@ -103,11 +103,31 @@ impl RobloxRequireMode {
                         instance_path.convert(&self.indexing_style),
                     )))
                 } else {
-                    log::warn!(
-                        "unable to find path `{}` in sourcemap (from `{}`)",
-                        require_relative_to_sourcemap.display(),
-                        source_path.display()
-                    );
+                    match (
+                        sourcemap.exists(&source_path),
+                        sourcemap.exists(&require_relative_to_sourcemap),
+                    ) {
+                        (true, true) => {
+                            log::warn!(
+                                "unable to get relative path to `{}` in sourcemap (from `{}`)",
+                                require_relative_to_sourcemap.display(),
+                                source_path.display()
+                            );
+                        }
+                        (false, _) => {
+                            log::warn!(
+                                "unable to find source path `{}` in sourcemap",
+                                source_path.display()
+                            );
+                        }
+                        (true, false) => {
+                            log::warn!(
+                                "unable to find path `{}` in sourcemap (from `{}`)",
+                                require_relative_to_sourcemap.display(),
+                                source_path.display()
+                            );
+                        }
+                    }
                     Ok(None)
                 }
             } else {
