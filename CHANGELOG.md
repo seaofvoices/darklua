@@ -1,5 +1,6 @@
 # Changelog
 
+* fix missing trailing commas when writing table types using the `retain_lines` generator ([#293](https://github.com/seaofvoices/darklua/pull/293))
 * fix string value generation to properly use decimal escape codes (e.g. `"\12"`) ([#292](https://github.com/seaofvoices/darklua/pull/292))
 * add a new require mode for the Luau require semantics (supporting the usage of `@self`) ([#290](https://github.com/seaofvoices/darklua/pull/290))
 * change internal representation of Lua strings to avoid issues with non utf-8 encoded strings ([#282](https://github.com/seaofvoices/darklua/pull/282))
