@@ -1,5 +1,6 @@
 # Changelog
 
+* add a new require mode for the Luau require semantics (supporting the usage of `@self`) ([#290](https://github.com/seaofvoices/darklua/pull/290))
 * change internal representation of Lua strings to avoid issues with non utf-8 encoded strings ([#282](https://github.com/seaofvoices/darklua/pull/282))
 * add support for path requires ending with an extension different than `.luau` or `.lua` ([#280](https://github.com/seaofvoices/darklua/pull/280))
 * add rule to convert `math.sqrt()` calls into an exponent form (using the `^` operator) (`convert_square_root_call`) ([#278](https://github.com/seaofvoices/darklua/pull/278))
