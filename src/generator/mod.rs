@@ -248,6 +248,41 @@ mod test {
     use super::*;
     use crate::generator::{DenseLuaGenerator, ReadableLuaGenerator};
 
+    macro_rules! rewrite_block {
+        (
+            $generator_name:ident, $generator:expr, $preserve_tokens:expr, $($name:ident => $code:literal),+ $(,)?,
+        ) => {
+            $(
+                #[test]
+                fn $name() {
+                    let mut parser = $crate::Parser::default();
+
+                    if $preserve_tokens {
+                        parser = parser.preserve_tokens();
+                    }
+
+                    let input_block = parser.parse($code)
+                        .expect(&format!("unable to parse `{}`", $code));
+
+                    let mut generator = ($generator)($code);
+                    generator.write_block(&input_block);
+                    let generated_code = generator.into_string();
+
+                    let snapshot_name = concat!(
+                        stringify!($generator_name),
+                        "_",
+                        stringify!($name),
+                    );
+
+                    insta::assert_snapshot!(
+                        snapshot_name,
+                        generated_code
+                    );
+                }
+            )*
+        };
+    }
+
     macro_rules! snapshot_node {
         (
             $generator_name:ident, $generator:expr, $node_name:ident, $write_name:ident => (
@@ -262,7 +297,7 @@ mod test {
                     fn $test_name() {
                         let statement = $item;
 
-                        let mut generator = $generator;
+                        let mut generator = ($generator)("");
                         generator.$write_name(&statement.into());
 
                         let snapshot_name = concat!(
@@ -295,7 +330,7 @@ mod test {
                     use std::str::FromStr;
                     let number = $crate::nodes::NumberExpression::from_str($value).unwrap();
 
-                    let mut generator = $generator;
+                    let mut generator = ($generator)("");
                     generator.write_expression(&number.into());
 
                     assert_eq!(generator.into_string(), $value);
@@ -318,7 +353,7 @@ mod test {
                     let expected_block = parser.parse($code)
                         .expect(&format!("unable to parse `{}`", $code));
 
-                    let mut generator = $generator;
+                    let mut generator = ($generator)($code);
                     generator.write_block(&expected_block);
                     let generated_code = generator.into_string();
 
@@ -354,7 +389,7 @@ mod test {
                         _ => panic!("return statement expected"),
                     };
 
-                    let mut generator = $generator;
+                    let mut generator = ($generator)("");
                     generator.write_expression(&$input.into());
 
                     let generated_code = format!("return {}", generator.into_string());
@@ -381,7 +416,7 @@ mod test {
     }
 
     macro_rules! snapshot_generator {
-        ($mod_name:ident, $generator:expr) => {
+        ($mod_name:ident, $generator:expr, $preserve_tokens:expr) => {
 
 mod $mod_name {
     use super::*;
@@ -1113,13 +1148,20 @@ mod $mod_name {
             tuple_with_one_value => TupleArguments::new(vec![true.into()]),
             tuple_with_two_values => TupleArguments::new(vec![true.into(), false.into()]),
         ));
+
+        rewrite_block!(
+            $mod_name,
+            $generator,
+            $preserve_tokens,
+            table_type_with_final_comma => "type A = { field: number, }",
+        );
     }
 }
 
         };
     }
 
-    snapshot_generator!(dense, DenseLuaGenerator::default());
-    snapshot_generator!(readable, ReadableLuaGenerator::default());
-    snapshot_generator!(token_based, TokenBasedLuaGenerator::new(""));
+    snapshot_generator!(dense, |_| DenseLuaGenerator::default(), false);
+    snapshot_generator!(readable, |_| ReadableLuaGenerator::default(), false);
+    snapshot_generator!(token_based, |code| TokenBasedLuaGenerator::new(code), true);
 }

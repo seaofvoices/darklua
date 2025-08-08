@@ -1,0 +1,5 @@
+---
+source: src/generator/mod.rs
+expression: generated_code
+---
+type A={field:number}
