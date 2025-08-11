@@ -25,6 +25,10 @@ You can try darklua directly into your browser! Check out https://darklua.com/tr
 
 # [Installation](https://darklua.com/docs/installation/)
 
+## [GitHub Releases](https://github.com/seaofvoices/darklua/releases/latest)
+
+There are pre-built versions of darklua under the [releases page](https://github.com/seaofvoices/darklua/releases) available for direct downloads.
+
 ## [Rokit](https://github.com/rojo-rbx/rokit)
 
 When using [Rokit](https://github.com/rojo-rbx/rokit), install darklua with the command:
@@ -38,7 +42,7 @@ rokit add seaofvoices/darklua
 If you are already using Foreman, then installing darklua is as simple as adding this line in the `foreman.toml` file:
 
 ```toml
-darklua = { github = "seaofvoices/darklua", version = "=0.16.0" }
+darklua = { github = "seaofvoices/darklua", version = "=0.17.0" }
 ```
 
 # License

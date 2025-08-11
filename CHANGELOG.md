@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.17.0
+
 * improve statements filtering by transfering comments. This fixes the `remove_types` rule issues related to lost comments ([#297](https://github.com/seaofvoices/darklua/pull/297))
 * improve warning messages when a path can't be found in a Rojo sourcemap (when using the `roblox` require mode) ([#294](https://github.com/seaofvoices/darklua/pull/294))
 * fix missing trailing commas when writing table types using the `retain_lines` generator ([#293](https://github.com/seaofvoices/darklua/pull/293))

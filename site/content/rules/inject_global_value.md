@@ -15,11 +15,11 @@ parameters:
     type: string
     description: An environment variable to read the value from
   - name: env_json
-    added_in: "unreleased"
+    added_in: "0.17.0"
     type: string
     description: An environment variable to read the json-encoded value from
   - name: default_value
-    added_in: "unreleased"
+    added_in: "0.17.0"
     type: any
     description: The default value when using an environment variable that is not defined
 examples:
