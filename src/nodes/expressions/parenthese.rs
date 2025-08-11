@@ -71,5 +71,29 @@ impl ParentheseExpression {
         self.tokens.as_mut()
     }
 
+    /// Returns a mutable reference to the first token of this parenthesized expression.
+    ///
+    /// Ensures the left parenthesis token exists and returns it.
+    pub fn mutate_first_token(&mut self) -> &mut Token {
+        self.set_default_tokens();
+        &mut self.mutate_tokens().unwrap().left_parenthese
+    }
+
+    /// Returns a mutable reference to the last token of this parenthesized expression,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        self.set_default_tokens();
+        &mut self.mutate_tokens().unwrap().right_parenthese
+    }
+
+    fn set_default_tokens(&mut self) {
+        if self.tokens.is_none() {
+            self.tokens = Some(ParentheseTokens {
+                left_parenthese: Token::from_content("("),
+                right_parenthese: Token::from_content(")"),
+            });
+        }
+    }
+
     super::impl_token_fns!(iter = [tokens]);
 }

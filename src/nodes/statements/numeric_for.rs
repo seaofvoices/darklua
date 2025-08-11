@@ -150,5 +150,31 @@ impl NumericForStatement {
         self.identifier.remove_type();
     }
 
+    /// Returns a mutable reference to the first token for this statement, creating it if missing.
+    pub fn mutate_first_token(&mut self) -> &mut Token {
+        self.set_default_tokens();
+        &mut self.tokens.as_mut().unwrap().r#for
+    }
+
+    /// Returns a mutable reference to the last token for this statement,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        self.set_default_tokens();
+        &mut self.tokens.as_mut().unwrap().end
+    }
+
+    fn set_default_tokens(&mut self) {
+        if self.tokens.is_none() {
+            self.tokens = Some(NumericForTokens {
+                r#for: Token::from_content("for"),
+                equal: Token::from_content("="),
+                r#do: Token::from_content("do"),
+                end: Token::from_content("end"),
+                end_comma: Token::from_content(","),
+                step_comma: None,
+            });
+        }
+    }
+
     super::impl_token_fns!(target = [identifier] iter = [tokens]);
 }

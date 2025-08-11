@@ -17,6 +17,8 @@ test_rule!(
     remove_types,
     RemoveTypes::default(),
     remove_type_declaration("type T = string | number") => "",
+    remove_type_declaration_keep_leading_comment("--!native\ntype T = string | number") => "--!native\n",
+    remove_type_declaration_keep_trailing_comment("type T = string | number\n-- end of file") => "\n-- end of file",
     remove_exported_type_declaration("export type T = { Node }") => "",
     remove_type_in_local_assign("local var: boolean = true") => "local var = true",
     remove_type_in_numeric_for("for i: number=a, b do end") => "for i=a, b do end",

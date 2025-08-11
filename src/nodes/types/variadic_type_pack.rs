@@ -58,5 +58,9 @@ impl VariadicTypePack {
         self.token.as_mut()
     }
 
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        self.inner_type.mutate_last_token()
+    }
+
     super::impl_token_fns!(iter = [token]);
 }

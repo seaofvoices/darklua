@@ -340,6 +340,29 @@ impl InterpolatedStringExpression {
             }
         }
     }
+
+    /// Returns a mutable reference to the first token for this interpolated string,
+    /// creating it if missing.
+    pub fn mutate_first_token(&mut self) -> &mut Token {
+        self.set_default_tokens();
+        &mut self.tokens.as_mut().unwrap().opening_tick
+    }
+
+    /// Returns a mutable reference to the last token for this interpolated string,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        self.set_default_tokens();
+        &mut self.tokens.as_mut().unwrap().closing_tick
+    }
+
+    fn set_default_tokens(&mut self) {
+        if self.tokens.is_none() {
+            self.set_tokens(InterpolatedStringTokens {
+                opening_tick: Token::from_content("`"),
+                closing_tick: Token::from_content("`"),
+            });
+        }
+    }
 }
 
 impl FromIterator<InterpolationSegment> for InterpolatedStringExpression {

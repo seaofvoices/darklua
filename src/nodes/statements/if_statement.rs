@@ -268,5 +268,29 @@ impl IfStatement {
         }
     }
 
+    /// Returns a mutable reference to the first token for this statement, creating it if missing.
+    pub fn mutate_first_token(&mut self) -> &mut Token {
+        self.set_default_tokens();
+        &mut self.tokens.as_mut().unwrap().r#if
+    }
+
+    /// Returns a mutable reference to the last token for this statement,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        self.set_default_tokens();
+        &mut self.tokens.as_mut().unwrap().end
+    }
+
+    fn set_default_tokens(&mut self) {
+        if self.tokens.is_none() {
+            self.tokens = Some(IfStatementTokens {
+                r#if: Token::from_content("if"),
+                then: Token::from_content("then"),
+                end: Token::from_content("end"),
+                r#else: None,
+            });
+        }
+    }
+
     super::impl_token_fns!(iter = [tokens, branches]);
 }

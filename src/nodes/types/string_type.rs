@@ -86,6 +86,10 @@ impl StringType {
         self.value.has_double_quote()
     }
 
+    pub(crate) fn mutate_or_insert_token(&mut self) -> &mut Token {
+        self.value.mutate_or_insert_token()
+    }
+
     super::impl_token_fns!(target = [value]);
 }
 

@@ -95,6 +95,19 @@ pub enum FunctionReturnType {
     VariadicTypePack(VariadicTypePack),
 }
 
+impl FunctionReturnType {
+    /// Returns a mutable reference to the last token for this function return type,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        match self {
+            Self::Type(r#type) => r#type.mutate_last_token(),
+            Self::TypePack(type_pack) => type_pack.mutate_last_token(),
+            Self::GenericTypePack(generic_type_pack) => generic_type_pack.mutate_last_token(),
+            Self::VariadicTypePack(variadic_type_pack) => variadic_type_pack.mutate_last_token(),
+        }
+    }
+}
+
 impl<T: Into<Type>> From<T> for FunctionReturnType {
     fn from(r#type: T) -> Self {
         match r#type.into() {
@@ -282,6 +295,12 @@ impl FunctionType {
     #[inline]
     pub fn get_tokens(&self) -> Option<&FunctionTypeTokens> {
         self.tokens.as_ref()
+    }
+
+    /// Returns a mutable reference to the last token for this function type,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        self.return_type.mutate_last_token()
     }
 
     super::impl_token_fns!(iter = [tokens, generic_parameters, arguments]);

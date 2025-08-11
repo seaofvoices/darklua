@@ -97,6 +97,60 @@ impl Expression {
     pub fn in_parentheses(self) -> Self {
         Self::Parenthese(ParentheseExpression::new(self).into())
     }
+
+    /// Returns a mutable reference to the last token for this expression,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        let mut current = self;
+        loop {
+            match current {
+                Self::Binary(binary) => {
+                    current = binary.mutate_right();
+                }
+                Self::Call(call) => break call.mutate_last_token(),
+                Self::Field(field) => break field.mutate_last_token(),
+                Self::Function(function) => break function.mutate_last_token(),
+                Self::Identifier(identifier) => break identifier.mutate_or_insert_token(),
+                Self::If(if_expr) => {
+                    current = if_expr.mutate_else_result();
+                }
+                Self::Index(index) => break index.mutate_last_token(),
+                Self::Number(number) => break number.mutate_or_insert_token(),
+                Self::String(string) => break string.mutate_or_insert_token(),
+                Self::InterpolatedString(interpolated) => break interpolated.mutate_last_token(),
+                Self::Table(table) => break table.mutate_last_token(),
+                Self::Parenthese(parenthese) => break parenthese.mutate_last_token(),
+                Self::TypeCast(type_cast) => break type_cast.mutate_last_token(),
+                Self::Unary(unary) => {
+                    current = unary.mutate_expression();
+                }
+                Self::True(token) => {
+                    if token.is_none() {
+                        *token = Some(Token::from_content("true"));
+                    }
+                    break token.as_mut().unwrap();
+                }
+                Self::False(token) => {
+                    if token.is_none() {
+                        *token = Some(Token::from_content("false"));
+                    }
+                    break token.as_mut().unwrap();
+                }
+                Self::Nil(token) => {
+                    if token.is_none() {
+                        *token = Some(Token::from_content("nil"));
+                    }
+                    break token.as_mut().unwrap();
+                }
+                Self::VariableArguments(ref mut token) => {
+                    if token.is_none() {
+                        *token = Some(Token::from_content("..."));
+                    }
+                    break token.as_mut().unwrap();
+                }
+            }
+        }
+    }
 }
 
 impl From<bool> for Expression {

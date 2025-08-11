@@ -1,5 +1,5 @@
 use crate::nodes::{
-    Block, FunctionBodyTokens, FunctionReturnType, FunctionVariadicType, GenericParameters,
+    Block, FunctionBodyTokens, FunctionReturnType, FunctionVariadicType, GenericParameters, Token,
     TypedIdentifier,
 };
 
@@ -252,6 +252,38 @@ impl FunctionExpression {
         }
         if let Some(tokens) = &mut self.tokens {
             tokens.variable_arguments_colon.take();
+        }
+    }
+
+    /// Returns a mutable reference to the first token for this function expression,
+    /// creating it if missing.
+    pub fn mutate_first_token(&mut self) -> &mut Token {
+        self.set_default_tokens();
+        &mut self.tokens.as_mut().unwrap().function
+    }
+
+    /// Returns a mutable reference to the last token for this function expression,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        self.set_default_tokens();
+        &mut self.tokens.as_mut().unwrap().end
+    }
+
+    fn set_default_tokens(&mut self) {
+        if self.tokens.is_none() {
+            self.tokens = Some(Box::new(FunctionBodyTokens {
+                function: Token::from_content("function"),
+                opening_parenthese: Token::from_content("("),
+                closing_parenthese: Token::from_content(")"),
+                end: Token::from_content("end"),
+                parameter_commas: Vec::new(),
+                variable_arguments: self.is_variadic.then(|| Token::from_content("...")),
+                variable_arguments_colon: self
+                    .variadic_type
+                    .as_ref()
+                    .map(|_| Token::from_content(":")),
+                return_type_colon: self.return_type.as_ref().map(|_| Token::from_content(":")),
+            }));
         }
     }
 

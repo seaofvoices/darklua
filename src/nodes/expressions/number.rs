@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::str::FromStr;
 
+use crate::generator::utils::write_number;
 use crate::nodes::{Token, Trivia};
 
 /// Represents a decimal number.
@@ -371,6 +372,14 @@ impl NumberExpression {
             NumberExpression::Hex(number) => number.filter_comments(filter),
             NumberExpression::Binary(number) => number.filter_comments(filter),
         }
+    }
+
+    pub(crate) fn mutate_or_insert_token(&mut self) -> &mut Token {
+        if self.get_token().is_none() {
+            let content = write_number(self);
+            self.set_token(Token::from_content(content));
+        }
+        self.mutate_token().unwrap()
     }
 }
 

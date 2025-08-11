@@ -119,6 +119,13 @@ impl UnionType {
         )
     }
 
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        self.types
+            .last_mut()
+            .expect("union types cannot be empty")
+            .mutate_last_token()
+    }
+
     super::impl_token_fns!(iter = [tokens]);
 }
 

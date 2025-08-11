@@ -61,6 +61,47 @@ pub enum Statement {
     TypeDeclaration(TypeDeclarationStatement),
 }
 
+impl Statement {
+    /// Returns a mutable reference to the first token of this statement.
+    pub fn mutate_first_token(&mut self) -> &mut crate::nodes::Token {
+        match self {
+            Self::Assign(assign) => assign.mutate_first_token(),
+            Self::Do(do_stmt) => do_stmt.mutate_first_token(),
+            Self::Call(call) => call.mutate_first_token(),
+            Self::CompoundAssign(compound) => compound.mutate_first_token(),
+            Self::Function(function) => function.mutate_first_token(),
+            Self::GenericFor(generic_for) => generic_for.mutate_first_token(),
+            Self::If(if_stmt) => if_stmt.mutate_first_token(),
+            Self::LocalAssign(local_assign) => local_assign.mutate_first_token(),
+            Self::LocalFunction(local_function) => local_function.mutate_first_token(),
+            Self::NumericFor(numeric_for) => numeric_for.mutate_first_token(),
+            Self::Repeat(repeat_stmt) => repeat_stmt.mutate_first_token(),
+            Self::While(while_stmt) => while_stmt.mutate_first_token(),
+            Self::TypeDeclaration(type_decl) => type_decl.mutate_first_token(),
+        }
+    }
+
+    /// Returns a mutable reference to the last token of this statement,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut crate::nodes::Token {
+        match self {
+            Self::Assign(assign) => assign.mutate_last_token(),
+            Self::Do(do_stmt) => do_stmt.mutate_last_token(),
+            Self::Call(call) => call.mutate_last_token(),
+            Self::CompoundAssign(compound) => compound.mutate_last_token(),
+            Self::Function(function) => function.mutate_last_token(),
+            Self::GenericFor(generic_for) => generic_for.mutate_last_token(),
+            Self::If(if_stmt) => if_stmt.mutate_last_token(),
+            Self::LocalAssign(local_assign) => local_assign.mutate_last_token(),
+            Self::LocalFunction(local_function) => local_function.mutate_last_token(),
+            Self::NumericFor(numeric_for) => numeric_for.mutate_last_token(),
+            Self::Repeat(repeat_stmt) => repeat_stmt.mutate_last_token(),
+            Self::While(while_stmt) => while_stmt.mutate_last_token(),
+            Self::TypeDeclaration(type_decl) => type_decl.mutate_last_token(),
+        }
+    }
+}
+
 impl From<AssignStatement> for Statement {
     fn from(assign: AssignStatement) -> Statement {
         Statement::Assign(assign)

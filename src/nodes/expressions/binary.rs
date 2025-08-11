@@ -320,6 +320,11 @@ impl BinaryExpression {
         }
     }
 
+    /// Returns a mutable reference to the last token for this binary expression.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        self.right.mutate_last_token()
+    }
+
     super::impl_token_fns!(iter = [token]);
 }
 

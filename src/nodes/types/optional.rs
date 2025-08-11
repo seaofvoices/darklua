@@ -56,5 +56,12 @@ impl OptionalType {
         )
     }
 
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        if self.token.is_none() {
+            self.token = Some(Token::from_content("?"));
+        }
+        self.token.as_mut().unwrap()
+    }
+
     super::impl_token_fns!(iter = [token]);
 }

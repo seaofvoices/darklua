@@ -1,4 +1,7 @@
-use crate::nodes::{StringError, Token};
+use crate::{
+    generator::utils::write_string,
+    nodes::{StringError, Token},
+};
 
 use super::string_utils;
 
@@ -122,6 +125,16 @@ impl StringExpression {
     #[inline]
     pub fn get_token(&self) -> Option<&Token> {
         self.token.as_ref()
+    }
+
+    /// Returns a mutable reference to the token attached to this string expression,
+    /// creating it if missing.
+    pub(crate) fn mutate_or_insert_token(&mut self) -> &mut Token {
+        if self.token.is_none() {
+            let content = write_string(&self.value);
+            self.token = Some(Token::from_content(content));
+        }
+        self.token.as_mut().unwrap()
     }
 
     /// Returns the string value.

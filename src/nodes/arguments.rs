@@ -94,6 +94,21 @@ impl TupleArguments {
         }
     }
 
+    /// Returns a mutable reference to the last token of this tuple of arguments,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        if self.get_tokens().is_none() {
+            self.set_tokens(TupleArgumentsTokens {
+                opening_parenthese: Token::from_content("("),
+                closing_parenthese: Token::from_content(")"),
+                commas: (0..self.len().saturating_sub(1))
+                    .map(|_| Token::from_content(","))
+                    .collect(),
+            });
+        }
+        &mut self.tokens.as_mut().unwrap().closing_parenthese
+    }
+
     /// Returns the number of arguments in this tuple.
     #[inline]
     pub fn len(&self) -> usize {
@@ -223,6 +238,16 @@ impl Arguments {
         tuple_args.insert(index, argument);
 
         *self = tuple_args.into();
+    }
+
+    /// Returns a mutable reference to the last token of these arguments,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        match self {
+            Arguments::Tuple(tuple) => tuple.mutate_last_token(),
+            Arguments::String(string) => string.mutate_or_insert_token(),
+            Arguments::Table(table) => table.mutate_last_token(),
+        }
     }
 
     /// Removes all comments from these arguments.

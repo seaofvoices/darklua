@@ -409,6 +409,17 @@ impl TableType {
         self.tokens.as_ref()
     }
 
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        if self.tokens.is_none() {
+            self.tokens = Some(TableTypeTokens {
+                opening_brace: Token::from_content("{"),
+                closing_brace: Token::from_content("}"),
+                separators: Vec::new(),
+            });
+        }
+        &mut self.tokens.as_mut().unwrap().closing_brace
+    }
+
     super::impl_token_fns!(iter = [entries, tokens]);
 }
 

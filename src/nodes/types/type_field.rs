@@ -58,5 +58,9 @@ impl TypeField {
         self.token.as_ref()
     }
 
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        self.name.mutate_last_token()
+    }
+
     super::impl_token_fns!(target = [namespace] iter = [token]);
 }

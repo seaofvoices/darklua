@@ -74,6 +74,14 @@ impl TypeName {
         self.type_parameters.as_deref_mut()
     }
 
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        if let Some(parameters) = &mut self.type_parameters {
+            parameters.mutate_last_token()
+        } else {
+            self.type_name.mutate_or_insert_token()
+        }
+    }
+
     super::impl_token_fns!(target = [type_name] iter = [type_parameters]);
 }
 
@@ -147,6 +155,17 @@ impl TypeParameters {
     #[inline]
     pub fn get_tokens(&self) -> Option<&TypeParametersTokens> {
         self.tokens.as_ref()
+    }
+
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        if self.tokens.is_none() {
+            self.tokens = Some(TypeParametersTokens {
+                opening_list: Token::from_content("<"),
+                closing_list: Token::from_content(">"),
+                commas: Vec::new(),
+            });
+        }
+        &mut self.tokens.as_mut().unwrap().closing_list
     }
 
     super::impl_token_fns!(iter = [tokens]);
