@@ -179,6 +179,15 @@ impl Token {
         self.leading_trivia.push(trivia);
     }
 
+    /// Inserts leading trivia at the given index.
+    pub fn insert_leading_trivia(&mut self, index: usize, trivia: Trivia) {
+        if index > self.leading_trivia.len() {
+            self.leading_trivia.push(trivia);
+        } else {
+            self.leading_trivia.insert(index, trivia);
+        }
+    }
+
     /// Adds trailing trivia to the token.
     #[inline]
     pub fn push_trailing_trivia(&mut self, trivia: Trivia) {
@@ -191,10 +200,22 @@ impl Token {
         self.leading_trivia.iter()
     }
 
+    /// Returns an iterator over the leading trivia and removes them from the token.
+    #[inline]
+    pub fn drain_leading_trivia(&mut self) -> impl Iterator<Item = Trivia> + '_ {
+        self.leading_trivia.drain(..)
+    }
+
     /// Returns an iterator over the trailing trivia.
     #[inline]
     pub fn iter_trailing_trivia(&self) -> impl Iterator<Item = &Trivia> {
         self.trailing_trivia.iter()
+    }
+
+    /// Returns an iterator over the trailing trivia and removes them from the token.
+    #[inline]
+    pub fn drain_trailing_trivia(&mut self) -> impl Iterator<Item = Trivia> + '_ {
+        self.trailing_trivia.drain(..)
     }
 
     /// Reads the content of the token from the source code.

@@ -46,6 +46,19 @@ impl ExpressionType {
         self.tokens.as_ref()
     }
 
+    /// Returns a mutable reference to the last token for this expression type,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        if self.tokens.is_none() {
+            self.tokens = Some(ExpressionTypeTokens {
+                r#typeof: Token::from_content("typeof"),
+                opening_parenthese: Token::from_content("("),
+                closing_parenthese: Token::from_content(")"),
+            });
+        }
+        &mut self.tokens.as_mut().unwrap().closing_parenthese
+    }
+
     super::impl_token_fns!(iter = [tokens]);
 }
 

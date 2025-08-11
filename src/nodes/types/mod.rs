@@ -77,6 +77,42 @@ impl Type {
     pub fn in_parentheses(self) -> Type {
         Self::Parenthese(ParentheseType::new(self))
     }
+
+    /// Returns a mutable reference to the last token for this type,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        match self {
+            Self::Name(type_name) => type_name.mutate_last_token(),
+            Self::Field(type_field) => type_field.mutate_last_token(),
+            Self::True(token) => {
+                if token.is_none() {
+                    *token = Some(Token::from_content("true"));
+                }
+                token.as_mut().unwrap()
+            }
+            Self::False(token) => {
+                if token.is_none() {
+                    *token = Some(Token::from_content("false"));
+                }
+                token.as_mut().unwrap()
+            }
+            Self::Nil(token) => {
+                if token.is_none() {
+                    *token = Some(Token::from_content("nil"));
+                }
+                token.as_mut().unwrap()
+            }
+            Self::String(string_type) => string_type.mutate_or_insert_token(),
+            Self::Array(array_type) => array_type.mutate_last_token(),
+            Self::Table(table_type) => table_type.mutate_last_token(),
+            Self::TypeOf(expression_type) => expression_type.mutate_last_token(),
+            Self::Parenthese(parenthese_type) => parenthese_type.mutate_last_token(),
+            Self::Function(function_type) => function_type.mutate_last_token(),
+            Self::Optional(optional_type) => optional_type.mutate_last_token(),
+            Self::Intersection(intersection_type) => intersection_type.mutate_last_token(),
+            Self::Union(union_type) => union_type.mutate_last_token(),
+        }
+    }
 }
 
 impl From<bool> for Type {

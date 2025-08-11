@@ -277,4 +277,35 @@ impl TypeDeclarationStatement {
             }
         }
     }
+
+    /// Returns a mutable reference to the first token for this statement, creating it if missing.
+    pub fn mutate_first_token(&mut self) -> &mut Token {
+        let is_exported = self.is_exported();
+        if self.tokens.is_none() {
+            self.tokens = Some(TypeDeclarationTokens {
+                r#type: Token::from_content("type"),
+                equal: Token::from_content("="),
+                export: is_exported.then(|| Token::from_content("export")),
+            });
+        }
+        let tokens = self.tokens.as_mut().unwrap();
+        if is_exported {
+            if tokens.export.is_none() {
+                tokens.export = Some(Token::from_content("export"));
+            }
+            tokens.export.as_mut().unwrap()
+        } else {
+            &mut tokens.r#type
+        }
+    }
+
+    /// Returns a mutable reference to the last token for this statement,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        // Use '=' as structural tail; avoid walking type tree
+        if self.tokens.is_none() {
+            self.mutate_first_token();
+        }
+        &mut self.tokens.as_mut().unwrap().equal
+    }
 }

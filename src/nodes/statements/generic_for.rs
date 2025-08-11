@@ -142,4 +142,30 @@ impl GenericForStatement {
     }
 
     super::impl_token_fns!(iter = [tokens, identifiers]);
+
+    /// Returns a mutable reference to the first token for this statement, creating it if missing.
+    pub fn mutate_first_token(&mut self) -> &mut Token {
+        self.set_default_tokens();
+        &mut self.tokens.as_mut().unwrap().r#for
+    }
+
+    /// Returns a mutable reference to the last token for this statement,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        self.set_default_tokens();
+        &mut self.tokens.as_mut().unwrap().end
+    }
+
+    fn set_default_tokens(&mut self) {
+        if self.tokens.is_none() {
+            self.tokens = Some(GenericForTokens {
+                r#for: Token::from_content("for"),
+                r#in: Token::from_content("in"),
+                r#do: Token::from_content("do"),
+                end: Token::from_content("end"),
+                identifier_commas: Vec::new(),
+                value_commas: Vec::new(),
+            });
+        }
+    }
 }

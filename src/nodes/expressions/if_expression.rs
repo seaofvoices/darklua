@@ -141,6 +141,25 @@ impl IfExpression {
         self.branches.iter_mut()
     }
 
+    /// Returns a mutable reference to the first token for this if expression,
+    /// creating it if missing.
+    pub fn mutate_first_token(&mut self) -> &mut Token {
+        if self.tokens.is_none() {
+            self.tokens = Some(IfExpressionTokens {
+                r#if: Token::from_content("if"),
+                then: Token::from_content("then"),
+                r#else: Token::from_content("else"),
+            });
+        }
+        &mut self.tokens.as_mut().unwrap().r#if
+    }
+
+    /// Returns a mutable reference to the last token for this if expression,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        self.result.mutate_last_token()
+    }
+
     super::impl_token_fns!(iter = [tokens, branches]);
 }
 

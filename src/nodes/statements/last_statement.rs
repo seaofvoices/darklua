@@ -107,6 +107,32 @@ impl ReturnStatement {
         self.tokens.as_mut()
     }
 
+    /// Returns a mutable reference to the first token for this statement, creating it if missing.
+    pub fn mutate_first_token(&mut self) -> &mut Token {
+        self.set_default_tokens();
+        &mut self.tokens.as_mut().unwrap().r#return
+    }
+
+    /// Returns a mutable reference to the last token for this statement,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        if self.is_empty() {
+            self.set_default_tokens();
+            &mut self.tokens.as_mut().unwrap().r#return
+        } else {
+            self.expressions.last_mut().unwrap().mutate_last_token()
+        }
+    }
+
+    fn set_default_tokens(&mut self) {
+        if self.tokens.is_none() {
+            self.tokens = Some(ReturnTokens {
+                r#return: Token::from_content("return"),
+                commas: Vec::new(),
+            });
+        }
+    }
+
     super::impl_token_fns!(iter = [tokens]);
 }
 
@@ -129,6 +155,45 @@ impl LastStatement {
     #[inline]
     pub fn new_continue() -> Self {
         Self::Continue(None)
+    }
+
+    /// Returns a mutable reference to the first token for this statement, creating it if missing.
+    pub fn mutate_first_token(&mut self) -> &mut Token {
+        match self {
+            LastStatement::Break(token_opt) => {
+                if token_opt.is_none() {
+                    *token_opt = Some(Token::from_content("break"));
+                }
+                token_opt.as_mut().unwrap()
+            }
+            LastStatement::Continue(token_opt) => {
+                if token_opt.is_none() {
+                    *token_opt = Some(Token::from_content("continue"));
+                }
+                token_opt.as_mut().unwrap()
+            }
+            LastStatement::Return(return_stmt) => return_stmt.mutate_first_token(),
+        }
+    }
+
+    /// Returns a mutable reference to the last token for this statement,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        match self {
+            LastStatement::Break(token_opt) => {
+                if token_opt.is_none() {
+                    *token_opt = Some(Token::from_content("break"));
+                }
+                token_opt.as_mut().unwrap()
+            }
+            LastStatement::Continue(token_opt) => {
+                if token_opt.is_none() {
+                    *token_opt = Some(Token::from_content("continue"));
+                }
+                token_opt.as_mut().unwrap()
+            }
+            LastStatement::Return(return_stmt) => return_stmt.mutate_last_token(),
+        }
     }
 }
 

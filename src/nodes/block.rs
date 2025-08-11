@@ -1,4 +1,4 @@
-use crate::nodes::{LastStatement, ReturnStatement, Statement, Token};
+use crate::nodes::{LastStatement, ReturnStatement, Statement, Token, Trivia, TriviaKind};
 
 /// Represents the tokens associated with a Lua code block, maintaining
 /// syntax information like semicolons that separate statements.
@@ -83,11 +83,81 @@ impl Block {
     pub fn remove_statement(&mut self, index: usize) {
         let statements_len = self.statements.len();
         if index < statements_len {
-            self.statements.remove(index);
+            let mut removed = self.statements.remove(index);
+
+            fn filter_trivia(trivia: Trivia) -> Option<Trivia> {
+                if trivia.kind() == TriviaKind::Whitespace {
+                    None
+                } else {
+                    Some(trivia)
+                }
+            }
+
+            let mut trivia: Vec<_> = removed
+                .mutate_first_token()
+                .drain_leading_trivia()
+                .filter_map(filter_trivia)
+                .collect();
+
+            let mut drain_trailing_token = true;
 
             if let Some(tokens) = &mut self.tokens {
                 if tokens.semicolons.len() == statements_len {
-                    tokens.semicolons.remove(index);
+                    let removed_semicolon = tokens.semicolons.remove(index);
+
+                    if let Some(mut semicolon) = removed_semicolon {
+                        trivia.extend(semicolon.drain_trailing_trivia().filter_map(filter_trivia));
+                        drain_trailing_token = false;
+                    }
+                }
+            }
+
+            if drain_trailing_token {
+                trivia.extend(
+                    removed
+                        .mutate_last_token()
+                        .drain_trailing_trivia()
+                        .filter_map(filter_trivia),
+                );
+            }
+
+            if !trivia.is_empty() {
+                let next_statement = self.statements.get_mut(index);
+
+                let token = if let Some(next_statement) = next_statement {
+                    next_statement.mutate_first_token()
+                } else if let Some(last) = self.last_statement.as_mut() {
+                    last.mutate_first_token()
+                } else {
+                    self.set_default_tokens();
+
+                    self.tokens.as_mut().unwrap().final_token.as_mut().unwrap()
+                };
+
+                let line_numbers: Vec<_> = trivia.iter().map(|t| t.get_line_number()).collect();
+
+                let mut previous = None;
+                let mut offset = 0;
+
+                for (index, (trivia, line_number)) in
+                    trivia.into_iter().zip(line_numbers).enumerate()
+                {
+                    if let (Some(previous), Some(next_line)) = (previous, line_number) {
+                        let gap = next_line.saturating_sub(previous);
+                        if gap != 0 {
+                            token.insert_leading_trivia(
+                                index + offset,
+                                TriviaKind::Whitespace.with_content("\n".repeat(gap)),
+                            );
+                            offset += gap;
+                        }
+                    }
+
+                    token.insert_leading_trivia(index + offset, trivia.clone());
+
+                    if line_number.is_some() {
+                        previous = line_number;
+                    }
                 }
             }
         }
@@ -173,13 +243,7 @@ impl Block {
             if f(&self.statements[i]) {
                 i += 1;
             } else {
-                self.statements.remove(i);
-
-                if let Some(tokens) = &mut self.tokens {
-                    if i < tokens.semicolons.len() {
-                        tokens.semicolons.remove(i);
-                    }
-                }
+                self.remove_statement(i);
             }
         }
     }
@@ -198,13 +262,7 @@ impl Block {
             if f(&mut self.statements[i]) {
                 i += 1;
             } else {
-                self.statements.remove(i);
-
-                if let Some(tokens) = &mut self.tokens {
-                    if i < tokens.semicolons.len() {
-                        tokens.semicolons.remove(i);
-                    }
-                }
+                self.remove_statement(i);
             }
         }
     }
@@ -296,6 +354,71 @@ impl Block {
         }
     }
 
+    /// Returns a mutable reference to the first token in this block, creating
+    /// it if it doesn't exist.
+    pub fn mutate_first_token(&mut self) -> &mut Token {
+        if self.is_empty() {
+            self.set_default_tokens();
+            return self.tokens.as_mut().unwrap().final_token.as_mut().unwrap();
+        }
+
+        if !self.statements.is_empty() {
+            return self
+                .first_mut_statement()
+                .expect("first statement should exist")
+                .mutate_first_token();
+        }
+
+        match self
+            .mutate_last_statement()
+            .expect("non-empty block should have a last statement")
+        {
+            LastStatement::Break(token) => {
+                if token.is_none() {
+                    *token = Some(Token::from_content("break"));
+                }
+                token.as_mut().unwrap()
+            }
+            LastStatement::Continue(token) => {
+                if token.is_none() {
+                    *token = Some(Token::from_content("continue"));
+                }
+                token.as_mut().unwrap()
+            }
+            LastStatement::Return(return_stmt) => return_stmt.mutate_first_token(),
+        }
+    }
+
+    /// Returns a mutable reference to the last token for this block,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        if self.is_empty() {
+            self.set_default_tokens();
+            return self.tokens.as_mut().unwrap().final_token.as_mut().unwrap();
+        }
+
+        if let Some(last_stmt) = self.last_statement.as_mut() {
+            return last_stmt.mutate_last_token();
+        }
+
+        self.statements.last_mut().unwrap().mutate_last_token()
+    }
+
+    fn set_default_tokens(&mut self) {
+        if self.get_tokens().is_none() {
+            self.set_tokens(BlockTokens {
+                semicolons: Vec::new(),
+                last_semicolon: None,
+                final_token: Some(Token::from_content("")),
+            });
+        } else {
+            let tokens = self.tokens.as_mut().unwrap();
+            if tokens.final_token.is_none() {
+                tokens.final_token = Some(Token::from_content(""));
+            }
+        }
+    }
+
     super::impl_token_fns!(iter = [tokens]);
 }
 
@@ -327,6 +450,7 @@ impl From<ReturnStatement> for Block {
 mod test {
     use super::*;
     use crate::{
+        generator::{LuaGenerator, TokenBasedLuaGenerator},
         nodes::{DoStatement, RepeatStatement},
         Parser,
     };
@@ -623,5 +747,86 @@ mod test {
                 final_token: None,
             })
         );
+    }
+
+    mod statement_removal {
+        use super::*;
+
+        fn remove_statement_test(index: usize, code: &str) -> String {
+            let mut block = parse_block_with_tokens(code);
+
+            block.remove_statement(index);
+
+            let mut generator = TokenBasedLuaGenerator::new(code);
+
+            generator.write_block(&block);
+
+            generator.into_string()
+        }
+
+        #[test]
+        fn remove_single_statement_preserves_leading_comments() {
+            let lua_code = remove_statement_test(0, "-- comment\nlocal a = 1");
+
+            insta::assert_snapshot!(lua_code, @"-- comment");
+        }
+
+        #[test]
+        fn remove_single_statement_preserves_trailing_comments() {
+            let lua_code = remove_statement_test(0, "local a = 1 -- comment");
+
+            insta::assert_snapshot!(lua_code, @"-- comment");
+        }
+
+        #[test]
+        fn remove_statement_preserves_comments() {
+            let lua_code = remove_statement_test(0, "local a = 1 -- comment\nlocal b = 2");
+
+            insta::assert_snapshot!(lua_code, @r###"
+            -- comment
+            local b = 2
+            "###);
+        }
+
+        #[test]
+        fn remove_statement_preserves_comments_before_return() {
+            let lua_code = remove_statement_test(0, "local a = 1 -- comment\nreturn");
+
+            insta::assert_snapshot!(lua_code, @r###"
+            -- comment
+            return
+            "###);
+        }
+
+        #[test]
+        fn remove_statement_preserves_comments_before_break() {
+            let lua_code = remove_statement_test(0, "--first\nlocal a = 1 -- comment\nbreak");
+
+            insta::assert_snapshot!(lua_code, @r###"
+            --first
+            -- comment
+            break
+            "###);
+        }
+
+        #[test]
+        fn remove_statement_preserves_comments_before_continue() {
+            let lua_code = remove_statement_test(0, "local a = 1 -- comment\ncontinue");
+
+            insta::assert_snapshot!(lua_code, @r###"
+            -- comment
+            continue
+            "###);
+        }
+
+        #[test]
+        fn remove_statement_preserves_comments_after_semicolon() {
+            let lua_code = remove_statement_test(0, "local a = 1; -- comment\nlocal b = 2;");
+
+            insta::assert_snapshot!(lua_code, @r###"
+            -- comment
+            local b = 2;
+            "###);
+        }
     }
 }

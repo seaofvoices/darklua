@@ -144,6 +144,18 @@ impl FunctionCall {
         &mut self.prefix
     }
 
+    /// Returns a mutable reference to the first token of this function call,
+    /// creating it if missing.
+    pub fn mutate_first_token(&mut self) -> &mut Token {
+        self.prefix.mutate_first_token()
+    }
+
+    /// Returns a mutable reference to the last token of this function call,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        self.arguments.mutate_last_token()
+    }
+
     super::impl_token_fns!(iter = [tokens, method]);
 }
 

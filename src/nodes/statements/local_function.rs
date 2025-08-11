@@ -286,6 +286,40 @@ impl LocalFunctionStatement {
         }
     }
 
+    /// Returns a mutable reference to the first token for this statement, creating it if missing.
+    pub fn mutate_first_token(&mut self) -> &mut Token {
+        self.set_default_tokens();
+        &mut self.tokens.as_deref_mut().unwrap().local
+    }
+
+    /// Returns a mutable reference to the last token for this statement,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        self.set_default_tokens();
+        &mut self.tokens.as_deref_mut().unwrap().end
+    }
+
+    fn set_default_tokens(&mut self) {
+        if self.tokens.is_none() {
+            self.tokens = Some(
+                LocalFunctionTokens {
+                    local: Token::from_content("local"),
+                    function_body: FunctionBodyTokens {
+                        function: Token::from_content("function"),
+                        opening_parenthese: Token::from_content("("),
+                        closing_parenthese: Token::from_content(")"),
+                        end: Token::from_content("end"),
+                        parameter_commas: Vec::new(),
+                        variable_arguments: None,
+                        variable_arguments_colon: None,
+                        return_type_colon: None,
+                    },
+                }
+                .into(),
+            );
+        }
+    }
+
     super::impl_token_fns!(
         target = [identifier]
         iter = [parameters, generic_parameters, tokens]

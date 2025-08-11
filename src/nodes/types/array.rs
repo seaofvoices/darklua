@@ -46,6 +46,18 @@ impl ArrayType {
         &mut self.inner_type
     }
 
+    /// Returns a mutable reference to the last token for this array type,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        if self.tokens.is_none() {
+            self.tokens = Some(ArrayTypeTokens {
+                opening_brace: Token::from_content("{"),
+                closing_brace: Token::from_content("}"),
+            });
+        }
+        &mut self.tokens.as_mut().unwrap().closing_brace
+    }
+
     super::impl_token_fns!(iter = [tokens]);
 }
 

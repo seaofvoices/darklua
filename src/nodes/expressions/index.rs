@@ -77,5 +77,23 @@ impl IndexExpression {
         &mut self.index
     }
 
+    /// Returns a mutable reference to the first token of this index expression,
+    /// creating it if missing.
+    pub fn mutate_first_token(&mut self) -> &mut crate::nodes::Token {
+        self.prefix.mutate_first_token()
+    }
+
+    /// Returns a mutable reference to the last token of this index expression,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        if self.tokens.is_none() {
+            self.tokens = Some(IndexExpressionTokens {
+                opening_bracket: Token::from_content("["),
+                closing_bracket: Token::from_content("]"),
+            });
+        }
+        &mut self.tokens.as_mut().unwrap().closing_bracket
+    }
+
     super::impl_token_fns!(iter = [tokens]);
 }

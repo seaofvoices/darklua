@@ -255,6 +255,31 @@ impl LocalAssignStatement {
         }
     }
 
+    /// Returns a mutable reference to the first token for this statement, creating it if missing.
+    pub fn mutate_first_token(&mut self) -> &mut Token {
+        if self.tokens.is_none() {
+            self.tokens = Some(LocalAssignTokens {
+                local: Token::from_content("local"),
+                equal: (!self.values.is_empty()).then(|| Token::from_content("=")),
+                variable_commas: Vec::new(),
+                value_commas: Vec::new(),
+            });
+        }
+        &mut self.tokens.as_mut().unwrap().local
+    }
+
+    /// Returns a mutable reference to the last token for this statement,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        if let Some(last_value) = self.values.last_mut() {
+            return last_value.mutate_last_token();
+        }
+        self.variables
+            .last_mut()
+            .expect("local assign must have at least one variable")
+            .mutate_or_insert_token()
+    }
+
     super::impl_token_fns!(iter = [variables, tokens]);
 }
 

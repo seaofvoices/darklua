@@ -1,5 +1,6 @@
 use crate::nodes::{
     Expression, FieldExpression, FunctionCall, Identifier, IndexExpression, ParentheseExpression,
+    Token,
 };
 
 /// Represents a prefix expression.
@@ -24,6 +25,43 @@ impl Prefix {
     /// Creates a new prefix from a name/identifier.
     pub fn from_name<S: Into<Identifier>>(name: S) -> Self {
         Self::Identifier(name.into())
+    }
+
+    /// Returns a mutable reference to the first token for this prefix chain,
+    /// creating it if missing.
+    pub fn mutate_first_token(&mut self) -> &mut Token {
+        let mut current = self;
+        loop {
+            match current {
+                Prefix::Call(call) => {
+                    current = call.mutate_prefix();
+                }
+                Prefix::Field(field_expression) => {
+                    current = field_expression.mutate_prefix();
+                }
+                Prefix::Index(index_expression) => {
+                    current = index_expression.mutate_prefix();
+                }
+                Prefix::Identifier(identifier) => {
+                    break identifier.mutate_or_insert_token();
+                }
+                Prefix::Parenthese(parenthese_expression) => {
+                    break parenthese_expression.mutate_first_token();
+                }
+            }
+        }
+    }
+
+    /// Returns a mutable reference to the last token for this prefix chain,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        match self {
+            Prefix::Call(call) => call.mutate_last_token(),
+            Prefix::Field(field_expression) => field_expression.mutate_last_token(),
+            Prefix::Identifier(identifier) => identifier.mutate_or_insert_token(),
+            Prefix::Index(index_expression) => index_expression.mutate_last_token(),
+            Prefix::Parenthese(parenthese_expression) => parenthese_expression.mutate_last_token(),
+        }
     }
 }
 

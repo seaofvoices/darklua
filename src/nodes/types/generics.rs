@@ -54,6 +54,15 @@ impl GenericTypePack {
         self.token.as_ref()
     }
 
+    /// Returns a mutable reference to the last token for this generic type pack,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        if self.token.is_none() {
+            self.token = Some(Token::from_content("..."));
+        }
+        self.token.as_mut().unwrap()
+    }
+
     super::impl_token_fns!(
         target = [name]
         iter = [token]

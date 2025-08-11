@@ -366,6 +366,30 @@ impl TableExpression {
         self
     }
 
+    /// Returns a mutable reference to the first token for this table expression,
+    /// creating it if missing.
+    pub fn mutate_first_token(&mut self) -> &mut Token {
+        self.set_default_tokens();
+        &mut self.tokens.as_mut().unwrap().opening_brace
+    }
+
+    /// Returns a mutable reference to the last token of this table expression,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        self.set_default_tokens();
+        &mut self.tokens.as_mut().unwrap().closing_brace
+    }
+
+    fn set_default_tokens(&mut self) {
+        if self.tokens.is_none() {
+            self.set_tokens(TableTokens {
+                opening_brace: Token::from_content("{"),
+                closing_brace: Token::from_content("}"),
+                separators: Vec::new(),
+            });
+        }
+    }
+
     super::impl_token_fns!(iter = [tokens, entries]);
 }
 

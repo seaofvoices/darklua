@@ -125,5 +125,24 @@ impl AssignStatement {
         self.tokens.as_ref()
     }
 
+    /// Returns a mutable reference to the first token for this assignment statement,
+    /// creating it if missing.
+    pub fn mutate_first_token(&mut self) -> &mut Token {
+        self.variables
+            .iter_mut()
+            .next()
+            .expect("an assign statement must have at least one variable")
+            .mutate_first_token()
+    }
+
+    /// Returns a mutable reference to the last token for this statement,
+    /// creating it if missing.
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        self.values
+            .last_mut()
+            .expect("an assign statement must have at least one value")
+            .mutate_last_token()
+    }
+
     super::impl_token_fns!(iter = [tokens]);
 }

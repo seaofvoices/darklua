@@ -60,6 +60,16 @@ impl ParentheseType {
         self.tokens.as_mut()
     }
 
+    pub fn mutate_last_token(&mut self) -> &mut Token {
+        if self.tokens.is_none() {
+            self.tokens = Some(ParentheseTypeTokens {
+                left_parenthese: Token::from_content("("),
+                right_parenthese: Token::from_content(")"),
+            });
+        }
+        &mut self.tokens.as_mut().unwrap().right_parenthese
+    }
+
     super::impl_token_fns!(iter = [tokens]);
 }
 

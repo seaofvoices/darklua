@@ -47,6 +47,16 @@ impl Identifier {
         self.token.as_mut()
     }
 
+    /// Returns a mutable reference to the token information attached to this identifier.
+    /// If no token is attached, it creates one from the name.
+    pub(crate) fn mutate_or_insert_token(&mut self) -> &mut Token {
+        if self.token.is_none() {
+            let name = self.get_name().to_owned();
+            self.token = Some(Token::from_content(name));
+        }
+        self.token.as_mut().unwrap()
+    }
+
     /// Returns a reference to the name of this identifier.
     #[inline]
     pub fn get_name(&self) -> &String {
