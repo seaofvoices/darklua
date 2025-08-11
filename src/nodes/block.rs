@@ -107,7 +107,7 @@ impl Block {
 
                     if let Some(mut semicolon) = removed_semicolon {
                         trivia.extend(semicolon.drain_trailing_trivia().filter_map(filter_trivia));
-                        drain_trailing_token = true;
+                        drain_trailing_token = false;
                     }
                 }
             }
