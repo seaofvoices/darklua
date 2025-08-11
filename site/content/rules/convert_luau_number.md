@@ -1,6 +1,6 @@
 ---
 description: Convert Luau numbers into Lua compatible numbers
-added_in: "unreleased"
+added_in: "0.17.0"
 parameters: []
 examples:
   - content: "print(0b1000_0001)"

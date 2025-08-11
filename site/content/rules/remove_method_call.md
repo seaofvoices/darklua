@@ -1,6 +1,6 @@
 ---
 description: Removes usages of the method syntax (`:`) in function calls
-added_in: "unreleased"
+added_in: "0.17.0"
 parameters: []
 examples:
   - content: "obj:method()"

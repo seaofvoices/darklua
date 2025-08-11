@@ -1,6 +1,6 @@
 ---
 description: "Convert calls to `math.sqrt(value)` into an exponent form (`value ^ 0.5`)"
-added_in: "unreleased"
+added_in: "0.17.0"
 parameters: []
 examples:
   - content: "local result = math.sqrt(16)"
