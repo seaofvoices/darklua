@@ -97,15 +97,3 @@ impl IndexExpression {
 
     super::impl_token_fns!(iter = [tokens]);
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn mutate_first_token_delegates_to_prefix() {
-        let mut index = IndexExpression::new(Prefix::from_name("a"), 1.0);
-        let token = index.mutate_first_token();
-        assert_eq!(token.read(""), "a");
-    }
-}

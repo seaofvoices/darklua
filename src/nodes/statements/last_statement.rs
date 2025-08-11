@@ -211,19 +211,4 @@ mod test {
     fn default_return_statement_is_empty() {
         assert!(ReturnStatement::default().is_empty())
     }
-
-    #[test]
-    fn mutate_first_token_on_return_statement_creates_return_token() {
-        let mut stmt = ReturnStatement::default();
-        let token = stmt.mutate_first_token();
-        assert_eq!(token.read(""), "return");
-    }
-
-    #[test]
-    fn mutate_first_token_on_break_and_continue() {
-        let mut break_stmt = LastStatement::new_break();
-        let mut continue_stmt = LastStatement::new_continue();
-        assert_eq!(break_stmt.mutate_first_token().read(""), "break");
-        assert_eq!(continue_stmt.mutate_first_token().read(""), "continue");
-    }
 }

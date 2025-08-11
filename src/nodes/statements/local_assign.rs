@@ -283,8 +283,6 @@ impl LocalAssignStatement {
     super::impl_token_fns!(iter = [variables, tokens]);
 }
 
-impl LocalAssignStatement {}
-
 #[cfg(test)]
 mod test {
     use super::*;
