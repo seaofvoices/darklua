@@ -1,7 +1,7 @@
 use crate::nodes::{BinaryOperator, Block, Expression};
 use crate::process::{DefaultVisitor, Evaluator, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::verify_no_rule_properties;
@@ -117,7 +117,9 @@ pub const COMPUTE_EXPRESSIONS_RULE_NAME: &str = "compute_expression";
 
 /// A rule that compute expressions that do not have any side-effects.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct ComputeExpression {}
+pub struct ComputeExpression {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for ComputeExpression {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -139,6 +141,14 @@ impl RuleConfiguration for ComputeExpression {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

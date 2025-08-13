@@ -75,6 +75,7 @@ pub use rule_property::*;
 pub(crate) use shift_token_line::*;
 pub use unused_if_branch::*;
 pub use unused_while::*;
+use wax::Pattern;
 
 use crate::nodes::Block;
 use crate::Resources;
@@ -86,6 +87,9 @@ use std::collections::HashMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+
+const INCLUDE_FILTER_PROPERTY: &str = "only";
+const SKIP_FILTER_PROPERTY: &str = "skip";
 
 /// A builder for creating a [`Context`] with optional configuration.
 ///
@@ -247,6 +251,75 @@ pub trait RuleConfiguration {
     fn has_properties(&self) -> bool {
         !self.serialize_to_properties().is_empty()
     }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata);
+
+    fn metadata(&self) -> &RuleMetadata;
+}
+
+/// Metadata for a rule.
+///
+/// This struct contains information about the rule that is used to filter out
+/// rules that are not applicable to the current context.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct RuleMetadata {
+    only_filters: Vec<FilterPattern>,
+    skip_filters: Vec<FilterPattern>,
+}
+
+impl RuleMetadata {
+    pub(crate) fn should_apply(&self, path: &Path) -> bool {
+        if !self.only_filters.is_empty() {
+            if self.only_filters.iter().all(|f| !f.matches(path)) {
+                return false;
+            }
+        }
+
+        if !self.skip_filters.is_empty() {
+            if self.skip_filters.iter().any(|f| f.matches(path)) {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+#[derive(Debug, Clone)]
+struct FilterPattern {
+    original: String,
+    glob: wax::Glob<'static>,
+}
+
+impl PartialEq for FilterPattern {
+    fn eq(&self, other: &Self) -> bool {
+        self.original == other.original
+    }
+}
+
+impl Eq for FilterPattern {}
+
+impl FilterPattern {
+    fn new(pattern: String) -> Result<Self, wax::GlobError<'static>> {
+        let glob = wax::Glob::new(&pattern)
+            .map_err(|err| err.into_owned())?
+            .into_owned();
+        Ok(Self {
+            original: pattern,
+            glob,
+        })
+    }
+
+    fn matches(&self, path: &Path) -> bool {
+        self.glob.is_match(path)
+    }
+}
+
+impl<'de> Deserialize<'de> for FilterPattern {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = String::deserialize(deserializer)?;
+        Self::new(value).map_err(de::Error::custom)
+    }
 }
 
 /// A trait for rules that are guaranteed to succeed without errors.
@@ -379,6 +452,36 @@ impl Serialize for dyn Rule {
 
             map.serialize_entry("rule", rule_name)?;
 
+            let metadata = self.metadata();
+
+            if !metadata.only_filters.is_empty() {
+                let filters = metadata
+                    .only_filters
+                    .iter()
+                    .map(|f| f.original.clone())
+                    .collect::<Vec<_>>();
+
+                if filters.len() == 1 {
+                    map.serialize_entry(INCLUDE_FILTER_PROPERTY, &filters[0])?;
+                } else {
+                    map.serialize_entry(INCLUDE_FILTER_PROPERTY, &filters)?;
+                }
+            }
+
+            if !metadata.only_filters.is_empty() {
+                let filters = metadata
+                    .skip_filters
+                    .iter()
+                    .map(|f| f.original.clone())
+                    .collect::<Vec<_>>();
+
+                if filters.len() == 1 {
+                    map.serialize_entry(SKIP_FILTER_PROPERTY, &filters[0])?;
+                } else {
+                    map.serialize_entry(SKIP_FILTER_PROPERTY, &filters)?;
+                }
+            }
+
             let mut ordered: Vec<(String, RulePropertyValue)> = properties.into_iter().collect();
 
             ordered.sort_by(|a, b| a.0.cmp(&b.0));
@@ -388,6 +491,22 @@ impl Serialize for dyn Rule {
             }
 
             map.end()
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+enum OneOrMany<T> {
+    One(T),
+    Many(Vec<T>),
+}
+
+impl<T> OneOrMany<T> {
+    fn into_vec(self) -> Vec<T> {
+        match self {
+            OneOrMany::One(value) => vec![value],
+            OneOrMany::Many(values) => values,
         }
     }
 }
@@ -419,16 +538,38 @@ impl<'de> Deserialize<'de> for Box<dyn Rule> {
             where
                 M: MapAccess<'de>,
             {
-                let mut rule_name = None;
+                let mut rule_name: Option<String> = None;
                 let mut properties = HashMap::new();
+                let mut only_patterns: Option<Vec<_>> = None;
+                let mut skip_patterns: Option<Vec<_>> = None;
 
                 while let Some(key) = map.next_key::<String>()? {
                     match key.as_str() {
                         "rule" => {
                             if rule_name.is_none() {
-                                rule_name.replace(map.next_value::<String>()?);
+                                rule_name = Some(map.next_value::<String>()?);
                             } else {
                                 return Err(de::Error::duplicate_field("rule"));
+                            }
+                        }
+                        INCLUDE_FILTER_PROPERTY => {
+                            if only_patterns.is_none() {
+                                let value =
+                                    map.next_value::<OneOrMany<FilterPattern>>()?.into_vec();
+
+                                only_patterns = Some(value);
+                            } else {
+                                return Err(de::Error::duplicate_field(INCLUDE_FILTER_PROPERTY));
+                            }
+                        }
+                        SKIP_FILTER_PROPERTY => {
+                            if skip_patterns.is_none() {
+                                let value =
+                                    map.next_value::<OneOrMany<FilterPattern>>()?.into_vec();
+
+                                skip_patterns = Some(value);
+                            } else {
+                                return Err(de::Error::duplicate_field(SKIP_FILTER_PROPERTY));
                             }
                         }
                         property => {
@@ -449,6 +590,12 @@ impl<'de> Deserialize<'de> for Box<dyn Rule> {
                         FromStr::from_str(&rule_name).map_err(de::Error::custom)?;
 
                     rule.configure(properties).map_err(de::Error::custom)?;
+
+                    let metadata = RuleMetadata {
+                        only_filters: only_patterns.unwrap_or_default(),
+                        skip_filters: skip_patterns.unwrap_or_default(),
+                    };
+                    rule.set_metadata(metadata);
 
                     Ok(rule)
                 } else {

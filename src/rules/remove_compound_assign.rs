@@ -6,7 +6,7 @@ use crate::nodes::{
 };
 use crate::process::{DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::{verify_no_rule_properties, RemoveCommentProcessor, RemoveWhitespacesProcessor};
@@ -295,7 +295,9 @@ pub const REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME: &str = "remove_compound_assignme
 
 /// A rule that converts compound assignment (like `+=`) into regular assignments.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct RemoveCompoundAssignment {}
+pub struct RemoveCompoundAssignment {
+    metadata: RuleMetadata,
+}
 
 impl RemoveCompoundAssignment {
     pub(crate) fn replace_compound_assignment(&self, statement: &mut Statement) {
@@ -324,6 +326,14 @@ impl RuleConfiguration for RemoveCompoundAssignment {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

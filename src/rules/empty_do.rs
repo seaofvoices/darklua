@@ -1,7 +1,7 @@
 use crate::nodes::{Block, Statement};
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::verify_no_rule_properties;
@@ -33,7 +33,9 @@ pub const REMOVE_EMPTY_DO_RULE_NAME: &str = "remove_empty_do";
 
 /// A rule that removes empty do statements.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct RemoveEmptyDo {}
+pub struct RemoveEmptyDo {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for RemoveEmptyDo {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -60,6 +62,14 @@ impl RuleConfiguration for RemoveEmptyDo {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::nodes::*;
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::verify_no_rule_properties;
@@ -234,7 +234,9 @@ pub const REMOVE_SPACES_RULE_NAME: &str = "remove_spaces";
 
 /// A rule that removes whitespaces associated with AST nodes.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct RemoveSpaces {}
+pub struct RemoveSpaces {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for RemoveSpaces {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -255,6 +257,14 @@ impl RuleConfiguration for RemoveSpaces {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

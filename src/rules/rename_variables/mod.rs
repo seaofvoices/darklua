@@ -8,7 +8,7 @@ use crate::nodes::Block;
 use crate::process::utils::is_valid_identifier;
 use crate::process::{DefaultVisitor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
     RulePropertyValue,
 };
 
@@ -20,6 +20,7 @@ pub const RENAME_VARIABLES_RULE_NAME: &str = "rename_variables";
 /// Rename all identifiers to small and meaningless names.
 #[derive(Debug, PartialEq, Eq)]
 pub struct RenameVariables {
+    metadata: RuleMetadata,
     globals: Vec<String>,
     include_functions: bool,
 }
@@ -27,6 +28,7 @@ pub struct RenameVariables {
 impl RenameVariables {
     pub fn new<I: IntoIterator<Item = String>>(iter: I) -> Self {
         Self {
+            metadata: RuleMetadata::default(),
             globals: Vec::from_iter(iter),
             include_functions: false,
         }
@@ -151,6 +153,14 @@ impl RuleConfiguration for RenameVariables {
         }
 
         properties
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

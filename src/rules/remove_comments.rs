@@ -3,7 +3,7 @@ use regex::Regex;
 use crate::nodes::*;
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 #[derive(Debug, Default)]
@@ -479,6 +479,7 @@ pub const REMOVE_COMMENTS_RULE_NAME: &str = "remove_comments";
 /// A rule that removes comments associated with AST nodes.
 #[derive(Debug, Default)]
 pub struct RemoveComments {
+    metadata: RuleMetadata,
     except: Vec<Regex>,
 }
 
@@ -533,6 +534,14 @@ impl RuleConfiguration for RemoveComments {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

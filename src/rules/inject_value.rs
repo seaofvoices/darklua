@@ -3,7 +3,7 @@ use num_traits::ToPrimitive;
 use crate::nodes::{Block, Expression, ParentheseExpression, Prefix, StringExpression};
 use crate::process::{to_expression, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
     RulePropertyValue,
 };
 
@@ -86,6 +86,7 @@ pub const INJECT_GLOBAL_VALUE_RULE_NAME: &str = "inject_global_value";
 /// A rule to replace global variables with values.
 #[derive(Debug, PartialEq)]
 pub struct InjectGlobalValue {
+    metadata: RuleMetadata,
     identifier: String,
     value: Expression,
     original_properties: RuleProperties,
@@ -100,6 +101,7 @@ fn properties_with_value(value: impl Into<RulePropertyValue>) -> RuleProperties 
 impl InjectGlobalValue {
     pub fn nil(identifier: impl Into<String>) -> Self {
         Self {
+            metadata: RuleMetadata::default(),
             identifier: identifier.into(),
             value: Expression::nil(),
             original_properties: properties_with_value(RulePropertyValue::None),
@@ -108,6 +110,7 @@ impl InjectGlobalValue {
 
     pub fn boolean(identifier: impl Into<String>, value: bool) -> Self {
         Self {
+            metadata: RuleMetadata::default(),
             identifier: identifier.into(),
             value: Expression::from(value),
             original_properties: properties_with_value(value),
@@ -118,6 +121,7 @@ impl InjectGlobalValue {
         let value = value.into();
         let original_properties = properties_with_value(&value);
         Self {
+            metadata: RuleMetadata::default(),
             identifier: identifier.into(),
             value: StringExpression::from_value(value).into(),
             original_properties,
@@ -126,6 +130,7 @@ impl InjectGlobalValue {
 
     pub fn number(identifier: impl Into<String>, value: f64) -> Self {
         Self {
+            metadata: RuleMetadata::default(),
             identifier: identifier.into(),
             value: Expression::from(value),
             original_properties: if let Some(integer) = value
@@ -143,6 +148,7 @@ impl InjectGlobalValue {
 impl Default for InjectGlobalValue {
     fn default() -> Self {
         Self {
+            metadata: RuleMetadata::default(),
             identifier: "".to_owned(),
             value: Expression::nil(),
             original_properties: RuleProperties::new(),
@@ -260,6 +266,14 @@ impl RuleConfiguration for InjectGlobalValue {
         );
 
         rules
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

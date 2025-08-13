@@ -4,7 +4,7 @@ use crate::nodes::{
 };
 use crate::process::{DefaultVisitor, Evaluator, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::verify_no_rule_properties;
@@ -89,7 +89,9 @@ pub const REMOVE_IF_EXPRESSION_RULE_NAME: &str = "remove_if_expression";
 
 /// A rule that removes trailing `nil` in local assignments.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct RemoveIfExpression {}
+pub struct RemoveIfExpression {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for RemoveIfExpression {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -111,6 +113,14 @@ impl RuleConfiguration for RemoveIfExpression {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

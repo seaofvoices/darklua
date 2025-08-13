@@ -1,7 +1,7 @@
 use crate::nodes::{Block, Prefix};
 use crate::process::{IdentifierTracker, NodeVisitor, ScopeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::remove_call_match::RemoveFunctionCallProcessor;
@@ -15,12 +15,14 @@ pub const REMOVE_DEBUG_PROFILING_RULE_NAME: &str = "remove_debug_profiling";
 /// A rule that removes `debug.profilebegin` and `debug.profileend` calls.
 #[derive(Debug, PartialEq, Eq)]
 pub struct RemoveDebugProfiling {
+    metadata: RuleMetadata,
     preserve_args_side_effects: bool,
 }
 
 impl Default for RemoveDebugProfiling {
     fn default() -> Self {
         Self {
+            metadata: RuleMetadata::default(),
             preserve_args_side_effects: true,
         }
     }
@@ -81,6 +83,14 @@ impl RuleConfiguration for RemoveDebugProfiling {
 
         properties
     }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
+    }
 }
 
 #[cfg(test)]
@@ -104,6 +114,7 @@ mod test {
     #[test]
     fn serialize_rule_without_side_effects() {
         let rule: Box<dyn Rule> = Box::new(RemoveDebugProfiling {
+            metadata: RuleMetadata::default(),
             preserve_args_side_effects: false,
         });
 
