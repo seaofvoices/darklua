@@ -24,14 +24,13 @@ pub(crate) struct RenameTypeDeclarationProcessor {
     /// permutator to generate unique type identifier suffixes
     permutator: CharPermutator,
     modules_identifier: String,
-    module_load_field: &'static str,
     hoist_types: bool,
     type_lines: isize,
     type_declarations: Vec<Statement>,
 }
 
 impl RenameTypeDeclarationProcessor {
-    pub(crate) fn new(modules_identifier: String, module_load_field: &'static str) -> Self {
+    pub(crate) fn new(modules_identifier: String) -> Self {
         Self {
             suffix: "__DARKLUA_TYPE_".into(),
             renamed_types: Default::default(),
@@ -40,7 +39,6 @@ impl RenameTypeDeclarationProcessor {
             all_types: Default::default(),
             permutator: identifier_permutator(),
             modules_identifier,
-            module_load_field,
             hoist_types: true,
             type_lines: 0,
             type_declarations: Default::default(),
@@ -76,23 +74,9 @@ impl RenameTypeDeclarationProcessor {
     fn get_module_name(&self, value: &Expression) -> Option<Vec<u8>> {
         if let Expression::Call(value) = value {
             if let Prefix::Field(field) = value.get_prefix() {
-                if field.get_field().get_name() == self.module_load_field {
-                    if let Prefix::Identifier(variable) = field.get_prefix() {
-                        if variable.get_name() == &self.modules_identifier {
-                            return value
-                                .get_arguments()
-                                .clone()
-                                .to_expressions()
-                                .into_iter()
-                                .next()
-                                .and_then(|argument| {
-                                    if let Expression::String(string_value) = argument {
-                                        Some(string_value.into_value())
-                                    } else {
-                                        None
-                                    }
-                                });
-                        }
+                if let Prefix::Identifier(variable) = field.get_prefix() {
+                    if variable.get_name() == &self.modules_identifier {
+                        return Some(field.get_field().get_name().as_bytes().to_vec());
                     }
                 }
             }
