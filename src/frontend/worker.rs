@@ -191,6 +191,20 @@ impl<'a> Worker<'a> {
         {
             let mut context_builder =
                 self.create_rule_context(work_item.data.source(), &work_progress.content);
+
+            let metadata = rule.metadata();
+
+            if !metadata.should_apply(work_item.data.source()) {
+                log::trace!(
+                    "[{}] skip rule `{}` (#{}) because it does not match the path `{}`",
+                    source_display,
+                    rule.get_name(),
+                    index,
+                    work_item.data.source().display()
+                );
+                continue;
+            }
+
             log::trace!(
                 "[{}] apply rule `{}`{}",
                 source_display,
