@@ -1,0 +1,410 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Use this $schema: https://raw.githubusercontent.com/seaofvoices/darklua/refs/heads/main/schema.json",
+  "title": "Dark-Lua Configuration",
+  "description": "Configuration for DarkLua, a tool for converting Lua to Luau.",
+  "$id": "https://github.com/seaofvoices/darklua",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "const": "https://raw.githubusercontent.com/seaofvoices/darklua/refs/heads/main/schema.json",
+      "description": "JSON Schema reference for this configuration file. Exists to make vscode less annoying."
+    },
+    "generator": {
+      "oneOf": [
+        { "const": "retain_lines", "description": "Attempts to retain line numbers and comments." },
+        { "const": "dense", "description": "Attempts to minimize whitespace and delete comments. A column span of 80 is used by default." },
+        { "const": "readable", "description": "Destroys and rebuilds formatting to be at least readable. Not a formatter." },
+        {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string", "enum": ["retain_lines", "dense", "readable"], "default": "retain_lines" },
+            "column_span": { "type": "integer", "default": 80, "description": "Column length to for code. Default: 80" }
+          },
+          "required": ["name"]
+        }
+      ],
+      "default": "retain_lines"
+    },
+    "bundle": {
+      "type": "object",
+      "properties": {
+        "require_mode": {
+          "oneOf": [
+            { "const": "path", "description": "Use paths in requires (./module)." },
+            { "const": "luau", "description": "Use Luau module paths (@self/module)." },
+            {
+              "type": "object",
+              "properties": {
+                "name": { "const": "path", "description": "Use paths in requires (./module)." },
+                "module_folder_name": { "type": "string", "default": "init", "description": "Name of the module folder. Default: init" },
+                "sources": { "type": "object", "additionalProperties": { "type": "string" }, "default": {}, "description": "Source aliases (@a: './folder' require('@a/b') -> require('./folder/b'))." },
+                "use_luau_configuration": { "type": "boolean", "default": true, "description": "Use .luarc files for source alias configuration. Default: true" },
+                "luau_rc_aliases": { "type": "object", "additionalProperties": { "type": "string" }, "default": {}, "description": "Source .luaurc files for source alias configuration. Default: {}" }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "name": { "const": "luau", "description": "Use Luau module paths (@self/module)." },
+                "aliases": { "type": "object", "additionalProperties": { "type": "string" }, "default": {}, "description": "Aliases to use for require conversion. Default: {}" },
+                "use_lua_configuration": { "type": "boolean", "default": true, "description": "Use .luarc files for alias configuration. Default: true" },
+                "luau_rc_aliases": { "type": "object", "additionalProperties": { "type": "string" }, "default": {}, "description": "Source .luaurc files for source alias configuration. Default: {}" }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "modules_identifier": { "type": "string", "default": "__DARKLUA_BUNDLE_MODULES", "description": "Master variable name for the bundle. Default: __DARKLUA_BUNDLE_MODULES" },
+        "excludes": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Patterns for files to exclude from the bundle ('@lune/**'). Default: []" }
+      },
+      "required": ["require_mode"],
+      "additionalProperties": false,
+      "description": "Bundling will try to mega merge every require into a single file. It also allows you to have complex module resolution. Does not preserve side effects."
+    },
+    "location": { "type": "string" },
+    "rules": {
+      "type": "array",
+      "description": "Rules are what transform Lua code. Rules may be a string, or an object with setting properties. Some rules require an object body. Rules have precedence! For example, you should inject a value before trying to compute expressions statically, or optimize if branches out.",
+      "items": {
+        "anyOf": [
+          {
+            "anyOf": [
+              { "const": "compute_expression", "description": "Computes static expressions and replaces them with the result. An expression will not be replaced if it has any side-effects." },
+              { "const": "convert_index_to_field", "description": "Converts index expressions a['b'] to field expressions a.b, and table initializer string keys { ['field']=true } to { field=true } when possible." },
+              { "const": "convert_local_function_to_assign", "description": "Converts non-recursive local function declarations to local variable assignments. Breaks reflection APIs and stack traces are different." },
+              { "const": "convert_luau_number", "description": "Converts Luau numbers (0b1111_0000, 0x0_F) to Lua numbers (0xF0, 0x0F) removing separators in the process." },
+              { "const": "convert_square_root_call", "description": "Converts math.sqrt(...) calls to (...)^0.5." },
+              { "const": "filter_after_early_return", "description": "Filters out dead code after early returns (do ... return end *dead code*). Use with rules which produce do blocks." },
+              { "const": "group_local_assignment", "description": "Groups local assignments into a single assignment preserving side effects. (local foo=1; local bar=2; local foo,bar = 1,2)" },
+              { "const": "remove_assertions", "description": "Removes assertions from code. By default it preserves side effects." },
+              { "const": "remove_comments", "description": "Removes comments from code." },
+              { "const": "remove_compound_assignment", "description": "Removes compound assignments from code (a+=b -> a=a+b)." },
+              { "const": "remove_continue", "description": "Removes continue statements from code. Injects code using breaks to emulate continue." },
+              { "const": "remove_debug_profiling", "description": "Removes debug profiling code (debug.profilebegin(...), etc). By default it preserves side effects." },
+              { "const": "remove_empty_do", "description": "Removes empty do blocks from code." },
+              { "const": "remove_floor_division"  , "description": "Removes floor division from code (a//b -> math.floor(a/b), a//=b -> a=math.floor(a/b))." },
+              { "const": "remove_function_call_parens", "description": "Removes function call parentheses from code (print('goat') -> print'goat')." },
+              { "const": "remove_if_expression", "description": "Safely removes if expressions (ternary-style expressions) from code (local a=if(b)then c else d -> local a=b and c or d)." },
+              { "const": "remove_interpolated_string", "description": "Removes interpolated strings from code (return `{goat}` -> return string.format('%s', tostring(goat))." },
+              { "const": "remove_method_call", "description": "Removes method calls from code (foo:bar(...) -> foo.bar(foo, ...))." },
+              { "const": "remove_method_definition", "description": "Removes method definitions from code (function foo:bar(...) -> function foo.bar(self, ...))." },
+              { "const": "remove_nil_declaration", "description": "Removes nil declarations from code (local a=nil, b -> local a)." },
+              { "const": "remove_spaces", "description": "Removes spaces from code (local sum = a -> local sum=a." },
+              { "const": "remove_types", "description": "Removes all luau types from code (local a: number -> local a)." },
+              { "const": "remove_unused_if_branch", "description": "Computes if conditions and removes useless if branches (if false then end -> )." },
+              { "const": "remove_unused_variable", "description": "Removes unused variables from code (local a -> , local function a() end -> )." },
+              { "const": "remove_unused_while", "description": "Removes unused while loops from code (while false do end -> )." },
+              { "const": "rename_variables", "description": "Rename variables to avoid reserved names between lua, luau, and roblox." }
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "append_text_comment", "description": "Appends a text comment to the start or end of a file." },
+              "text": { "type": "string", "description": "String to use inside the comment (required if 'file' is not defined)" },
+              "location": { "type": "string", "enum": ["start", "end"], "default": "start", "description": "Location to add the comment. Default: start" }
+            },
+            "required": ["rule", "text"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "append_text_comment", "description": "Appends a text comment to the start or end of a file." },
+              "file": { "type": "string", "description": "Path to a file holding text to use inside the comment (required if 'text' is not defined)" },
+              "location": { "type": "string", "enum": ["start", "end"], "default": "start", "description": "Location to add the comment. Default: start" }
+            },
+            "required": ["rule", "file"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "compute_expression", "description": "Computes static expressions and replaces them with the result. An expression will not be replaced if it has any side-effects." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "convert_index_to_field", "description": "Converts index expressions a['b'] to field expressions a.b, and table initializer string keys { ['field']=true } to { field=true } when possible." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "convert_local_function_to_assign", "description": "Converts non-recursive local function declarations to local variable assignments. Breaks reflection APIs and stack traces are different." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "convert_luau_number", "description": "Converts Luau numbers (0b1111_0000, 0x0_F) to Lua numbers (0xF0, 0x0F) removing separators in the process." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "convert_require", "description": "Converts requires between using file paths to luau module paths or roblox module paths." },
+              "current": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "enum": ["path", "luau"], "description": "Current require mode. Valid: path, luau, (roblox not valid yet)" },
+                  "module_folder_name": { "type": "string", "default": "init", "description": "Name of the module folder. Default: init" },
+                  "sources": {
+                    "type": "object",
+                    "additionalProperties": { "type": "string" },
+                    "default": {},
+                    "description": "Sources to use for require conversion. Default: {}"
+                  }
+                },
+                "additionalProperties": false,
+                "required": ["name"],
+                "description": "Current require mode of the source files."
+              },
+              "target": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "enum": ["path", "luau", "roblox"], "description": "Target require mode. Valid: path, luau, roblox" },
+                  "rojo_sourcemap": { "type": "string", "description": "Path to a rojo sourcemap file. Optional" },
+                  "indexing_style": { "type": "string", "enum": ["find_first_child", "wait_for_child", "property"], "default": "find_first_child", "description": "Indexing style to use for require conversion. Default: find_first_child" }
+                },
+                "additionalProperties": false,
+                "required": ["name"],
+                "description": "Target require mode of the output files."
+              },
+              "additionalProperties": false
+            },
+            "required": ["rule", "current", "target"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "convert_square_root_call", "description": "Converts math.sqrt(...) calls to (...)^0.5." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "filter_after_early_return", "description": "Filters out dead code after early returns (do ... return end *dead code*). Use with rules which produce do blocks." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "group_local_assignment", "description": "Groups local assignments into a single assignment preserving side effects. (local foo=1; local bar=2; local foo,bar = 1,2)" }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "inject_global_value", "description": "Injects a global constant value into files replacing an identifier." },
+              "identifier": { "type": "string", "description": "Identifier to replace." },
+              "value": { "description": "Value to inject." }
+            },
+            "required": ["rule", "identifier", "value"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "inject_global_value", "description": "Injects a global constant value into files replacing an identifier where the value is an environment variable." },
+              "identifier": { "type": "string", "description": "Identifier to replace." },
+              "env": { "type": "string", "description": "Environment variable to inject." },
+              "default_value": { "description": "Default value to inject if the environment variable is not set. Optional." }
+            },
+            "required": ["rule", "identifier", "env"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "inject_global_value", "description": "Injects a global constant value into files replacing an identifier where the value is an environment variable json parsed." },
+              "identifier": { "type": "string", "description": "Identifier to replace." },
+              "env_json": { "type": "string", "description": "Environment variable with json text to parse and inject." },
+              "default_value": { "description": "Default value to inject if the environment variable is not set. Optional." }
+            },
+            "required": ["rule", "identifier", "env_json"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "remove_assertions", "description": "Removes assertions from code. By default it preserves side effects." },
+              "preserve_arguments_side_effects": { "type": "boolean", "default": true, "description": "Whether to preserve side effects of the arguments of the assert call. Default: true" }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "remove_comments", "description": "Removes comments from code." },
+              "except": { "type": "array", "items": { "type": "string" }, "description": "List of regular expression patterns to preserve comments. ('--!' would preserve --!comment)" }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "remove_compound_assignment", "description": "Removes compound assignments from code (a+=b -> a=a+b)." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "remove_continue", "description": "Removes continue statements from code. Injects code using breaks to emulate continue." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "remove_debug_profiling", "description": "Removes debug profiling code (debug.profilebegin(...), etc). By default it preserves side effects." },
+              "preserve_argument_side_effects": { "type": "boolean", "default": true, "description": "Whether to preserve side effects of the arguments of the debug profiling call. Default: true" }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "remove_empty_do", "description": "Removes empty do blocks from code." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "remove_floor_division", "description": "Removes floor division from code (a//b -> math.floor(a/b), a//=b -> a=math.floor(a/b))." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "remove_function_call_parens", "description": "Removes function call parentheses from code (print('goat') -> print'goat')." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "remove_if_expression", "description": "Safely removes if expressions (ternary-style expressions) from code (local a=if(b)then c else d -> local a=b and c or d)." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "remove_interpolated_string", "description": "Removes interpolated strings from code (return `{goat}` -> return string.format('%s', tostring(goat))." },
+              "strategy": { "type": "string", "enum": ["string", "tostring"], "default": "string", "description": "Strategy to use. string will use %s, tostring will use %*. Default: string" }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "remove_method_call", "description": "Removes method calls from code (foo:bar(...) -> foo.bar(foo, ...))." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "remove_method_definition", "description": "Removes method definitions from code (function foo:bar(...) -> function foo.bar(self, ...))." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "remove_nil_declaration", "description": "Removes nil declarations from code (local a=nil, b -> local a)." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "remove_spaces", "description": "Removes spaces from code (local sum = a -> local sum=a." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "remove_types", "description": "Removes all luau types from code (local a: number -> local a)." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "remove_unused_if_branch", "description": "Computes if conditions and removes useless if branches (if false then end -> )." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "remove_unused_variable", "description": "Removes unused variables from code (local a -> , local function a() end -> )." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "remove_unused_while", "description": "Removes unused while loops from code (while false do end -> )." }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rule": { "const": "rename_variables", "description": "Rename variables to avoid reserved names between lua, luau, and roblox." },
+              "globals": { "type": "array", "items": { "type": "string" }, "default": ["$default"], "description": "List of global variables to avoid. Special values: '$default', '$roblox'. Default: ['$default']" },
+              "include_functions": { "type": "boolean", "default": false, "description": "Whether to include function names. Default: false" }
+            },
+            "required": ["rule"],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "default": []
+    }
+  },
+  "additionalProperties": false
+}
