@@ -6,10 +6,6 @@
   "$id": "https://github.com/seaofvoices/darklua",
   "type": "object",
   "properties": {
-    "$schema": {
-      "const": "https://raw.githubusercontent.com/seaofvoices/darklua/refs/heads/main/schema.json",
-      "description": "JSON Schema reference for this configuration file. Exists to make vscode less annoying."
-    },
     "generator": {
       "oneOf": [
         { "const": "retain_lines", "description": "Attempts to retain line numbers and comments." },
