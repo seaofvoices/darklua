@@ -58,7 +58,6 @@ impl super::PathLocator for RequirePathLocator<'_, '_, '_> {
                 let mut extra_module_location = self
                     .path_require_mode
                     .get_source(source_name, self.extra_module_relative_location)
-                    .map(utils::normalize_path)
                     .ok_or_else(|| {
                         DarkluaError::invalid_resource_path(
                             path.display().to_string(),
