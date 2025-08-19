@@ -40,6 +40,12 @@ impl Context {
         self
     }
 
+    pub fn with_cwd(mut self, cwd: impl AsRef<Path>) -> Self {
+        let full_dir = self.working_directory.path().join(cwd.as_ref());
+        self.command.current_dir(full_dir);
+        self
+    }
+
     pub fn expect_file<P: AsRef<Path>>(&self, file_path: P) -> &Self {
         let file_path = file_path.as_ref();
         if !file_path.exists() || !file_path.is_file() {
@@ -274,6 +280,56 @@ fn run_process_command() {
         .replace_duration_labels()
         .snapshot_command("run_process_command")
         .snapshot_file("run_process_command_init_out", "out/init.lua");
+}
+
+#[test]
+fn run_process_command_with_input_path_starting_with_dot() {
+    Context::default()
+        .write_file("src/init.lua", "return 1 + 1\n")
+        .arg("process")
+        .arg("./src")
+        .arg("out")
+        .replace_duration_labels()
+        .snapshot_command("run_process_command")
+        .snapshot_file("run_process_command_init_out", "out/init.lua");
+}
+
+#[test]
+fn run_process_command_with_output_path_starting_with_dot() {
+    Context::default()
+        .write_file("src/init.lua", "return 1 + 1\n")
+        .arg("process")
+        .arg("src")
+        .arg("./out")
+        .replace_duration_labels()
+        .snapshot_command("run_process_command")
+        .snapshot_file("run_process_command_init_out", "out/init.lua");
+}
+
+#[test]
+fn run_process_command_with_input_and_output_path_starting_with_dot() {
+    Context::default()
+        .write_file("src/init.lua", "return 1 + 1\n")
+        .arg("process")
+        .arg("./src")
+        .arg("./out")
+        .replace_duration_labels()
+        .snapshot_command("run_process_command")
+        .snapshot_file("run_process_command_init_out", "out/init.lua");
+}
+
+#[test]
+fn run_process_command_with_input_path_starting_with_parent_dir() {
+    Context::default()
+        .write_file("src/init.lua", "return 1 + 1\n")
+        .write_file("lib/.darklua.json", "{}")
+        .arg("process")
+        .arg("../src")
+        .arg("out")
+        .with_cwd("lib")
+        .replace_duration_labels()
+        .snapshot_command("run_process_command")
+        .snapshot_file("run_process_command_init_out", "lib/out/init.lua");
 }
 
 #[test]

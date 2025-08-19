@@ -66,7 +66,7 @@ impl WorkerTree {
                     self.add_source_if_missing(options.input(), Some(output.join(file_name)));
                 }
             } else {
-                let input = options.input().to_path_buf();
+                let input = normalize_path(options.input());
 
                 for source in resources.collect_work(&input) {
                     let source = normalize_path(source);
@@ -85,7 +85,7 @@ impl WorkerTree {
                 }
             }
         } else {
-            let input = options.input().to_path_buf();
+            let input = normalize_path(options.input());
 
             for source in resources.collect_work(input) {
                 self.add_source_if_missing(source, None);
