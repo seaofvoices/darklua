@@ -1,6 +1,8 @@
 # Changelog
 
 * fix module types when bundling code ([#300](https://github.com/seaofvoices/darklua/pull/300))
+* fix issue with command line input paths starting with `./` ([#306](https://github.com/seaofvoices/darklua/pull/306))
+* fix issue with `.luaurc` configuration files containing aliases starting with `./` ([#305](https://github.com/seaofvoices/darklua/pull/305))
 
 ## 0.17.0
 
