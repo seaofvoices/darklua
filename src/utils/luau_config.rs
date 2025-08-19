@@ -6,7 +6,7 @@ use std::{
 
 use serde::Deserialize;
 
-use crate::{DarkluaError, Resources};
+use crate::{utils::normalize_path, DarkluaError, Resources};
 
 const LUAU_RC_FILE_NAME: &str = ".luaurc";
 
@@ -31,6 +31,10 @@ fn find_luau_configuration_private(
 
         if resources.exists(&config_path)? {
             let config = resources.get(&config_path)?;
+            log::trace!(
+                "attempt to parse luau configuration at '{}'",
+                config_path.display()
+            );
 
             return serde_json::from_str(&config)
                 .map(|mut config: LuauConfiguration| {
@@ -41,7 +45,7 @@ fn find_luau_configuration_private(
                         .into_iter()
                         .map(|(mut key, value)| {
                             key.insert(0, '@');
-                            (key, ancestor.join(value))
+                            (key, normalize_path(ancestor.join(value)))
                         })
                         .collect();
 
@@ -70,6 +74,10 @@ pub(crate) fn find_luau_configuration(
 
             let res = cache.get(&key);
             if let Some(res) = res {
+                log::trace!(
+                    "found luau configuration in cache for '{}'",
+                    luau_file.display()
+                );
                 return Ok(res.clone());
             }
         }
