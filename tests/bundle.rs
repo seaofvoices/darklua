@@ -243,6 +243,26 @@ mod without_rules {
         }
 
         #[test]
+        fn require_in_packages_directory_using_luau_rc_alias() {
+            process_main_require_value(memory_resources!(
+                "packages/value.lua" => "return true",
+                "src/main.lua" => "local value = require('@Packages/value.lua')",
+                ".luaurc" => "{ \"aliases\": { \"Packages\": \"packages\" } }",
+                ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
+            ));
+        }
+
+        #[test]
+        fn require_in_packages_directory_using_luau_rc_alias_starting_with_dot() {
+            process_main_require_value(memory_resources!(
+                "packages/value.lua" => "return true",
+                "src/main.lua" => "local value = require('@Packages/value.lua')",
+                ".luaurc" => "{ \"aliases\": { \"Packages\": \"./packages\" } }",
+                ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
+            ));
+        }
+
+        #[test]
         fn require_directory_with_custom_init_file() {
             process_main_require_value(memory_resources!(
                 "src/value/__init__.lua" => "return true",
@@ -376,6 +396,26 @@ mod without_rules {
                     "packages/value.lua" => "return true",
                     "src/main.lua" => "local value = require('@Packages/value.lua')",
                     ".darklua.json" => "{ \"rules\": [], \"generator\": \"readable\", \"bundle\": { \"require_mode\": { \"name\": \"luau\", \"sources\": { \"@Packages\": \"./packages\" } } } }",
+                ));
+            }
+
+            #[test]
+            fn require_in_packages_directory_using_luau_rc_alias() {
+                process_main_require_value(memory_resources!(
+                    "packages/value.lua" => "return true",
+                    "src/main.lua" => "local value = require('@Packages/value.lua')",
+                    ".luaurc" => "{ \"aliases\": { \"Packages\": \"packages\" } }",
+                    ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG_LUAU_MODE
+                ));
+            }
+
+            #[test]
+            fn require_in_packages_directory_using_luau_rc_alias_starting_with_dot() {
+                process_main_require_value(memory_resources!(
+                    "packages/value.lua" => "return true",
+                    "src/main.lua" => "local value = require('@Packages/value.lua')",
+                    ".luaurc" => "{ \"aliases\": { \"Packages\": \"./packages\" } }",
+                    ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG_LUAU_MODE
                 ));
             }
         }
