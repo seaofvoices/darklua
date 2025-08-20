@@ -90,6 +90,12 @@ impl PathRequireMode {
     }
 
     pub(crate) fn get_source(&self, name: &str, rel: &Path) -> Option<PathBuf> {
+        log::trace!(
+            "lookup alias `{}` from `{}` (path mode)",
+            name,
+            rel.display()
+        );
+
         self.sources
             .get(name)
             .map(|alias| rel.join(alias))

@@ -47,6 +47,9 @@ fn find_luau_configuration_private(
                             key.insert(0, '@');
                             (key, normalize_path(ancestor.join(value)))
                         })
+                        .inspect(|(key, value)| {
+                            log::trace!(" ⨽ parsed alias `{}` (`{}`)", key, value.display())
+                        })
                         .collect();
 
                     Some(config)
