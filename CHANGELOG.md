@@ -1,5 +1,7 @@
 # Changelog
 
+* fix module types when bundling code ([#300](https://github.com/seaofvoices/darklua/pull/300))
+
 ## 0.17.1
 
 * fix ignored aliases from `.luaurc` configuration files when bundling ([#307](https://github.com/seaofvoices/darklua/pull/307))
