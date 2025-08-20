@@ -42,7 +42,7 @@ rokit add seaofvoices/darklua
 If you are already using Foreman, then installing darklua is as simple as adding this line in the `foreman.toml` file:
 
 ```toml
-darklua = { github = "seaofvoices/darklua", version = "=0.17.0" }
+darklua = { github = "seaofvoices/darklua", version = "=0.17.1" }
 ```
 
 # License

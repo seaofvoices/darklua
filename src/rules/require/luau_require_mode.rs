@@ -227,7 +227,11 @@ impl LuauRequireMode {
     }
 
     pub(crate) fn get_source(&self, name: &str, rel: &Path) -> Option<PathBuf> {
-        log::trace!("lookup alias `{}` from `{}`", name, rel.display());
+        log::trace!(
+            "lookup alias `{}` from `{}` (luau mode)",
+            name,
+            rel.display()
+        );
 
         self.luau_rc_aliases
             .as_ref()
