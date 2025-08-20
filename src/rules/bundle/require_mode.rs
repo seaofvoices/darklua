@@ -56,7 +56,7 @@ impl BundleRequireMode {
                     .map_err(|err| err.to_string())?;
 
                 let locator = RequirePathLocator::new(
-                    path_require_mode,
+                    &require_mode,
                     context.project_location(),
                     context.resources(),
                 );
@@ -70,7 +70,7 @@ impl BundleRequireMode {
                     .map_err(|err| err.to_string())?;
 
                 let locator = LuauPathLocator::new(
-                    luau_require_mode,
+                    &require_mode,
                     context.project_location(),
                     context.resources(),
                 );
