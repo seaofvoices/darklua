@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.17.1
+
 * fix ignored aliases from `.luaurc` configuration files when bundling ([#307](https://github.com/seaofvoices/darklua/pull/307))
 * fix issue with command line input paths starting with `./` ([#306](https://github.com/seaofvoices/darklua/pull/306))
 * fix issue with `.luaurc` configuration files containing aliases starting with `./` ([#305](https://github.com/seaofvoices/darklua/pull/305))
