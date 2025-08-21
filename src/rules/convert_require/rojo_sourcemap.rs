@@ -131,13 +131,13 @@ impl RojoSourcemap {
         let from_file = from_file.as_ref();
         let target_file = target_file.as_ref();
 
-        let binding = from_file.to_path_buf().join(target_file);
+        let binding = from_file.join(target_file);
 
         let normalized = normalize_path(binding.as_path());
 
         let from_node = self.find_node(from_file)?;
         let target_node = self.find_node(if from_file.is_absolute() {
-            if from_file.is_absolute() {
+            if from_file.has_root() {
                 log::trace!(
                     "in absolute rqeuire mode, normalized: {} -> {}",
                     from_file.display(),
