@@ -576,6 +576,21 @@ mod luau_to_roblox {
         }
 
         #[test]
+        fn convert_alias_module_from_init_module_with_current_dir() {
+            let resources = memory_resources!(
+                "src/init.lua" => "local value = require('@value')",
+                "src/value.lua" => "return nil",
+                ".luaurc" => r#"{ "aliases": { "value": "./src/value.lua" } }"#,
+                ".darklua.json" => CONVERT_LUAU_TO_ROBLOX_DEFAULT_CONFIG,
+            );
+            expect_file_process(
+                &resources,
+                "src/init.lua",
+                "local value = require(script:FindFirstChild('value'))",
+            );
+        }
+
+        #[test]
         fn convert_folder_alias_module_from_init_module() {
             let resources = memory_resources!(
                 "src/init.lua" => "local value = require('@value/default.lua')",
@@ -616,6 +631,21 @@ mod luaurc {
             "src/init.lua" => "local value = require('@value')",
             "src/value.lua" => "return nil",
             ".luaurc" => r#"{ "aliases": { "value": "src/value.lua" } }"#,
+            ".darklua.json" => CONVERT_PATH_TO_ROBLOX_DEFAULT_CONFIG,
+        );
+        expect_file_process(
+            &resources,
+            "src/init.lua",
+            "local value = require(script:FindFirstChild('value'))",
+        );
+    }
+
+    #[test]
+    fn convert_alias_module_from_init_module_with_current_dir() {
+        let resources = memory_resources!(
+            "src/init.lua" => "local value = require('@value')",
+            "src/value.lua" => "return nil",
+            ".luaurc" => r#"{ "aliases": { "value": "./src/value.lua" } }"#,
             ".darklua.json" => CONVERT_PATH_TO_ROBLOX_DEFAULT_CONFIG,
         );
         expect_file_process(

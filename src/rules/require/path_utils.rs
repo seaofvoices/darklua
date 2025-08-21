@@ -17,16 +17,6 @@ pub(crate) fn get_relative_path(
 
     let source_parent = get_relative_parent_path(source_path);
 
-    log::trace!(
-        "   > require_path: `{}` (is_absolute: {})",
-        require_path.display(),
-        require_path.has_root()
-    );
-    log::trace!(
-        "   > source_parent: `{}` (is_absolute: {})",
-        source_parent.display(),
-        source_parent.has_root()
-    );
     if require_path.has_root() && !source_parent.has_root() {
         return Ok(None);
     }
