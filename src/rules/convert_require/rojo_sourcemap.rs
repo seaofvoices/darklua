@@ -33,7 +33,9 @@ impl RojoSourcemapNode {
             node.id = index;
             for file_path in &mut node.file_paths {
                 if file_path.is_relative() {
-                    *file_path = utils::normalize_path(relative_to.join(&file_path));
+                    *file_path =
+                        path::absolute(utils::normalize_path(relative_to.join(&file_path)))
+                            .expect("failed to convert to absolute path");
                 }
             }
             for child in &mut node.children {
@@ -131,22 +133,16 @@ impl RojoSourcemap {
         let from_file = from_file.as_ref();
         let target_file = target_file.as_ref();
 
-        let binding = from_file.join(target_file);
-
-        let normalized = normalize_path(binding.as_path());
+        let normalized = normalize_path(from_file.join(target_file));
 
         let from_node = self.find_node(from_file)?;
-        let target_node = self.find_node(if from_file.is_absolute() {
-            if from_file.has_root() {
-                log::trace!(
-                    "in absolute rqeuire mode, normalized: {} -> {}",
-                    from_file.display(),
-                    normalized.display()
-                );
-                normalized.as_path()
-            } else {
-                target_file
-            }
+        let target_node = self.find_node(if from_file.has_root() {
+            log::trace!(
+                "in absolute require mode, normalized: {} -> {}",
+                from_file.display(),
+                normalized.display()
+            );
+            normalized.as_path()
         } else {
             target_file
         })?;
@@ -240,15 +236,18 @@ impl RojoSourcemap {
     }
 
     fn find_node(&self, target_path: &Path) -> Option<&RojoSourcemapNode> {
+        let needle_path_buf = if !target_path.has_root() {
+            path::absolute(target_path).expect("failed")
+        } else {
+            target_path.to_path_buf()
+        };
+
+        let needle_path = needle_path_buf.as_path();
+
         self.root_node.iter().find(|node| {
-            node.file_paths.iter().any(|file_path| {
-                if file_path.is_absolute() {
-                    file_path.to_path_buf()
-                        == path::absolute(target_path).expect("failed to convert")
-                } else {
-                    file_path == target_path
-                }
-            })
+            node.file_paths
+                .iter()
+                .any(|file_path| file_path.as_path() == needle_path)
         })
     }
 }
