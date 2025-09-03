@@ -191,6 +191,7 @@ impl<T: Into<RulePropertyValue>> From<Option<T>> for RulePropertyValue {
 
 #[cfg(test)]
 mod test {
+    #![allow(clippy::approx_constant)]
     use super::*;
 
     #[test]
