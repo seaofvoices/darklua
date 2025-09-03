@@ -1829,7 +1829,9 @@ impl<'a> AstConverter<'a> {
                 self.push_work(expression.as_ref());
             }
             ast::Expression::Function(function) => {
-                let (token, body) = function.as_ref();
+                let func = function.as_ref();
+                let body = func.body();
+                let token = func.function_token();
                 self.work_stack
                     .push(ConvertWork::MakeFunctionExpression { body, token });
 
@@ -2609,17 +2611,17 @@ impl<'a> AstConverter<'a> {
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_compound_op(
         &self,
-        operator: &ast::luau::CompoundOp,
+        operator: &ast::CompoundOp,
     ) -> Result<CompoundOperator, ConvertError> {
         Ok(match operator {
-            ast::luau::CompoundOp::PlusEqual(_) => CompoundOperator::Plus,
-            ast::luau::CompoundOp::MinusEqual(_) => CompoundOperator::Minus,
-            ast::luau::CompoundOp::StarEqual(_) => CompoundOperator::Asterisk,
-            ast::luau::CompoundOp::SlashEqual(_) => CompoundOperator::Slash,
-            ast::luau::CompoundOp::DoubleSlashEqual(_) => CompoundOperator::DoubleSlash,
-            ast::luau::CompoundOp::PercentEqual(_) => CompoundOperator::Percent,
-            ast::luau::CompoundOp::CaretEqual(_) => CompoundOperator::Caret,
-            ast::luau::CompoundOp::TwoDotsEqual(_) => CompoundOperator::Concat,
+            ast::CompoundOp::PlusEqual(_) => CompoundOperator::Plus,
+            ast::CompoundOp::MinusEqual(_) => CompoundOperator::Minus,
+            ast::CompoundOp::StarEqual(_) => CompoundOperator::Asterisk,
+            ast::CompoundOp::SlashEqual(_) => CompoundOperator::Slash,
+            ast::CompoundOp::DoubleSlashEqual(_) => CompoundOperator::DoubleSlash,
+            ast::CompoundOp::PercentEqual(_) => CompoundOperator::Percent,
+            ast::CompoundOp::CaretEqual(_) => CompoundOperator::Caret,
+            ast::CompoundOp::TwoDotsEqual(_) => CompoundOperator::Concat,
             _ => {
                 return Err(ConvertError::CompoundOperator {
                     operator: operator.to_string(),
@@ -2850,7 +2852,7 @@ enum ConvertWork<'a> {
         statement: &'a ast::Assignment,
     },
     MakeCompoundAssignStatement {
-        statement: &'a ast::luau::CompoundAssignment,
+        statement: &'a ast::CompoundAssignment,
     },
     MakeIfStatement {
         statement: &'a ast::If,
@@ -3152,9 +3154,9 @@ fn get_unary_operator_token(
 }
 
 fn get_compound_operator_token(
-    operator: &ast::luau::CompoundOp,
+    operator: &ast::CompoundOp,
 ) -> Result<&tokenizer::TokenReference, ConvertError> {
-    use ast::luau::CompoundOp;
+    use ast::CompoundOp;
 
     match operator {
         CompoundOp::PlusEqual(token)
