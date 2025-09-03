@@ -167,10 +167,8 @@ mod tests {
     fn parse_call(code: &str) -> FunctionCall {
         let parser = Parser::default().preserve_tokens();
         let block = parser.parse(code).expect("code should parse");
-        if let Some(statement) = block.first_statement() {
-            if let Statement::Call(call) = statement {
-                return call.clone();
-            }
+        if let Some(Statement::Call(call)) = block.first_statement() {
+            return call.clone();
         }
         panic!("failed to parse call from: {}", code);
     }
