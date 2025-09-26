@@ -329,10 +329,8 @@ mod tests {
         let code = format!("f {}", lua);
 
         let block = parser.parse(&code).expect("code should parse");
-        if let Some(statement) = block.first_statement() {
-            if let Statement::Call(call) = statement {
-                return call.get_arguments().clone();
-            }
+        if let Some(Statement::Call(call)) = block.first_statement() {
+            return call.get_arguments().clone();
         }
         panic!("failed to parse call arguments from: {}", lua);
     }

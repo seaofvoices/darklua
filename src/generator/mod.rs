@@ -1163,5 +1163,5 @@ mod $mod_name {
 
     snapshot_generator!(dense, |_| DenseLuaGenerator::default(), false);
     snapshot_generator!(readable, |_| ReadableLuaGenerator::default(), false);
-    snapshot_generator!(token_based, |code| TokenBasedLuaGenerator::new(code), true);
+    snapshot_generator!(token_based, TokenBasedLuaGenerator::new, true);
 }
