@@ -2,7 +2,7 @@ pub(crate) use crate::utils::memory_resources;
 
 macro_rules! test_rule_with_generator {
     (
-        $rule:expr,
+        $rules:expr,
         $resources:expr,
         $generator:expr,
         $parser:expr,
@@ -39,9 +39,10 @@ macro_rules! test_rule_with_generator {
                 darklua_core::rules::ContextBuilder::new($test_file_name, &resources, $input)
                     .build();
 
-            $rule
-                .process(&mut block, &context)
-                .expect("rule should succeed");
+            for rule in $rules {
+                rule.process(&mut block, &context)
+                    .expect("rule should succeed");
+            }
 
             let create_generator = $generator;
             let mut generator = create_generator($input);
@@ -61,9 +62,9 @@ macro_rules! test_rule_with_generator {
             }
         }
     };
-    ($rule:expr, $resources:expr, $generator:expr, $test_file_name:literal, $name:ident, $input:literal, $output:literal) => {
+    ($rules:expr, $resources:expr, $generator:expr, $test_file_name:literal, $name:ident, $input:literal, $output:literal) => {
         test_rule_with_generator!(
-            $rule,
+            $rules,
             $resources,
             $generator,
             darklua_core::Parser::default(),
@@ -129,10 +130,10 @@ macro_rules! snapshot_rule_with_generator {
     };
 }
 
-macro_rules! test_rule_with_tokens {
+macro_rules! test_rules_with_tokens {
     (
         $rule_name:ident,
-        $rule:expr,
+        $rules:expr,
         resources = $resources:expr,
         test_file_name = $test_file_name:literal,
         $($name:ident ($input:literal) => $output:literal),* $(,)?
@@ -144,7 +145,7 @@ macro_rules! test_rule_with_tokens {
 
         $(
             test_rule_with_generator!(
-                $rule,
+                $rules,
                 $resources,
                 |input| darklua_core::generator::TokenBasedLuaGenerator::new(input),
                 darklua_core::Parser::default().preserve_tokens(),
@@ -159,6 +160,64 @@ macro_rules! test_rule_with_tokens {
         }
 
         }
+    };
+
+    (
+        $rule_name:ident,
+        $rules:expr,
+        resources = $resources:expr,
+        $($name:ident ($input:literal) => $output:literal),* $(,)?
+    ) => {
+        test_rules_with_tokens!(
+            $rule_name,
+            $rules,
+            resources = $resources,
+            test_file_name = "src/test.lua",
+            $( $name ($input) => $output, )*
+        );
+    };
+
+    (
+        $rule_name:ident,
+        $rules:expr,
+        test_file_name = $test_file_name:literal,
+        $($name:ident ($input:literal) => $output:literal),* $(,)?
+    ) => {
+        test_rules_with_tokens!(
+            $rule_name,
+            $rules,
+            resources = darklua_core::Resources::from_memory(),
+            test_file_name = $test_file_name,
+            $( $name ($input) => $output, )*
+        );
+    };
+
+    ($rule_name:ident, $rules:expr, $($name:ident ($input:literal) => $output:literal),* $(,)?) => {
+        test_rules_with_tokens!(
+            $rule_name,
+            $rules,
+            resources = darklua_core::Resources::from_memory(),
+            test_file_name = "src/test.lua",
+            $( $name ($input) => $output, )*
+        );
+    };
+}
+
+macro_rules! test_rule_with_tokens {
+    (
+        $rule_name:ident,
+        $rule:expr,
+        resources = $resources:expr,
+        test_file_name = $test_file_name:literal,
+        $($name:ident ($input:literal) => $output:literal),* $(,)?
+    ) => {
+        test_rules_with_tokens!(
+            $rule_name,
+            [$rule],
+            resources = $resources,
+            test_file_name = $test_file_name,
+            $( $name ($input) => $output, )*
+        );
     };
 
     (
@@ -202,10 +261,10 @@ macro_rules! test_rule_with_tokens {
     };
 }
 
-macro_rules! test_rule {
+macro_rules! test_rules {
     (
         $rule_name:ident,
-        $rule:expr,
+        $rules:expr,
         resources = $resources:expr,
         test_file_name = $test_file_name:literal,
         $($name:ident ($input:literal) => $output:literal),* $(,)?
@@ -217,7 +276,7 @@ macro_rules! test_rule {
 
         $(
             test_rule_with_generator!(
-                $rule,
+                $rules,
                 $resources,
                 |_| darklua_core::generator::ReadableLuaGenerator::default(),
                 $test_file_name,
@@ -234,7 +293,7 @@ macro_rules! test_rule {
 
         $(
             test_rule_with_generator!(
-                $rule,
+                $rules,
                 $resources,
                 |_| darklua_core::generator::DenseLuaGenerator::default(),
                 $test_file_name,
@@ -251,7 +310,7 @@ macro_rules! test_rule {
 
         $(
             test_rule_with_generator!(
-                $rule,
+                $rules,
                 $resources,
                 |input| darklua_core::generator::TokenBasedLuaGenerator::new(input),
                 darklua_core::Parser::default().preserve_tokens(),
@@ -266,6 +325,64 @@ macro_rules! test_rule {
         }
     }
 
+    };
+
+    (
+        $rule_name:ident,
+        $rules:expr,
+        resources = $resources:expr,
+        $($name:ident ($input:literal) => $output:literal),* $(,)?
+    ) => {
+        test_rules!(
+            $rule_name,
+            $rules,
+            resources = $resources,
+            test_file_name = "src/test.lua",
+            $( $name ($input) => $output, )*
+        );
+    };
+
+    (
+        $rule_name:ident,
+        $rules:expr,
+        test_file_name = $test_file_name:literal,
+        $($name:ident ($input:literal) => $output:literal),* $(,)?
+    ) => {
+        test_rules!(
+            $rule_name,
+            $rules,
+            resources = darklua_core::Resources::from_memory(),
+            test_file_name = $test_file_name,
+            $( $name ($input) => $output, )*
+        );
+    };
+
+    ($rule_name:ident, $rules:expr, $($name:ident ($input:literal) => $output:literal),* $(,)?) => {
+        test_rules!(
+            $rule_name,
+            $rules,
+            resources = darklua_core::Resources::from_memory(),
+            test_file_name = "src/test.lua",
+            $( $name ($input) => $output, )*
+        );
+    };
+}
+
+macro_rules! test_rule {
+    (
+        $rule_name:ident,
+        $rule:expr,
+        resources = $resources:expr,
+        test_file_name = $test_file_name:literal,
+        $($name:ident ($input:literal) => $output:literal),* $(,)?
+    ) => {
+        test_rules!(
+            $rule_name,
+            [$rule],
+            resources = $resources,
+            test_file_name = $test_file_name,
+            $( $name ($input) => $output, )*
+        );
     };
 
     (
