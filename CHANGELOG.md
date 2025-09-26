@@ -1,5 +1,6 @@
 # Changelog
 
+* improve `append_text_comment` rule to support multiple comments being defined in a single config (this also fix a bug in the code generator related to how multiline comments were written) ([#314](https://github.com/seaofvoices/darklua/pull/314))
 * add `remove_floor_division` rule to the all rule names list ([#313](https://github.com/seaofvoices/darklua/pull/313))
 * upgrade inner parser (full-moon) to `2.0.0`. This fixes parsing errors when reading function attributes and type functions, but darklua will automatically strip them ([#312](https://github.com/seaofvoices/darklua/pull/312))
 
