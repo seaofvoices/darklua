@@ -116,6 +116,14 @@ impl LuaValue {
         }
         .unwrap_or(self)
     }
+
+    /// Returns the length of a Lua value (equivalent to the `#` operator).
+    pub fn length(&self) -> LuaValue {
+        match self {
+            Self::String(value) => LuaValue::Number(value.len() as f64),
+            _ => LuaValue::Unknown,
+        }
+    }
 }
 
 impl Default for LuaValue {
