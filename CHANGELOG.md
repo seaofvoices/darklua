@@ -1,5 +1,7 @@
 # Changelog
 
+* upgrade inner parser (full-moon) to `2.0.0`. This fixes parsing errors when reading function attributes and type functions, but darklua will automatically strip them ([#311](https://github.com/seaofvoices/darklua/pull/311))
+
 ## 0.17.1
 
 * fix ignored aliases from `.luaurc` configuration files when bundling ([#307](https://github.com/seaofvoices/darklua/pull/307))
