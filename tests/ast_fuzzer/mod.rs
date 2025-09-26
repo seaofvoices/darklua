@@ -887,7 +887,7 @@ impl AstFuzzer {
                             .push(TableIndexerType::new(key_type, self.pop_type()).into());
                     }
 
-                    table_properties.shuffle(&mut rand::thread_rng());
+                    table_properties.shuffle(&mut rand::rng());
 
                     for property in table_properties {
                         table_type.push_property(property);
