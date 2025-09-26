@@ -36,7 +36,7 @@ impl BundleOptions {
                     log::warn!(
                         "unable to create exclude matcher from `{}`: {}",
                         exclusion,
-                        err.to_string()
+                        err
                     );
                     None
                 }
