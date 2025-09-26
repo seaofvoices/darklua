@@ -1,6 +1,6 @@
 # Changelog
 
-* upgrade inner parser (full-moon) to `2.0.0`. This fixes parsing errors when reading function attributes and type functions, but darklua will automatically strip them ([#311](https://github.com/seaofvoices/darklua/pull/311))
+* upgrade inner parser (full-moon) to `2.0.0`. This fixes parsing errors when reading function attributes and type functions, but darklua will automatically strip them ([#312](https://github.com/seaofvoices/darklua/pull/312))
 
 ## 0.17.1
 
