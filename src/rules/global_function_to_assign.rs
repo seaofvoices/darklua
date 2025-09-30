@@ -39,7 +39,7 @@ impl Processor {
         } else {
             let mut fields_iter = fields.iter().chain(name.get_method()).map(Clone::clone);
             let mut current = FieldExpression::new(base, fields_iter.next().unwrap());
-            while let Some(field) = fields_iter.next() {
+            for field in fields_iter {
                 current = FieldExpression::new(current, field.clone());
             }
             Variable::from(current)
