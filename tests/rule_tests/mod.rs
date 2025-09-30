@@ -539,6 +539,7 @@ mod convert_luau_number;
 mod convert_require;
 mod convert_square_root_call;
 mod filter_early_return;
+mod global_function_to_assign;
 mod group_local_assignment;
 mod inject_value;
 mod no_local_function;
