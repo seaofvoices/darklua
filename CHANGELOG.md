@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.17.2
+
 * add `convert_function_to_assignment` rule ([#317](https://github.com/seaofvoices/darklua/pull/317))
 * fix module types when bundling code ([#300](https://github.com/seaofvoices/darklua/pull/300))
 * improve the `compute_expression` rule to compute the length of strings ([#316](https://github.com/seaofvoices/darklua/pull/316))

@@ -1,6 +1,6 @@
 ---
 description: Convert global function definitions to assignment statements
-added_in: "unreleased"
+added_in: "0.17.2"
 parameters: []
 examples:
   - content: |
