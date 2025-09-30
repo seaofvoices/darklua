@@ -26,49 +26,49 @@ path = "src/bin.rs"
 tracing = ["dep:tracing"]
 
 [dependencies]
-anstyle = "1.0.10"
+anstyle = "1.0.11"
 bstr = "1.12.0"
-clap = { version = "4.5.23", features = ["derive"] }
+clap = { version = "4.5.48", features = ["derive"] }
 durationfmt = "0.1.1"
-elsa = "1.10.0"
-env_logger = "0.11.5"
-full_moon = { version = "1.0.0", features = ["roblox"] }
-indexmap = "2.7.0"
+elsa = "1.11.2"
+env_logger = "0.11.8"
+full_moon = { version = "2.0.0", features = ["roblox"] }
+indexmap = "2.11.4"
 json5 = "0.4.1"
-log = "0.4.22"
+log = "0.4.28"
 num-traits = "0.2.19"
 pathdiff = "0.2.3"
-petgraph = "0.6.5"
-regex = "1.11.1"
+petgraph = "0.8.2"
+regex = "1.11.3"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0.134"
+serde_json = "1.0.145"
 serde_yaml = "0.9.33"
-toml = "0.8.19"
+toml = "0.9.7"
 tracing = { version = "0.1", optional = true }
-wax = "0.5.0"
-xxhash-rust = { version = "0.8.12", features = ["xxh3"] }
+wax = "0.6.0"
+xxhash-rust = { version = "0.8.15", features = ["xxh3"] }
 
 [dev-dependencies]
-assert_cmd = "2.0.16"
+assert_cmd = "2.0.17"
 criterion = { version = "0.5.1", features = ["html_reports"] }
 include_dir = "0.7.4"
-insta = { version = "1.36.1", features = ["json", "filters"] }
+insta = { version = "1.43.2", features = ["json", "filters"] }
 paste = "1.0.15"
 pretty_assertions = "1.4.1"
-rand = "0.8.5"
-rand_distr = "0.4.3"
-serde_bytes = "0.11.15"
-tempfile = "3.14.0"
-tracing-subscriber = "0.3.18"
-tracing-tracy = "0.11.0"
+rand = "0.9.2"
+rand_distr = "0.5.1"
+serde_bytes = "0.11.19"
+tempfile = "3.23.0"
+tracing-subscriber = "0.3.20"
+tracing-tracy = "0.11.4"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 web-time = "1.1.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-ctrlc = { version = "3.4.5", features = ["termination"] }
-notify = "7.0.0"
-notify-debouncer-full = "0.4.0"
+ctrlc = { version = "3.5.0", features = ["termination"] }
+notify = "8.2.0"
+notify-debouncer-full = "0.6.0"
 
 # This is needed because when runnin `cargo test`, the library and its
 # dependencies are build with the `dev` profile. To make sure full_moon

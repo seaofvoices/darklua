@@ -18,6 +18,7 @@ expression: rule_names
   "remove_compound_assignment",
   "remove_debug_profiling",
   "remove_empty_do",
+  "remove_floor_division",
   "remove_function_call_parens",
   "remove_interpolated_string",
   "remove_method_call",

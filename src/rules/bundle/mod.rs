@@ -36,7 +36,7 @@ impl BundleOptions {
                     log::warn!(
                         "unable to create exclude matcher from `{}`: {}",
                         exclusion,
-                        err.to_string()
+                        err
                     );
                     None
                 }
@@ -48,7 +48,7 @@ impl BundleOptions {
             excludes: if excludes.is_empty() {
                 None
             } else {
-                let any_pattern = wax::any::<wax::Glob, _>(excludes)
+                let any_pattern = wax::any(excludes)
                     .expect("exclude globs errors should be filtered and only emit a warning");
                 Some(any_pattern)
             },

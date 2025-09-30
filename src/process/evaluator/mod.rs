@@ -427,7 +427,7 @@ impl Evaluator {
                     _ => LuaValue::Unknown,
                 }
             }
-            _ => LuaValue::Unknown,
+            UnaryOperator::Length => self.evaluate(expression.get_expression()).length(),
         }
     }
 
@@ -525,6 +525,18 @@ mod test {
             => LuaValue::from(2.0),
         if_expression_elseif_always_false(IfExpression::new(false, 1.0, 0.0).with_branch(false, 2.0))
             => LuaValue::from(0.0),
+        length_empty_string(UnaryExpression::new(UnaryOperator::Length, StringExpression::empty()))
+            => LuaValue::Number(0.0),
+        length_single_char_string(UnaryExpression::new(UnaryOperator::Length, StringExpression::from_value("a")))
+            => LuaValue::Number(1.0),
+        length_short_string(UnaryExpression::new(UnaryOperator::Length, StringExpression::from_value("hello")))
+            => LuaValue::Number(5.0),
+        length_unknown_expression(UnaryExpression::new(UnaryOperator::Length, Expression::identifier("var")))
+            => LuaValue::Unknown,
+        length_number_expression(UnaryExpression::new(UnaryOperator::Length, Expression::from(42.0)))
+            => LuaValue::Unknown,
+        length_nil_expression(UnaryExpression::new(UnaryOperator::Length, Expression::nil()))
+            => LuaValue::Unknown,
     );
 
     mod binary_expressions {
