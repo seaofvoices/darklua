@@ -1,5 +1,6 @@
 # Changelog
 
+* fix module types when bundling code ([#300](https://github.com/seaofvoices/darklua/pull/300))
 * improve the `compute_expression` rule to compute the length of strings ([#316](https://github.com/seaofvoices/darklua/pull/316))
 * improve `append_text_comment` rule to support multiple comments being defined in a single config (this also fix a bug in the code generator related to how multiline comments were written) ([#314](https://github.com/seaofvoices/darklua/pull/314))
 * add `remove_floor_division` rule to the all rule names list ([#313](https://github.com/seaofvoices/darklua/pull/313))
