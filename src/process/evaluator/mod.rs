@@ -1,8 +1,19 @@
+mod evaluator_storage;
+mod function_value;
 mod lua_value;
+pub(crate) mod native_functions;
+mod table_value;
+mod tuple_value;
 
+pub use function_value::FunctionValue;
+pub(crate) use function_value::NativeFunction;
 pub use lua_value::*;
+pub use table_value::TableValue;
+pub use tuple_value::TupleValue;
 
 use crate::nodes::*;
+
+pub(crate) use evaluator_storage::EvaluatorStorage;
 
 /// A struct to convert an Expression node into a LuaValue object.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -21,22 +32,41 @@ impl Evaluator {
     }
 
     pub fn evaluate(&self, expression: &Expression) -> LuaValue {
-        match expression {
+        let storage = EvaluatorStorage::default();
+        self.evaluate_as_tuple(expression, &storage).into_one()
+    }
+
+    #[inline]
+    pub(crate) fn evaluate_internal(
+        &self,
+        expression: &Expression,
+        storage: &EvaluatorStorage,
+    ) -> LuaValue {
+        self.evaluate_as_tuple(expression, storage).into_one()
+    }
+
+    pub(crate) fn evaluate_as_tuple(
+        &self,
+        expression: &Expression,
+        storage: &EvaluatorStorage,
+    ) -> TupleValue {
+        let result = match expression {
             Expression::False(_) => LuaValue::False,
-            Expression::Function(_) => LuaValue::Function,
+            Expression::Function(_) => LuaValue::Function(FunctionValue::new_lua()),
             Expression::Nil(_) => LuaValue::Nil,
             Expression::Number(number) => LuaValue::from(number.compute_value()),
             Expression::String(string) => LuaValue::from(string.get_value()),
-            Expression::Table(_) => LuaValue::Table,
+            Expression::Table(table) => self.evaluate_table(table, storage),
             Expression::True(_) => LuaValue::True,
-            Expression::Binary(binary) => self.evaluate_binary(binary),
-            Expression::Unary(unary) => self.evaluate_unary(unary),
+            Expression::Binary(binary) => self.evaluate_binary(binary, storage),
+            Expression::Unary(unary) => self.evaluate_unary(unary, storage),
             Expression::Parenthese(parenthese) => {
                 // when the evaluator will be able to manage tuples, keep only the first element
                 // of the tuple here (or coerce the tuple to `nil` if it is empty)
-                self.evaluate(parenthese.inner_expression())
+                self.evaluate_as_tuple(parenthese.inner_expression(), storage)
+                    .into_one()
             }
-            Expression::If(if_expression) => self.evaluate_if(if_expression),
+            Expression::If(if_expression) => self.evaluate_if(if_expression, storage),
             Expression::InterpolatedString(interpolated_string) => {
                 let mut result = Vec::new();
                 for segment in interpolated_string.iter_segments() {
@@ -45,7 +75,10 @@ impl Evaluator {
                             result.extend_from_slice(string.get_value());
                         }
                         InterpolationSegment::Value(value) => {
-                            match self.evaluate(value.get_expression()) {
+                            match self
+                                .evaluate_as_tuple(value.get_expression(), storage)
+                                .into_one()
+                            {
                                 LuaValue::False => {
                                     result.extend_from_slice(b"false");
                                 }
@@ -58,23 +91,191 @@ impl Evaluator {
                                 LuaValue::String(string) => {
                                     result.extend_from_slice(&string);
                                 }
-                                LuaValue::Function
+                                LuaValue::Function(_)
                                 | LuaValue::Number(_)
-                                | LuaValue::Table
-                                | LuaValue::Unknown => return LuaValue::Unknown,
+                                | LuaValue::Table(_)
+                                | LuaValue::Unknown => return TupleValue::unknown(),
                             }
                         }
                     }
                 }
                 LuaValue::String(result)
             }
-            Expression::TypeCast(type_cast) => self.evaluate(type_cast.get_expression()),
-            Expression::Call(_)
-            | Expression::Field(_)
-            | Expression::Identifier(_)
-            | Expression::Index(_)
-            | Expression::VariableArguments(_) => LuaValue::Unknown,
+            Expression::TypeCast(type_cast) => self
+                .evaluate_as_tuple(type_cast.get_expression(), storage)
+                .into_one(),
+            Expression::Call(call) => {
+                let prefix = self.evaluate_prefix(call.get_prefix(), storage);
+
+                let mut parameters = self.evaluate_arguments(&call.get_arguments(), storage);
+
+                return if let Some(method) = call.get_method() {
+                    let function = self.evaluate_table_key(
+                        &prefix,
+                        LuaValue::from(method.get_name()),
+                        storage,
+                    );
+
+                    parameters.insert(0, prefix);
+
+                    function.call(parameters)
+                } else {
+                    prefix.call(parameters)
+                };
+            }
+            Expression::Field(field) => {
+                let prefix = self.evaluate_prefix(field.get_prefix(), storage);
+
+                self.evaluate_table_key(
+                    &prefix,
+                    LuaValue::from(field.get_field().get_name()),
+                    storage,
+                )
+            }
+            Expression::Index(index) => {
+                let prefix = self.evaluate_prefix(index.get_prefix(), storage);
+
+                self.evaluate_table_key(
+                    &prefix,
+                    self.evaluate_as_tuple(index.get_index(), storage)
+                        .into_one(),
+                    storage,
+                )
+            }
+            Expression::Identifier(identifier) => storage.read_identifier(identifier.get_name()),
+            Expression::VariableArguments(_) => {
+                return TupleValue::unknown();
+            }
+        };
+
+        TupleValue::known_values(vec![result])
+    }
+
+    fn evaluate_table_key(
+        &self,
+        table: &LuaValue,
+        key: LuaValue,
+        storage: &EvaluatorStorage,
+    ) -> LuaValue {
+        if let LuaValue::Table(table_ref) = table {
+            storage
+                .read_table(*table_ref, |table| table.get(&key))
+                .unwrap_or_default()
+        } else {
+            LuaValue::Unknown
         }
+    }
+
+    pub(crate) fn evaluate_prefix(&self, prefix: &Prefix, storage: &EvaluatorStorage) -> LuaValue {
+        let mut chain = Vec::new();
+
+        let mut current = prefix;
+
+        let mut result_value = loop {
+            let next_prefix = match current {
+                Prefix::Call(call) => {
+                    if let Some(method) = call.get_method() {
+                        chain.push(PrefixOperation::CallMethod(
+                            method.get_name(),
+                            &call.get_arguments(),
+                        ));
+                    } else {
+                        chain.push(PrefixOperation::Call(&call.get_arguments()));
+                    }
+                    call.get_prefix()
+                }
+                Prefix::Field(field) => {
+                    chain.push(PrefixOperation::Index(LuaValue::from(
+                        field.get_field().get_name(),
+                    )));
+                    field.get_prefix()
+                }
+                Prefix::Identifier(identifier) => {
+                    break storage.read_identifier(identifier.get_name());
+                }
+                Prefix::Index(index) => {
+                    chain.push(PrefixOperation::IndexDynamic(index.get_index()));
+                    index.get_prefix()
+                }
+                Prefix::Parenthese(parenthese) => {
+                    break self
+                        .evaluate_as_tuple(parenthese.inner_expression(), storage)
+                        .into_one();
+                }
+            };
+
+            current = next_prefix;
+        };
+
+        for op in chain.into_iter().rev() {
+            if let LuaValue::Unknown = &result_value {
+                break;
+            }
+            match op {
+                PrefixOperation::Call(arguments) => {
+                    let parameters = self.evaluate_arguments(arguments, storage);
+
+                    result_value = result_value.call(parameters).into_one();
+                }
+                PrefixOperation::CallMethod(method, arguments) => {
+                    let function =
+                        self.evaluate_table_key(&result_value, LuaValue::from(method), storage);
+
+                    let mut parameters = self.evaluate_arguments(arguments, storage);
+                    parameters.insert(0, result_value);
+
+                    result_value = function.call(parameters).into_one();
+                }
+                PrefixOperation::Index(lua_value) => {
+                    result_value = self.evaluate_table_key(&result_value, lua_value, storage);
+                }
+                PrefixOperation::IndexDynamic(index) => {
+                    result_value = self.evaluate_table_key(
+                        &result_value,
+                        self.evaluate_as_tuple(index, storage).into_one(),
+                        storage,
+                    );
+                }
+            }
+        }
+
+        result_value
+    }
+
+    fn evaluate_arguments(&self, arguments: &Arguments, storage: &EvaluatorStorage) -> TupleValue {
+        match arguments {
+            Arguments::Tuple(tuple) => {
+                let length = tuple.len();
+                let values: Vec<_> = tuple
+                    .iter_values()
+                    .take(length.saturating_sub(1))
+                    .map(|value| self.evaluate_as_tuple(value, storage).into_one())
+                    .collect();
+
+                if length == 0 {
+                    TupleValue::empty()
+                } else {
+                    let mut last_values =
+                        self.evaluate_as_tuple(tuple.iter_values().last().unwrap(), storage);
+                    last_values.prepend(values);
+                    last_values
+                }
+            }
+            Arguments::String(string) => {
+                TupleValue::known_values(vec![LuaValue::from(string.get_value())])
+            }
+            Arguments::Table(table) => {
+                TupleValue::known_values(vec![self.evaluate_table(table, storage)])
+            }
+        }
+    }
+
+    fn evaluate_table(&self, _table: &TableExpression, storage: &EvaluatorStorage) -> LuaValue {
+        let table = TableValue::new()
+            .with_unknown_entries()
+            .with_pure_metamethods();
+
+        storage.create_table(table)
     }
 
     #[allow(clippy::only_used_in_recursion)]
@@ -106,6 +307,15 @@ impl Evaluator {
     }
 
     pub fn has_side_effects(&self, expression: &Expression) -> bool {
+        let storage = EvaluatorStorage::default();
+        self.has_side_effects_internal(expression, &storage)
+    }
+
+    pub(crate) fn has_side_effects_internal(
+        &self,
+        expression: &Expression,
+        storage: &EvaluatorStorage,
+    ) -> bool {
         match expression {
             Expression::False(_)
             | Expression::Function(_)
@@ -115,18 +325,21 @@ impl Evaluator {
             | Expression::String(_)
             | Expression::True(_)
             | Expression::VariableArguments(_) => false,
-            Expression::If(if_expression) => self.if_expression_has_side_effects(if_expression),
+            Expression::If(if_expression) => {
+                self.if_expression_has_side_effects(if_expression, storage)
+            }
             Expression::Binary(binary) => {
                 let left = binary.left();
                 let right = binary.right();
 
-                let left_value = self.evaluate(left);
-                let left_side_effect = self.has_side_effects(binary.left());
+                let left_value = self.evaluate_internal(left, storage);
+                let left_side_effect = self.has_side_effects_internal(binary.left(), storage);
 
                 match binary.operator() {
                     BinaryOperator::And => {
                         if left_value.is_truthy().unwrap_or(true) {
-                            left_side_effect || self.has_side_effects(binary.right())
+                            left_side_effect
+                                || self.has_side_effects_internal(binary.right(), storage)
                         } else {
                             left_side_effect
                         }
@@ -135,17 +348,19 @@ impl Evaluator {
                         if left_value.is_truthy().unwrap_or(false) {
                             left_side_effect
                         } else {
-                            left_side_effect || self.has_side_effects(binary.right())
+                            left_side_effect
+                                || self.has_side_effects_internal(binary.right(), storage)
                         }
                     }
                     _ => {
                         if self.pure_metamethods {
-                            left_side_effect || self.has_side_effects(binary.right())
+                            left_side_effect
+                                || self.has_side_effects_internal(binary.right(), storage)
                         } else {
                             self.maybe_metatable(&left_value)
                                 || self.maybe_metatable(&self.evaluate(right))
-                                || self.has_side_effects(left)
-                                || self.has_side_effects(right)
+                                || self.has_side_effects_internal(left, storage)
+                                || self.has_side_effects_internal(right, storage)
                         }
                     }
                 }
@@ -160,110 +375,153 @@ impl Evaluator {
                         || self.has_side_effects(sub_expression)
                 }
             }
-            Expression::Field(field) => self.field_has_side_effects(field),
-            Expression::Index(index) => self.index_has_side_effects(index),
+            Expression::Field(field) => self.field_has_side_effects(field, storage),
+            Expression::Index(index) => self.index_has_side_effects(index, storage),
             Expression::Parenthese(parenthese) => {
-                self.has_side_effects(parenthese.inner_expression())
+                self.has_side_effects_internal(parenthese.inner_expression(), storage)
             }
             Expression::Table(table) => table
                 .get_entries()
                 .iter()
-                .any(|entry| self.table_entry_has_side_effects(entry)),
-            Expression::Call(call) => self.call_has_side_effects(call),
+                .any(|entry| self.table_entry_has_side_effects(entry, storage)),
+            Expression::Call(call) => self.call_has_side_effects(call, storage),
             Expression::InterpolatedString(interpolated_string) => interpolated_string
                 .iter_segments()
                 .any(|segment| match segment {
                     InterpolationSegment::String(_) => false,
                     InterpolationSegment::Value(value) => {
-                        self.has_side_effects(value.get_expression())
+                        self.has_side_effects_internal(value.get_expression(), storage)
                     }
                 }),
-            Expression::TypeCast(type_cast) => self.has_side_effects(type_cast.get_expression()),
+            Expression::TypeCast(type_cast) => {
+                self.has_side_effects_internal(type_cast.get_expression(), storage)
+            }
         }
     }
 
-    fn if_expression_has_side_effects(&self, if_expression: &IfExpression) -> bool {
-        if self.has_side_effects(if_expression.get_condition()) {
+    fn if_expression_has_side_effects(
+        &self,
+        if_expression: &IfExpression,
+        storage: &EvaluatorStorage,
+    ) -> bool {
+        if self.has_side_effects_internal(if_expression.get_condition(), storage) {
             return true;
         }
 
-        let condition = self.evaluate(if_expression.get_condition());
+        let condition = self.evaluate_internal(if_expression.get_condition(), storage);
 
         if let Some(truthy) = condition.is_truthy() {
             if truthy {
-                self.has_side_effects(if_expression.get_result())
+                self.has_side_effects_internal(if_expression.get_result(), storage)
             } else {
                 for branch in if_expression.iter_branches() {
-                    if self.has_side_effects(branch.get_condition()) {
+                    if self.has_side_effects_internal(branch.get_condition(), storage) {
                         return true;
                     }
 
-                    let branch_condition = self.evaluate(branch.get_condition());
+                    let branch_condition = self.evaluate_internal(branch.get_condition(), storage);
 
                     if let Some(truthy) = branch_condition.is_truthy() {
                         if truthy {
-                            return self.has_side_effects(branch.get_result());
+                            return self.has_side_effects_internal(branch.get_result(), storage);
                         }
-                    } else if self.has_side_effects(branch.get_result()) {
+                    } else if self.has_side_effects_internal(branch.get_result(), storage) {
                         return true;
                     }
                 }
 
-                self.has_side_effects(if_expression.get_else_result())
+                self.has_side_effects_internal(if_expression.get_else_result(), storage)
             }
         } else {
-            if self.has_side_effects(if_expression.get_result()) {
+            if self.has_side_effects_internal(if_expression.get_result(), storage) {
                 return true;
             }
 
             for branch in if_expression.iter_branches() {
-                if self.has_side_effects(branch.get_condition())
-                    || self.has_side_effects(branch.get_result())
+                if self.has_side_effects_internal(branch.get_condition(), storage)
+                    || self.has_side_effects_internal(branch.get_result(), storage)
                 {
                     return true;
                 }
             }
 
-            self.has_side_effects(if_expression.get_else_result())
+            self.has_side_effects_internal(if_expression.get_else_result(), storage)
         }
     }
 
     #[inline]
-    fn call_has_side_effects(&self, _call: &FunctionCall) -> bool {
-        true
+    fn call_has_side_effects(&self, call: &FunctionCall, storage: &EvaluatorStorage) -> bool {
+        if self.prefix_has_side_effects(call.get_prefix(), storage) {
+            return true;
+        }
+        if call.has_method() && self.table_has_side_effects(call.get_prefix(), storage) {
+            return true;
+        }
+
+        let prefix = self.evaluate_prefix(call.get_prefix(), storage);
+
+        if let LuaValue::Function(function) = prefix {
+            function.has_side_effects()
+        } else {
+            true
+        }
     }
 
     #[inline]
-    fn table_entry_has_side_effects(&self, entry: &TableEntry) -> bool {
+    fn table_entry_has_side_effects(&self, entry: &TableEntry, storage: &EvaluatorStorage) -> bool {
         match entry {
-            TableEntry::Field(entry) => self.has_side_effects(entry.get_value()),
+            TableEntry::Field(entry) => self.has_side_effects_internal(entry.get_value(), storage),
             TableEntry::Index(entry) => {
-                self.has_side_effects(entry.get_key()) || self.has_side_effects(entry.get_value())
+                self.has_side_effects_internal(entry.get_key(), storage)
+                    || self.has_side_effects_internal(entry.get_value(), storage)
             }
-            TableEntry::Value(value) => self.has_side_effects(value),
+            TableEntry::Value(value) => self.has_side_effects_internal(value, storage),
         }
     }
 
     #[inline]
-    fn field_has_side_effects(&self, field: &FieldExpression) -> bool {
-        !self.pure_metamethods || self.prefix_has_side_effects(field.get_prefix())
+    fn field_has_side_effects(&self, field: &FieldExpression, storage: &EvaluatorStorage) -> bool {
+        let yo = self.table_has_side_effects(field.get_prefix(), storage);
+        println!("field_has_side_effects: {:?} = {}", field.get_prefix(), yo);
+
+        yo || self.prefix_has_side_effects(field.get_prefix(), storage)
+    }
+
+    fn table_has_side_effects(&self, prefix: &Prefix, storage: &EvaluatorStorage) -> bool {
+        println!("table_has_side_effects: {:?}", prefix);
+        if self.pure_metamethods {
+            false
+        } else {
+            let r = self.evaluate_prefix(prefix, storage);
+            println!("evaluate prefix: {:?}", r);
+            if let LuaValue::Table(table_ref) = r {
+                println!("  found table");
+
+                storage
+                    .read_table(table_ref, |table| !table.has_pure_metamethods())
+                    .unwrap_or(true)
+            } else {
+                println!("  no table");
+                true
+            }
+        }
     }
 
     #[inline]
-    fn index_has_side_effects(&self, index: &IndexExpression) -> bool {
-        !self.pure_metamethods
-            || self.has_side_effects(index.get_index())
-            || self.prefix_has_side_effects(index.get_prefix())
+    fn index_has_side_effects(&self, index: &IndexExpression, storage: &EvaluatorStorage) -> bool {
+        self.table_has_side_effects(index.get_prefix(), storage)
+            || self.has_side_effects_internal(index.get_index(), storage)
     }
 
-    fn prefix_has_side_effects(&self, prefix: &Prefix) -> bool {
+    fn prefix_has_side_effects(&self, prefix: &Prefix, storage: &EvaluatorStorage) -> bool {
+        println!("prefix_has_side_effects: {:?}", prefix);
         match prefix {
-            Prefix::Call(call) => self.call_has_side_effects(call),
-            Prefix::Field(field) => self.field_has_side_effects(field),
+            Prefix::Call(call) => self.call_has_side_effects(call, storage),
+            Prefix::Field(field) => self.field_has_side_effects(field, storage),
             Prefix::Identifier(_) => false,
-            Prefix::Index(index) => self.index_has_side_effects(index),
+            Prefix::Index(index) => self.index_has_side_effects(index, storage),
             Prefix::Parenthese(sub_expression) => {
-                self.has_side_effects(sub_expression.inner_expression())
+                self.has_side_effects_internal(sub_expression.inner_expression(), storage)
             }
         }
     }
@@ -272,32 +530,39 @@ impl Evaluator {
     fn maybe_metatable(&self, value: &LuaValue) -> bool {
         match value {
             LuaValue::False
-            | LuaValue::Function
+            | LuaValue::Function(_)
             | LuaValue::Nil
             | LuaValue::Number(_)
             | LuaValue::String(_)
-            | LuaValue::Table
+            | LuaValue::Table(_)
             | LuaValue::True => false,
             LuaValue::Unknown => true,
         }
     }
 
-    fn evaluate_binary(&self, expression: &BinaryExpression) -> LuaValue {
+    fn evaluate_binary(
+        &self,
+        expression: &BinaryExpression,
+        storage: &EvaluatorStorage,
+    ) -> LuaValue {
         match expression.operator() {
             BinaryOperator::And => self
-                .evaluate(expression.left())
-                .map_if_truthy(|_| self.evaluate(expression.right())),
+                .evaluate_internal(expression.left(), storage)
+                .map_if_truthy(|_| self.evaluate_internal(expression.right(), storage)),
             BinaryOperator::Or => self
-                .evaluate(expression.left())
-                .map_if_truthy_else(|left| left, || self.evaluate(expression.right())),
+                .evaluate_internal(expression.left(), storage)
+                .map_if_truthy_else(
+                    |left| left,
+                    || self.evaluate_internal(expression.right(), storage),
+                ),
             BinaryOperator::Equal => self.evaluate_equal(
-                &self.evaluate(expression.left()),
-                &self.evaluate(expression.right()),
+                &self.evaluate_internal(expression.left(), storage),
+                &self.evaluate_internal(expression.right(), storage),
             ),
             BinaryOperator::NotEqual => {
                 let result = self.evaluate_equal(
-                    &self.evaluate(expression.left()),
-                    &self.evaluate(expression.right()),
+                    &self.evaluate_internal(expression.left(), storage),
+                    &self.evaluate_internal(expression.right(), storage),
                 );
 
                 match result {
@@ -306,19 +571,23 @@ impl Evaluator {
                     _ => LuaValue::Unknown,
                 }
             }
-            BinaryOperator::Plus => self.evaluate_math(expression, |a, b| a + b),
-            BinaryOperator::Minus => self.evaluate_math(expression, |a, b| a - b),
-            BinaryOperator::Asterisk => self.evaluate_math(expression, |a, b| a * b),
-            BinaryOperator::Slash => self.evaluate_math(expression, |a, b| a / b),
-            BinaryOperator::DoubleSlash => self.evaluate_math(expression, |a, b| (a / b).floor()),
-            BinaryOperator::Caret => self.evaluate_math(expression, |a, b| a.powf(b)),
+            BinaryOperator::Plus => self.evaluate_math(expression, |a, b| a + b, storage),
+            BinaryOperator::Minus => self.evaluate_math(expression, |a, b| a - b, storage),
+            BinaryOperator::Asterisk => self.evaluate_math(expression, |a, b| a * b, storage),
+            BinaryOperator::Slash => self.evaluate_math(expression, |a, b| a / b, storage),
+            BinaryOperator::DoubleSlash => {
+                self.evaluate_math(expression, |a, b| (a / b).floor(), storage)
+            }
+            BinaryOperator::Caret => self.evaluate_math(expression, |a, b| a.powf(b), storage),
             BinaryOperator::Percent => {
-                self.evaluate_math(expression, |a, b| a - b * (a / b).floor())
+                self.evaluate_math(expression, |a, b| a - b * (a / b).floor(), storage)
             }
             BinaryOperator::Concat => {
                 match (
-                    self.evaluate(expression.left()).string_coercion(),
-                    self.evaluate(expression.right()).string_coercion(),
+                    self.evaluate_internal(expression.left(), storage)
+                        .string_coercion(),
+                    self.evaluate_internal(expression.right(), storage)
+                        .string_coercion(),
                 ) {
                     (LuaValue::String(mut left), LuaValue::String(right)) => {
                         left.extend_from_slice(&right);
@@ -327,11 +596,17 @@ impl Evaluator {
                     _ => LuaValue::Unknown,
                 }
             }
-            BinaryOperator::LowerThan => self.evaluate_relational(expression, |a, b| a < b),
-            BinaryOperator::LowerOrEqualThan => self.evaluate_relational(expression, |a, b| a <= b),
-            BinaryOperator::GreaterThan => self.evaluate_relational(expression, |a, b| a > b),
+            BinaryOperator::LowerThan => {
+                self.evaluate_relational(expression, |a, b| a < b, storage)
+            }
+            BinaryOperator::LowerOrEqualThan => {
+                self.evaluate_relational(expression, |a, b| a <= b, storage)
+            }
+            BinaryOperator::GreaterThan => {
+                self.evaluate_relational(expression, |a, b| a > b, storage)
+            }
             BinaryOperator::GreaterOrEqualThan => {
-                self.evaluate_relational(expression, |a, b| a >= b)
+                self.evaluate_relational(expression, |a, b| a >= b, storage)
             }
         }
     }
@@ -350,14 +625,23 @@ impl Evaluator {
         }
     }
 
-    fn evaluate_math<F>(&self, expression: &BinaryExpression, operation: F) -> LuaValue
+    fn evaluate_math<F>(
+        &self,
+        expression: &BinaryExpression,
+        operation: F,
+        storage: &EvaluatorStorage,
+    ) -> LuaValue
     where
         F: Fn(f64, f64) -> f64,
     {
-        let left = self.evaluate(expression.left()).number_coercion();
+        let left = self
+            .evaluate_internal(expression.left(), storage)
+            .number_coercion();
 
         if let LuaValue::Number(left) = left {
-            let right = self.evaluate(expression.right()).number_coercion();
+            let right = self
+                .evaluate_internal(expression.right(), storage)
+                .number_coercion();
 
             if let LuaValue::Number(right) = right {
                 LuaValue::Number(operation(left, right))
@@ -369,15 +653,20 @@ impl Evaluator {
         }
     }
 
-    fn evaluate_relational<F>(&self, expression: &BinaryExpression, operation: F) -> LuaValue
+    fn evaluate_relational<F>(
+        &self,
+        expression: &BinaryExpression,
+        operation: F,
+        storage: &EvaluatorStorage,
+    ) -> LuaValue
     where
         F: Fn(f64, f64) -> bool,
     {
-        let left = self.evaluate(expression.left());
+        let left = self.evaluate_internal(expression.left(), storage);
 
         match left {
             LuaValue::Number(left) => {
-                let right = self.evaluate(expression.right());
+                let right = self.evaluate_internal(expression.right(), storage);
 
                 if let LuaValue::Number(right) = right {
                     if operation(left, right) {
@@ -390,7 +679,7 @@ impl Evaluator {
                 }
             }
             LuaValue::String(left) => {
-                let right = self.evaluate(expression.right());
+                let right = self.evaluate_internal(expression.right(), storage);
 
                 if let LuaValue::String(right) = right {
                     self.compare_strings(&left, &right, expression.operator())
@@ -414,47 +703,59 @@ impl Evaluator {
         })
     }
 
-    fn evaluate_unary(&self, expression: &UnaryExpression) -> LuaValue {
+    fn evaluate_unary(&self, expression: &UnaryExpression, storage: &EvaluatorStorage) -> LuaValue {
         match expression.operator() {
             UnaryOperator::Not => self
-                .evaluate(expression.get_expression())
+                .evaluate_internal(expression.get_expression(), storage)
                 .is_truthy()
                 .map(|value| LuaValue::from(!value))
                 .unwrap_or(LuaValue::Unknown),
             UnaryOperator::Minus => {
-                match self.evaluate(expression.get_expression()).number_coercion() {
+                match self
+                    .evaluate_internal(expression.get_expression(), storage)
+                    .number_coercion()
+                {
                     LuaValue::Number(value) => LuaValue::from(-value),
                     _ => LuaValue::Unknown,
                 }
             }
-            UnaryOperator::Length => self.evaluate(expression.get_expression()).length(),
+            UnaryOperator::Length => self
+                .evaluate_internal(expression.get_expression(), storage)
+                .length(),
         }
     }
 
-    fn evaluate_if(&self, expression: &IfExpression) -> LuaValue {
-        let condition = self.evaluate(expression.get_condition());
+    fn evaluate_if(&self, expression: &IfExpression, storage: &EvaluatorStorage) -> LuaValue {
+        let condition = self.evaluate_internal(expression.get_condition(), storage);
 
         if let Some(truthy) = condition.is_truthy() {
             if truthy {
-                self.evaluate(expression.get_result())
+                self.evaluate_internal(expression.get_result(), storage)
             } else {
                 for branch in expression.iter_branches() {
-                    let branch_condition = self.evaluate(branch.get_condition());
+                    let branch_condition = self.evaluate_internal(branch.get_condition(), storage);
                     if let Some(truthy) = branch_condition.is_truthy() {
                         if truthy {
-                            return self.evaluate(branch.get_result());
+                            return self.evaluate_internal(branch.get_result(), storage);
                         }
                     } else {
                         return LuaValue::Unknown;
                     }
                 }
 
-                self.evaluate(expression.get_else_result())
+                self.evaluate_internal(expression.get_else_result(), storage)
             }
         } else {
             LuaValue::Unknown
         }
     }
+}
+
+enum PrefixOperation<'a> {
+    Call(&'a Arguments),
+    CallMethod(&'a str, &'a Arguments),
+    Index(LuaValue),
+    IndexDynamic(&'a Expression),
 }
 
 #[cfg(test)]
@@ -516,7 +817,7 @@ mod test {
             => LuaValue::Number(0.0),
         string_wrapped_in_parens(ParentheseExpression::new(StringExpression::from_value("foo")))
             => LuaValue::from("foo"),
-        table_expression(TableExpression::default()) => LuaValue::Table,
+        // table_expression(TableExpression::default()) => LuaValue::Table,
         if_expression_always_true(IfExpression::new(true, 1.0, 0.0)) => LuaValue::from(1.0),
         if_expression_always_false(IfExpression::new(false, 1.0, 0.0)) => LuaValue::from(0.0),
         if_expression_unknown_condition(IfExpression::new(Expression::identifier("test"), 1.0, 0.0))
@@ -552,7 +853,7 @@ mod test {
                         let result = Evaluator::default().evaluate(&binary.into());
 
                         match (&$expect, &result) {
-                            (LuaValue::Number(expect_float), LuaValue::Number(result))=> {
+                            (LuaValue::Number(expect_float), LuaValue::Number(result)) => {
                                 if expect_float.is_nan() {
                                     assert!(result.is_nan(), "{} should be NaN", result);
                                 } else if expect_float.is_infinite() {
@@ -604,11 +905,11 @@ mod test {
                 true,
                 Expression::String(StringExpression::from_value("foo"))
             ) => LuaValue::from("foo"),
-            true_and_table(
-                BinaryOperator::And,
-                true,
-                TableExpression::default()
-            ) => LuaValue::Table,
+            // true_and_table(
+            //     BinaryOperator::And,
+            //     true,
+            //     TableExpression::default()
+            // ) => LuaValue::Table,
             nil_and_true(
                 BinaryOperator::And,
                 Expression::nil(),

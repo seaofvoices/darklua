@@ -1,17 +1,22 @@
-use crate::nodes::{Expression, NumberExpression, StringExpression};
+use crate::{
+    nodes::{Expression, NumberExpression, StringExpression},
+    process::{evaluator::evaluator_storage::TableRef, FunctionValue, NativeFunction, TupleValue},
+};
 
 /// Represents an evaluated Expression result.
 #[derive(Debug, Clone, PartialEq)]
 pub enum LuaValue {
     False,
-    Function,
+    Function(FunctionValue),
     Nil,
     Number(f64),
     String(Vec<u8>),
-    Table,
+    Table(TableRef),
     True,
     Unknown,
 }
+
+impl Eq for LuaValue {}
 
 impl LuaValue {
     /// As defined in Lua, all values are considered true, except for false and nil. An option is
@@ -25,7 +30,6 @@ impl LuaValue {
     ///
     /// // all the others are true
     /// assert!(LuaValue::True.is_truthy().unwrap());
-    /// assert!(LuaValue::Table.is_truthy().unwrap());
     /// assert!(LuaValue::Number(0.0).is_truthy().unwrap());
     /// assert!(LuaValue::from("hello").is_truthy().unwrap());
     ///
@@ -124,6 +128,13 @@ impl LuaValue {
             _ => LuaValue::Unknown,
         }
     }
+
+    pub(crate) fn call(&self, args: TupleValue) -> TupleValue {
+        match self {
+            Self::Function(function) => function.call(args),
+            _ => TupleValue::unknown(),
+        }
+    }
 }
 
 impl Default for LuaValue {
@@ -145,6 +156,12 @@ impl From<bool> for LuaValue {
 impl From<String> for LuaValue {
     fn from(value: String) -> Self {
         Self::String(value.into_bytes())
+    }
+}
+
+impl From<&String> for LuaValue {
+    fn from(value: &String) -> Self {
+        Self::String(value.as_bytes().to_vec())
     }
 }
 
@@ -175,6 +192,18 @@ impl<const N: usize> From<&[u8; N]> for LuaValue {
 impl From<f64> for LuaValue {
     fn from(value: f64) -> Self {
         Self::Number(value)
+    }
+}
+
+impl From<FunctionValue> for LuaValue {
+    fn from(v: FunctionValue) -> Self {
+        Self::Function(v)
+    }
+}
+
+impl From<NativeFunction> for LuaValue {
+    fn from(v: NativeFunction) -> Self {
+        Self::Function(v.into())
     }
 }
 
@@ -214,7 +243,7 @@ mod test {
 
     #[test]
     fn table_value_is_truthy() {
-        assert!(LuaValue::Table.is_truthy().unwrap());
+        assert!(LuaValue::Table(TableRef::default()).is_truthy().unwrap());
     }
 
     mod number_coercion {

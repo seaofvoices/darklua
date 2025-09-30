@@ -415,6 +415,7 @@ dependencies = [
  "serde_bytes",
  "serde_json",
  "serde_yaml",
+ "slotmap",
  "tempfile",
  "toml",
  "tracing",
@@ -1458,6 +1459,15 @@ name = "similar"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1de1d4f81173b03af4c0cbed3c898f6bff5b870e4a7f5d6f4057d62a7a4b686e"
+
+[[package]]
+name = "slotmap"
+version = "1.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dbff4acf519f630b3a3ddcfaea6c06b42174d9a44bc70c620e9ed1649d58b82a"
+dependencies = [
+ "version_check",
+]
 
 [[package]]
 name = "smallvec"
