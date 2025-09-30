@@ -5,6 +5,7 @@ expression: rule_names
 [
   "append_text_comment",
   "compute_expression",
+  "convert_function_to_assignment",
   "convert_index_to_field",
   "convert_local_function_to_assign",
   "convert_luau_number",
