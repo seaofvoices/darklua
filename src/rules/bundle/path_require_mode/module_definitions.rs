@@ -4,11 +4,11 @@ use indexmap::IndexMap;
 
 use crate::frontend::DarkluaResult;
 use crate::nodes::{
-    Arguments, AssignStatement, Block, DoStatement, Expression, FieldExpression, FunctionCall,
-    FunctionExpression, FunctionName, FunctionStatement, Identifier, IfStatement, IndexExpression,
-    LastStatement, LocalAssignStatement, Prefix, ReturnStatement, Statement, StringExpression,
-    TableEntry, TableExpression, Token, TupleArguments, TupleArgumentsTokens, UnaryExpression,
-    UnaryOperator,
+    Arguments, AssignStatement, Block, DoStatement, Expression, ExpressionType, FieldExpression,
+    FunctionCall, FunctionName, FunctionStatement, Identifier, IfStatement, LastStatement,
+    LocalAssignStatement, LocalFunctionStatement, Prefix, ReturnStatement, TableEntry,
+    TableExpression, Token, TupleArguments, TupleArgumentsTokens, TypeCastExpression, TypeName,
+    UnaryExpression, UnaryOperator,
 };
 use crate::process::utils::{generate_identifier, identifier_permutator, CharPermutator};
 use crate::rules::bundle::RenameTypeDeclarationProcessor;
@@ -38,7 +38,6 @@ impl ModuleDefinition {
     }
 }
 
-const BUNDLE_MODULES_VARIABLE_LOAD_FIELD: &str = "load";
 const BUNDLE_MODULES_VARIABLE_CACHE_FIELD: &str = "cache";
 
 impl BuildModuleDefinitions {
@@ -48,10 +47,7 @@ impl BuildModuleDefinitions {
             modules_identifier: modules_identifier.clone(),
             module_definitions: Default::default(),
             module_name_permutator: identifier_permutator(),
-            rename_type_declaration: RenameTypeDeclarationProcessor::new(
-                modules_identifier,
-                BUNDLE_MODULES_VARIABLE_LOAD_FIELD,
-            ),
+            rename_type_declaration: RenameTypeDeclarationProcessor::new(modules_identifier),
         }
     }
 
@@ -101,14 +97,14 @@ impl BuildModuleDefinitions {
             _ => None,
         };
 
-        let load_field = if let Some(token_trivia_identifier) = token_trivia_identifier {
-            let mut field_token = Token::from_content(BUNDLE_MODULES_VARIABLE_LOAD_FIELD);
+        let module_field_name = if let Some(token_trivia_identifier) = token_trivia_identifier {
+            let mut field_token = Token::from_content(module_name.clone());
             for trivia in token_trivia_identifier.iter_trailing_trivia() {
                 field_token.push_trailing_trivia(trivia.clone());
             }
-            Identifier::new(BUNDLE_MODULES_VARIABLE_LOAD_FIELD).with_token(field_token)
+            Identifier::new(module_name).with_token(field_token)
         } else {
-            Identifier::new(BUNDLE_MODULES_VARIABLE_LOAD_FIELD)
+            Identifier::new(module_name)
         };
 
         let arguments = match call.get_arguments() {
@@ -145,9 +141,9 @@ impl BuildModuleDefinitions {
 
         let new_require_call = FunctionCall::from_prefix(FieldExpression::new(
             Identifier::from(&self.modules_identifier),
-            load_field,
+            module_field_name,
         ))
-        .with_arguments(arguments.with_argument(StringExpression::from_value(module_name)))
+        .with_arguments(arguments)
         .into();
 
         Ok(new_require_call)
@@ -157,9 +153,7 @@ impl BuildModuleDefinitions {
         loop {
             let name = generate_identifier(&mut self.module_name_permutator);
 
-            if name != BUNDLE_MODULES_VARIABLE_CACHE_FIELD
-                && name != BUNDLE_MODULES_VARIABLE_LOAD_FIELD
-            {
+            if name != BUNDLE_MODULES_VARIABLE_CACHE_FIELD {
                 break name;
             }
         }
@@ -195,20 +189,73 @@ impl BuildModuleDefinitions {
             .map(|(module_name, module)| {
                 let function_name =
                     FunctionName::from_name(modules_identifier.clone()).with_field(&module_name);
-                FunctionStatement::new(function_name, module.block, Vec::new(), false)
+
+                const MODULE_CONTENT_ENTRY: &str = "c";
+                const MODULE_CONTENT_VARIABLE: &str = "v";
+
+                let module_content_variable_identifier = Identifier::new(MODULE_CONTENT_VARIABLE);
+
+                let index_cache = FieldExpression::new(
+                    FieldExpression::new(
+                        modules_identifier.clone(),
+                        BUNDLE_MODULES_VARIABLE_CACHE_FIELD,
+                    ),
+                    &module_name,
+                );
+
+                const LOCAL_MODULE_IMPL_NAME: &str = "__modImpl";
+
+                let cached_block = Block::default()
+                    .with_statement(
+                        LocalAssignStatement::from_variable(MODULE_CONTENT_VARIABLE)
+                            .with_value(index_cache.clone()),
+                    )
+                    .with_statement(IfStatement::create(
+                        UnaryExpression::new(
+                            UnaryOperator::Not,
+                            module_content_variable_identifier.clone(),
+                        ),
+                        Block::default()
+                            .with_statement(AssignStatement::from_variable(
+                                module_content_variable_identifier.clone(),
+                                TableExpression::default().append_entry(
+                                    TableEntry::from_string_key_and_value(
+                                        MODULE_CONTENT_ENTRY,
+                                        FunctionCall::from_name(LOCAL_MODULE_IMPL_NAME),
+                                    ),
+                                ),
+                            ))
+                            .with_statement(AssignStatement::from_variable(
+                                index_cache,
+                                module_content_variable_identifier.clone(),
+                            )),
+                    ))
+                    .with_last_statement(ReturnStatement::one(FieldExpression::new(
+                        module_content_variable_identifier,
+                        MODULE_CONTENT_ENTRY,
+                    )));
+
+                DoStatement::new(Block::new(
+                    vec![
+                        LocalFunctionStatement::from_name(LOCAL_MODULE_IMPL_NAME, module.block)
+                            .into(),
+                        FunctionStatement::new(function_name, cached_block, Vec::new(), false)
+                            .with_return_type(ExpressionType::new(FunctionCall::from_name(
+                                LOCAL_MODULE_IMPL_NAME,
+                            )))
+                            .into(),
+                    ],
+                    None,
+                ))
+                .into()
             })
-            .map(Statement::from)
             .collect();
         block.insert_statement(0, DoStatement::new(Block::new(statements, None)));
 
         let modules_table = self.build_modules_table();
         block.insert_statement(
             0,
-            AssignStatement::from_variable(modules_identifier, modules_table),
-        );
-        block.insert_statement(
-            0,
-            LocalAssignStatement::from_variable(self.modules_identifier),
+            LocalAssignStatement::from_variable(self.modules_identifier).with_value(modules_table),
         );
 
         for statement in self
@@ -222,45 +269,10 @@ impl BuildModuleDefinitions {
     }
 
     fn build_modules_table(&self) -> TableExpression {
-        let module_content_entry = "c";
-        let parameter_name = "m";
-        let index_cache = IndexExpression::new(
-            FieldExpression::new(
-                Identifier::from(&self.modules_identifier),
-                BUNDLE_MODULES_VARIABLE_CACHE_FIELD,
-            ),
-            Identifier::from(parameter_name),
-        );
-        let load_function = FunctionExpression::from_block(
-            Block::default()
-                .with_statement(IfStatement::create(
-                    UnaryExpression::new(UnaryOperator::Not, index_cache.clone()),
-                    AssignStatement::from_variable(
-                        index_cache.clone(),
-                        TableExpression::default().append_entry(
-                            TableEntry::from_string_key_and_value(
-                                module_content_entry,
-                                FunctionCall::from_prefix(IndexExpression::new(
-                                    Identifier::from(&self.modules_identifier),
-                                    Identifier::from(parameter_name),
-                                )),
-                            ),
-                        ),
-                    ),
-                ))
-                .with_last_statement(ReturnStatement::one(FieldExpression::new(
-                    index_cache,
-                    module_content_entry,
-                ))),
-        )
-        .with_parameter(parameter_name);
-
-        TableExpression::default()
-            .append_entry(TableEntry::from_string_key_and_value(
-                BUNDLE_MODULES_VARIABLE_CACHE_FIELD,
-                TableExpression::default(),
-            ))
-            .append_field(BUNDLE_MODULES_VARIABLE_LOAD_FIELD, load_function)
+        TableExpression::default().append_entry(TableEntry::from_string_key_and_value(
+            BUNDLE_MODULES_VARIABLE_CACHE_FIELD,
+            TypeCastExpression::new(TableExpression::default(), TypeName::new("any")),
+        ))
     }
 }
 

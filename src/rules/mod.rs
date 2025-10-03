@@ -15,6 +15,7 @@ mod convert_require;
 mod convert_square_root_call;
 mod empty_do;
 mod filter_early_return;
+mod global_function_to_assign;
 mod group_local;
 mod inject_value;
 mod method_def;
@@ -51,6 +52,7 @@ pub use convert_require::*;
 pub use convert_square_root_call::*;
 pub use empty_do::*;
 pub use filter_early_return::*;
+pub use global_function_to_assign::*;
 pub use group_local::*;
 pub use inject_value::*;
 pub use method_def::*;
@@ -367,6 +369,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
     vec![
         APPEND_TEXT_COMMENT_RULE_NAME,
         COMPUTE_EXPRESSIONS_RULE_NAME,
+        CONVERT_FUNCTION_TO_ASSIGNMENT_RULE_NAME,
         CONVERT_INDEX_TO_FIELD_RULE_NAME,
         CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME,
         CONVERT_LUAU_NUMBER_RULE_NAME,
@@ -380,6 +383,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME,
         REMOVE_DEBUG_PROFILING_RULE_NAME,
         REMOVE_EMPTY_DO_RULE_NAME,
+        REMOVE_FLOOR_DIVISION_RULE_NAME,
         REMOVE_FUNCTION_CALL_PARENS_RULE_NAME,
         REMOVE_INTERPOLATED_STRING_RULE_NAME,
         REMOVE_METHOD_CALL_RULE_NAME,
@@ -403,6 +407,7 @@ impl FromStr for Box<dyn Rule> {
         let rule: Box<dyn Rule> = match string {
             APPEND_TEXT_COMMENT_RULE_NAME => Box::<AppendTextComment>::default(),
             COMPUTE_EXPRESSIONS_RULE_NAME => Box::<ComputeExpression>::default(),
+            CONVERT_FUNCTION_TO_ASSIGNMENT_RULE_NAME => Box::<ConvertFunctionToAssign>::default(),
             CONVERT_INDEX_TO_FIELD_RULE_NAME => Box::<ConvertIndexToField>::default(),
             CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => {
                 Box::<ConvertLocalFunctionToAssign>::default()

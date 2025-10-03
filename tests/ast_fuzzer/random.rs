@@ -1,7 +1,7 @@
 use std::iter;
 
 use darklua_core::nodes::{BinaryOperator, CompoundOperator, Identifier, UnaryOperator};
-use rand::{thread_rng, Rng};
+use rand::{rng, Rng};
 
 pub struct RandomAst {
     block_mean: f64,
@@ -66,14 +66,14 @@ impl RandomAst {
         if bound == 0 {
             return 0;
         }
-        thread_rng().gen_range(0..=bound)
+        rng().random_range(0..=bound)
     }
 
     pub fn full_range(&self, start: usize, bound: usize) -> usize {
         if start == bound {
             return 0;
         }
-        thread_rng().gen_range(start..=bound)
+        rng().random_range(start..=bound)
     }
 
     pub fn block_length(&self) -> usize {
@@ -81,7 +81,7 @@ impl RandomAst {
     }
 
     pub fn last_statement(&self) -> bool {
-        thread_rng().gen_bool(self.last_statement_prob)
+        rng().random_bool(self.last_statement_prob)
     }
 
     pub fn assignment_variables(&self) -> usize {
@@ -97,7 +97,7 @@ impl RandomAst {
     }
 
     pub fn method_call(&self) -> bool {
-        thread_rng().gen_bool(self.method_call_prob)
+        rng().random_bool(self.method_call_prob)
     }
 
     pub fn call_arguments(&self) -> usize {
@@ -116,7 +116,7 @@ impl RandomAst {
     }
 
     pub fn interpolated_segment_is_expression(&self) -> bool {
-        thread_rng().gen_bool(self.interpolated_segment_is_expression_prob)
+        rng().random_bool(self.interpolated_segment_is_expression_prob)
     }
 
     pub fn table_length(&self) -> usize {
@@ -124,15 +124,15 @@ impl RandomAst {
     }
 
     pub fn function_return_type(&self) -> bool {
-        thread_rng().gen_bool(self.function_return_type_prob)
+        rng().random_bool(self.function_return_type_prob)
     }
 
     pub fn function_is_variadic(&self) -> bool {
-        thread_rng().gen_bool(self.function_is_variadic_prob)
+        rng().random_bool(self.function_is_variadic_prob)
     }
 
     pub fn function_has_variadic_type(&self) -> bool {
-        thread_rng().gen_bool(self.function_has_variadic_type_prob)
+        rng().random_bool(self.function_has_variadic_type_prob)
     }
 
     pub fn function_parameters(&self) -> usize {
@@ -143,7 +143,7 @@ impl RandomAst {
     }
 
     pub fn typed_identifier(&self) -> bool {
-        thread_rng().gen_bool(self.typed_identifier_prob)
+        rng().random_bool(self.typed_identifier_prob)
     }
 
     pub fn function_name_fields(&self) -> usize {
@@ -151,7 +151,7 @@ impl RandomAst {
     }
 
     pub fn method_definition(&self) -> bool {
-        thread_rng().gen_bool(self.method_definition_prob)
+        rng().random_bool(self.method_definition_prob)
     }
 
     pub fn return_length(&self) -> usize {
@@ -170,23 +170,23 @@ impl RandomAst {
     }
 
     pub fn numeric_for_step(&self) -> bool {
-        thread_rng().gen_bool(self.numeric_for_step_prob)
+        rng().random_bool(self.numeric_for_step_prob)
     }
 
     pub fn decimal_number(&self) -> f64 {
-        thread_rng().gen()
+        rng().random()
     }
 
     pub fn hexadecimal_number(&self) -> u64 {
-        thread_rng().gen_range(0..100_000)
+        rng().random_range(0..100_000)
     }
 
     pub fn binary_number(&self) -> u64 {
-        thread_rng().gen_range(0..1_000_000)
+        rng().random_range(0..1_000_000)
     }
 
     pub fn number_exponent_uppercase(&self) -> bool {
-        thread_rng().gen_bool(0.5)
+        rng().random_bool(0.5)
     }
 
     pub fn if_expression_branches(&self) -> usize {
@@ -198,7 +198,7 @@ impl RandomAst {
     }
 
     pub fn if_statement_else_branch(&self) -> bool {
-        thread_rng().gen_bool(0.3)
+        rng().random_bool(0.3)
     }
 
     pub fn binary_operator(&self) -> BinaryOperator {
@@ -255,7 +255,7 @@ impl RandomAst {
         depth == 0 || {
             let depth_f = depth as f64;
             let probability = (1.0 / (depth_f + 1.0)) * (1.0 - depth_f / 6.0);
-            thread_rng().gen_bool(probability.max(0.0))
+            rng().random_bool(probability.max(0.0))
         }
     }
 
@@ -263,7 +263,7 @@ impl RandomAst {
         depth == 0 || {
             let depth_f = depth as f64;
             let probability = (1.0 / (depth_f + 1.0)) * (1.0 - depth_f / 4.0);
-            thread_rng().gen_bool(probability.max(0.0))
+            rng().random_bool(probability.max(0.0))
         }
     }
 
@@ -272,15 +272,15 @@ impl RandomAst {
     }
 
     pub fn type_pack_variadic(&self) -> bool {
-        thread_rng().gen_bool(0.35)
+        rng().random_bool(0.35)
     }
 
     pub fn function_type_argument_name(&self) -> bool {
-        thread_rng().gen_bool(self.function_type_argument_name_prob)
+        rng().random_bool(self.function_type_argument_name_prob)
     }
 
     pub fn has_type_parameters(&self) -> bool {
-        thread_rng().gen_bool(0.25)
+        rng().random_bool(0.25)
     }
 
     pub fn type_parameters(&self) -> usize {
@@ -288,7 +288,7 @@ impl RandomAst {
     }
 
     pub fn generic_type_declaration(&self) -> bool {
-        thread_rng().gen_bool(0.25)
+        rng().random_bool(0.25)
     }
 
     pub fn generic_type_declaration_length(&self) -> usize {
@@ -296,11 +296,11 @@ impl RandomAst {
     }
 
     pub fn export_type_declaration(&self) -> bool {
-        thread_rng().gen_bool(0.5)
+        rng().random_bool(0.5)
     }
 
     pub fn table_type_indexer(&self) -> bool {
-        thread_rng().gen_bool(0.25)
+        rng().random_bool(0.25)
     }
 
     pub fn function_generic_types(&self) -> usize {
@@ -308,21 +308,21 @@ impl RandomAst {
     }
 
     pub fn function_generic_type_is_generic_pack(&self) -> bool {
-        thread_rng().gen_bool(0.4)
+        rng().random_bool(0.4)
     }
 
     pub fn function_variadic_type_is_generic_pack(&self) -> bool {
-        thread_rng().gen_bool(0.2)
+        rng().random_bool(0.2)
     }
 
     pub fn leading_intersection_or_union_operator(&self) -> bool {
-        thread_rng().gen_bool(0.4)
+        rng().random_bool(0.4)
     }
 }
 
 #[inline]
 fn normal_sample(mean: f64, std_dev: f64) -> usize {
-    thread_rng()
+    rng()
         .sample(rand_distr::Normal::new(mean, std_dev).unwrap())
         .abs()
         .floor() as usize
@@ -331,7 +331,7 @@ fn normal_sample(mean: f64, std_dev: f64) -> usize {
 fn generate_identifier_content(poisson_lambda: f64) -> String {
     let poisson = rand_distr::Poisson::new(poisson_lambda).unwrap();
 
-    let mut rng = thread_rng();
+    let mut rng = rng();
     let length = rng.sample::<f64, _>(poisson).round() as usize;
 
     let identifier: String = (0..1 + length)
@@ -355,7 +355,7 @@ fn generate_identifier_content(poisson_lambda: f64) -> String {
 fn generate_string_content(poisson_lambda: f64) -> String {
     let poisson = rand_distr::Poisson::new(poisson_lambda).unwrap();
 
-    let mut rng = thread_rng();
+    let mut rng = rng();
     let length = rng.sample::<f64, _>(poisson).round() as usize;
 
     const GEN_CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
@@ -364,6 +364,6 @@ fn generate_string_content(poisson_lambda: f64) -> String {
                 ()[]{}=<>.!?,:;+-*/%^|&#";
 
     iter::repeat_n((), length)
-        .map(|()| GEN_CHARSET[rng.gen_range(0..GEN_CHARSET.len())] as char)
+        .map(|()| GEN_CHARSET[rng.random_range(0..GEN_CHARSET.len())] as char)
         .collect()
 }

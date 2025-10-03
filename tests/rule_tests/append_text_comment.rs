@@ -6,7 +6,9 @@ test_rule_with_tokens!(
         rule: 'append_text_comment',
         text: 'hello',
     }"#).unwrap(),
+    empty_block("") => "--hello\n",
     empty_do("do end") => "--hello\ndo end",
+    empty_do_with_leading_comment("-- first line\ndo end") => "--hello\n-- first line\ndo end",
     local_assign("local a") => "--hello\nlocal a",
     local_assign_with_value("local var = true") => "--hello\nlocal var = true",
     assign_variable("var = true") => "--hello\nvar = true",
@@ -29,6 +31,36 @@ test_rule_with_tokens!(
     return_one_value_statement("return 1") => "--hello\nreturn 1",
 );
 
+test_rules_with_tokens!(
+    append_text_comment_multiple_single_line,
+    [
+        json5::from_str::<Box<dyn Rule>>(r#"{
+            rule: 'append_text_comment',
+            text: 'bye',
+        }"#).unwrap(),
+        json5::from_str::<Box<dyn Rule>>(r#"{
+            rule: 'append_text_comment',
+            text: 'hello',
+        }"#).unwrap(),
+    ],
+    two_comments("do end") => "--hello\n--bye\ndo end",
+);
+
+test_rules_with_tokens!(
+    append_text_comment_multiple_multiline,
+    [
+        json5::from_str::<Box<dyn Rule>>(r#"{
+            rule: 'append_text_comment',
+            text: '3\n4\n5',
+        }"#).unwrap(),
+        json5::from_str::<Box<dyn Rule>>(r#"{
+            rule: 'append_text_comment',
+            text: '1\n2',
+        }"#).unwrap(),
+    ],
+    two_comments("do end") => "--[[\n1\n2\n]]\n--[[\n3\n4\n5\n]]\ndo end",
+);
+
 test_rule_with_tokens!(
     append_text_comment_start_native,
     json5::from_str::<Box<dyn Rule>>(r#"{
@@ -45,6 +77,8 @@ test_rule_with_tokens!(
         text: '[[ ]]\n[=[  ]=]',
     }"#).unwrap(),
     empty_do("do end") => "--[==[\n[[ ]]\n[=[  ]=]\n]==]\ndo end",
+    empty_block("") => "--[==[\n[[ ]]\n[=[  ]=]\n]==]\n",
+    empty_block_with_comment("-- empty file") => "--[==[\n[[ ]]\n[=[  ]=]\n]==]\n-- empty file",
 );
 
 test_rule_with_tokens!(

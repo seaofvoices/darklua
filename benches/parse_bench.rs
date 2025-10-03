@@ -30,7 +30,7 @@ fn parse_code(c: &mut criterion::Criterion) {
     tracing::subscriber::set_global_default(
         tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt::with(
             tracing_subscriber::registry(),
-            tracing_tracy::TracyLayer::new(),
+            tracing_tracy::TracyLayer::default(),
         ),
     )
     .expect("set up the subscriber");

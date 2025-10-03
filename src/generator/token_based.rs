@@ -32,11 +32,20 @@ impl<'a> TokenBasedLuaGenerator<'a> {
 
     fn write_trivia(&mut self, trivia: &Trivia) {
         let content = trivia.read(self.original_code);
+
+        let is_comment = matches!(trivia.kind(), TriviaKind::Comment);
+        let is_line_comment = is_comment && is_single_line_comment(content);
+        let is_multiline_comment = is_comment && !is_line_comment;
+
+        if is_multiline_comment && self.currently_commenting {
+            self.uncomment();
+        }
+
         self.push_str(content);
 
         match trivia.kind() {
             TriviaKind::Comment => {
-                if is_single_line_comment(content) {
+                if is_line_comment {
                     self.currently_commenting = true;
                 }
             }
@@ -2449,5 +2458,26 @@ mod test {
             .unwrap_or_else(|_| panic!("failed to parse generated code `{}`", &output));
 
         insta::assert_snapshot!("inserts_a_new_line_after_custom_added_comments", output);
+    }
+
+    #[test]
+    fn break_long_comments_on_new_lines() {
+        let token = Token::from_content("")
+            .with_leading_trivia(TriviaKind::Comment.with_content("-- first line"))
+            .with_leading_trivia(TriviaKind::Comment.with_content("--[[\nnext comment ]]"));
+        let block = Block::default().with_tokens(BlockTokens {
+            semicolons: Default::default(),
+            last_semicolon: Default::default(),
+            final_token: Some(token),
+        });
+
+        let mut generator = TokenBasedLuaGenerator::new("");
+        generator.write_block(&block);
+
+        insta::assert_snapshot!(generator.into_string(), @r###"
+        -- first line
+        --[[
+        next comment ]]
+        "###);
     }
 }
