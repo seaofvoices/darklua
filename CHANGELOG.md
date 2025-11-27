@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.17.3
+
 * fix `inject_global_value` rule to not override environment values with the default value when they're defined ([#324](https://github.com/seaofvoices/darklua/pull/324))
 
 ## 0.17.2
