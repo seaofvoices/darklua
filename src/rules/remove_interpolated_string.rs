@@ -12,16 +12,11 @@ use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 enum ReplacementStrategy {
+    #[default]
     StringSpecifier,
     ToStringSpecifier,
-}
-
-impl Default for ReplacementStrategy {
-    fn default() -> Self {
-        Self::StringSpecifier
-    }
 }
 
 struct RemoveInterpolatedStringProcessor {

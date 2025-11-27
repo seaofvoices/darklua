@@ -164,7 +164,7 @@ impl RuleConfiguration for InjectGlobalValue {
         verify_property_collisions(&properties, &["value", "default_value"])?;
 
         let mut default_value_expected = None;
-        let mut has_default_value = false;
+        let mut default_value_expression: Option<Expression> = None;
 
         self.original_properties = properties.clone();
 
@@ -181,9 +181,8 @@ impl RuleConfiguration for InjectGlobalValue {
                     }
                 }
                 "default_value" => {
-                    has_default_value = true;
-                    if let Some(value) = value.into_expression() {
-                        self.value = value
+                    if let Some(expr) = value.into_expression() {
+                        default_value_expression = Some(expr);
                     } else {
                         return Err(RuleConfigurationError::UnexpectedValueType(key));
                     }
@@ -234,8 +233,10 @@ impl RuleConfiguration for InjectGlobalValue {
             }
         }
 
-        if !has_default_value {
-            if let Some(variable_name) = default_value_expected {
+        if let Some(variable_name) = default_value_expected {
+            if let Some(expr) = default_value_expression {
+                self.value = expr;
+            } else {
                 log::warn!(
                     "environment variable `{}` is not defined. The rule `{}` will use `nil`",
                     &variable_name,
