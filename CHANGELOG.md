@@ -1,5 +1,7 @@
 # Changelog
 
+* fix `inject_global_value` rule to not override environment values with the default value when they're defined ([#324](https://github.com/seaofvoices/darklua/pull/324))
+
 ## 0.17.2
 
 * add `convert_function_to_assignment` rule ([#317](https://github.com/seaofvoices/darklua/pull/317))
