@@ -241,16 +241,18 @@ test_rule!(
 test_rule!(
     inject_global_variable_using_env_variable_with_default_value,
     {
-        std::env::set_var("DARKLUA_INTEGRATION_TEST_VAR", "from_env");
+        // use a unique variable name to avoid conflicts with other tests running in parallel
+        let unique_var_name = format!("DARKLUA_TEST_VAR_{}", std::process::id());
+        std::env::set_var(&unique_var_name, "from_env");
 
-        let rule = json5::from_str::<Box<dyn Rule>>(
-            r#"{
+        let rule = json5::from_str::<Box<dyn Rule>>(&format!(
+        r#"{{
             rule: 'inject_global_value',
             identifier: 'CONFIG',
-            env: 'DARKLUA_INTEGRATION_TEST_VAR',
+            env: '{unique_var_name}',
             default_value: 'from_default',
-        }"#,
-        )
+        }}"#,
+        ))
         .unwrap();
 
         // the rule already captured the value so it can be removed
