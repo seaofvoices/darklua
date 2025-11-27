@@ -176,21 +176,17 @@ impl RuleConfiguration for AppendTextComment {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 enum TextContent {
+    #[default]
     None,
     Value(String),
     FilePath(PathBuf),
 }
 
-impl Default for TextContent {
-    fn default() -> Self {
-        Self::None
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 enum AppendLocation {
+    #[default]
     Start,
     End,
 }
@@ -206,12 +202,6 @@ impl AppendLocation {
                 token.push_trailing_trivia(TriviaKind::Comment.with_content(comment));
             }
         }
-    }
-}
-
-impl Default for AppendLocation {
-    fn default() -> Self {
-        Self::Start
     }
 }
 
