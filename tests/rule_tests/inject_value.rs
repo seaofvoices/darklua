@@ -238,6 +238,29 @@ test_rule!(
     inject_negative_integer("return _G.num") => "return 10",
 );
 
+test_rule!(
+    inject_global_variable_using_env_variable_with_default_value,
+    {
+        std::env::set_var("DARKLUA_INTEGRATION_TEST_VAR", "from_env");
+
+        let rule = json5::from_str::<Box<dyn Rule>>(
+            r#"{
+            rule: 'inject_global_value',
+            identifier: 'CONFIG',
+            env: 'DARKLUA_INTEGRATION_TEST_VAR',
+            default_value: 'from_default',
+        }"#,
+        )
+        .unwrap();
+
+        // the rule already captured the value so it can be removed
+        std::env::remove_var("DARKLUA_INTEGRATION_TEST_VAR");
+
+        rule
+    },
+    inject_value("return CONFIG") => "return 'from_env'",
+);
+
 #[test]
 fn deserialize_number_value_too_large() {
     let err = json5::from_str::<Box<dyn Rule>>(
