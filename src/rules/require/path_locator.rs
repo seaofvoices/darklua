@@ -4,14 +4,14 @@ use super::{path_iterator, PathRequireMode};
 use crate::{rules::require::path_utils::is_require_relative, utils, DarkluaError, Resources};
 
 #[derive(Debug)]
-pub(crate) struct RequirePathLocator<'a, 'b, 'resources> {
+pub struct RequirePathLocator<'a, 'b, 'resources> {
     path_require_mode: &'a PathRequireMode,
     extra_module_relative_location: &'b Path,
     resources: &'resources Resources,
 }
 
 impl<'a, 'b, 'c> RequirePathLocator<'a, 'b, 'c> {
-    pub(crate) fn new(
+    pub fn new(
         path_require_mode: &'a PathRequireMode,
         extra_module_relative_location: &'b Path,
         resources: &'c Resources,

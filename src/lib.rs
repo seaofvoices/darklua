@@ -67,3 +67,4 @@ pub use frontend::{
     Options, Resources, WorkerTree,
 };
 pub use parser::{Parser, ParserError};
+pub use utils::ScopedHashMap;

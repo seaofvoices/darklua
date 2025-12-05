@@ -122,7 +122,7 @@ impl Configuration {
     }
 
     #[inline]
-    pub(crate) fn location(&self) -> Option<&Path> {
+    pub fn location(&self) -> Option<&Path> {
         self.location.as_deref()
     }
 }
