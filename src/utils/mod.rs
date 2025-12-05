@@ -9,7 +9,7 @@ mod timer;
 pub(crate) use expressions_as_statement::{expressions_as_expression, expressions_as_statement};
 pub(crate) use luau_config::{clear_luau_configuration_cache, find_luau_configuration};
 pub(crate) use preserve_arguments_side_effects::preserve_arguments_side_effects;
-pub(crate) use scoped_hash_map::ScopedHashMap;
+pub use scoped_hash_map::ScopedHashMap;
 pub(crate) use serde_string_or_struct::string_or_struct;
 use std::{
     ffi::OsStr,
