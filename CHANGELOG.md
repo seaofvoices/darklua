@@ -1,11 +1,8 @@
 # Changelog
 
-## 0.17.4
+## Unreleased changes
 
-* make `Configuration::location()` public
-* export `ScopedHashMap` from the library
-* make `RequirePathLocator` and `PathLocator` public
-* make `PathRequireMode::initialize()` public
+* mark some internal functionality public for the darklua library (`Configuration::location()`) ([#328](https://github.com/seaofvoices/darklua/pull/328))
 
 ## 0.17.3
 
