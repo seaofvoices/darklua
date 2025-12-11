@@ -68,7 +68,7 @@ impl PathRequireMode {
         }
     }
 
-    pub(crate) fn initialize(&mut self, context: &Context) -> Result<(), DarkluaError> {
+    pub fn initialize(&mut self, context: &Context) -> Result<(), DarkluaError> {
         if !self.use_luau_configuration {
             self.luau_rc_aliases.take();
             return Ok(());

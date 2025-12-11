@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased changes
+
+* mark some internal functionality public for the darklua library (`Configuration::location()`) ([#328](https://github.com/seaofvoices/darklua/pull/328))
+
 ## 0.17.3
 
 * fix `inject_global_value` rule to not override environment values with the default value when they're defined ([#324](https://github.com/seaofvoices/darklua/pull/324))
