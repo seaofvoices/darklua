@@ -1,6 +1,5 @@
 ---
 source: src/nodes/expressions/mod.rs
-assertion_line: 332
 expression: result
 ---
 Number(
