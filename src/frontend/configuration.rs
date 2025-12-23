@@ -403,9 +403,9 @@ mod test {
         fn deserialize_unknown_generator_name() {
             let result: Result<Configuration, _> = json5::from_str("{generator: 'oops'}");
 
-            pretty_assertions::assert_eq!(
+            insta::assert_snapshot!(
                 result.expect_err("deserialization should fail").to_string(),
-                "invalid generator name `oops`"
+                @"invalid generator name `oops` at line 1 column 13"
             );
         }
     }
@@ -496,9 +496,9 @@ mod test {
             let result: Result<Configuration, _> =
                 json5::from_str("{bundle: { require_mode: 'oops' } }");
 
-            pretty_assertions::assert_eq!(
+            insta::assert_snapshot!(
                 result.expect_err("deserialization should fail").to_string(),
-                "invalid require mode `oops`"
+                @"invalid require mode `oops` at line 1 column 26"
             );
         }
     }

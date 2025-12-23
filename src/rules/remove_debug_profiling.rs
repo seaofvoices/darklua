@@ -98,7 +98,7 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_remove_debug_profiling", rule);
+        assert_json_snapshot!(rule, @r###""remove_debug_profiling""###);
     }
 
     #[test]
@@ -107,7 +107,12 @@ mod test {
             preserve_args_side_effects: false,
         });
 
-        assert_json_snapshot!("remove_debug_profiling_without_side_effects", rule);
+        assert_json_snapshot!(rule, @r###"
+        {
+          "rule": "remove_debug_profiling",
+          "preserve_arguments_side_effects": false
+        }
+        "###);
     }
 
     #[test]
@@ -118,6 +123,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 }

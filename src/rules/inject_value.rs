@@ -279,7 +279,7 @@ mod test {
         }"#,
         );
 
-        insta::assert_snapshot!(result.unwrap_err().to_string(), @"missing required field 'identifier'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"missing required field 'identifier' at line 1 column 1");
     }
 
     #[test]
@@ -293,7 +293,7 @@ mod test {
         }"#,
         );
 
-        insta::assert_snapshot!(result.unwrap_err().to_string(), @"the fields `value` and `env` cannot be defined together");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"the fields `value` and `env` cannot be defined together at line 1 column 1");
     }
 
     #[test]
@@ -307,63 +307,105 @@ mod test {
         }"#,
         );
 
-        insta::assert_snapshot!(result.unwrap_err().to_string(), @"the fields `value` and `default_value` cannot be defined together");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"the fields `value` and `default_value` cannot be defined together at line 1 column 1");
     }
 
     #[test]
     fn deserialize_from_string_notation_should_error() {
         let result = json5::from_str::<Box<dyn Rule>>("'inject_global_value'");
 
-        insta::assert_snapshot!(result.unwrap_err().to_string(), @"missing required field 'identifier'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"missing required field 'identifier' at line 1 column 1");
     }
 
     #[test]
     fn serialize_inject_nil_as_foo() {
         let rule: Box<dyn Rule> = Box::new(InjectGlobalValue::nil("foo"));
 
-        assert_json_snapshot!("inject_nil_value_as_foo", rule);
+        assert_json_snapshot!(rule, @r###"
+        {
+          "rule": "inject_global_value",
+          "identifier": "foo",
+          "value": null
+        }
+        "###);
     }
 
     #[test]
     fn serialize_inject_true_as_foo() {
         let rule: Box<dyn Rule> = Box::new(InjectGlobalValue::boolean("foo", true));
 
-        assert_json_snapshot!("inject_true_value_as_foo", rule);
+        assert_json_snapshot!(rule, @r###"
+        {
+          "rule": "inject_global_value",
+          "identifier": "foo",
+          "value": true
+        }
+        "###);
     }
 
     #[test]
     fn serialize_inject_false_as_foo() {
         let rule: Box<dyn Rule> = Box::new(InjectGlobalValue::boolean("foo", false));
 
-        assert_json_snapshot!("inject_false_value_as_foo", rule);
+        assert_json_snapshot!(rule, @r###"
+        {
+          "rule": "inject_global_value",
+          "identifier": "foo",
+          "value": false
+        }
+        "###);
     }
 
     #[test]
     fn serialize_inject_string_as_var() {
         let rule: Box<dyn Rule> = Box::new(InjectGlobalValue::string("VAR", "hello"));
 
-        assert_json_snapshot!("inject_hello_value_as_var", rule);
+        assert_json_snapshot!(rule, @r###"
+        {
+          "rule": "inject_global_value",
+          "identifier": "VAR",
+          "value": "hello"
+        }
+        "###);
     }
 
     #[test]
     fn serialize_inject_integer_as_var() {
         let rule: Box<dyn Rule> = Box::new(InjectGlobalValue::number("VAR", 1.0));
 
-        assert_json_snapshot!("inject_integer_value_as_var", rule);
+        assert_json_snapshot!(rule, @r###"
+        {
+          "rule": "inject_global_value",
+          "identifier": "VAR",
+          "value": 1
+        }
+        "###);
     }
 
     #[test]
     fn serialize_inject_negative_integer_as_var() {
         let rule: Box<dyn Rule> = Box::new(InjectGlobalValue::number("VAR", -100.0));
 
-        assert_json_snapshot!("inject_negative_integer_value_as_var", rule);
+        assert_json_snapshot!(rule, @r###"
+        {
+          "rule": "inject_global_value",
+          "identifier": "VAR",
+          "value": -100.0
+        }
+        "###);
     }
 
     #[test]
     fn serialize_inject_float_as_var() {
         let rule: Box<dyn Rule> = Box::new(InjectGlobalValue::number("VAR", 123.45));
 
-        assert_json_snapshot!("inject_float_value_as_var", rule);
+        assert_json_snapshot!(rule, @r###"
+        {
+          "rule": "inject_global_value",
+          "identifier": "VAR",
+          "value": 123.45
+        }
+        "###);
     }
 
     #[test]
