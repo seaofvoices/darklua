@@ -803,10 +803,25 @@ mod $mod_name {
                 TableType::default()
                     .with_property(TablePropertyType::new("name", TypeName::new("string")))
             ),
+            table_with_one_read_property => TypeDeclarationStatement::new(
+                "Obj",
+                TableType::default()
+                    .with_property(TablePropertyType::new("name", TypeName::new("string")).with_modifier(TablePropertyModifier::Read))
+            ),
+            table_with_one_write_property => TypeDeclarationStatement::new(
+                "Obj",
+                TableType::default()
+                    .with_property(TablePropertyType::new("name", TypeName::new("string")).with_modifier(TablePropertyModifier::Write))
+            ),
             table_with_indexer_type => TypeDeclarationStatement::new(
                 "StringArray",
                 TableType::default()
                     .with_indexer_type(TableIndexerType::new(TypeName::new("number"), TypeName::new("string")))
+            ),
+            table_with_read_indexer_type => TypeDeclarationStatement::new(
+                "StringArray",
+                TableType::default()
+                    .with_indexer_type(TableIndexerType::new(TypeName::new("number"), TypeName::new("string")).with_modifier(TablePropertyModifier::Read))
             ),
             table_with_one_property_and_indexer_type => TypeDeclarationStatement::new(
                 "PackedArray",

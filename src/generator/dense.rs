@@ -993,6 +993,13 @@ impl LuaGenerator for DenseLuaGenerator {
 
         let last_index = table_type.len().saturating_sub(1);
         for (index, property) in table_type.iter_entries().enumerate() {
+            if let Some(modifier) = property.get_modifier() {
+                match modifier {
+                    nodes::TablePropertyModifier::Read => self.push_str("read"),
+                    nodes::TablePropertyModifier::Write => self.push_str("write"),
+                }
+            }
+
             match property {
                 nodes::TableEntryType::Property(property) => {
                     self.write_identifier(property.get_identifier());
