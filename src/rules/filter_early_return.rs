@@ -38,7 +38,8 @@ impl Processor {
                 | Statement::NumericFor(_)
                 | Statement::Repeat(_)
                 | Statement::While(_)
-                | Statement::TypeDeclaration(_) => None,
+                | Statement::TypeDeclaration(_)
+                | Statement::TypeFunction(_) => None,
             })
     }
 }

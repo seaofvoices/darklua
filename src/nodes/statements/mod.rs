@@ -10,6 +10,7 @@ mod local_function;
 mod numeric_for;
 mod repeat_statement;
 mod type_declaration;
+mod type_function;
 mod while_statement;
 
 pub use assign::*;
@@ -24,6 +25,7 @@ pub use local_function::*;
 pub use numeric_for::*;
 pub use repeat_statement::*;
 pub use type_declaration::*;
+pub use type_function::*;
 pub use while_statement::*;
 
 use crate::nodes::FunctionCall;
@@ -59,6 +61,8 @@ pub enum Statement {
     While(WhileStatement),
     /// A type declaration statement (e.g., `type T = string | number`)
     TypeDeclaration(TypeDeclarationStatement),
+    /// A type function declaration (e.g., `type function name() ... end`)
+    TypeFunction(Box<TypeFunctionStatement>),
 }
 
 impl Statement {
@@ -78,6 +82,7 @@ impl Statement {
             Self::Repeat(repeat_stmt) => repeat_stmt.mutate_first_token(),
             Self::While(while_stmt) => while_stmt.mutate_first_token(),
             Self::TypeDeclaration(type_decl) => type_decl.mutate_first_token(),
+            Self::TypeFunction(type_function) => type_function.mutate_first_token(),
         }
     }
 
@@ -98,6 +103,7 @@ impl Statement {
             Self::Repeat(repeat_stmt) => repeat_stmt.mutate_last_token(),
             Self::While(while_stmt) => while_stmt.mutate_last_token(),
             Self::TypeDeclaration(type_decl) => type_decl.mutate_last_token(),
+            Self::TypeFunction(type_function) => type_function.mutate_last_token(),
         }
     }
 }
@@ -177,5 +183,11 @@ impl From<WhileStatement> for Statement {
 impl From<TypeDeclarationStatement> for Statement {
     fn from(type_declaration: TypeDeclarationStatement) -> Statement {
         Statement::TypeDeclaration(type_declaration)
+    }
+}
+
+impl From<TypeFunctionStatement> for Statement {
+    fn from(type_function: TypeFunctionStatement) -> Statement {
+        Statement::TypeFunction(Box::new(type_function))
     }
 }

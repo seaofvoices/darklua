@@ -78,6 +78,10 @@ impl NodeProcessor for RemoveCommentProcessor {
         type_declaration.clear_comments();
     }
 
+    fn process_type_function(&mut self, function: &mut TypeFunctionStatement) {
+        function.clear_comments();
+    }
+
     fn process_expression(&mut self, expression: &mut Expression) {
         match expression {
             Expression::False(token)
@@ -320,6 +324,10 @@ impl NodeProcessor for FilterCommentProcessor<'_> {
 
     fn process_type_declaration(&mut self, type_declaration: &mut TypeDeclarationStatement) {
         type_declaration.filter_comments(|trivia| self.ignore_trivia(trivia));
+    }
+
+    fn process_type_function(&mut self, type_function: &mut TypeFunctionStatement) {
+        type_function.filter_comments(|trivia| self.ignore_trivia(trivia));
     }
 
     fn process_expression(&mut self, expression: &mut Expression) {

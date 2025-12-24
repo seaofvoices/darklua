@@ -13,7 +13,12 @@ struct RemoveTypesProcessor {
 
 impl NodeProcessor for RemoveTypesProcessor {
     fn process_block(&mut self, block: &mut Block) {
-        block.filter_statements(|statement| !matches!(statement, Statement::TypeDeclaration(_)));
+        block.filter_statements(|statement| {
+            !matches!(
+                statement,
+                Statement::TypeDeclaration(_) | Statement::TypeFunction(_)
+            )
+        });
     }
 
     fn process_local_assign_statement(&mut self, local_assign: &mut LocalAssignStatement) {

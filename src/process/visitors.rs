@@ -38,6 +38,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Statement::TypeDeclaration(statement) => {
                 Self::visit_type_declaration(statement, processor)
             }
+            Statement::TypeFunction(statement) => Self::visit_type_function(statement, processor),
         };
     }
 
@@ -369,6 +370,27 @@ pub trait NodeVisitor<T: NodeProcessor> {
         }
 
         Self::visit_type(statement.mutate_type(), processor);
+    }
+
+    fn visit_type_function(statement: &mut TypeFunctionStatement, processor: &mut T) {
+        processor.process_type_function(statement);
+        processor.process_scope(statement.mutate_block(), None);
+        Self::visit_block(statement.mutate_block(), processor);
+
+        for r#type in statement
+            .iter_mut_parameters()
+            .filter_map(TypedIdentifier::mutate_type)
+        {
+            Self::visit_type(r#type, processor);
+        }
+
+        if let Some(variadic_type) = statement.mutate_variadic_type() {
+            Self::visit_function_variadic_type(variadic_type, processor);
+        }
+
+        if let Some(return_type) = statement.mutate_return_type() {
+            Self::visit_function_return_type(return_type, processor);
+        }
     }
 
     fn visit_variable(variable: &mut Variable, processor: &mut T) {

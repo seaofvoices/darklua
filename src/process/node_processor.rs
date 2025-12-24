@@ -22,6 +22,7 @@ pub trait NodeProcessor {
     fn process_repeat_statement(&mut self, _: &mut RepeatStatement) {}
     fn process_while_statement(&mut self, _: &mut WhileStatement) {}
     fn process_type_declaration(&mut self, _: &mut TypeDeclarationStatement) {}
+    fn process_type_function(&mut self, _: &mut TypeFunctionStatement) {}
 
     fn process_variable(&mut self, _: &mut Variable) {}
 
@@ -81,6 +82,7 @@ pub trait NodePostProcessor {
     fn process_after_repeat_statement(&mut self, _: &mut RepeatStatement) {}
     fn process_after_while_statement(&mut self, _: &mut WhileStatement) {}
     fn process_after_type_declaration(&mut self, _: &mut TypeDeclarationStatement) {}
+    fn process_after_type_function(&mut self, _: &mut TypeFunctionStatement) {}
 
     fn process_after_variable(&mut self, _: &mut Variable) {}
 

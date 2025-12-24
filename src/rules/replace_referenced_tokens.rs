@@ -86,6 +86,10 @@ impl NodeProcessor for Processor<'_> {
         type_declaration.replace_referenced_tokens(self.code);
     }
 
+    fn process_type_function(&mut self, function: &mut TypeFunctionStatement) {
+        function.replace_referenced_tokens(self.code);
+    }
+
     fn process_expression(&mut self, expression: &mut Expression) {
         match expression {
             Expression::False(token)

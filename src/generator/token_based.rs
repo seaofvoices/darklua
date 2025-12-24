@@ -687,6 +687,35 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         self.write_type(statement.get_type());
     }
 
+    fn write_type_function_with_tokens(
+        &mut self,
+        function: &TypeFunctionStatement,
+        tokens: &TypeFunctionStatementTokens,
+    ) {
+        if function.is_exported() {
+            if let Some(export_token) = &tokens.export {
+                self.write_token(export_token);
+            } else {
+                self.write_symbol("export");
+            }
+        }
+        self.write_token(&tokens.r#type);
+        self.write_token(&tokens.function_body.function);
+
+        self.write_identifier(function.get_identifier());
+
+        self.write_function_attributes(
+            tokens,
+            function.get_generic_parameters(),
+            function.parameters_count(),
+            function.iter_parameters(),
+            function.is_variadic(),
+            function.get_variadic_type(),
+            function.get_return_type(),
+            function.get_block(),
+        );
+    }
+
     fn write_generic_parameters_with_default_with_tokens(
         &mut self,
         generic_parameters: &GenericParametersWithDefaults,
@@ -1397,10 +1426,37 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         TypeDeclarationTokens {
             r#type: Token::from_content("type"),
             equal: Token::from_content("="),
-            export: if statement.is_exported() {
-                Some(Token::from_content("export"))
-            } else {
-                None
+            export: statement
+                .is_exported()
+                .then(|| Token::from_content("export")),
+        }
+    }
+
+    fn generate_type_function_tokens(
+        &self,
+        statement: &TypeFunctionStatement,
+    ) -> TypeFunctionStatementTokens {
+        TypeFunctionStatementTokens {
+            r#type: Token::from_content("type"),
+            export: statement
+                .is_exported()
+                .then(|| Token::from_content("export")),
+            function_body: FunctionBodyTokens {
+                function: Token::from_content("function"),
+                opening_parenthese: Token::from_content("("),
+                closing_parenthese: Token::from_content(")"),
+                end: Token::from_content("end"),
+                parameter_commas: intersect_with_token(
+                    comma_token(),
+                    statement.parameters_count() + usize::from(statement.is_variadic()),
+                ),
+                variable_arguments: statement.is_variadic().then(|| Token::from_content("...")),
+                variable_arguments_colon: statement
+                    .has_variadic_type()
+                    .then(|| Token::from_content(":")),
+                return_type_colon: statement
+                    .has_return_type()
+                    .then(|| Token::from_content(":")),
             },
         }
     }
@@ -1892,6 +1948,17 @@ impl LuaGenerator for TokenBasedLuaGenerator<'_> {
             self.write_type_declaration_with_tokens(
                 statement,
                 &self.generate_type_declaration_tokens(statement),
+            );
+        }
+    }
+
+    fn write_type_function_statement(&mut self, statement: &TypeFunctionStatement) {
+        if let Some(tokens) = statement.get_tokens() {
+            self.write_type_function_with_tokens(statement, tokens);
+        } else {
+            self.write_type_function_with_tokens(
+                statement,
+                &self.generate_type_function_tokens(statement),
             );
         }
     }

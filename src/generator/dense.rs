@@ -637,6 +637,41 @@ impl LuaGenerator for DenseLuaGenerator {
         self.write_type(statement.get_type());
     }
 
+    fn write_type_function_statement(&mut self, function: &nodes::TypeFunctionStatement) {
+        if function.is_exported() {
+            self.push_str("export");
+        }
+        self.push_str("type function");
+
+        self.write_identifier(function.get_identifier());
+
+        if let Some(generics) = function.get_generic_parameters() {
+            self.write_function_generics(generics);
+        }
+
+        self.push_char('(');
+
+        let parameters = function.get_parameters();
+        self.write_function_parameters(
+            parameters,
+            function.is_variadic(),
+            function.get_variadic_type(),
+        );
+        self.push_char(')');
+
+        if let Some(return_type) = function.get_return_type() {
+            self.push_char(':');
+            self.write_function_return_type(return_type);
+        }
+
+        let block = function.get_block();
+
+        if !block.is_empty() {
+            self.write_block(block);
+        }
+        self.push_str("end");
+    }
+
     fn write_false_expression(&mut self, _token: &Option<nodes::Token>) {
         self.push_str("false");
     }
