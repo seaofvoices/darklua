@@ -79,3 +79,15 @@ export--[[ this is exported ]]type PublicMyT=(MyT)
 type Opt<T> =Module.OtherType--[[extract a type from a module]]
 
 type Try=(...'a'--[[literal type]])->typeof(fn()--[[get the return type]])
+
+type function identity_fn(t):()-- end
+return t
+end
+
+export--[=[ exported! ]=]type function identity_fn--[[type name]](...)
+return(...)
+end
+
+type function example_complex_type_function<T--[[]],U,R...>(first:T&U,opts:{[number--[[index type]] ]:string}?--[[opts]],...:R...):()
+return first
+end

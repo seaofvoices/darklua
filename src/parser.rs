@@ -512,6 +512,46 @@ mod test {
             Variable::new("var"),
             Expression::identifier("divider"),
         ),
+        type_function("type function foo() end") => TypeFunctionStatement::from_name(
+            "foo",
+            Block::default(),
+        ),
+        type_function_with_2_typed_parameters("type function foo(a: number, b: string) end")
+            => TypeFunctionStatement::from_name(
+                Identifier::new("foo"),
+                Block::default(),
+            )
+            .with_parameter(Identifier::new("a").with_type(TypeName::new("number")))
+            .with_parameter(Identifier::new("b").with_type(TypeName::new("string"))),
+        empty_type_function_variadic("type function foo(...) end")
+            => TypeFunctionStatement::from_name("foo", Block::default()).variadic(),
+        empty_type_function_variadic_with_one_parameter("type function foo(a, ...) end")
+            => TypeFunctionStatement::from_name("foo", Block::default())
+                .with_parameter("a")
+                .variadic(),
+        type_function_with_2_typed_parameters_and_variadic("type function foo(a: number, b: string, ...) end")
+            => TypeFunctionStatement::from_name("foo", Block::default())
+                .with_parameter(Identifier::new("a").with_type(TypeName::new("number")))
+                .with_parameter(Identifier::new("b").with_type(TypeName::new("string")))
+                .variadic(),
+        type_function_variadic_and_return_type("type function foo(...): number end")
+            => TypeFunctionStatement::from_name("foo", Block::default())
+                .variadic()
+                .with_return_type(TypeName::new("number")),
+        exported_type_function_optional("export type function optional(t) return types.unionof(t, types.singleton(nil)) end")
+            => TypeFunctionStatement::from_name(
+                "optional",
+                ReturnStatement::one(
+                    FunctionCall::from_prefix(FieldExpression::new(Prefix::from_name("types"), "unionof"))
+                        .with_argument(Expression::identifier("t"))
+                        .with_argument(
+                            FunctionCall::from_prefix(FieldExpression::new(Prefix::from_name("types"), "singleton"))
+                                .with_argument(Expression::nil())
+                        )
+                )
+            )
+            .with_parameter("t")
+            .export(),
     );
 
     mod parse_with_tokens {
@@ -3497,6 +3537,50 @@ mod test {
                 r#type: spaced_token(0, 4),
                 equal: spaced_token(7, 8),
                 export: None,
+            }),
+            type_function_statement_empty("type function nothing() end") => TypeFunctionStatement::from_name(
+                create_identifier("nothing", 14, 0),
+                Block::default().with_tokens(BlockTokens {
+                    semicolons: Vec::new(),
+                    last_semicolon: None,
+                    final_token: None,
+                }),
+            ).with_tokens(TypeFunctionStatementTokens {
+                r#type: spaced_token(0, 4),
+                function_body: FunctionBodyTokens {
+                    function: spaced_token(5, 13),
+                    opening_parenthese: token_at_first_line(21, 22),
+                    closing_parenthese: spaced_token(22, 23),
+                    end: token_at_first_line(24, 27),
+                    parameter_commas: Vec::new(),
+                    variable_arguments: None,
+                    variable_arguments_colon: None,
+                    return_type_colon: None,
+                },
+                export: None,
+            }),
+            exported_type_function_statement_empty("export type function nothing() end") => TypeFunctionStatement::from_name(
+                create_identifier("nothing", 21, 0),
+                Block::default().with_tokens(BlockTokens {
+                    semicolons: Vec::new(),
+                    last_semicolon: None,
+                    final_token: None,
+                }),
+            )
+            .export()
+            .with_tokens(TypeFunctionStatementTokens {
+                r#type: spaced_token(7, 11),
+                function_body: FunctionBodyTokens {
+                    function: spaced_token(12, 20),
+                    opening_parenthese: token_at_first_line(28, 29),
+                    closing_parenthese: spaced_token(29, 30),
+                    end: token_at_first_line(31, 34),
+                    parameter_commas: Vec::new(),
+                    variable_arguments: None,
+                    variable_arguments_colon: None,
+                    return_type_colon: None,
+                },
+                export: Some(spaced_token(0, 6)),
             }),
         );
 

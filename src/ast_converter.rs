@@ -852,6 +852,36 @@ impl<'a> AstConverter<'a> {
                             .into(),
                     );
                 }
+                ConvertWork::MakeTypeFunctionStatement {
+                    statement,
+                    export_token,
+                } => {
+                    let builder = self.convert_function_body_attributes(
+                        statement.function_body(),
+                        self.convert_token(statement.function_token())?,
+                    )?;
+
+                    let mut name = Identifier::new(statement.function_name().token().to_string());
+                    let mut type_token = None;
+                    let mut export = None;
+
+                    if self.hold_token_data {
+                        name.set_token(self.convert_token(statement.function_name())?);
+                        type_token = Some(self.convert_token(statement.type_token())?);
+                        export = export_token
+                            .map(|token| self.convert_token(token))
+                            .transpose()?;
+                    }
+
+                    let mut type_function_statement =
+                        builder.into_type_function_statement(name, type_token, export);
+
+                    if export_token.is_some() {
+                        type_function_statement.set_exported();
+                    }
+
+                    self.statements.push(type_function_statement.into());
+                }
                 ConvertWork::MakeLocalAssignStatement { statement } => {
                     let variables = statement
                         .names()
@@ -1546,6 +1576,22 @@ impl<'a> AstConverter<'a> {
                         statement: local_function,
                     });
                 self.push_function_body_work(local_function.body());
+            }
+            ast::Stmt::TypeFunction(type_function) => {
+                self.work_stack
+                    .push(ConvertWork::MakeTypeFunctionStatement {
+                        statement: type_function,
+                        export_token: None,
+                    });
+                self.push_function_body_work(type_function.function_body());
+            }
+            ast::Stmt::ExportedTypeFunction(type_function) => {
+                self.work_stack
+                    .push(ConvertWork::MakeTypeFunctionStatement {
+                        statement: type_function.type_function(),
+                        export_token: Some(type_function.export_token()),
+                    });
+                self.push_function_body_work(type_function.type_function().function_body());
             }
             ast::Stmt::NumericFor(numeric_for) => {
                 self.work_stack.push(ConvertWork::MakeNumericForStatement {
@@ -2864,6 +2910,10 @@ enum ConvertWork<'a> {
     },
     MakeTypeDeclarationStatement {
         type_declaration: &'a ast::luau::TypeDeclaration,
+        export_token: Option<&'a tokenizer::TokenReference>,
+    },
+    MakeTypeFunctionStatement {
+        statement: &'a ast::luau::TypeFunction,
         export_token: Option<&'a tokenizer::TokenReference>,
     },
     MakePrefixFromExpression {
