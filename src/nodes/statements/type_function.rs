@@ -227,13 +227,13 @@ impl TypeFunctionStatement {
 
     /// Sets the tokens for this type function statement.
     pub fn with_tokens(mut self, tokens: TypeFunctionStatementTokens) -> Self {
-        self.tokens = Some(tokens.into());
+        self.tokens = Some(tokens);
         self
     }
 
     /// Sets the tokens for this type function statement.
     pub fn set_tokens(&mut self, tokens: TypeFunctionStatementTokens) {
-        self.tokens = Some(tokens.into());
+        self.tokens = Some(tokens);
     }
 
     /// Returns the tokens for this type function statement, if any.
@@ -269,23 +269,20 @@ impl TypeFunctionStatement {
 
     fn set_default_tokens(&mut self) {
         if self.tokens.is_none() {
-            self.tokens = Some(
-                TypeFunctionStatementTokens {
-                    r#type: Token::from_content("type"),
-                    export: self.exported.then(|| Token::from_content("export")),
-                    function_body: FunctionBodyTokens {
-                        function: Token::from_content("function"),
-                        opening_parenthese: Token::from_content("("),
-                        closing_parenthese: Token::from_content(")"),
-                        end: Token::from_content("end"),
-                        parameter_commas: Vec::new(),
-                        variable_arguments: None,
-                        variable_arguments_colon: None,
-                        return_type_colon: None,
-                    },
-                }
-                .into(),
-            );
+            self.tokens = Some(TypeFunctionStatementTokens {
+                r#type: Token::from_content("type"),
+                export: self.exported.then(|| Token::from_content("export")),
+                function_body: FunctionBodyTokens {
+                    function: Token::from_content("function"),
+                    opening_parenthese: Token::from_content("("),
+                    closing_parenthese: Token::from_content(")"),
+                    end: Token::from_content("end"),
+                    parameter_commas: Vec::new(),
+                    variable_arguments: None,
+                    variable_arguments_colon: None,
+                    return_type_colon: None,
+                },
+            });
         }
     }
 
