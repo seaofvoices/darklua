@@ -429,6 +429,17 @@ mod test {
         }
 
         #[test]
+        fn parse_require_mode_hybrid() {
+            parse_rule_property(
+                r#"[{ "name": "luau" }, { "name": "roblox" }]"#,
+                RulePropertyValue::RequireMode(RequireMode::Hybrid(vec![
+                    SingularRequireMode::Luau(Default::default()),
+                    SingularRequireMode::Roblox(Default::default())
+                ]))
+            );
+        }
+
+        #[test]
         fn parse_null_as_none() {
             parse_rule_property("null", RulePropertyValue::None);
         }

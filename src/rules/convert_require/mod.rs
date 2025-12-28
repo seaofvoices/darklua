@@ -25,18 +25,21 @@ use std::str::FromStr;
 
 /// A representation of how require calls are handled and transformed.
 pub trait RequireModeLike {
+    /// Parses the function to call to check for a `require` call.
+    /// 
+    /// Returns the singular require mode used within the `require` call.
     fn find_require(
         &self,
         call: &FunctionCall,
         context: &Context,
-    ) -> DarkluaResult<Option<PathBuf>>;
+    ) -> DarkluaResult<Option<(PathBuf, SingularRequireMode)>>;
     fn generate_require<T: RequireModeLike>(
         &self,
         path: &Path,
         current_mode: &T,
         context: &Context,
     ) -> DarkluaResult<Option<Arguments>>;
-    fn is_module_folder_name(&self, path: &Path) -> bool;
+    fn is_module_folder_name(&self, path: &Path) -> DarkluaResult<bool>;
     fn initialize(&mut self, context: &Context) -> DarkluaResult<()>;
 }
 
@@ -57,7 +60,7 @@ impl RequireModeLike for SingularRequireMode {
         &self,
         call: &FunctionCall,
         context: &Context,
-    ) -> DarkluaResult<Option<PathBuf>> {
+    ) -> DarkluaResult<Option<(PathBuf, SingularRequireMode)>> {
         match self {
             SingularRequireMode::Path(path_mode) => path_mode.find_require(call, context),
             SingularRequireMode::Luau(luau_mode) => luau_mode.find_require(call, context),
@@ -84,7 +87,7 @@ impl RequireModeLike for SingularRequireMode {
         }
     }
 
-    fn is_module_folder_name(&self, path: &Path) -> bool {
+    fn is_module_folder_name(&self, path: &Path) -> DarkluaResult<bool> {
         match self {
             SingularRequireMode::Path(path_mode) => path_mode.is_module_folder_name(path),
             SingularRequireMode::Luau(luau_mode) => luau_mode.is_module_folder_name(path),
@@ -116,7 +119,7 @@ impl FromStr for SingularRequireMode {
 
 /// A representation of how require calls are handled and transformed.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields, rename_all = "snake_case", tag = "name")]
+#[serde(untagged)]
 pub enum RequireMode {
     Single(SingularRequireMode),
     Hybrid(Vec<SingularRequireMode>),
@@ -127,15 +130,17 @@ impl RequireModeLike for RequireMode {
         &self,
         call: &FunctionCall,
         context: &Context,
-    ) -> DarkluaResult<Option<PathBuf>> {
+    ) -> DarkluaResult<Option<(PathBuf, SingularRequireMode)>> {
         match self {
             RequireMode::Single(singular_require_mode) => {
                 singular_require_mode.find_require(call, context)
             }
             RequireMode::Hybrid(singular_require_modes) => {
+                println!("call");
                 for mode in singular_require_modes {
-                    if let Ok(Some(x)) = mode.find_require(call, context) {
-                        return Ok(Some(x));
+                    match mode.find_require(call, context) {
+                        Ok(Some(x)) => return Ok(Some(x)),
+                        x => println!("nooo: {x:?}"),
                     }
                 }
 
@@ -166,12 +171,12 @@ impl RequireModeLike for RequireMode {
         }
     }
 
-    fn is_module_folder_name(&self, path: &Path) -> bool {
+    fn is_module_folder_name(&self, path: &Path) -> DarkluaResult<bool> {
         match self {
             RequireMode::Single(singular_require_mode) => {
                 singular_require_mode.is_module_folder_name(path)
             }
-            RequireMode::Hybrid(_singular_require_modes) => false,
+            RequireMode::Hybrid(_singular_require_modes) => Err(DarkluaError::custom("cannot get module folder name of hybrid")),
         }
     }
 
@@ -180,12 +185,12 @@ impl RequireModeLike for RequireMode {
             RequireMode::Single(singular_require_mode) => singular_require_mode.initialize(context),
             RequireMode::Hybrid(singular_require_modes) => {
                 for mode in singular_require_modes {
-                    if let Ok(x) = mode.initialize(context) {
-                        return Ok(x);
+                    if let Err(err) = mode.initialize(context) {
+                        return Err(err);
                     }
                 }
 
-                return Err(DarkluaError::custom("unable to find valid require"))?;
+                return Ok(())
             }
         }
     }
@@ -224,12 +229,12 @@ impl<'a> RequireConverter<'a> {
     }
 
     fn try_require_conversion(&mut self, call: &mut FunctionCall) -> DarkluaResult<()> {
-        if let Some(require_path) = self.current.find_require(call, self.context)? {
+        if let Some((require_path, require_mode)) = self.current.find_require(call, self.context)? {
             log::trace!("found require path `{}`", require_path.display());
 
             if let Some(new_arguments) =
                 self.target
-                    .generate_require(&require_path, &self.current, self.context)?
+                    .generate_require(&require_path, &require_mode, self.context)?
             {
                 call.set_arguments(new_arguments);
             }

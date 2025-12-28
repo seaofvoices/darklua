@@ -4,7 +4,7 @@ use crate::frontend::DarkluaResult;
 use crate::nodes::{Arguments, FunctionCall, StringExpression};
 use crate::rules::require::path_utils::get_relative_path;
 use crate::rules::require::{match_path_require_call, path_utils, PathLocator};
-use crate::rules::{Context, RequireModeLike};
+use crate::rules::{Context, RequireModeLike, SingularRequireMode};
 use crate::utils;
 use crate::DarkluaError;
 
@@ -79,22 +79,22 @@ impl RequireModeLike for PathRequireMode {
         &self,
         call: &FunctionCall,
         context: &Context,
-    ) -> DarkluaResult<Option<PathBuf>> {
+    ) -> DarkluaResult<Option<(PathBuf, SingularRequireMode)>> {
         if let Some(literal_path) = match_path_require_call(call) {
             let required_path =
                 RequirePathLocator::new(self, context.project_location(), context.resources())
                     .find_require_path(literal_path, context.current_path())?;
 
-            Ok(Some(required_path))
+            Ok(Some((required_path, SingularRequireMode::Path(self.clone()))))
         } else {
             Ok(None)
         }
     }
 
-    fn is_module_folder_name(&self, path: &Path) -> bool {
+    fn is_module_folder_name(&self, path: &Path) -> DarkluaResult<bool> {
         let expect_value = Some(self.module_folder_name.as_str());
-        path.file_name().and_then(OsStr::to_str) == expect_value
-            || path.file_stem().and_then(OsStr::to_str) == expect_value
+        Ok(path.file_name().and_then(OsStr::to_str) == expect_value
+            || path.file_stem().and_then(OsStr::to_str) == expect_value)
     }
 
     fn generate_require<T: RequireModeLike>(
@@ -171,7 +171,7 @@ impl RequireModeLike for PathRequireMode {
             }
         };
 
-        if self.is_module_folder_name(&generated_path) {
+        if self.is_module_folder_name(&generated_path)? {
             generated_path.pop();
         } else if matches!(generated_path.extension(), Some(extension) if extension == "lua" || extension == "luau")
         {
@@ -231,35 +231,35 @@ mod test {
         fn default_mode_is_false_for_regular_name() {
             let require_mode = PathRequireMode::default();
 
-            assert!(!require_mode.is_module_folder_name(Path::new("oops.lua")));
+            assert!(!require_mode.is_module_folder_name(Path::new("oops.lua")).unwrap());
         }
 
         #[test]
         fn default_mode_is_true_for_init_lua() {
             let require_mode = PathRequireMode::default();
 
-            assert!(require_mode.is_module_folder_name(Path::new("init.lua")));
+            assert!(require_mode.is_module_folder_name(Path::new("init.lua")).unwrap());
         }
 
         #[test]
         fn default_mode_is_true_for_init_luau() {
             let require_mode = PathRequireMode::default();
 
-            assert!(require_mode.is_module_folder_name(Path::new("init.luau")));
+            assert!(require_mode.is_module_folder_name(Path::new("init.luau")).unwrap());
         }
 
         #[test]
         fn default_mode_is_true_for_folder_init_lua() {
             let require_mode = PathRequireMode::default();
 
-            assert!(require_mode.is_module_folder_name(Path::new("folder/init.lua")));
+            assert!(require_mode.is_module_folder_name(Path::new("folder/init.lua")).unwrap());
         }
 
         #[test]
         fn default_mode_is_true_for_folder_init_luau() {
             let require_mode = PathRequireMode::default();
 
-            assert!(require_mode.is_module_folder_name(Path::new("folder/init.luau")));
+            assert!(require_mode.is_module_folder_name(Path::new("folder/init.luau")).unwrap());
         }
     }
 }

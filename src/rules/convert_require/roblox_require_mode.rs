@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     DarkluaError, frontend::DarkluaResult, nodes::{Arguments, FunctionCall, Prefix}, rules::{
-        Context, RequireModeLike, convert_require::rojo_sourcemap::RojoSourcemap, require::path_utils::{get_relative_parent_path, get_relative_path}
+        Context, RequireModeLike, SingularRequireMode, convert_require::rojo_sourcemap::RojoSourcemap, require::path_utils::{get_relative_parent_path, get_relative_path}
     }, utils
 };
 
@@ -53,15 +53,15 @@ impl RequireModeLike for RobloxRequireMode {
         Ok(())
     }
 
-    fn is_module_folder_name(&self, path: &Path) -> bool {
-        matches!(path.file_stem().and_then(std::ffi::OsStr::to_str), Some("init"))
+    fn is_module_folder_name(&self, path: &Path) -> DarkluaResult<bool> {
+        Ok(matches!(path.file_stem().and_then(std::ffi::OsStr::to_str), Some("init")))
     }
 
     fn find_require(
         &self,
         _call: &FunctionCall,
         _context: &Context,
-    ) -> DarkluaResult<Option<PathBuf>> {
+    ) -> DarkluaResult<Option<(PathBuf, SingularRequireMode)>> {
         Err(DarkluaError::custom("unsupported initial require mode")
             .context("Roblox require mode cannot be used as the current require mode"))
     }
@@ -145,7 +145,7 @@ impl RequireModeLike for RobloxRequireMode {
             );
 
             let require_is_module_folder_name =
-                current.is_module_folder_name(&relative_require_path);
+                current.is_module_folder_name(&relative_require_path)?;
             // if we are about to make a require to a path like `./x/y/z/init.lua`
             // we can pop the last component from the path
             let take_components = relative_require_path
@@ -155,7 +155,7 @@ impl RequireModeLike for RobloxRequireMode {
             let mut path_components = relative_require_path.components().take(take_components);
 
             if let Some(first_component) = path_components.next() {
-                let source_is_module_folder_name = current.is_module_folder_name(&source_path);
+                let source_is_module_folder_name = current.is_module_folder_name(&source_path)?;
 
                 let instance_path = path_components.try_fold(
                     match first_component {

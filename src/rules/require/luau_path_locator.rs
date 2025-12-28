@@ -42,7 +42,7 @@ impl super::PathLocator for LuauPathLocator<'_, '_, '_> {
         );
 
         if is_require_relative(&path) {
-            if self.luau_require_mode.is_module_folder_name(source) {
+            if self.luau_require_mode.is_module_folder_name(source)? {
                 path = get_relative_parent_path(get_relative_parent_path(source)).join(path);
             } else {
                 path = get_relative_parent_path(source).join(path);
