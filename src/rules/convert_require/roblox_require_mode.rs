@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    DarkluaError, frontend::DarkluaResult, nodes::{Arguments, FunctionCall, Prefix}, rules::{
+    DarkluaError, frontend::DarkluaResult, nodes::{Arguments, Expression, FieldExpression, FunctionCall, IndexExpression, Prefix}, rules::{
         Context, RequireModeLike, SingularRequireMode, convert_require::rojo_sourcemap::RojoSourcemap, require::path_utils::{get_relative_parent_path, get_relative_path}
     }, utils
 };
@@ -59,11 +59,10 @@ impl RequireModeLike for RobloxRequireMode {
 
     fn find_require(
         &self,
-        _call: &FunctionCall,
-        _context: &Context,
+        call: &FunctionCall,
+        context: &Context,
     ) -> DarkluaResult<Option<(PathBuf, SingularRequireMode)>> {
-        Err(DarkluaError::custom("unsupported initial require mode")
-            .context("Roblox require mode cannot be used as the current require mode"))
+        parse_roblox(call, context.current_path()).map(|x| x.map(|y| (y, SingularRequireMode::Roblox(self.clone()))))
     }
 
     fn generate_require<T: RequireModeLike>(
@@ -230,4 +229,216 @@ impl RequireModeLike for RobloxRequireMode {
             )))
         }
     }
+}
+
+#[derive(Deserialize)]
+struct RojoTree {
+    #[serde(rename = "$path")]
+    path: PathBuf,
+}
+
+#[derive(Deserialize)]
+struct RojoProject {
+    tree: RojoTree,
+}
+
+pub fn parse_roblox(call: &FunctionCall, starting_path: &Path) -> DarkluaResult<Option<PathBuf>> {
+    let Arguments::Tuple(args) = call.get_arguments() else {
+        Err(
+            DarkluaError::custom("unexpected require call, only accepts tuples")
+                .context("while finding roblox requires"),
+        )?
+    };
+
+    let mut path_builder = Vec::<String>::new();
+    let mut current_path = starting_path.to_path_buf();
+    let mut parented = false;
+
+    match args.iter_values().next() {
+        Some(Expression::Field(field)) => {
+            parse_roblox_field(field, &mut path_builder, &mut current_path, &mut parented)?
+        }
+        Some(Expression::Index(index)) => {
+            parse_roblox_index(index, &mut path_builder, &mut current_path, &mut parented)?
+        }
+        Some(Expression::Call(call)) => {
+            parse_ffc_wfc(&call, &mut path_builder, &mut current_path, &mut parented)?
+        }
+        _ => Err(DarkluaError::custom(
+            "unexpected require argument, only accepts fields or indexes",
+        )
+        .context("while getting roblox path"))?,
+    };
+
+    if let Some(back) = path_builder.last() {
+        if back != "script" {
+            Err(
+                DarkluaError::custom("roblox requires must start with `script.`")
+                    .context("while getting roblox require path"),
+            )?
+        } else {
+            path_builder.pop();
+        }
+    }
+
+    while let Some(x) = path_builder.pop() {
+        current_path.push(x)
+    }
+
+    let mut base_path = starting_path.to_path_buf();
+    base_path.pop();
+
+    let mut project_json = current_path.clone();
+    project_json.push("default.project.json");
+    if let Ok(project_json) = std::fs::File::open(project_json) {
+        let project_data: RojoProject = serde_json::from_reader(project_json)?;
+        current_path.push(project_data.tree.path)
+    }
+
+    Ok(Some(current_path))
+}
+
+fn parse_ffc_wfc(
+    call: &FunctionCall,
+    path_builder: &mut Vec<String>,
+    current_path: &mut PathBuf,
+    parented: &mut bool,
+) -> DarkluaResult<()> {
+    if let Some(x) = call.get_method() {
+        if !matches!(x.get_name().as_str(), "FindFirstChild" | "WaitForChild") {
+            Err(DarkluaError::custom("invalid method call found")
+                .context("while parsing FFC/WFC in require"))?
+        }
+    } else {
+        Err(DarkluaError::custom("only method calls are accepted")
+            .context("while parsing FFC/WFC in require"))?
+    }
+
+    match call.get_arguments() {
+        Arguments::String(x) => path_builder.push(x.clone().into_string().unwrap_or_default()),
+        Arguments::Tuple(x) => path_builder.push(
+            x.iter_values()
+                .next()
+                .and_then(|x| match x {
+                    Expression::String(x) => x.clone().into_string(),
+                    _ => None,
+                })
+                .ok_or(
+                    DarkluaError::custom("no arguments found for method call")
+                        .context("while parsing FFC/WFC in require"),
+                )?,
+        ),
+        _ => Err(DarkluaError::custom(
+            "only string and tuple arguments are accepted for method calls",
+        )
+        .context("while parsing FFC/WFC in require"))?,
+    };
+
+    parse_roblox_prefix(call.get_prefix(), path_builder, current_path, parented)?;
+
+    Ok(())
+}
+
+fn parse_roblox_prefix(
+    prefix: &Prefix,
+    path_builder: &mut Vec<String>,
+    current_path: &mut PathBuf,
+    parented: &mut bool,
+) -> DarkluaResult<()> {
+    match prefix {
+        Prefix::Field(x) => parse_roblox_field(x, path_builder, current_path, parented)?,
+        Prefix::Index(x) => parse_roblox_index(x, path_builder, current_path, parented)?,
+        Prefix::Identifier(x) => {
+            handle_roblox_script_parent(x.get_name(), path_builder, current_path, parented)?
+        }
+        Prefix::Call(x) => parse_ffc_wfc(&x, path_builder, current_path, parented)?,
+        _ => Err(
+            DarkluaError::custom("unexpected prefix, only constants accepted")
+                .context("while parsing roblox require"),
+        )?,
+    };
+    Ok(())
+}
+
+fn parse_roblox_expression(
+    expression: &Expression,
+    path_builder: &mut Vec<String>,
+    current_path: &mut PathBuf,
+    parented: &mut bool,
+) -> DarkluaResult<()> {
+    match expression {
+        Expression::Field(x) => parse_roblox_field(x, path_builder, current_path, parented)?,
+        Expression::Index(x) => parse_roblox_index(x, path_builder, current_path, parented)?,
+        Expression::Identifier(x) => {
+            handle_roblox_script_parent(x.get_name(), path_builder, current_path, parented)?
+        }
+        Expression::String(x) => handle_roblox_script_parent(
+            x.get_string_value().unwrap_or_default(),
+            path_builder,
+            current_path,
+            parented,
+        )?,
+        Expression::Call(x) => parse_ffc_wfc(&x, path_builder, current_path, parented)?,
+        _ => Err(
+            DarkluaError::custom("unexpected expression, only constants accepted")
+                .context("while parsing roblox require"),
+        )?,
+    };
+    Ok(())
+}
+
+fn parse_roblox_field(
+    field: &FieldExpression,
+    path_builder: &mut Vec<String>,
+    current_path: &mut PathBuf,
+    parented: &mut bool,
+) -> DarkluaResult<()> {
+    handle_roblox_script_parent(
+        field.get_field().get_name(),
+        path_builder,
+        current_path,
+        parented,
+    )?;
+    parse_roblox_prefix(field.get_prefix(), path_builder, current_path, parented)
+}
+
+fn parse_roblox_index(
+    index: &IndexExpression,
+    path_builder: &mut Vec<String>,
+    current_path: &mut PathBuf,
+    parented: &mut bool,
+) -> DarkluaResult<()> {
+    parse_roblox_expression(index.get_index(), path_builder, current_path, parented)?;
+    parse_roblox_prefix(index.get_prefix(), path_builder, current_path, parented)
+}
+
+fn handle_roblox_script_parent(
+    str: &str,
+    path_builder: &mut Vec<String>,
+    current_path: &mut PathBuf,
+    parented: &mut bool,
+) -> DarkluaResult<()> {
+    match str {
+        "script" => {
+            while let Some(back) = path_builder.last() {
+                if !(*parented) {
+                    current_path.pop();
+                    *parented = true;
+                }
+
+                if back == "Parent" {
+                    path_builder.pop();
+                } else {
+                    break;
+                }
+            }
+        }
+        "Parent" => {
+            *parented = true;
+            current_path.pop();
+        }
+        _ => {}
+    };
+    path_builder.push(str.to_string());
+    Ok(())
 }
