@@ -14,7 +14,7 @@ use crate::DarkluaError;
 
 use instance_path::InstancePath;
 pub use roblox_index_style::RobloxIndexStyle;
-pub use roblox_require_mode::RobloxRequireMode;
+pub use roblox_require_mode::{RobloxRequireMode, parse_roblox};
 
 use super::{verify_required_properties, PathRequireMode, Rule, RuleProcessResult};
 use crate::rules::require::LuauRequireMode;
@@ -53,6 +53,28 @@ pub enum SingularRequireMode {
     Luau(LuauRequireMode),
     /// Handles requires using Roblox's instance-based require system
     Roblox(RobloxRequireMode),
+}
+
+impl Default for SingularRequireMode {
+    fn default() -> Self {
+        Self::Path(Default::default())
+    }
+}
+
+impl From<PathRequireMode> for SingularRequireMode {
+    fn from(value: PathRequireMode) -> Self {
+        Self::Path(value)
+    }
+}
+impl From<LuauRequireMode> for SingularRequireMode {
+    fn from(value: LuauRequireMode) -> Self {
+        Self::Luau(value)
+    }
+}
+impl From<RobloxRequireMode> for SingularRequireMode {
+    fn from(value: RobloxRequireMode) -> Self {
+        Self::Roblox(value)
+    }
 }
 
 impl RequireModeLike for SingularRequireMode {
@@ -125,6 +147,51 @@ pub enum RequireMode {
     Hybrid(Vec<SingularRequireMode>),
 }
 
+impl Default for RequireMode {
+    fn default() -> Self {
+        Self::Single(Default::default())
+    }
+}
+
+impl FromStr for RequireMode {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "path" => Self::Single(SingularRequireMode::Path(Default::default())),
+            "luau" => Self::Single(SingularRequireMode::Luau(Default::default())),
+            "roblox" => Self::Single(SingularRequireMode::Roblox(Default::default())),
+            "hybrid" => Self::Hybrid(vec![
+                SingularRequireMode::Path(Default::default()),
+                SingularRequireMode::Luau(Default::default()),
+                SingularRequireMode::Roblox(Default::default())
+            ]),
+            _ => return Err(format!("invalid require mode name `{}`", s)),
+        })
+    }
+}
+
+impl From<PathRequireMode> for RequireMode {
+    fn from(value: PathRequireMode) -> Self {
+        Self::Single(value.into())
+    }
+}
+impl From<LuauRequireMode> for RequireMode {
+    fn from(value: LuauRequireMode) -> Self {
+        Self::Single(value.into())
+    }
+}
+impl From<RobloxRequireMode> for RequireMode {
+    fn from(value: RobloxRequireMode) -> Self {
+        Self::Single(value.into())
+    }
+}
+impl<T: Into<SingularRequireMode>> From<Vec<T>> for RequireMode {
+    fn from(value: Vec<T>) -> Self {
+        Self::Hybrid(value.into_iter().map(Into::into).collect())
+    }
+}
+
 impl RequireModeLike for RequireMode {
     fn find_require(
         &self,
@@ -136,7 +203,6 @@ impl RequireModeLike for RequireMode {
                 singular_require_mode.find_require(call, context)
             }
             RequireMode::Hybrid(singular_require_modes) => {
-                println!("call");
                 for mode in singular_require_modes {
                     match mode.find_require(call, context) {
                         Ok(Some(x)) => return Ok(Some(x)),
