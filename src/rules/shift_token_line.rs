@@ -290,6 +290,6 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_replace_referenced_tokens", rule);
+        assert_json_snapshot!(rule, @r###""shift_token_line""###);
     }
 }

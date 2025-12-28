@@ -163,11 +163,12 @@ impl std::fmt::Debug for Configuration {
 ///
 /// This enum defines different modes for generating Lua code, each with its own
 /// formatting characteristics.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "snake_case", tag = "name")]
 pub enum GeneratorParameters {
     /// Retains the original line structure of the input code.
     #[serde(alias = "retain-lines")]
+    #[default]
     RetainLines,
     /// Generates dense, compact code with a specified column span.
     Dense {
@@ -181,12 +182,6 @@ pub enum GeneratorParameters {
         #[serde(default = "get_default_column_span")]
         column_span: usize,
     },
-}
-
-impl Default for GeneratorParameters {
-    fn default() -> Self {
-        Self::RetainLines
-    }
 }
 
 impl GeneratorParameters {
@@ -408,9 +403,9 @@ mod test {
         fn deserialize_unknown_generator_name() {
             let result: Result<Configuration, _> = json5::from_str("{generator: 'oops'}");
 
-            pretty_assertions::assert_eq!(
+            insta::assert_snapshot!(
                 result.expect_err("deserialization should fail").to_string(),
-                "invalid generator name `oops`"
+                @"invalid generator name `oops` at line 1 column 13"
             );
         }
     }
@@ -501,9 +496,9 @@ mod test {
             let result: Result<Configuration, _> =
                 json5::from_str("{bundle: { require_mode: 'oops' } }");
 
-            pretty_assertions::assert_eq!(
+            insta::assert_snapshot!(
                 result.expect_err("deserialization should fail").to_string(),
-                "invalid require mode `oops`"
+                @"invalid require mode `oops` at line 1 column 26"
             );
         }
     }

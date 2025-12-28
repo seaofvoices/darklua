@@ -1,6 +1,8 @@
 use std::iter;
 
-use darklua_core::nodes::{BinaryOperator, CompoundOperator, Identifier, UnaryOperator};
+use darklua_core::nodes::{
+    BinaryOperator, CompoundOperator, Identifier, TablePropertyModifier, UnaryOperator,
+};
 use rand::{rng, Rng};
 
 pub struct RandomAst {
@@ -317,6 +319,16 @@ impl RandomAst {
 
     pub fn leading_intersection_or_union_operator(&self) -> bool {
         rng().random_bool(0.4)
+    }
+
+    pub(crate) fn table_indexer_modifier(&self) -> Option<TablePropertyModifier> {
+        if rng().random_bool(0.7) {
+            None
+        } else if rng().random_bool(0.5) {
+            Some(TablePropertyModifier::Read)
+        } else {
+            Some(TablePropertyModifier::Write)
+        }
     }
 }
 

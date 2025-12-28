@@ -863,7 +863,7 @@ impl AstFuzzer {
                         .into_iter()
                         .enumerate()
                         .map(|(i, r#type)| {
-                            if i < literal_properties {
+                            let mut property_type: TableEntryType = if i < literal_properties {
                                 TableLiteralPropertyType::new(
                                     StringType::from_value(self.random.string_content()),
                                     r#type,
@@ -871,7 +871,13 @@ impl AstFuzzer {
                                 .into()
                             } else {
                                 TablePropertyType::new(self.random.identifier(), r#type).into()
+                            };
+
+                            if let Some(modifier) = self.random.table_indexer_modifier() {
+                                property_type.set_modifier(modifier);
                             }
+
+                            property_type
                         })
                         .collect();
 
@@ -883,8 +889,14 @@ impl AstFuzzer {
                         ) {
                             key_type = ParentheseType::new(key_type).into();
                         }
-                        table_properties
-                            .push(TableIndexerType::new(key_type, self.pop_type()).into());
+                        let mut table_indexer_type =
+                            TableIndexerType::new(key_type, self.pop_type());
+
+                        if let Some(modifier) = self.random.table_indexer_modifier() {
+                            table_indexer_type.set_modifier(modifier);
+                        }
+
+                        table_properties.push(table_indexer_type.into());
                     }
 
                     table_properties.shuffle(&mut rand::rng());
