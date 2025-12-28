@@ -14,7 +14,7 @@ use crate::DarkluaError;
 
 use instance_path::InstancePath;
 pub use roblox_index_style::RobloxIndexStyle;
-pub use roblox_require_mode::{RobloxRequireMode, parse_roblox};
+pub use roblox_require_mode::{parse_roblox, RobloxRequireMode};
 
 use super::{verify_required_properties, PathRequireMode, Rule, RuleProcessResult};
 use crate::rules::require::LuauRequireMode;
@@ -26,7 +26,7 @@ use std::str::FromStr;
 /// A representation of how require calls are handled and transformed.
 pub trait RequireModeLike {
     /// Parses the function to call to check for a `require` call.
-    /// 
+    ///
     /// Returns the singular require mode used within the `require` call.
     fn find_require(
         &self,
@@ -164,7 +164,7 @@ impl FromStr for RequireMode {
             "hybrid" => Self::Hybrid(vec![
                 SingularRequireMode::Path(Default::default()),
                 SingularRequireMode::Luau(Default::default()),
-                SingularRequireMode::Roblox(Default::default())
+                SingularRequireMode::Roblox(Default::default()),
             ]),
             _ => return Err(format!("invalid require mode name `{}`", s)),
         })
@@ -210,7 +210,7 @@ impl RequireModeLike for RequireMode {
                     }
                 }
 
-                return Err(DarkluaError::custom("unable to find valid require"))?;
+                Err(DarkluaError::custom("unable to find valid require"))?
             }
         }
     }
@@ -232,7 +232,7 @@ impl RequireModeLike for RequireMode {
                     }
                 }
 
-                return Err(DarkluaError::custom("unable to find valid require"))?;
+                Err(DarkluaError::custom("unable to find valid require"))?
             }
         }
     }
@@ -242,7 +242,9 @@ impl RequireModeLike for RequireMode {
             RequireMode::Single(singular_require_mode) => {
                 singular_require_mode.is_module_folder_name(path)
             }
-            RequireMode::Hybrid(_singular_require_modes) => Err(DarkluaError::custom("cannot get module folder name of hybrid")),
+            RequireMode::Hybrid(_singular_require_modes) => Err(DarkluaError::custom(
+                "cannot get module folder name of hybrid",
+            )),
         }
     }
 
@@ -251,12 +253,10 @@ impl RequireModeLike for RequireMode {
             RequireMode::Single(singular_require_mode) => singular_require_mode.initialize(context),
             RequireMode::Hybrid(singular_require_modes) => {
                 for mode in singular_require_modes {
-                    if let Err(err) = mode.initialize(context) {
-                        return Err(err);
-                    }
+                    mode.initialize(context)?;
                 }
 
-                return Ok(())
+                Ok(())
             }
         }
     }

@@ -1,7 +1,9 @@
 use std::{fmt, marker::PhantomData, str::FromStr};
 
 use serde::{
-    de::{value::MapAccessDeserializer, value::SeqAccessDeserializer, MapAccess, SeqAccess, Visitor},
+    de::{
+        value::MapAccessDeserializer, value::SeqAccessDeserializer, MapAccess, SeqAccess, Visitor,
+    },
     Deserialize, Deserializer,
 };
 

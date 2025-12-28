@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     nodes::{DecimalNumber, Expression, StringExpression, TableEntry, TableExpression},
-    process::to_expression, rules::SingularRequireMode,
+    process::to_expression,
+    rules::SingularRequireMode,
 };
 
 use super::{
@@ -83,14 +84,12 @@ impl RulePropertyValue {
     ) -> Result<RequireMode, RuleConfigurationError> {
         match self {
             Self::RequireMode(require_mode) => Ok(require_mode),
-            Self::String(value) => {
-                SingularRequireMode::from_str(&value)
-                    .map(RequireMode::Single)
-                    .map_err(|err: String| RuleConfigurationError::UnexpectedValue {
-                        property: key.to_owned(),
-                        message: err,
-                    })
-            }
+            Self::String(value) => SingularRequireMode::from_str(&value)
+                .map(RequireMode::Single)
+                .map_err(|err: String| RuleConfigurationError::UnexpectedValue {
+                    property: key.to_owned(),
+                    message: err,
+                }),
             _ => Err(RuleConfigurationError::RequireModeExpected(key.to_owned())),
         }
     }
@@ -387,7 +386,9 @@ mod test {
         fn parse_require_mode_path_object() {
             parse_rule_property(
                 r#"{"name": "path"}"#,
-                RulePropertyValue::RequireMode(RequireMode::Single(SingularRequireMode::Path(PathRequireMode::default()))),
+                RulePropertyValue::RequireMode(RequireMode::Single(SingularRequireMode::Path(
+                    PathRequireMode::default(),
+                ))),
             );
         }
 
@@ -395,7 +396,9 @@ mod test {
         fn parse_require_mode_path_object_with_options() {
             parse_rule_property(
                 r#"{"name": "path", "module_folder_name": "index"}"#,
-                RulePropertyValue::RequireMode(RequireMode::Single(SingularRequireMode::Path(PathRequireMode::new("index")))),
+                RulePropertyValue::RequireMode(RequireMode::Single(SingularRequireMode::Path(
+                    PathRequireMode::new("index"),
+                ))),
             );
         }
 
@@ -403,7 +406,9 @@ mod test {
         fn parse_require_mode_roblox_object() {
             parse_rule_property(
                 r#"{"name": "roblox"}"#,
-                RulePropertyValue::RequireMode(RequireMode::Single(SingularRequireMode::Roblox(RobloxRequireMode::default()))),
+                RulePropertyValue::RequireMode(RequireMode::Single(SingularRequireMode::Roblox(
+                    RobloxRequireMode::default(),
+                ))),
             );
         }
 
@@ -424,7 +429,9 @@ mod test {
         fn parse_require_mode_luau_object() {
             parse_rule_property(
                 r#"{ "name": "luau" }"#,
-                RulePropertyValue::RequireMode(RequireMode::Single(SingularRequireMode::Luau(LuauRequireMode::default()))),
+                RulePropertyValue::RequireMode(RequireMode::Single(SingularRequireMode::Luau(
+                    LuauRequireMode::default(),
+                ))),
             );
         }
 
@@ -434,8 +441,8 @@ mod test {
                 r#"[{ "name": "luau" }, { "name": "roblox" }]"#,
                 RulePropertyValue::RequireMode(RequireMode::Hybrid(vec![
                     SingularRequireMode::Luau(Default::default()),
-                    SingularRequireMode::Roblox(Default::default())
-                ]))
+                    SingularRequireMode::Roblox(Default::default()),
+                ])),
             );
         }
 

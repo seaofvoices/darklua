@@ -6,12 +6,13 @@ use std::path::Path;
 
 use crate::nodes::Block;
 use crate::rules::{
-    Context, RequireMode, Rule, RuleConfiguration, RuleConfigurationError, RuleProcessResult, RuleProperties
+    Context, RequireMode, Rule, RuleConfiguration, RuleConfigurationError, RuleProcessResult,
+    RuleProperties,
 };
 use crate::Parser;
 
-pub use require_mode::BundleRequireMode;
 pub(crate) use rename_type_declaration::RenameTypeDeclarationProcessor;
+pub use require_mode::BundleRequireMode;
 use wax::Pattern;
 
 pub const BUNDLER_RULE_NAME: &str = "bundler";
@@ -124,7 +125,7 @@ const DEFAULT_MODULE_IDENTIFIER: &str = "__DARKLUA_BUNDLE_MODULES";
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::rules::{RequireMode, Rule, require::PathRequireMode};
+    use crate::rules::{require::PathRequireMode, RequireMode, Rule};
 
     use insta::assert_json_snapshot;
 

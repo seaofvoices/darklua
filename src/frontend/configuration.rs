@@ -7,9 +7,10 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Parser, generator::{DenseLuaGenerator, LuaGenerator, ReadableLuaGenerator, TokenBasedLuaGenerator}, nodes::Block, rules::{
-        RequireMode, Rule, bundle::Bundler, get_default_rules
-    }
+    generator::{DenseLuaGenerator, LuaGenerator, ReadableLuaGenerator, TokenBasedLuaGenerator},
+    nodes::Block,
+    rules::{bundle::Bundler, get_default_rules, RequireMode, Rule},
+    Parser,
 };
 
 const DEFAULT_COLUMN_SPAN: usize = 80;

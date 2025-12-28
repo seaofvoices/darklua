@@ -1,7 +1,13 @@
 use std::path::{Path, PathBuf};
 
 use super::{path_iterator, PathRequireMode};
-use crate::{DarkluaError, Resources, rules::require::{hybrid_path_locator::SingularPathLocator, match_path_require_call, path_utils::is_require_relative}, utils};
+use crate::{
+    rules::require::{
+        hybrid_path_locator::SingularPathLocator, match_path_require_call,
+        path_utils::is_require_relative,
+    },
+    utils, DarkluaError, Resources,
+};
 
 #[derive(Clone, Debug)]
 pub(crate) struct RequirePathLocator<'a, 'b, 'resources> {
@@ -25,10 +31,14 @@ impl<'a, 'b, 'c> RequirePathLocator<'a, 'b, 'c> {
 }
 
 impl super::PathLocator for RequirePathLocator<'_, '_, '_> {
-    fn match_path_require_call(&self, call: &crate::nodes::FunctionCall, _source: &Path) -> Option<(PathBuf, SingularPathLocator<'_, '_, '_>)> {
+    fn match_path_require_call(
+        &self,
+        call: &crate::nodes::FunctionCall,
+        _source: &Path,
+    ) -> Option<(PathBuf, SingularPathLocator<'_, '_, '_>)> {
         match_path_require_call(call).map(|x| (x, SingularPathLocator::Path(self.clone())))
     }
-    
+
     fn find_require_path(
         &self,
         path: impl Into<PathBuf>,

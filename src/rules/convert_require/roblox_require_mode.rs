@@ -1,9 +1,14 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    DarkluaError, frontend::DarkluaResult, nodes::{Arguments, Expression, FieldExpression, FunctionCall, IndexExpression, Prefix}, rules::{
-        Context, RequireModeLike, SingularRequireMode, convert_require::rojo_sourcemap::RojoSourcemap, require::path_utils::{get_relative_parent_path, get_relative_path}
-    }, utils
+    frontend::DarkluaResult,
+    nodes::{Arguments, Expression, FieldExpression, FunctionCall, IndexExpression, Prefix},
+    rules::{
+        convert_require::rojo_sourcemap::RojoSourcemap,
+        require::path_utils::{get_relative_parent_path, get_relative_path},
+        Context, RequireModeLike, SingularRequireMode,
+    },
+    utils, DarkluaError,
 };
 
 use std::path::{Component, Path, PathBuf};
@@ -54,7 +59,10 @@ impl RequireModeLike for RobloxRequireMode {
     }
 
     fn is_module_folder_name(&self, path: &Path) -> DarkluaResult<bool> {
-        Ok(matches!(path.file_stem().and_then(std::ffi::OsStr::to_str), Some("init")))
+        Ok(matches!(
+            path.file_stem().and_then(std::ffi::OsStr::to_str),
+            Some("init")
+        ))
     }
 
     fn find_require(
@@ -62,7 +70,8 @@ impl RequireModeLike for RobloxRequireMode {
         call: &FunctionCall,
         context: &Context,
     ) -> DarkluaResult<Option<(PathBuf, SingularRequireMode)>> {
-        parse_roblox(call, context.current_path()).map(|x| x.map(|y| (y, SingularRequireMode::Roblox(self.clone()))))
+        parse_roblox(call, context.current_path())
+            .map(|x| x.map(|y| (y, SingularRequireMode::Roblox(self.clone()))))
     }
 
     fn generate_require<T: RequireModeLike>(
@@ -262,7 +271,7 @@ pub fn parse_roblox(call: &FunctionCall, starting_path: &Path) -> DarkluaResult<
             parse_roblox_index(index, &mut path_builder, &mut current_path, &mut parented)?
         }
         Some(Expression::Call(call)) => {
-            parse_ffc_wfc(&call, &mut path_builder, &mut current_path, &mut parented)?
+            parse_ffc_wfc(call, &mut path_builder, &mut current_path, &mut parented)?
         }
         _ => Err(DarkluaError::custom(
             "unexpected require argument, only accepts fields or indexes",
@@ -351,7 +360,7 @@ fn parse_roblox_prefix(
         Prefix::Identifier(x) => {
             handle_roblox_script_parent(x.get_name(), path_builder, current_path, parented)?
         }
-        Prefix::Call(x) => parse_ffc_wfc(&x, path_builder, current_path, parented)?,
+        Prefix::Call(x) => parse_ffc_wfc(x, path_builder, current_path, parented)?,
         _ => Err(
             DarkluaError::custom("unexpected prefix, only constants accepted")
                 .context("while parsing roblox require"),
@@ -378,7 +387,7 @@ fn parse_roblox_expression(
             current_path,
             parented,
         )?,
-        Expression::Call(x) => parse_ffc_wfc(&x, path_builder, current_path, parented)?,
+        Expression::Call(x) => parse_ffc_wfc(x, path_builder, current_path, parented)?,
         _ => Err(
             DarkluaError::custom("unexpected expression, only constants accepted")
                 .context("while parsing roblox require"),

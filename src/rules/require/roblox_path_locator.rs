@@ -1,6 +1,17 @@
 use std::path::{Path, PathBuf};
 
-use crate::{DarkluaError, Resources, nodes::FunctionCall, rules::{RobloxRequireMode, parse_roblox, require::{PathLocator, hybrid_path_locator::SingularPathLocator, path_iterator, path_utils::is_require_relative}}, utils};
+use crate::{
+    nodes::FunctionCall,
+    rules::{
+        parse_roblox,
+        require::{
+            hybrid_path_locator::SingularPathLocator, path_iterator,
+            path_utils::is_require_relative, PathLocator,
+        },
+        RobloxRequireMode,
+    },
+    utils, DarkluaError, Resources,
+};
 
 #[derive(Clone, Debug)]
 pub(crate) struct RobloxPathLocator<'a, 'b, 'resources> {
@@ -24,7 +35,11 @@ impl<'a, 'b, 'c> RobloxPathLocator<'a, 'b, 'c> {
 }
 
 impl PathLocator for RobloxPathLocator<'_, '_, '_> {
-    fn match_path_require_call(&self, call: &FunctionCall, source: &Path) -> Option<(PathBuf, SingularPathLocator<'_, '_, '_>)> {
+    fn match_path_require_call(
+        &self,
+        call: &FunctionCall,
+        source: &Path,
+    ) -> Option<(PathBuf, SingularPathLocator<'_, '_, '_>)> {
         parse_roblox(call, source)
             .ok()
             .flatten()
@@ -37,10 +52,10 @@ impl PathLocator for RobloxPathLocator<'_, '_, '_> {
     }
 
     fn find_require_path(
-            &self,
-            path: impl Into<PathBuf>,
-            source: &Path,
-        ) -> Result<PathBuf, crate::DarkluaError> {
+        &self,
+        path: impl Into<PathBuf>,
+        source: &Path,
+    ) -> Result<PathBuf, crate::DarkluaError> {
         let mut path: PathBuf = path.into();
         log::trace!(
             "find require path for `{}` from `{}`",
@@ -56,10 +71,7 @@ impl PathLocator for RobloxPathLocator<'_, '_, '_> {
         }
 
         let normalized_path = utils::normalize_path_with_current_dir(&path);
-        for potential_path in path_iterator::find_require_paths(
-            &normalized_path,
-            "init",
-        ) {
+        for potential_path in path_iterator::find_require_paths(&normalized_path, "init") {
             if self.resources.is_file(&potential_path)? {
                 return Ok(utils::normalize_path_with_current_dir(potential_path));
             }
@@ -68,13 +80,10 @@ impl PathLocator for RobloxPathLocator<'_, '_, '_> {
         Err(
             DarkluaError::resource_not_found(&normalized_path).context(format!(
                 "tried `{}`",
-                path_iterator::find_require_paths(
-                    &normalized_path,
-                    "init"
-                )
-                .map(|potential_path| potential_path.display().to_string())
-                .collect::<Vec<_>>()
-                .join("`, `")
+                path_iterator::find_require_paths(&normalized_path, "init")
+                    .map(|potential_path| potential_path.display().to_string())
+                    .collect::<Vec<_>>()
+                    .join("`, `")
             )),
         )
     }

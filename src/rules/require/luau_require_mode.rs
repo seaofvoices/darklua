@@ -75,7 +75,10 @@ impl RequireModeLike for LuauRequireMode {
             let required_path =
                 path_locator.find_require_path(literal_path, context.current_path())?;
 
-            Ok(Some((required_path, SingularRequireMode::Luau(self.clone()))))
+            Ok(Some((
+                required_path,
+                SingularRequireMode::Luau(self.clone()),
+            )))
         } else {
             Ok(None)
         }
@@ -288,7 +291,10 @@ mod test {
         let context = make_context_with_files("/project/src/main.luau", &["/project/src/./module"]);
         let call = make_call("./module");
         let result = mode.find_require(&call, &context).unwrap();
-        assert_eq!(result.map(|(x, _)| x), Some(PathBuf::from("/project/src/./module")));
+        assert_eq!(
+            result.map(|(x, _)| x),
+            Some(PathBuf::from("/project/src/./module"))
+        );
     }
 
     #[test]
@@ -325,35 +331,45 @@ mod test {
         fn is_false_for_regular_name() {
             let require_mode = LuauRequireMode::default();
 
-            assert!(!require_mode.is_module_folder_name(Path::new("oops.lua")).unwrap());
+            assert!(!require_mode
+                .is_module_folder_name(Path::new("oops.lua"))
+                .unwrap());
         }
 
         #[test]
         fn is_true_for_init_lua() {
             let require_mode = LuauRequireMode::default();
 
-            assert!(require_mode.is_module_folder_name(Path::new("init.lua")).unwrap());
+            assert!(require_mode
+                .is_module_folder_name(Path::new("init.lua"))
+                .unwrap());
         }
 
         #[test]
         fn is_true_for_init_luau() {
             let require_mode = LuauRequireMode::default();
 
-            assert!(require_mode.is_module_folder_name(Path::new("init.luau")).unwrap());
+            assert!(require_mode
+                .is_module_folder_name(Path::new("init.luau"))
+                .unwrap());
         }
 
         #[test]
         fn is_true_for_folder_init_lua() {
             let require_mode = LuauRequireMode::default();
 
-            assert!(require_mode.is_module_folder_name(Path::new("folder/init.lua")).unwrap());
+            assert!(require_mode
+                .is_module_folder_name(Path::new("folder/init.lua"))
+                .unwrap());
         }
 
         #[test]
         fn is_true_for_folder_init_luau() {
             let require_mode = LuauRequireMode::default();
 
-            assert!(require_mode.is_module_folder_name(Path::new("folder/init.luau")).unwrap());
+            assert!(require_mode
+                .is_module_folder_name(Path::new("folder/init.luau"))
+                .unwrap());
         }
     }
 
