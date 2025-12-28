@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::frontend::DarkluaResult;
 use crate::nodes::{Arguments, FunctionCall, StringExpression};
 use crate::rules::require::{match_path_require_call, path_utils, LuauPathLocator, PathLocator};
-use crate::rules::{Context, RequireMode};
+use crate::rules::{Context, RequireModeLike};
 use crate::utils;
 use crate::DarkluaError;
 
@@ -38,20 +38,8 @@ impl Default for LuauRequireMode {
     }
 }
 
-impl LuauRequireMode {
-    /// Set if the require mode should use `.luaurc` configuration to resolve aliases.
-    pub fn with_configuration(mut self, use_luau_configuration: bool) -> Self {
-        self.use_luau_configuration = use_luau_configuration;
-        self
-    }
-
-    /// Add a new Luau alias to the require mode.
-    pub fn with_alias(mut self, name: impl Into<String>, path: impl Into<PathBuf>) -> Self {
-        self.aliases.insert(name.into(), path.into());
-        self
-    }
-
-    pub(crate) fn initialize(&mut self, context: &Context) -> Result<(), DarkluaError> {
+impl RequireModeLike for LuauRequireMode {
+    fn initialize(&mut self, context: &Context) -> Result<(), DarkluaError> {
         if !self.use_luau_configuration {
             self.luau_rc_aliases.take();
             return Ok(());
@@ -69,18 +57,13 @@ impl LuauRequireMode {
         Ok(())
     }
 
-    #[inline]
-    pub(crate) fn module_folder_name(&self) -> &str {
-        "init"
-    }
-
-    pub(crate) fn is_module_folder_name(&self, path: &Path) -> bool {
+    fn is_module_folder_name(&self, path: &Path) -> bool {
         let expect_value = Some(self.module_folder_name());
         path.file_name().and_then(OsStr::to_str) == expect_value
             || path.file_stem().and_then(OsStr::to_str) == expect_value
     }
 
-    pub(crate) fn find_require(
+    fn find_require(
         &self,
         call: &FunctionCall,
         context: &Context,
@@ -98,10 +81,10 @@ impl LuauRequireMode {
         }
     }
 
-    pub(crate) fn generate_require(
+    fn generate_require<T: RequireModeLike>(
         &self,
         require_path: &Path,
-        _current: &RequireMode,
+        _current: &T,
         context: &Context<'_, '_, '_>,
     ) -> Result<Option<Arguments>, crate::DarkluaError> {
         let source_path = utils::normalize_path(context.current_path());
@@ -224,6 +207,25 @@ impl LuauRequireMode {
         }
 
         path_utils::write_require_path(&generated_path).map(generate_require_arguments)
+    }
+}
+
+impl LuauRequireMode {
+    /// Set if the require mode should use `.luaurc` configuration to resolve aliases.
+    pub fn with_configuration(mut self, use_luau_configuration: bool) -> Self {
+        self.use_luau_configuration = use_luau_configuration;
+        self
+    }
+
+    /// Add a new Luau alias to the require mode.
+    pub fn with_alias(mut self, name: impl Into<String>, path: impl Into<PathBuf>) -> Self {
+        self.aliases.insert(name.into(), path.into());
+        self
+    }
+
+    #[inline]
+    pub(crate) fn module_folder_name(&self) -> &str {
+        "init"
     }
 
     pub(crate) fn get_source(&self, name: &str, rel: &Path) -> Option<PathBuf> {

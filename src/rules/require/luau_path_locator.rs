@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use super::{path_iterator, LuauRequireMode};
+use crate::rules::RequireModeLike;
 use crate::rules::require::path_utils::{get_relative_parent_path, is_require_relative};
 use crate::{utils, DarkluaError, Resources};
 

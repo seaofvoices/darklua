@@ -10,6 +10,7 @@ use crate::nodes::{Arguments, Block, FunctionCall};
 use crate::process::{DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor};
 use crate::rules::require::is_require_call;
 use crate::rules::{Context, RuleConfiguration, RuleConfigurationError, RuleProperties};
+use crate::DarkluaError;
 
 use instance_path::InstancePath;
 pub use roblox_index_style::RobloxIndexStyle;
@@ -18,15 +19,31 @@ pub use roblox_require_mode::RobloxRequireMode;
 use super::{verify_required_properties, PathRequireMode, Rule, RuleProcessResult};
 use crate::rules::require::LuauRequireMode;
 
-use std::ffi::OsStr;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 /// A representation of how require calls are handled and transformed.
+pub trait RequireModeLike {
+    fn find_require(
+        &self,
+        call: &FunctionCall,
+        context: &Context,
+    ) -> DarkluaResult<Option<PathBuf>>;
+    fn generate_require<T: RequireModeLike>(
+        &self,
+        path: &Path,
+        current_mode: &T,
+        context: &Context,
+    ) -> DarkluaResult<Option<Arguments>>;
+    fn is_module_folder_name(&self, path: &Path) -> bool;
+    fn initialize(&mut self, context: &Context) -> DarkluaResult<()>;
+}
+
+/// A representation of how require calls are handled and transformed.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "snake_case", tag = "name")]
-pub enum RequireMode {
+pub enum SingularRequireMode {
     /// Handles requires using file system paths
     Path(PathRequireMode),
     /// Handles requires using Luau module paths
@@ -35,29 +52,33 @@ pub enum RequireMode {
     Roblox(RobloxRequireMode),
 }
 
-impl RequireMode {
-    pub(crate) fn find_require(
+impl RequireModeLike for SingularRequireMode {
+    fn find_require(
         &self,
         call: &FunctionCall,
         context: &Context,
     ) -> DarkluaResult<Option<PathBuf>> {
         match self {
-            RequireMode::Path(path_mode) => path_mode.find_require(call, context),
-            RequireMode::Luau(luau_mode) => luau_mode.find_require(call, context),
-            RequireMode::Roblox(roblox_mode) => roblox_mode.find_require(call, context),
+            SingularRequireMode::Path(path_mode) => path_mode.find_require(call, context),
+            SingularRequireMode::Luau(luau_mode) => luau_mode.find_require(call, context),
+            SingularRequireMode::Roblox(roblox_mode) => roblox_mode.find_require(call, context),
         }
     }
 
-    fn generate_require(
+    fn generate_require<T: RequireModeLike>(
         &self,
         path: &Path,
-        current_mode: &Self,
+        current_mode: &T,
         context: &Context,
     ) -> DarkluaResult<Option<Arguments>> {
         match self {
-            RequireMode::Path(path_mode) => path_mode.generate_require(path, current_mode, context),
-            RequireMode::Luau(luau_mode) => luau_mode.generate_require(path, current_mode, context),
-            RequireMode::Roblox(roblox_mode) => {
+            SingularRequireMode::Path(path_mode) => {
+                path_mode.generate_require(path, current_mode, context)
+            }
+            SingularRequireMode::Luau(luau_mode) => {
+                luau_mode.generate_require(path, current_mode, context)
+            }
+            SingularRequireMode::Roblox(roblox_mode) => {
                 roblox_mode.generate_require(path, current_mode, context)
             }
         }
@@ -65,24 +86,22 @@ impl RequireMode {
 
     fn is_module_folder_name(&self, path: &Path) -> bool {
         match self {
-            RequireMode::Path(path_mode) => path_mode.is_module_folder_name(path),
-            RequireMode::Luau(luau_mode) => luau_mode.is_module_folder_name(path),
-            RequireMode::Roblox(_roblox_mode) => {
-                matches!(path.file_stem().and_then(OsStr::to_str), Some("init"))
-            }
+            SingularRequireMode::Path(path_mode) => path_mode.is_module_folder_name(path),
+            SingularRequireMode::Luau(luau_mode) => luau_mode.is_module_folder_name(path),
+            SingularRequireMode::Roblox(roblox_mode) => roblox_mode.is_module_folder_name(path),
         }
     }
 
     fn initialize(&mut self, context: &Context) -> DarkluaResult<()> {
         match self {
-            RequireMode::Roblox(roblox_mode) => roblox_mode.initialize(context),
-            RequireMode::Path(path_mode) => path_mode.initialize(context),
-            RequireMode::Luau(luau_mode) => luau_mode.initialize(context),
+            SingularRequireMode::Roblox(roblox_mode) => roblox_mode.initialize(context),
+            SingularRequireMode::Path(path_mode) => path_mode.initialize(context),
+            SingularRequireMode::Luau(luau_mode) => luau_mode.initialize(context),
         }
     }
 }
 
-impl FromStr for RequireMode {
+impl FromStr for SingularRequireMode {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -95,11 +114,88 @@ impl FromStr for RequireMode {
     }
 }
 
+/// A representation of how require calls are handled and transformed.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields, rename_all = "snake_case", tag = "name")]
+pub enum RequireMode {
+    Single(SingularRequireMode),
+    Hybrid(Vec<SingularRequireMode>),
+}
+
+impl RequireModeLike for RequireMode {
+    fn find_require(
+        &self,
+        call: &FunctionCall,
+        context: &Context,
+    ) -> DarkluaResult<Option<PathBuf>> {
+        match self {
+            RequireMode::Single(singular_require_mode) => {
+                singular_require_mode.find_require(call, context)
+            }
+            RequireMode::Hybrid(singular_require_modes) => {
+                for mode in singular_require_modes {
+                    if let Ok(Some(x)) = mode.find_require(call, context) {
+                        return Ok(Some(x));
+                    }
+                }
+
+                return Err(DarkluaError::custom("unable to find valid require"))?;
+            }
+        }
+    }
+
+    fn generate_require<T: RequireModeLike>(
+        &self,
+        path: &Path,
+        current_mode: &T,
+        context: &Context,
+    ) -> DarkluaResult<Option<Arguments>> {
+        match self {
+            RequireMode::Single(singular_require_mode) => {
+                singular_require_mode.generate_require(path, current_mode, context)
+            }
+            RequireMode::Hybrid(singular_require_modes) => {
+                for mode in singular_require_modes {
+                    if let Ok(Some(x)) = mode.generate_require(path, current_mode, context) {
+                        return Ok(Some(x));
+                    }
+                }
+
+                return Err(DarkluaError::custom("unable to find valid require"))?;
+            }
+        }
+    }
+
+    fn is_module_folder_name(&self, path: &Path) -> bool {
+        match self {
+            RequireMode::Single(singular_require_mode) => {
+                singular_require_mode.is_module_folder_name(path)
+            }
+            RequireMode::Hybrid(_singular_require_modes) => false,
+        }
+    }
+
+    fn initialize(&mut self, context: &Context) -> DarkluaResult<()> {
+        match self {
+            RequireMode::Single(singular_require_mode) => singular_require_mode.initialize(context),
+            RequireMode::Hybrid(singular_require_modes) => {
+                for mode in singular_require_modes {
+                    if let Ok(x) = mode.initialize(context) {
+                        return Ok(x);
+                    }
+                }
+
+                return Err(DarkluaError::custom("unable to find valid require"))?;
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 struct RequireConverter<'a> {
     identifier_tracker: IdentifierTracker,
     current: RequireMode,
-    target: RequireMode,
+    target: SingularRequireMode,
     context: &'a Context<'a, 'a, 'a>,
 }
 
@@ -118,7 +214,7 @@ impl DerefMut for RequireConverter<'_> {
 }
 
 impl<'a> RequireConverter<'a> {
-    fn new(current: RequireMode, target: RequireMode, context: &'a Context) -> Self {
+    fn new(current: RequireMode, target: SingularRequireMode, context: &'a Context) -> Self {
         Self {
             identifier_tracker: IdentifierTracker::new(),
             current,
@@ -161,14 +257,14 @@ pub const CONVERT_REQUIRE_RULE_NAME: &str = "convert_require";
 #[derive(Debug, PartialEq, Eq)]
 pub struct ConvertRequire {
     current: RequireMode,
-    target: RequireMode,
+    target: SingularRequireMode,
 }
 
 impl Default for ConvertRequire {
     fn default() -> Self {
         Self {
-            current: RequireMode::Path(Default::default()),
-            target: RequireMode::Roblox(Default::default()),
+            current: RequireMode::Single(SingularRequireMode::Path(Default::default())),
+            target: SingularRequireMode::Roblox(Default::default()),
         }
     }
 }
@@ -201,7 +297,13 @@ impl RuleConfiguration for ConvertRequire {
                     self.current = value.expect_require_mode(&key)?;
                 }
                 "target" => {
-                    self.target = value.expect_require_mode(&key)?;
+                    self.target = match value.expect_require_mode(&key)? {
+                        RequireMode::Single(singular_require_mode) => singular_require_mode,
+                        RequireMode::Hybrid(_) => Err(RuleConfigurationError::UnexpectedValue {
+                            property: String::from("target"),
+                            message: String::from("target can only be a singular require mode"),
+                        })?,
+                    };
                 }
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }

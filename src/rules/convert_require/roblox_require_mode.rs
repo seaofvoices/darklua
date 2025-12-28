@@ -1,21 +1,16 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    frontend::DarkluaResult,
-    nodes::{Arguments, FunctionCall, Prefix},
-    rules::{
-        convert_require::rojo_sourcemap::RojoSourcemap,
-        require::path_utils::{get_relative_parent_path, get_relative_path},
-        Context,
-    },
-    utils, DarkluaError,
+    DarkluaError, frontend::DarkluaResult, nodes::{Arguments, FunctionCall, Prefix}, rules::{
+        Context, RequireModeLike, convert_require::rojo_sourcemap::RojoSourcemap, require::path_utils::{get_relative_parent_path, get_relative_path}
+    }, utils
 };
 
 use std::path::{Component, Path, PathBuf};
 
 use super::{
     instance_path::{get_parent_instance, script_identifier},
-    RequireMode, RobloxIndexStyle,
+    RobloxIndexStyle,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -28,8 +23,8 @@ pub struct RobloxRequireMode {
     cached_sourcemap: Option<RojoSourcemap>,
 }
 
-impl RobloxRequireMode {
-    pub(crate) fn initialize(&mut self, context: &Context) -> DarkluaResult<()> {
+impl RequireModeLike for RobloxRequireMode {
+    fn initialize(&mut self, context: &Context) -> DarkluaResult<()> {
         if let Some(ref rojo_sourcemap_path) = self
             .rojo_sourcemap
             .as_ref()
@@ -58,7 +53,11 @@ impl RobloxRequireMode {
         Ok(())
     }
 
-    pub(crate) fn find_require(
+    fn is_module_folder_name(&self, path: &Path) -> bool {
+        matches!(path.file_stem().and_then(std::ffi::OsStr::to_str), Some("init"))
+    }
+
+    fn find_require(
         &self,
         _call: &FunctionCall,
         _context: &Context,
@@ -67,10 +66,10 @@ impl RobloxRequireMode {
             .context("Roblox require mode cannot be used as the current require mode"))
     }
 
-    pub(crate) fn generate_require(
+    fn generate_require<T: RequireModeLike>(
         &self,
         require_path: &Path,
-        current: &RequireMode,
+        current: &T,
         context: &Context,
     ) -> DarkluaResult<Option<Arguments>> {
         let source_path = utils::normalize_path(context.current_path());

@@ -3,8 +3,7 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 
 use crate::rules::{
-    require::{LuauPathLocator, LuauRequireMode, PathRequireMode, RequirePathLocator},
-    RuleProcessResult,
+    RequireModeLike, RuleProcessResult, require::{LuauPathLocator, LuauRequireMode, PathRequireMode, RequirePathLocator}
 };
 use crate::{nodes::Block, rules::Context};
 
