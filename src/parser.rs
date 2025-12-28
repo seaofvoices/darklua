@@ -2218,11 +2218,62 @@ mod test {
                             create_identifier("key", 11, 0),
                             TypeName::new(create_identifier("string", 16, 1)),
                         )
-                        .with_token(spaced_token(14, 15))
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(14, 15),
+                            modifier: None,
+                        })
                     )
                     .with_tokens(TableTypeTokens {
                         opening_brace: spaced_token(9, 10),
                         closing_brace: token_at_first_line(23, 24),
+                        separators: Vec::new(),
+                    })
+            ).with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
+            type_declaration_to_table_with_one_read_prop("type T = { read key: string }") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                TableType::default()
+                    .with_property(
+                        TablePropertyType::new(
+                            create_identifier("key", 16, 0),
+                            TypeName::new(create_identifier("string", 21, 1)),
+                        )
+                        .with_modifier(TablePropertyModifier::Read)
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(19, 20),
+                            modifier: Some(spaced_token(11, 15)),
+                        })
+                    )
+                    .with_tokens(TableTypeTokens {
+                        opening_brace: spaced_token(9, 10),
+                        closing_brace: token_at_first_line(28, 29),
+                        separators: Vec::new(),
+                    })
+            ).with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
+            type_declaration_to_table_with_one_write_prop("type T = { write key: string }") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                TableType::default()
+                    .with_property(
+                        TablePropertyType::new(
+                            create_identifier("key", 17, 0),
+                            TypeName::new(create_identifier("string", 22, 1)),
+                        )
+                        .with_modifier(TablePropertyModifier::Write)
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(20, 21),
+                            modifier: Some(spaced_token(11, 16)),
+                        })
+                    )
+                    .with_tokens(TableTypeTokens {
+                        opening_brace: spaced_token(9, 10),
+                        closing_brace: token_at_first_line(29, 30),
                         separators: Vec::new(),
                     })
             ).with_tokens(TypeDeclarationTokens {
@@ -2238,7 +2289,10 @@ mod test {
                             create_identifier("key", 11, 0),
                             TypeName::new(create_identifier("string", 16, 0)),
                         )
-                        .with_token(spaced_token(14, 15))
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(14, 15),
+                            modifier: None,
+                        })
                     )
                     .with_tokens(TableTypeTokens {
                         opening_brace: spaced_token(9, 10),
@@ -2258,19 +2312,60 @@ mod test {
                             create_identifier("key", 11, 0),
                             TypeName::new(create_identifier("string", 16, 0)),
                         )
-                        .with_token(spaced_token(14, 15))
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(14, 15),
+                            modifier: None,
+                        })
                     )
                     .with_property(
                         TablePropertyType::new(
                             create_identifier("key2", 24, 1),
                             Type::Nil(Some(spaced_token(31, 34)))
                         )
-                        .with_token(spaced_token(29, 30))
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(29, 30),
+                            modifier: None,
+                        })
                     )
                     .with_tokens(TableTypeTokens {
                         opening_brace: spaced_token(9, 10),
                         closing_brace: token_at_first_line(35, 36),
                         separators: vec![spaced_token(22, 23)],
+                    })
+            ).with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
+            type_declaration_to_table_with_two_props_and_modifiers("type T = { read key: string, write key2 : nil }") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                TableType::default()
+                    .with_property(
+                        TablePropertyType::new(
+                            create_identifier("key", 16, 0),
+                            TypeName::new(create_identifier("string", 21, 0)),
+                        )
+                        .with_modifier(TablePropertyModifier::Read)
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(19, 20),
+                            modifier: Some(spaced_token(11, 15)),
+                        })
+                    )
+                    .with_property(
+                        TablePropertyType::new(
+                            create_identifier("key2", 35, 1),
+                            Type::Nil(Some(spaced_token(42, 45)))
+                        )
+                        .with_modifier(TablePropertyModifier::Write)
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(40, 41),
+                            modifier: Some(spaced_token(29, 34)),
+                        })
+                    )
+                    .with_tokens(TableTypeTokens {
+                        opening_brace: spaced_token(9, 10),
+                        closing_brace: token_at_first_line(46, 47),
+                        separators: vec![spaced_token(27, 28)],
                     })
             ).with_tokens(TypeDeclarationTokens {
                 r#type: spaced_token(0, 4),
@@ -2285,14 +2380,20 @@ mod test {
                             create_identifier("key", 11, 0),
                             TypeName::new(create_identifier("string", 16, 0)),
                         )
-                        .with_token(spaced_token(14, 15))
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(14, 15),
+                            modifier: None,
+                        })
                     )
                     .with_property(
                         TablePropertyType::new(
                             create_identifier("key2", 24, 1),
                             Type::Nil(Some(spaced_token(31, 34)))
                         )
-                        .with_token(spaced_token(29, 30))
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(29, 30),
+                            modifier: None,
+                        })
                     )
                     .with_tokens(TableTypeTokens {
                         opening_brace: spaced_token(9, 10),
@@ -2316,13 +2417,17 @@ mod test {
                             opening_bracket: token_at_first_line(11, 12),
                             closing_bracket: token_at_first_line(18, 19),
                             colon: spaced_token(19, 20),
+                            modifier: None,
                         })
                     )
                     .with_property(
                         TablePropertyType::new(
                             create_identifier("n", 29, 0),
                             TypeName::new(create_identifier("number", 32, 1))
-                        ).with_token(spaced_token(30, 31))
+                        ).with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(30, 31),
+                            modifier: None,
+                        })
                     )
                     .with_tokens(TableTypeTokens {
                         opening_brace: spaced_token(9, 10),
@@ -2341,7 +2446,10 @@ mod test {
                         TablePropertyType::new(
                             create_identifier("n", 11, 0),
                             TypeName::new(create_identifier("number", 14, 0))
-                        ).with_token(spaced_token(12, 13))
+                        ).with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(12, 13),
+                            modifier: None,
+                        })
                     )
                     .with_indexer_type(
                         TableIndexerType::new(
@@ -2352,6 +2460,7 @@ mod test {
                             opening_bracket: token_at_first_line(22, 23),
                             closing_bracket: token_at_first_line(29, 30),
                             colon: spaced_token(30, 31),
+                            modifier: None,
                         })
                     )
                     .with_tokens(TableTypeTokens {
@@ -2377,6 +2486,7 @@ mod test {
                             opening_bracket: token_at_first_line(11, 12),
                             closing_bracket: token_at_first_line(17, 18),
                             colon: spaced_token(18, 19),
+                            modifier: None,
                         })
                     )
                     .with_tokens(TableTypeTokens {
@@ -2401,11 +2511,64 @@ mod test {
                             opening_bracket: token_at_first_line(11, 12),
                             closing_bracket: token_at_first_line(18, 19),
                             colon: spaced_token(19, 20),
+                            modifier: None,
                         })
                     )
                     .with_tokens(TableTypeTokens {
                         opening_brace: spaced_token(9, 10),
                         closing_brace: token_at_first_line(29, 30),
+                        separators: Vec::new(),
+                    })
+            ).with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
+            type_declaration_to_table_with_read_indexer_type("type T = { read [string]: boolean }") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                TableType::default()
+                    .with_indexer_type(
+                        TableIndexerType::new(
+                            TypeName::new(create_identifier("string", 17, 0)),
+                            TypeName::new(create_identifier("boolean", 26, 1)),
+                        )
+                        .with_modifier(TablePropertyModifier::Read)
+                        .with_tokens(TableIndexTypeTokens {
+                            opening_bracket: token_at_first_line(16, 17),
+                            closing_bracket: token_at_first_line(23, 24),
+                            colon: spaced_token(24, 25),
+                            modifier: Some(spaced_token(11, 15)),
+                        })
+                    )
+                    .with_tokens(TableTypeTokens {
+                        opening_brace: spaced_token(9, 10),
+                        closing_brace: token_at_first_line(34, 35),
+                        separators: Vec::new(),
+                    })
+            ).with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
+            type_declaration_to_table_with_write_indexer_type("type T = { write [string]: boolean }") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                TableType::default()
+                    .with_indexer_type(
+                        TableIndexerType::new(
+                            TypeName::new(create_identifier("string", 18, 0)),
+                            TypeName::new(create_identifier("boolean", 27, 1)),
+                        )
+                        .with_modifier(TablePropertyModifier::Write)
+                        .with_tokens(TableIndexTypeTokens {
+                            opening_bracket: token_at_first_line(17, 18),
+                            closing_bracket: token_at_first_line(24, 25),
+                            colon: spaced_token(25, 26),
+                            modifier: Some(spaced_token(11, 16)),
+                        })
+                    )
+                    .with_tokens(TableTypeTokens {
+                        opening_brace: spaced_token(9, 10),
+                        closing_brace: token_at_first_line(35, 36),
                         separators: Vec::new(),
                     })
             ).with_tokens(TypeDeclarationTokens {

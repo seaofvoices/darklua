@@ -176,21 +176,17 @@ impl RuleConfiguration for AppendTextComment {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 enum TextContent {
+    #[default]
     None,
     Value(String),
     FilePath(PathBuf),
 }
 
-impl Default for TextContent {
-    fn default() -> Self {
-        Self::None
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 enum AppendLocation {
+    #[default]
     Start,
     End,
 }
@@ -209,12 +205,6 @@ impl AppendLocation {
     }
 }
 
-impl Default for AppendLocation {
-    fn default() -> Self {
-        Self::Start
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -226,14 +216,25 @@ mod test {
     fn serialize_rule_with_text() {
         let rule: Box<dyn Rule> = Box::new(AppendTextComment::new("content"));
 
-        assert_json_snapshot!("append_text_comment_with_text", rule);
+        assert_json_snapshot!(rule, @r###"
+        {
+          "rule": "append_text_comment",
+          "text": "content"
+        }
+        "###);
     }
 
     #[test]
     fn serialize_rule_with_text_at_end() {
         let rule: Box<dyn Rule> = Box::new(AppendTextComment::new("content").at_end());
 
-        assert_json_snapshot!("append_text_comment_with_text_at_end", rule);
+        assert_json_snapshot!(rule, @r###"
+        {
+          "rule": "append_text_comment",
+          "location": "end",
+          "text": "content"
+        }
+        "###);
     }
 
     #[test]
@@ -245,7 +246,7 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 
     #[test]
@@ -257,6 +258,6 @@ mod test {
             location: 'oops',
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected value for field 'location': invalid value `oops` (must be `start` or `end`)");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected value for field 'location': invalid value `oops` (must be `start` or `end`) at line 1 column 1");
     }
 }

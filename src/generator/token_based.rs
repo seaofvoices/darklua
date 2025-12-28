@@ -800,10 +800,17 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         for (i, property) in table_type.iter_entries().enumerate() {
             match property {
                 TableEntryType::Property(property) => {
+                    self.write_table_property_modifier(
+                        property.get_modifier(),
+                        property
+                            .get_tokens()
+                            .and_then(|tokens| tokens.modifier.as_ref()),
+                    );
+
                     self.write_identifier(property.get_identifier());
 
-                    if let Some(colon) = property.get_token() {
-                        self.write_token(colon);
+                    if let Some(tokens) = property.get_tokens() {
+                        self.write_token(&tokens.colon);
                     } else {
                         self.write_symbol(":");
                     }
@@ -842,11 +849,35 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         self.write_token(&tokens.closing_brace);
     }
 
+    fn write_table_property_modifier(
+        &mut self,
+        modifier: Option<&TablePropertyModifier>,
+        token: Option<&Token>,
+    ) {
+        if let Some(modifier) = modifier {
+            if let Some(token) = token {
+                self.write_token(token);
+            } else {
+                match modifier {
+                    TablePropertyModifier::Read => self.write_symbol("read"),
+                    TablePropertyModifier::Write => self.write_symbol("write"),
+                }
+            }
+        }
+    }
+
     fn write_table_indexer_type_with_tokens(
         &mut self,
         indexer_type: &TableIndexerType,
         tokens: &TableIndexTypeTokens,
     ) {
+        self.write_table_property_modifier(
+            indexer_type.get_modifier(),
+            indexer_type
+                .get_tokens()
+                .and_then(|tokens| tokens.modifier.as_ref()),
+        );
+
         self.write_token(&tokens.opening_bracket);
 
         let key_type = indexer_type.get_key_type();
@@ -874,6 +905,13 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         property: &TableLiteralPropertyType,
         tokens: &TableIndexTypeTokens,
     ) {
+        self.write_table_property_modifier(
+            property.get_modifier(),
+            property
+                .get_tokens()
+                .and_then(|tokens| tokens.modifier.as_ref()),
+        );
+
         self.write_token(&tokens.opening_bracket);
         self.write_string_type(property.get_string());
         self.write_token(&tokens.closing_bracket);
@@ -1501,6 +1539,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
             opening_bracket: Token::from_content("["),
             closing_bracket: Token::from_content("]"),
             colon: Token::from_content(":"),
+            modifier: None,
         }
     }
 

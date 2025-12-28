@@ -1088,6 +1088,22 @@ impl<'a> AstConverter<'a> {
                     for field in fields {
                         use ast::luau::TypeFieldKey;
 
+                        let modifier = field.access().and_then(|token| {
+                            match token.token().to_string().as_str() {
+                                "read" => Some(TablePropertyModifier::Read),
+                                "write" => Some(TablePropertyModifier::Write),
+                                modifier => {
+                                    log::warn!("Unknown access modifier: {}", modifier);
+                                    None
+                                }
+                            }
+                        });
+                        let modifier_token = self
+                            .hold_token_data
+                            .then_some(())
+                            .and_then(|()| field.access().map(|token| self.convert_token(token)))
+                            .transpose()?;
+
                         match field.key() {
                             TypeFieldKey::Name(property_name) => {
                                 let mut property_type = TablePropertyType::new(
@@ -1095,9 +1111,15 @@ impl<'a> AstConverter<'a> {
                                     self.pop_type()?,
                                 );
 
+                                if let Some(modifier) = modifier {
+                                    property_type.set_modifier(modifier);
+                                }
+
                                 if self.hold_token_data {
-                                    property_type
-                                        .set_token(self.convert_token(field.colon_token())?);
+                                    property_type.set_tokens(TablePropertyTypeTokens {
+                                        colon: self.convert_token(field.colon_token())?,
+                                        modifier: modifier_token,
+                                    });
                                 }
 
                                 table_type.push_property(property_type);
@@ -1105,6 +1127,10 @@ impl<'a> AstConverter<'a> {
                             TypeFieldKey::IndexSignature { brackets, .. } => {
                                 let mut indexer_type =
                                     TableIndexerType::new(self.pop_type()?, self.pop_type()?);
+
+                                if let Some(modifier) = modifier {
+                                    indexer_type.set_modifier(modifier);
+                                }
 
                                 if self.hold_token_data {
                                     let (opening_bracket, closing_bracket) =
@@ -1114,6 +1140,7 @@ impl<'a> AstConverter<'a> {
                                         opening_bracket,
                                         closing_bracket,
                                         colon: self.convert_token(field.colon_token())?,
+                                        modifier: modifier_token,
                                     })
                                 }
 

@@ -12,16 +12,11 @@ use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 enum ReplacementStrategy {
+    #[default]
     StringSpecifier,
     ToStringSpecifier,
-}
-
-impl Default for ReplacementStrategy {
-    fn default() -> Self {
-        Self::StringSpecifier
-    }
 }
 
 struct RemoveInterpolatedStringProcessor {
@@ -262,7 +257,7 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_remove_interpolated_string", rule);
+        assert_json_snapshot!(rule, @r###""remove_interpolated_string""###);
     }
 
     #[test]
@@ -271,7 +266,12 @@ mod test {
             strategy: ReplacementStrategy::ToStringSpecifier,
         });
 
-        assert_json_snapshot!("remove_interpolated_string_tostring_strategy", rule);
+        assert_json_snapshot!(rule, @r###"
+        {
+          "rule": "remove_interpolated_string",
+          "strategy": "tostring"
+        }
+        "###);
     }
 
     #[test]
@@ -282,6 +282,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 }

@@ -18,7 +18,7 @@ rokit add seaofvoices/darklua
 If you are already using [Foreman](https://github.com/Roblox/foreman), then installing darklua is as simple as adding this line in the `foreman.toml` file:
 
 ```toml
-darklua = { github = "seaofvoices/darklua", version = "=0.17.2" }
+darklua = { github = "seaofvoices/darklua", version = "=0.17.3" }
 ```
 
 ## Download a Release

@@ -1,7 +1,7 @@
 use crate::nodes::{Expression, NumberExpression, StringExpression};
 
 /// Represents an evaluated Expression result.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub enum LuaValue {
     False,
     Function,
@@ -10,6 +10,7 @@ pub enum LuaValue {
     String(Vec<u8>),
     Table,
     True,
+    #[default]
     Unknown,
 }
 
@@ -123,12 +124,6 @@ impl LuaValue {
             Self::String(value) => LuaValue::Number(value.len() as f64),
             _ => LuaValue::Unknown,
         }
-    }
-}
-
-impl Default for LuaValue {
-    fn default() -> Self {
-        Self::Unknown
     }
 }
 

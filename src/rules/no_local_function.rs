@@ -102,7 +102,7 @@ mod test {
 
     #[test]
     fn serialize_default_rule() {
-        assert_json_snapshot!("default_convert_local_function_to_assign", new_rule());
+        assert_json_snapshot!(new_rule(), @r###""convert_local_function_to_assign""###);
     }
 
     #[test]
@@ -113,6 +113,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1")
     }
 }

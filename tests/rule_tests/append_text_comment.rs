@@ -130,5 +130,5 @@ fn deserialize_from_object_notation() {
 fn deserialize_from_string_fails() {
     let err = json5::from_str::<Box<dyn Rule>>(r#"'append_text_comment'"#).unwrap_err();
 
-    pretty_assertions::assert_eq!("missing one field from `text` and `file`", err.to_string())
+    insta::assert_snapshot!(err.to_string(), @"missing one field from `text` and `file` at line 1 column 1")
 }

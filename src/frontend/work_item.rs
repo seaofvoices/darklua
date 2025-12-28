@@ -69,8 +69,9 @@ impl WorkProgress {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub(crate) enum WorkStatus {
+    #[default]
     NotStarted,
     InProgress(Box<WorkProgress>),
     Done(DarkluaResult<()>),
@@ -87,12 +88,6 @@ impl WorkStatus {
 
     pub(crate) fn is_done(&self) -> bool {
         matches!(self, WorkStatus::Done(_))
-    }
-}
-
-impl Default for WorkStatus {
-    fn default() -> Self {
-        Self::NotStarted
     }
 }
 
