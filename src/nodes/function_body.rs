@@ -1,9 +1,8 @@
-use crate::nodes::{TypeFunctionStatement, TypeFunctionStatementTokens};
-
 use super::{
     Block, FunctionExpression, FunctionName, FunctionReturnType, FunctionStatement,
     FunctionVariadicType, GenericParameters, Identifier, LocalFunctionStatement,
-    LocalFunctionTokens, Token, TypedIdentifier,
+    LocalFunctionTokens, Token, TypeFunctionStatement, TypeFunctionStatementTokens,
+    TypedIdentifier,
 };
 
 pub(crate) struct FunctionBuilder {
