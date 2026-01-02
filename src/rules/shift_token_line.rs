@@ -86,6 +86,10 @@ impl NodeProcessor for ShiftTokenLineProcessor {
         type_declaration.shift_token_line(self.shift_amount);
     }
 
+    fn process_type_function(&mut self, function: &mut TypeFunctionStatement) {
+        function.shift_token_line(self.shift_amount);
+    }
+
     fn process_expression(&mut self, expression: &mut Expression) {
         match expression {
             Expression::False(token)

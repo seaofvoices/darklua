@@ -78,6 +78,10 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
         type_declaration.clear_whitespaces();
     }
 
+    fn process_type_function(&mut self, type_function: &mut TypeFunctionStatement) {
+        type_function.clear_whitespaces();
+    }
+
     fn process_expression(&mut self, expression: &mut Expression) {
         match expression {
             Expression::False(token)

@@ -104,7 +104,7 @@ impl AstFuzzer {
                 AstFuzzerWork::FuzzStatement => {
                     match self
                         .random
-                        .range(if self.budget.has_types() { 12 } else { 11 })
+                        .range(if self.budget.has_types() { 13 } else { 11 })
                     {
                         0 => {
                             let variables = self.random.assignment_variables();
@@ -237,7 +237,7 @@ impl AstFuzzer {
                             self.budget.take_expression();
                             self.fuzz_expression();
                         }
-                        _ => {
+                        12 => {
                             // take type for declared type
                             self.budget.take_type();
 
@@ -289,6 +289,20 @@ impl AstFuzzer {
                                     TypeParameterWithDefaultKind::GenericPackWithGenericPack => {}
                                 }
                             }
+                        }
+                        _ => {
+                            // take type for function type
+                            self.budget.take_type();
+
+                            self.generate_function(
+                                |parameters, has_return_type, has_variadic_type| {
+                                    AstFuzzerWork::MakeTypeFunction {
+                                        parameters,
+                                        has_return_type,
+                                        has_variadic_type,
+                                    }
+                                },
+                            );
                         }
                     }
                 }
@@ -396,6 +410,39 @@ impl AstFuzzer {
                     }
 
                     self.statements.push(type_declaration.into());
+                }
+                AstFuzzerWork::MakeTypeFunction {
+                    parameters,
+                    has_return_type,
+                    has_variadic_type,
+                } => {
+                    let block = self.pop_block();
+                    let parameters = self.pop_typed_identifiers(parameters);
+
+                    let mut type_function = TypeFunctionStatement::new(
+                        self.random.identifier(),
+                        block,
+                        parameters,
+                        has_variadic_type || self.random.function_is_variadic(),
+                    );
+
+                    if let Some(generics) = self.generate_function_generics() {
+                        type_function.set_generic_parameters(generics);
+                    }
+
+                    if has_return_type {
+                        type_function.set_return_type(self.pop_return_type());
+                    }
+
+                    if has_variadic_type {
+                        type_function.set_variadic_type(self.pop_type());
+                    }
+
+                    if self.random.export_type_function() {
+                        type_function.set_exported();
+                    }
+
+                    self.statements.push(type_function.into());
                 }
                 AstFuzzerWork::FuzzLastStatement => match self.random.range(2) {
                     0 => {

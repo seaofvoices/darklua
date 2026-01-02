@@ -128,6 +128,11 @@ pub enum AstFuzzerWork {
     MakeTypeDeclaration {
         type_parameter_with_defaults: Vec<TypeParameterWithDefaultKind>,
     },
+    MakeTypeFunction {
+        parameters: usize,
+        has_return_type: bool,
+        has_variadic_type: bool,
+    },
     MakeTableType {
         properties: usize,
         literal_properties: usize,
