@@ -641,7 +641,8 @@ impl LuaGenerator for DenseLuaGenerator {
         if function.is_exported() {
             self.push_str("export");
         }
-        self.push_str("type function");
+        self.push_str("type");
+        self.push_str("function");
 
         self.write_identifier(function.get_identifier());
 
