@@ -79,3 +79,15 @@ export  type PublicMyT = (MyT)
 type Opt<T> = Module . OtherType 
 
 type Try = (...'a'  ) -> typeof ( fn()  )
+
+type function identity_fn(t): () 
+    return t
+end
+
+export    type function identity_fn   ( ... )
+    return (...)
+end
+
+type   function   example_complex_type_function <  T , U, R...>(first: T & U, opts: { [number  ]: string }? , ...: R...) :  ()
+    return first
+end

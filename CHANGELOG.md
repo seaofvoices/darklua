@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* add support for type functions ([#333](https://github.com/seaofvoices/darklua/pull/333))
 * add support for property modifiers in table types (like `read` in a type like `{ read name: string }`) ([#332](https://github.com/seaofvoices/darklua/pull/332))
 
 ## 0.17.3

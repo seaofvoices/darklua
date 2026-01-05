@@ -301,6 +301,10 @@ impl RandomAst {
         rng().random_bool(0.5)
     }
 
+    pub fn export_type_function(&self) -> bool {
+        rng().random_bool(0.5)
+    }
+
     pub fn table_type_indexer(&self) -> bool {
         rng().random_bool(0.25)
     }

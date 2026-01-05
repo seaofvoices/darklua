@@ -16,6 +16,7 @@ enum StatementType {
     Repeat,
     While,
     TypeDeclaration,
+    TypeFunction,
     Return,
     Break,
     Continue,
@@ -38,6 +39,7 @@ impl From<&nodes::Statement> for StatementType {
             Repeat(_) => Self::Repeat,
             While(_) => Self::While,
             TypeDeclaration(_) => Self::TypeDeclaration,
+            TypeFunction(_) => Self::TypeFunction,
         }
     }
 }
@@ -869,6 +871,45 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.pop_can_add_new_line();
 
         self.write_type(statement.get_type());
+    }
+
+    fn write_type_function_statement(&mut self, function: &nodes::TypeFunctionStatement) {
+        self.push_can_add_new_line(false);
+        if function.is_exported() {
+            self.push_str("export");
+        }
+        self.push_str("type function ");
+        self.write_identifier(function.get_identifier());
+
+        if let Some(generics) = function.get_generic_parameters() {
+            self.write_function_generics(generics);
+        }
+
+        self.raw_push_char('(');
+
+        self.pop_can_add_new_line();
+
+        let parameters = function.get_parameters();
+        self.write_function_parameters(
+            parameters,
+            function.is_variadic(),
+            function.get_variadic_type(),
+        );
+        self.raw_push_char(')');
+
+        if let Some(return_type) = function.get_return_type() {
+            self.write_function_return_type_suffix(return_type);
+        }
+
+        let block = function.get_block();
+
+        if block.is_empty() {
+            self.raw_push_str(" end");
+        } else {
+            self.push_new_line();
+            self.indent_and_write_block(block);
+            self.push_str("end");
+        }
     }
 
     fn write_false_expression(&mut self, _token: &Option<nodes::Token>) {

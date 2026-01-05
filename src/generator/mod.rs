@@ -37,6 +37,7 @@ pub trait LuaGenerator {
             Repeat(statement) => self.write_repeat_statement(statement),
             While(statement) => self.write_while_statement(statement),
             TypeDeclaration(statement) => self.write_type_declaration_statement(statement),
+            TypeFunction(statement) => self.write_type_function_statement(statement),
         }
     }
 
@@ -53,6 +54,7 @@ pub trait LuaGenerator {
     fn write_repeat_statement(&mut self, repeat: &nodes::RepeatStatement);
     fn write_while_statement(&mut self, while_statement: &nodes::WhileStatement);
     fn write_type_declaration_statement(&mut self, statement: &nodes::TypeDeclarationStatement);
+    fn write_type_function_statement(&mut self, statement: &nodes::TypeFunctionStatement);
 
     fn write_variable(&mut self, variable: &nodes::Variable) {
         use nodes::Variable::*;
@@ -882,6 +884,18 @@ mod $mod_name {
                         )
                     ),
         ));
+
+        snapshot_node!($mod_name, $generator, type_function, write_type_function_statement => (
+            empty => TypeFunctionStatement::from_name("nothing", Block::default()),
+            empty_exported => TypeFunctionStatement::from_name("nothing", Block::default())
+                .export(),
+            empty_with_parameter => TypeFunctionStatement::from_name("nothing", Block::default())
+                .with_parameter("param"),
+            empty_with_parameters_and_return_type => TypeFunctionStatement::from_name("nothing", Block::default())
+                .with_parameter("param")
+                .with_return_type(Type::from(true)),
+        ));
+
 
         snapshot_node!($mod_name, $generator, if_statement, write_statement => (
             empty => IfStatement::create(false, Block::default()),

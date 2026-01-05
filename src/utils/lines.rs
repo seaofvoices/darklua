@@ -83,6 +83,9 @@ fn last_statement_token(statement: &Statement) -> Option<&Token> {
         Statement::TypeDeclaration(type_declaration) => {
             last_type_token(type_declaration.get_type())
         }
+        Statement::TypeFunction(type_function) => {
+            type_function.get_tokens().map(|tokens| &tokens.end)
+        }
     }
 }
 
@@ -206,6 +209,13 @@ fn first_statement_token(statement: &Statement) -> Option<&Token> {
                 }
             })
         }
+        Statement::TypeFunction(type_function) => type_function.get_tokens().and_then(|tokens| {
+            if type_function.is_exported() {
+                tokens.export.as_ref()
+            } else {
+                Some(&tokens.r#type)
+            }
+        }),
     }
 }
 
