@@ -90,6 +90,29 @@ impl NodeProcessor for Processor<'_> {
         function.replace_referenced_tokens(self.code);
     }
 
+    fn process_attributes(&mut self, attributes: &mut Attributes) {
+        attributes.replace_referenced_tokens(self.code);
+    }
+
+    fn process_literal_expression(&mut self, expression: &mut LiteralExpression) {
+        match expression {
+            LiteralExpression::True(token)
+            | LiteralExpression::False(token)
+            | LiteralExpression::Nil(token) => {
+                if let Some(token) = token {
+                    token.replace_referenced_tokens(self.code)
+                }
+            }
+            LiteralExpression::Number(_)
+            | LiteralExpression::String(_)
+            | LiteralExpression::Table(_) => {}
+        }
+    }
+
+    fn process_literal_table(&mut self, table: &mut LiteralTable) {
+        table.replace_referenced_tokens(self.code);
+    }
+
     fn process_expression(&mut self, expression: &mut Expression) {
         match expression {
             Expression::False(token)

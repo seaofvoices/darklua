@@ -1116,6 +1116,12 @@ impl AstFuzzer {
                         has_variadic_type || self.random.function_is_variadic(),
                     );
 
+                    for attribute_name in self.random.function_attributes() {
+                        function
+                            .mutate_attributes()
+                            .append_attribute(NamedAttribute::new(attribute_name));
+                    }
+
                     if let Some(generics) = self.generate_function_generics() {
                         function.set_generic_parameters(generics);
                     }
@@ -1151,6 +1157,12 @@ impl AstFuzzer {
                         has_variadic_type || self.random.function_is_variadic(),
                     );
 
+                    for attribute_name in self.random.function_attributes() {
+                        function
+                            .mutate_attributes()
+                            .append_attribute(NamedAttribute::new(attribute_name));
+                    }
+
                     if let Some(generics) = self.generate_function_generics() {
                         function.set_generic_parameters(generics);
                     }
@@ -1178,6 +1190,12 @@ impl AstFuzzer {
                         parameters,
                         has_variadic_type || self.random.function_is_variadic(),
                     );
+
+                    for attribute_name in self.random.function_attributes() {
+                        function
+                            .mutate_attributes()
+                            .append_attribute(NamedAttribute::new(attribute_name));
+                    }
 
                     if let Some(generics) = self.generate_function_generics() {
                         function.set_generic_parameters(generics);

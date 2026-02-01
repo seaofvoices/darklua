@@ -407,11 +407,120 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         self.write_token(&tokens.end);
     }
 
+    fn write_attributes(&mut self, attributes: &Attributes) {
+        for attribute in attributes.iter_attributes() {
+            match attribute {
+                Attribute::Name(named) => {
+                    if let Some(token) = named.get_token() {
+                        self.write_named_attribute_with_token(named, token);
+                    } else {
+                        self.write_named_attribute_with_token(
+                            named,
+                            &self.generate_named_attribute_token(named),
+                        );
+                    }
+                }
+                Attribute::Group(group) => {
+                    if let Some(tokens) = group.get_tokens() {
+                        self.write_attribute_group_with_tokens(group, tokens);
+                    } else {
+                        self.write_attribute_group_with_tokens(
+                            group,
+                            &self.generate_attribute_group_tokens(group),
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    fn write_named_attribute_with_token(&mut self, named: &NamedAttribute, token: &Token) {
+        self.write_token(token);
+        self.write_identifier(named.get_identifier());
+    }
+
+    fn write_attribute_group_with_tokens(
+        &mut self,
+        group: &AttributeGroup,
+        tokens: &AttributeGroupTokens,
+    ) {
+        self.write_token(&tokens.opening_attribute_list);
+
+        let last_index = group.len().saturating_sub(1);
+
+        for (index, attribute) in group.iter_attributes().enumerate() {
+            self.write_identifier(attribute.name());
+
+            if let Some(arguments) = attribute.get_arguments() {
+                self.write_attribute_arguments(arguments);
+            }
+
+            if index < last_index {
+                if let Some(separator) = tokens.separators.get(index) {
+                    self.write_token(separator);
+                } else {
+                    self.write_symbol(",");
+                }
+            }
+        }
+
+        self.write_token(&tokens.closing_bracket);
+    }
+
+    fn write_literal_table_with_tokens(&mut self, table: &LiteralTable, tokens: &TableTokens) {
+        self.write_token(&tokens.opening_brace);
+
+        let last_index = table.len().saturating_sub(1);
+        for (i, entry) in table.iter_entries().enumerate() {
+            self.write_literal_table_entry(entry);
+            if let Some(separator) = tokens.separators.get(i) {
+                self.write_token(separator);
+            } else if i < last_index {
+                self.write_symbol(",");
+            }
+        }
+
+        self.write_token(&tokens.closing_brace);
+    }
+
+    fn write_literal_table_field_with_token(
+        &mut self,
+        field: &LiteralTableFieldEntry,
+        token: &Token,
+    ) {
+        self.write_identifier(field.get_field());
+        self.write_token(token);
+        self.write_literal_expression(field.get_value());
+    }
+
+    fn write_attribute_tuple_arguments_with_tokens(
+        &mut self,
+        tuple: &AttributeTupleArguments,
+        tokens: &TupleArgumentsTokens,
+    ) {
+        self.write_token(&tokens.opening_parenthese);
+
+        let last_index = tuple.len().saturating_sub(1);
+        for (i, value) in tuple.iter_values().enumerate() {
+            self.write_literal_expression(value);
+            if i < last_index {
+                if let Some(comma) = tokens.commas.get(i) {
+                    self.write_token(comma);
+                } else {
+                    self.write_symbol(",");
+                }
+            }
+        }
+
+        self.write_token(&tokens.closing_parenthese);
+    }
+
     fn write_function_statement_with_tokens(
         &mut self,
         function: &FunctionStatement,
         tokens: &FunctionBodyTokens,
     ) {
+        self.write_attributes(function.attributes());
         self.write_token(&tokens.function);
 
         let name = function.get_name();
@@ -595,6 +704,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         function: &LocalFunctionStatement,
         tokens: &LocalFunctionTokens,
     ) {
+        self.write_attributes(function.attributes());
         self.write_token(&tokens.local);
         self.write_token(&tokens.function);
         self.write_identifier(function.get_identifier());
@@ -772,6 +882,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         function: &FunctionExpression,
         tokens: &FunctionBodyTokens,
     ) {
+        self.write_attributes(function.attributes());
         self.write_token(&tokens.function);
 
         self.write_function_attributes(
@@ -1709,6 +1820,41 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         }
     }
 
+    fn generate_named_attribute_token(&self, _named: &NamedAttribute) -> Token {
+        Token::from_content("@")
+    }
+
+    fn generate_attribute_group_tokens(&self, group: &AttributeGroup) -> AttributeGroupTokens {
+        AttributeGroupTokens {
+            opening_attribute_list: Token::from_content("@["),
+            closing_bracket: Token::from_content("]"),
+            separators: intersect_with_token(comma_token(), group.len()),
+        }
+    }
+
+    fn generate_literal_table_tokens(&self, table: &LiteralTable) -> TableTokens {
+        TableTokens {
+            opening_brace: Token::from_content("{"),
+            closing_brace: Token::from_content("}"),
+            separators: intersect_with_token(comma_token(), table.len()),
+        }
+    }
+
+    fn generate_literal_table_field_token(&self, _field: &LiteralTableFieldEntry) -> Token {
+        Token::from_content("=")
+    }
+
+    fn generate_attribute_tuple_arguments_tokens(
+        &self,
+        tuple: &AttributeTupleArguments,
+    ) -> TupleArgumentsTokens {
+        TupleArgumentsTokens {
+            opening_parenthese: Token::from_content("("),
+            closing_parenthese: Token::from_content(")"),
+            commas: intersect_with_token(comma_token(), tuple.len()),
+        }
+    }
+
     fn write_symbol(&mut self, symbol: &str) {
         if self.currently_commenting {
             self.uncomment();
@@ -2156,6 +2302,43 @@ impl LuaGenerator for TokenBasedLuaGenerator<'_> {
         }
     }
 
+    fn write_literal_table(&mut self, table: &LiteralTable) {
+        if let Some(tokens) = table.get_tokens() {
+            self.write_literal_table_with_tokens(table, tokens);
+        } else {
+            self.write_literal_table_with_tokens(table, &self.generate_literal_table_tokens(table));
+        }
+    }
+
+    fn write_literal_table_entry(&mut self, entry: &LiteralTableEntry) {
+        match entry {
+            LiteralTableEntry::Field(field) => {
+                if let Some(token) = field.get_token() {
+                    self.write_literal_table_field_with_token(field, token);
+                } else {
+                    self.write_literal_table_field_with_token(
+                        field,
+                        &self.generate_literal_table_field_token(field),
+                    );
+                }
+            }
+            LiteralTableEntry::Value(value) => {
+                self.write_literal_expression(value);
+            }
+        }
+    }
+
+    fn write_attribute_tuple_arguments(&mut self, tuple: &AttributeTupleArguments) {
+        if let Some(tokens) = tuple.get_tokens() {
+            self.write_attribute_tuple_arguments_with_tokens(tuple, tokens);
+        } else {
+            self.write_attribute_tuple_arguments_with_tokens(
+                tuple,
+                &self.generate_attribute_tuple_arguments_tokens(tuple),
+            );
+        }
+    }
+
     fn write_identifier(&mut self, identifier: &Identifier) {
         if let Some(token) = identifier.get_token() {
             let name_in_token = token.read(self.original_code);
@@ -2428,6 +2611,41 @@ mod test {
         empty_variadic_function_declaration => "function process (...) end",
         empty_variadic_function_declaration_with_one_param => "function format (str, ... --[[ optional strings ]]) end",
         variadic_function_returns => "function identity(...)\n\treturn ...\nend\n",
+
+        // function attributes
+        function_statement_with_attribute => "@native\nfunction process()\nend",
+        local_function_with_attribute => "@native\nlocal function process()\nend",
+        function_expression_with_attribute => "return @native\nfunction()\nend",
+        function_statement_with_two_attributes => "@native\n@deprecated\nfunction process()\nend",
+        local_function_with_two_attributes => "@native\n@deprecated\nlocal function process()\nend",
+        function_expression_with_two_attributes => "return @native\n@deprecated\nfunction()\nend",
+        // function_statement_with_attribute_group => "@[native]\nfunction process()\nend",
+        // local_function_with_attribute_group => "@[native]\nlocal function process()\nend",
+        // function_expression_with_attribute_group => "return @[native]\nfunction()\nend",
+        // function_statement_with_attribute_group_two => "@[native, deprecated]\nfunction process()\nend",
+        // local_function_with_attribute_group_two => "@[native, deprecated]\nlocal function process()\nend",
+        // function_expression_with_attribute_group_two => "return @[native, deprecated]\nfunction()\nend",
+        // function_statement_with_attribute_empty_tuple => "@[native()]\nfunction process()\nend",
+        // local_function_with_attribute_empty_tuple => "@[native()]\nlocal function process()\nend",
+        // function_expression_with_attribute_empty_tuple => "return @[native()]\nfunction()\nend",
+        // function_statement_with_attribute_string => "@[native 'luau']\nfunction process()\nend",
+        // local_function_with_attribute_string => "@[native 'luau']\nlocal function process()\nend",
+        // function_expression_with_attribute_string => "return @[native 'luau']\nfunction()\nend",
+        // function_statement_with_attribute_table => "@[config {}]\nfunction process()\nend",
+        // local_function_with_attribute_table => "@[config {}]\nlocal function process()\nend",
+        // function_expression_with_attribute_table => "return @[config {}]\nfunction()\nend",
+        // function_statement_with_attribute_table_values => "@[config { debug = true }]\nfunction process()\nend",
+        // local_function_with_attribute_table_values => "@[config { debug = true }]\nlocal function process()\nend",
+        // function_expression_with_attribute_table_values => "return @[config { debug = true }]\nfunction()\nend",
+        // local_function_with_attribute_nil => "@[default(nil)]\nlocal function process()\nend",
+        // function_statement_with_attribute_true => "@[enabled(true)]\nfunction process()\nend",
+        // function_expression_with_attribute_false => "return @[enabled(false)]\nfunction()\nend",
+        // local_function_with_attribute_number => "@[version(1)]\nlocal function process()\nend",
+        // function_expression_with_attribute_tuple_string => "return @[tag('important')]\nfunction()\nend",
+        // function_statement_with_attribute_multiple_values => "@[meta(1, 'test', true, nil)]\nfunction process()\nend",
+        // local_function_with_attribute_tuple_table => "@[data({ key = 42 })]\nlocal function process()\nend",
+        // local_function_with_attribute_tuple_array_table => "@[data({ 'hello', 42 })]\nlocal function process()\nend",
+
         empty_generic_for => "for key, value in pairs(result) do\n\t-- help\nend",
         empty_generic_for_key_only => "for key in pairs(dict) do end",
         generic_for_with_next => "for key,value in next, dict do\n\tprint(key, value)\nend\n",

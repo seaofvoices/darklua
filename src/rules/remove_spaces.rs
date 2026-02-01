@@ -82,6 +82,29 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
         type_function.clear_whitespaces();
     }
 
+    fn process_attributes(&mut self, attributes: &mut Attributes) {
+        attributes.clear_whitespaces();
+    }
+
+    fn process_literal_expression(&mut self, expression: &mut LiteralExpression) {
+        match expression {
+            LiteralExpression::True(token)
+            | LiteralExpression::False(token)
+            | LiteralExpression::Nil(token) => {
+                if let Some(token) = token {
+                    token.clear_whitespaces()
+                }
+            }
+            LiteralExpression::Number(_)
+            | LiteralExpression::String(_)
+            | LiteralExpression::Table(_) => {}
+        }
+    }
+
+    fn process_literal_table(&mut self, table: &mut LiteralTable) {
+        table.clear_whitespaces();
+    }
+
     fn process_expression(&mut self, expression: &mut Expression) {
         match expression {
             Expression::False(token)
