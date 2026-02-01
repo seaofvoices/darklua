@@ -1,6 +1,5 @@
 use darklua_core::rules::{RemoveAttribute, Rule};
 
-
 test_rule_with_tokens!(
     remove_attribute,
     RemoveAttribute::default(),
