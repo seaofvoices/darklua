@@ -7,10 +7,10 @@ parameters:
     description: "Attribute names matching any of the given regular expressions will be removed. When empty (default), all attributes are removed."
 examples:
   - content: |
-    @deprecated
-    local function example()
-      return process()
-    end
+      @deprecated
+      local function example()
+        return process()
+      end
 ---
 
 The `remove_attribute` rule can remove _specific_ function attributes or _all_ function attributes. Attributes are metadata annotations that can be attached to functions using the `@` symbol (e.g., `@deprecated`, `@native`).
