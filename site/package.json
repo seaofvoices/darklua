@@ -8,7 +8,7 @@
     "url": "https://github.com/seaofvoices/darklua/issues"
   },
   "dependencies": {
-    "@babel/eslint-parser": "^7.28.5",
+    "@babel/eslint-parser": "^7.28.6",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@fontsource-variable/open-sans": "^5.2.7",
@@ -17,19 +17,19 @@
     "acorn": "^8.15.0",
     "babel-plugin-prismjs": "^2.1.0",
     "darklua": "./darklua-wasm/pkg",
-    "gatsby": "^5.15.0",
-    "gatsby-plugin-catch-links": "^5.15.0",
-    "gatsby-plugin-image": "^3.15.0",
-    "gatsby-plugin-manifest": "^5.15.0",
-    "gatsby-plugin-sharp": "^5.15.0",
-    "gatsby-remark-copy-linked-files": "^6.15.0",
-    "gatsby-remark-images": "^7.15.0",
-    "gatsby-remark-prismjs": "^7.15.0",
-    "gatsby-remark-responsive-iframe": "^6.15.0",
-    "gatsby-remark-smartypants": "^6.15.0",
-    "gatsby-source-filesystem": "^5.15.0",
-    "gatsby-transformer-remark": "^6.15.0",
-    "gatsby-transformer-sharp": "^5.15.0",
+    "gatsby": "^5.16.0",
+    "gatsby-plugin-catch-links": "^5.16.0",
+    "gatsby-plugin-image": "^3.16.0",
+    "gatsby-plugin-manifest": "^5.16.0",
+    "gatsby-plugin-sharp": "^5.16.0",
+    "gatsby-remark-copy-linked-files": "^6.16.0",
+    "gatsby-remark-images": "^7.16.0",
+    "gatsby-remark-prismjs": "^7.16.0",
+    "gatsby-remark-responsive-iframe": "^6.16.0",
+    "gatsby-remark-smartypants": "^6.16.0",
+    "gatsby-source-filesystem": "^5.16.0",
+    "gatsby-transformer-remark": "^6.16.0",
+    "gatsby-transformer-sharp": "^5.16.0",
     "joi": "^17.13.3",
     "json5": "^2.2.3",
     "mdast-util-from-markdown": "^2.0.2",
@@ -45,11 +45,11 @@
     "unified": "^11.0.5"
   },
   "devDependencies": {
-    "babel-preset-gatsby": "^3.14.0",
-    "prettier": "^3.6.2"
+    "babel-preset-gatsby": "^3.16.0",
+    "prettier": "^3.8.1"
   },
   "optionalDependencies": {
-    "@parcel/watcher-linux-x64-glibc": "^2.5.1"
+    "@parcel/watcher-linux-x64-glibc": "^2.5.6"
   },
   "overrides": {
     "react-server-dom-webpack@0.0.0-experimental-c8b778b7f-20220825": {
