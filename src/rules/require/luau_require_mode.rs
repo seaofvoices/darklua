@@ -58,10 +58,9 @@ impl LuauRequireMode {
         resources: &crate::Resources,
     ) -> Result<(), DarkluaError> {
         if let Some(config) = utils::find_luau_configuration(luau_file, resources)? {
-            self.luau_rc_aliases.as_mut().and_then(|x| {
-                x.extend(config.aliases);
-                Some(x)
-            });
+            self.luau_rc_aliases
+                .get_or_insert_with(HashMap::new)
+                .extend(config.aliases);
         }
 
         Ok(())
@@ -74,13 +73,7 @@ impl LuauRequireMode {
         }
 
         // Load aliases from .luaurc configuration
-        if let Some(config) =
-            utils::find_luau_configuration(context.current_path(), context.resources())?
-        {
-            self.luau_rc_aliases.replace(config.aliases);
-        } else {
-            self.luau_rc_aliases.take();
-        }
+        self.load_aliases(context.current_path(), context.resources())?;
 
         Ok(())
     }
