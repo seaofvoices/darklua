@@ -8,14 +8,14 @@ use crate::{utils, DarkluaError, Resources};
 /// the behavior defined in the Luau RFCs for module path resolution.
 #[derive(Debug)]
 pub(crate) struct LuauPathLocator<'a, 'b, 'resources> {
-    luau_require_mode: &'a LuauRequireMode,
+    luau_require_mode: &'a mut LuauRequireMode,
     extra_module_relative_location: &'b Path,
     resources: &'resources Resources,
 }
 
 impl<'a, 'b, 'c> LuauPathLocator<'a, 'b, 'c> {
     pub(crate) fn new(
-        luau_require_mode: &'a LuauRequireMode,
+        luau_require_mode: &'a mut LuauRequireMode,
         extra_module_relative_location: &'b Path,
         resources: &'c Resources,
     ) -> Self {
@@ -29,7 +29,7 @@ impl<'a, 'b, 'c> LuauPathLocator<'a, 'b, 'c> {
 
 impl super::PathLocator for LuauPathLocator<'_, '_, '_> {
     fn find_require_path(
-        &self,
+        &mut self,
         path: impl Into<PathBuf>,
         source: &Path,
     ) -> Result<PathBuf, DarkluaError> {
@@ -61,6 +61,7 @@ impl super::PathLocator for LuauPathLocator<'_, '_, '_> {
             if source_name == "@self" {
                 path = get_relative_parent_path(source).join(components);
             } else if source_name.starts_with("@") {
+                self.luau_require_mode.load_aliases(source, self.resources)?;
                 let mut extra_module_location = self
                     .luau_require_mode
                     .get_source(source_name, self.extra_module_relative_location)

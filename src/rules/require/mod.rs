@@ -18,7 +18,7 @@ use crate::DarkluaError;
 
 pub(crate) trait PathLocator {
     fn find_require_path(
-        &self,
+        &mut self,
         path: impl Into<PathBuf>,
         source: &Path,
     ) -> Result<PathBuf, DarkluaError>;

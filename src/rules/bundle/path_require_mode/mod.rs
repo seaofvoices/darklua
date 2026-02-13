@@ -35,7 +35,7 @@ pub(crate) enum RequiredResource {
 struct RequirePathProcessor<'a, 'b, 'resources, PathLocatorImpl> {
     options: &'a BundleOptions,
     identifier_tracker: IdentifierTracker,
-    path_locator: &'b PathLocatorImpl,
+    path_locator: &'b mut PathLocatorImpl,
     module_definitions: BuildModuleDefinitions,
     source: PathBuf,
     module_cache: HashMap<PathBuf, Expression>,
@@ -51,7 +51,7 @@ impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator>
     fn new<'context, 'code>(
         context: &'context Context<'b, 'resources, 'code>,
         options: &'a BundleOptions,
-        path_locator: &'b PathLocatorImpl,
+        path_locator: &'b mut PathLocatorImpl,
     ) -> Self
     where
         'context: 'b,
@@ -344,7 +344,7 @@ pub(crate) fn process_block(
     block: &mut Block,
     context: &Context,
     options: &BundleOptions,
-    locator: impl PathLocator,
+    locator: &mut impl PathLocator,
 ) -> Result<(), String> {
     if options.parser().is_preserving_tokens() {
         log::trace!(
@@ -364,7 +364,7 @@ pub(crate) fn process_block(
         );
     }
 
-    let mut processor = RequirePathProcessor::new(context, options, &locator);
+    let mut processor = RequirePathProcessor::new(context, options, locator);
     ScopeVisitor::visit_block(block, &mut processor);
     processor.apply(block, context)
 }

@@ -26,7 +26,7 @@ impl<'a, 'b, 'c> RequirePathLocator<'a, 'b, 'c> {
 
 impl super::PathLocator for RequirePathLocator<'_, '_, '_> {
     fn find_require_path(
-        &self,
+        &mut self,
         path: impl Into<PathBuf>,
         source: &Path,
     ) -> Result<PathBuf, DarkluaError> {

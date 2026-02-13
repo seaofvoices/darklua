@@ -55,13 +55,13 @@ impl BundleRequireMode {
                     .initialize(context)
                     .map_err(|err| err.to_string())?;
 
-                let locator = RequirePathLocator::new(
+                let mut locator = RequirePathLocator::new(
                     &require_mode,
                     context.project_location(),
                     context.resources(),
                 );
 
-                path_require_mode::process_block(block, context, options, locator)
+                path_require_mode::process_block(block, context, options, &mut locator)
             }
             Self::Luau(luau_require_mode) => {
                 let mut require_mode = luau_require_mode.clone();
@@ -69,13 +69,13 @@ impl BundleRequireMode {
                     .initialize(context)
                     .map_err(|err| err.to_string())?;
 
-                let locator = LuauPathLocator::new(
-                    &require_mode,
+                let mut locator = LuauPathLocator::new(
+                    &mut require_mode,
                     context.project_location(),
                     context.resources(),
                 );
 
-                path_require_mode::process_block(block, context, options, locator)
+                path_require_mode::process_block(block, context, options, &mut locator)
             }
         }
     }

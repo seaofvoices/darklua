@@ -51,6 +51,22 @@ impl LuauRequireMode {
         self
     }
 
+    /// Attempt to load any .luaurc aliases from a source luau path.
+    pub fn load_aliases(
+        &mut self,
+        luau_file: &Path,
+        resources: &crate::Resources,
+    ) -> Result<(), DarkluaError> {
+        if let Some(config) = utils::find_luau_configuration(luau_file, resources)? {
+            self.luau_rc_aliases.as_mut().and_then(|x| {
+                x.extend(config.aliases);
+                Some(x)
+            });
+        }
+
+        Ok(())
+    }
+
     pub(crate) fn initialize(&mut self, context: &Context) -> Result<(), DarkluaError> {
         if !self.use_luau_configuration {
             self.luau_rc_aliases.take();
@@ -81,12 +97,12 @@ impl LuauRequireMode {
     }
 
     pub(crate) fn find_require(
-        &self,
+        &mut self,
         call: &FunctionCall,
         context: &Context,
     ) -> DarkluaResult<Option<PathBuf>> {
         if let Some(literal_path) = match_path_require_call(call) {
-            let path_locator =
+            let mut path_locator =
                 LuauPathLocator::new(self, context.project_location(), context.resources());
 
             let required_path =
@@ -282,7 +298,7 @@ mod test {
 
     #[test]
     fn parses_relative_path() {
-        let mode = LuauRequireMode::default();
+        let mut mode = LuauRequireMode::default();
         let context = make_context_with_files("/project/src/main.luau", &["/project/src/./module"]);
         let call = make_call("./module");
         let result = mode.find_require(&call, &context).unwrap();
@@ -291,7 +307,7 @@ mod test {
 
     #[test]
     fn parses_parent_relative_path() {
-        let mode = LuauRequireMode::default();
+        let mut mode = LuauRequireMode::default();
         let context =
             make_context_with_files("/project/src/main.luau", &["/project/src/../module"]);
         let call = make_call("../module");
