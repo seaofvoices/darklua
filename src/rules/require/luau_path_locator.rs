@@ -61,7 +61,8 @@ impl super::PathLocator for LuauPathLocator<'_, '_, '_> {
             if source_name == "@self" {
                 path = get_relative_parent_path(source).join(components);
             } else if source_name.starts_with("@") {
-                self.luau_require_mode.load_aliases(source, self.resources)?;
+                self.luau_require_mode
+                    .load_aliases(source, self.resources)?;
                 let mut extra_module_location = self
                     .luau_require_mode
                     .get_source(source_name, self.extra_module_relative_location)
