@@ -17,7 +17,7 @@ use crate::nodes::{
 use crate::process::{
     to_expression, DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor,
 };
-use crate::rules::require::{is_require_call, match_path_require_call, PathLocator};
+use crate::rules::require::{is_require_call, PathLocator, SingularPathLocator};
 use crate::rules::{
     Context, ContextBuilder, FlawlessRule, ReplaceReferencedTokens, RuleProcessResult,
 };
@@ -81,16 +81,20 @@ impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator>
         }
     }
 
-    fn require_call(&self, call: &FunctionCall) -> Option<PathBuf> {
+    fn require_call(
+        &self,
+        call: &FunctionCall,
+        source: &Path,
+    ) -> Option<(PathBuf, SingularPathLocator<'_, '_, '_>)> {
         if is_require_call(call, self) {
-            match_path_require_call(call)
+            self.path_locator.match_path_require_call(call, source)
         } else {
             None
         }
     }
 
     fn try_inline_call(&mut self, call: &FunctionCall) -> Option<Expression> {
-        let literal_require_path = self.require_call(call)?;
+        let (literal_require_path, path_locator) = self.require_call(call, &self.source)?;
 
         if self.options.is_excluded(&literal_require_path) {
             log::info!(
@@ -101,9 +105,7 @@ impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator>
             return None;
         }
 
-        let require_path = match self
-            .path_locator
-            .find_require_path(&literal_require_path, &self.source)
+        let require_path = match path_locator.find_require_path(&literal_require_path, &self.source)
         {
             Ok(path) => path,
             Err(err) => {

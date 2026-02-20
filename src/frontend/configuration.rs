@@ -9,10 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     generator::{DenseLuaGenerator, LuaGenerator, ReadableLuaGenerator, TokenBasedLuaGenerator},
     nodes::Block,
-    rules::{
-        bundle::{BundleRequireMode, Bundler},
-        get_default_rules, Rule,
-    },
+    rules::{bundle::Bundler, get_default_rules, RequireMode, Rule},
     Parser,
 };
 
@@ -252,8 +249,8 @@ impl FromStr for GeneratorParameters {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub struct BundleConfiguration {
-    #[serde(deserialize_with = "crate::utils::string_or_struct")]
-    require_mode: BundleRequireMode,
+    #[serde(deserialize_with = "crate::utils::string_or_default")]
+    require_mode: RequireMode,
     #[serde(skip_serializing_if = "Option::is_none")]
     modules_identifier: Option<String>,
     #[serde(default, skip_serializing_if = "HashSet::is_empty")]
@@ -262,7 +259,7 @@ pub struct BundleConfiguration {
 
 impl BundleConfiguration {
     /// Creates a new bundle configuration with the specified require mode.
-    pub fn new(require_mode: impl Into<BundleRequireMode>) -> Self {
+    pub fn new(require_mode: impl Into<RequireMode>) -> Self {
         Self {
             require_mode: require_mode.into(),
             modules_identifier: None,
@@ -282,7 +279,7 @@ impl BundleConfiguration {
         self
     }
 
-    pub(crate) fn require_mode(&self) -> &BundleRequireMode {
+    pub(crate) fn require_mode(&self) -> &RequireMode {
         &self.require_mode
     }
 
