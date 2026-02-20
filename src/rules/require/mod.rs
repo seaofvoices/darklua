@@ -26,7 +26,7 @@ pub(crate) trait PathLocator {
     }
 
     fn find_require_path(
-        &mut self,
+        &self,
         path: impl Into<PathBuf>,
         source: &Path,
     ) -> Result<PathBuf, DarkluaError>;

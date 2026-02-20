@@ -95,7 +95,7 @@ impl LuauRequireMode {
         context: &Context,
     ) -> DarkluaResult<Option<PathBuf>> {
         if let Some(literal_path) = match_path_require_call(call) {
-            let mut path_locator = LuauPathLocator::new(
+            let path_locator = LuauPathLocator::new(
                 self.clone(),
                 context.project_location(),
                 context.resources(),
