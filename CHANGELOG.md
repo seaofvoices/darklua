@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* add support for function attributes (like `@native` or `@deprecated`) and a new `remove_attribute` rule to remove specific or all attributes ([#338](https://github.com/seaofvoices/darklua/pull/338))
 * add support for type functions ([#333](https://github.com/seaofvoices/darklua/pull/333))
 * add support for property modifiers in table types (like `read` in a type like `{ read name: string }`) ([#332](https://github.com/seaofvoices/darklua/pull/332))
 

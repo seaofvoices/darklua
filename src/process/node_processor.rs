@@ -26,6 +26,10 @@ pub trait NodeProcessor {
 
     fn process_variable(&mut self, _: &mut Variable) {}
 
+    fn process_attributes(&mut self, _: &mut Attributes) {}
+    fn process_literal_table(&mut self, _: &mut LiteralTable) {}
+    fn process_literal_expression(&mut self, _: &mut LiteralExpression) {}
+
     fn process_expression(&mut self, _: &mut Expression) {}
 
     fn process_binary_expression(&mut self, _: &mut BinaryExpression) {}
@@ -85,6 +89,10 @@ pub trait NodePostProcessor {
     fn process_after_type_function(&mut self, _: &mut TypeFunctionStatement) {}
 
     fn process_after_variable(&mut self, _: &mut Variable) {}
+
+    fn process_after_attributes(&mut self, _: &mut Attributes) {}
+    fn process_after_literal_table(&mut self, _: &mut LiteralTable) {}
+    fn process_after_literal_expression(&mut self, _: &mut LiteralExpression) {}
 
     fn process_after_expression(&mut self, _: &mut Expression) {}
 

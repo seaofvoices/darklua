@@ -1,3 +1,5 @@
+use crate::nodes::Attributes;
+
 use super::{
     Block, FunctionExpression, FunctionName, FunctionReturnType, FunctionStatement,
     FunctionVariadicType, GenericParameters, Identifier, LocalFunctionStatement,
@@ -22,6 +24,8 @@ pub(crate) struct FunctionBuilder {
     variable_arguments_colon: Option<Token>,
     return_type_colon: Option<Token>,
     generic_parameters: Option<GenericParameters>,
+
+    attributes: Attributes,
 }
 
 impl FunctionBuilder {
@@ -43,11 +47,14 @@ impl FunctionBuilder {
             variable_arguments_colon: None,
             return_type_colon: None,
             generic_parameters: None,
+
+            attributes: Attributes::new(),
         }
     }
 
     pub(crate) fn into_function_expression(self) -> FunctionExpression {
-        let mut expression = FunctionExpression::new(self.block, self.parameters, self.is_variadic);
+        let mut expression = FunctionExpression::new(self.block, self.parameters, self.is_variadic)
+            .with_attributes(self.attributes);
 
         if let Some(variadic_type) = self.variadic_type {
             expression.set_variadic_type(variadic_type);
@@ -84,7 +91,8 @@ impl FunctionBuilder {
 
     pub(crate) fn into_function_statement(self, name: FunctionName) -> FunctionStatement {
         let mut statement =
-            FunctionStatement::new(name, self.block, self.parameters, self.is_variadic);
+            FunctionStatement::new(name, self.block, self.parameters, self.is_variadic)
+                .with_attributes(self.attributes);
 
         if let Some(variadic_type) = self.variadic_type {
             statement.set_variadic_type(variadic_type);
@@ -125,7 +133,8 @@ impl FunctionBuilder {
         local_token: Option<Token>,
     ) -> LocalFunctionStatement {
         let mut statement =
-            LocalFunctionStatement::new(name, self.block, self.parameters, self.is_variadic);
+            LocalFunctionStatement::new(name, self.block, self.parameters, self.is_variadic)
+                .with_attributes(self.attributes);
 
         if let Some(variadic_type) = self.variadic_type {
             statement.set_variadic_type(variadic_type);
@@ -275,6 +284,10 @@ impl FunctionBuilder {
 
     pub(crate) fn set_generic_parameters(&mut self, generic_parameters: GenericParameters) {
         self.generic_parameters = Some(generic_parameters);
+    }
+
+    pub(crate) fn set_attributes(&mut self, attributes: Attributes) {
+        self.attributes = attributes;
     }
 }
 

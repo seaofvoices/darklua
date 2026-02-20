@@ -403,6 +403,10 @@ mod test {
             => ReturnStatement::one(
                 FunctionExpression::from_block(ReturnStatement::one(Expression::from(true)))
             ),
+        return_function_with_native_attribute("return @native function() return end")
+            => ReturnStatement::one(
+                FunctionExpression::from_block(ReturnStatement::default()).with_attribute(NamedAttribute::new("native"))
+            ),
         empty_if_statement("if true then end") => IfStatement::create(true, Block::default()),
         if_statement_returns("if true then return end") => IfStatement::create(
             Expression::from(true),
@@ -431,6 +435,8 @@ mod test {
                 .variadic(),
         local_function_return("local function name() return end")
             => LocalFunctionStatement::from_name("name", ReturnStatement::default()),
+        local_function_return_with_native_attribute("@native local function name() return end")
+            => LocalFunctionStatement::from_name("name", ReturnStatement::default()).with_attribute(NamedAttribute::new("native")),
 
         empty_function_statement("function name() end")
             => FunctionStatement::from_name("name", Block::default()),
@@ -442,6 +448,8 @@ mod test {
                 .variadic(),
         function_statement_return("function name() return end")
             => FunctionStatement::from_name("name", ReturnStatement::default()),
+        function_statement_return_with_native_attribute("@native function name() return end")
+            => FunctionStatement::from_name("name", ReturnStatement::default()).with_attribute(NamedAttribute::new("native")),
         empty_generic_for("for key in pairs(t) do end") => GenericForStatement::new(
             vec!["key".into()],
             vec![
@@ -1447,6 +1455,50 @@ mod test {
                         variable_arguments: None,
                         variable_arguments_colon: None,
                         return_type_colon: Some(spaced_token(20, 21)),
+                    }),
+            ).with_tokens(ReturnTokens {
+                r#return: spaced_token(0, 6),
+                commas: Vec::new(),
+            }),
+            return_function_with_native_attribute("return @native function() end") => ReturnStatement::one(
+                FunctionExpression::from_block(default_block())
+                    .with_attribute(
+                        NamedAttribute::new(create_identifier("native", 8, 1))
+                            .with_token(token_at_first_line(7, 8))
+                    )
+                    .with_tokens(FunctionBodyTokens {
+                        function: token_at_first_line(15, 23),
+                        opening_parenthese: token_at_first_line(23, 24),
+                        closing_parenthese: spaced_token(24, 25),
+                        end: token_at_first_line(26, 29),
+                        parameter_commas: Vec::new(),
+                        variable_arguments: None,
+                        variable_arguments_colon: None,
+                        return_type_colon: None,
+                    }),
+            ).with_tokens(ReturnTokens {
+                r#return: spaced_token(0, 6),
+                commas: Vec::new(),
+            }),
+            return_function_with_native_and_deprecated_attribute("return @native @deprecated function() end") => ReturnStatement::one(
+                FunctionExpression::from_block(default_block())
+                    .with_attribute(
+                        NamedAttribute::new(create_identifier("native", 8, 1))
+                            .with_token(token_at_first_line(7, 8))
+                    )
+                    .with_attribute(
+                        NamedAttribute::new(create_identifier("deprecated", 16, 1))
+                            .with_token(token_at_first_line(15, 16))
+                    )
+                    .with_tokens(FunctionBodyTokens {
+                        function: token_at_first_line(27, 35),
+                        opening_parenthese: token_at_first_line(35, 36),
+                        closing_parenthese: spaced_token(36, 37),
+                        end: token_at_first_line(38, 41),
+                        parameter_commas: Vec::new(),
+                        variable_arguments: None,
+                        variable_arguments_colon: None,
+                        return_type_colon: None,
                     }),
             ).with_tokens(ReturnTokens {
                 r#return: spaced_token(0, 6),

@@ -82,6 +82,29 @@ impl NodeProcessor for RemoveCommentProcessor {
         function.clear_comments();
     }
 
+    fn process_attributes(&mut self, attributes: &mut Attributes) {
+        attributes.clear_comments();
+    }
+
+    fn process_literal_expression(&mut self, expression: &mut LiteralExpression) {
+        match expression {
+            LiteralExpression::True(token)
+            | LiteralExpression::False(token)
+            | LiteralExpression::Nil(token) => {
+                if let Some(token) = token {
+                    token.clear_comments()
+                }
+            }
+            LiteralExpression::Number(_)
+            | LiteralExpression::String(_)
+            | LiteralExpression::Table(_) => {}
+        }
+    }
+
+    fn process_literal_table(&mut self, table: &mut LiteralTable) {
+        table.clear_comments();
+    }
+
     fn process_expression(&mut self, expression: &mut Expression) {
         match expression {
             Expression::False(token)
@@ -328,6 +351,29 @@ impl NodeProcessor for FilterCommentProcessor<'_> {
 
     fn process_type_function(&mut self, type_function: &mut TypeFunctionStatement) {
         type_function.filter_comments(|trivia| self.ignore_trivia(trivia));
+    }
+
+    fn process_attributes(&mut self, attributes: &mut Attributes) {
+        attributes.filter_comments(|trivia| self.ignore_trivia(trivia));
+    }
+
+    fn process_literal_expression(&mut self, expression: &mut LiteralExpression) {
+        match expression {
+            LiteralExpression::True(token)
+            | LiteralExpression::False(token)
+            | LiteralExpression::Nil(token) => {
+                if let Some(token) = token {
+                    token.filter_comments(|trivia| self.ignore_trivia(trivia))
+                }
+            }
+            LiteralExpression::Number(_)
+            | LiteralExpression::String(_)
+            | LiteralExpression::Table(_) => {}
+        }
+    }
+
+    fn process_literal_table(&mut self, table: &mut LiteralTable) {
+        table.filter_comments(|trivia| self.ignore_trivia(trivia));
     }
 
     fn process_expression(&mut self, expression: &mut Expression) {

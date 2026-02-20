@@ -544,6 +544,7 @@ mod group_local_assignment;
 mod inject_value;
 mod no_local_function;
 mod remove_assertions;
+mod remove_attribute;
 mod remove_call_parens;
 mod remove_comments;
 mod remove_compound_assignment;
