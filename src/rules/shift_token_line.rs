@@ -90,6 +90,29 @@ impl NodeProcessor for ShiftTokenLineProcessor {
         function.shift_token_line(self.shift_amount);
     }
 
+    fn process_attributes(&mut self, attributes: &mut Attributes) {
+        attributes.shift_token_line(self.shift_amount);
+    }
+
+    fn process_literal_expression(&mut self, expression: &mut LiteralExpression) {
+        match expression {
+            LiteralExpression::True(token)
+            | LiteralExpression::False(token)
+            | LiteralExpression::Nil(token) => {
+                if let Some(token) = token {
+                    token.shift_token_line(self.shift_amount)
+                }
+            }
+            LiteralExpression::Number(_)
+            | LiteralExpression::String(_)
+            | LiteralExpression::Table(_) => {}
+        }
+    }
+
+    fn process_literal_table(&mut self, table: &mut LiteralTable) {
+        table.shift_token_line(self.shift_amount);
+    }
+
     fn process_expression(&mut self, expression: &mut Expression) {
         match expression {
             Expression::False(token)

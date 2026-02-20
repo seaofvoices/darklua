@@ -129,6 +129,11 @@ impl RandomAst {
         rng().random_bool(self.function_return_type_prob)
     }
 
+    pub fn function_attributes<'a>(&'a self) -> impl Iterator<Item = Identifier> + 'a {
+        let amount = normal_sample(0.0, 1.0);
+        iter::repeat_with(move || self.identifier()).take(amount)
+    }
+
     pub fn function_is_variadic(&self) -> bool {
         rng().random_bool(self.function_is_variadic_prob)
     }

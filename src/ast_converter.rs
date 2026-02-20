@@ -506,9 +506,13 @@ impl<'a> AstConverter<'a> {
 
                     self.expressions.push(value.into());
                 }
-                ConvertWork::MakeFunctionExpression { body, token } => {
-                    let builder =
-                        self.convert_function_body_attributes(body, self.convert_token(token)?)?;
+                ConvertWork::MakeFunctionExpression { function } => {
+                    let mut builder = self.convert_function_body_attributes(
+                        function.body(),
+                        self.convert_token(function.function_token())?,
+                    )?;
+
+                    builder.set_attributes(self.convert_attributes(function.attributes())?);
 
                     self.expressions
                         .push(builder.into_function_expression().into());
@@ -598,10 +602,11 @@ impl<'a> AstConverter<'a> {
                     self.statements.push(generic_for.into());
                 }
                 ConvertWork::MakeFunctionDeclaration { statement } => {
-                    let builder = self.convert_function_body_attributes(
+                    let mut builder = self.convert_function_body_attributes(
                         statement.body(),
                         self.convert_token(statement.function_token())?,
                     )?;
+                    builder.set_attributes(self.convert_attributes(statement.attributes())?);
                     let name = self.convert_function_name(statement.name())?;
 
                     self.statements
@@ -834,10 +839,13 @@ impl<'a> AstConverter<'a> {
                     self.expressions.push(call.into());
                 }
                 ConvertWork::MakeLocalFunctionStatement { statement } => {
-                    let builder = self.convert_function_body_attributes(
+                    let mut builder = self.convert_function_body_attributes(
                         statement.body(),
                         self.convert_token(statement.function_token())?,
                     )?;
+
+                    builder.set_attributes(self.convert_attributes(statement.attributes())?);
+
                     let mut name = Identifier::new(statement.name().token().to_string());
                     let mut local_token = None;
 
@@ -1903,12 +1911,10 @@ impl<'a> AstConverter<'a> {
             }
             ast::Expression::Function(function) => {
                 let func = function.as_ref();
-                let body = func.body();
-                let token = func.function_token();
                 self.work_stack
-                    .push(ConvertWork::MakeFunctionExpression { body, token });
+                    .push(ConvertWork::MakeFunctionExpression { function: func });
 
-                self.push_function_body_work(body);
+                self.push_function_body_work(func.body());
             }
             ast::Expression::FunctionCall(call) => {
                 self.work_stack
@@ -2703,6 +2709,27 @@ impl<'a> AstConverter<'a> {
         })
     }
 
+    fn convert_attributes(
+        &self,
+        attributes: impl Iterator<Item = &'a ast::luau::LuauAttribute> + 'a,
+    ) -> Result<Attributes, ConvertError> {
+        let mut new_attributes = Attributes::new();
+
+        for attribute in attributes {
+            let attribute_name = self.convert_token_to_identifier(attribute.name())?;
+
+            let mut named_attribute = NamedAttribute::new(attribute_name);
+
+            if self.hold_token_data {
+                named_attribute.set_token(self.convert_token(attribute.at_sign())?);
+            }
+
+            new_attributes.append_attribute(named_attribute);
+        }
+
+        Ok(new_attributes)
+    }
+
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_function_name(
         &self,
@@ -2884,8 +2911,7 @@ enum ConvertWork<'a> {
         if_expression: &'a ast::luau::IfExpression,
     },
     MakeFunctionExpression {
-        body: &'a ast::FunctionBody,
-        token: &'a tokenizer::TokenReference,
+        function: &'a ast::AnonymousFunction,
     },
     MakeRepeatStatement {
         statement: &'a ast::Repeat,
