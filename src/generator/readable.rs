@@ -274,6 +274,46 @@ impl ReadableLuaGenerator {
         }
     }
 
+    fn write_attributes(&mut self, attributes: &nodes::Attributes) {
+        use nodes::Attribute;
+
+        for attribute in attributes.iter_attributes() {
+            match attribute {
+                Attribute::Name(named) => {
+                    let name = named.get_identifier().get_name();
+
+                    self.push_space_if_needed('@', 1 + name.len());
+                    self.raw_push_char('@');
+                    self.raw_push_str(name);
+                    self.push_new_line();
+                }
+                Attribute::Group(group) => {
+                    if !group.is_empty() {
+                        self.push_str("@[");
+
+                        let last_index = group.len().saturating_sub(1);
+
+                        for (index, attribute) in group.iter_attributes().enumerate() {
+                            self.push_str(attribute.name().get_name());
+
+                            if let Some(arguments) = attribute.get_arguments() {
+                                self.write_attribute_arguments(arguments);
+                            }
+
+                            if index != last_index {
+                                self.push_char(',');
+                                self.push_char(' ');
+                            }
+                        }
+
+                        self.push_char(']');
+                        self.push_new_line();
+                    }
+                }
+            }
+        }
+    }
+
     fn write_function_parameters(
         &mut self,
         parameters: &[nodes::TypedIdentifier],
@@ -594,6 +634,7 @@ impl LuaGenerator for ReadableLuaGenerator {
     }
 
     fn write_local_function(&mut self, function: &nodes::LocalFunctionStatement) {
+        self.write_attributes(function.attributes());
         self.push_str("local function ");
         self.raw_push_str(function.get_name());
 
@@ -727,6 +768,7 @@ impl LuaGenerator for ReadableLuaGenerator {
     }
 
     fn write_function_statement(&mut self, function: &nodes::FunctionStatement) {
+        self.write_attributes(function.attributes());
         self.push_str("function ");
         let name = function.get_name();
 
@@ -970,6 +1012,9 @@ impl LuaGenerator for ReadableLuaGenerator {
     }
 
     fn write_function(&mut self, function: &nodes::FunctionExpression) {
+        self.push_can_add_new_line(false);
+        self.write_attributes(function.attributes());
+        self.pop_can_add_new_line();
         self.push_str("function");
 
         if let Some(generics) = function.get_generic_parameters() {
@@ -1191,6 +1236,54 @@ impl LuaGenerator for ReadableLuaGenerator {
         }
 
         self.raw_push_char('`');
+    }
+
+    fn write_literal_table(&mut self, table: &nodes::LiteralTable) {
+        self.push_char('{');
+        let last_index = table.len().saturating_sub(1);
+        for (index, entry) in table.iter_entries().enumerate() {
+            self.write_literal_table_entry(entry);
+            if index != last_index {
+                self.push_char(',');
+            }
+        }
+        self.push_char('}');
+    }
+
+    fn write_literal_table_entry(&mut self, entry: &nodes::LiteralTableEntry) {
+        use nodes::LiteralTableEntry::*;
+
+        self.push_can_add_new_line(false);
+
+        match entry {
+            Field(field) => {
+                self.write_identifier(field.get_field());
+                self.push_char('=');
+                self.write_literal_expression(field.get_value());
+            }
+            Value(value) => {
+                self.write_literal_expression(value);
+            }
+        }
+
+        self.pop_can_add_new_line();
+    }
+
+    fn write_attribute_tuple_arguments(&mut self, tuple: &nodes::AttributeTupleArguments) {
+        self.push_char('(');
+        self.push_can_add_new_line(false);
+
+        let last_index = tuple.len().saturating_sub(1);
+        for (index, value) in tuple.iter_values().enumerate() {
+            self.write_literal_expression(value);
+            if index != last_index {
+                self.push_char(',');
+                self.push_char(' ');
+            }
+        }
+
+        self.pop_can_add_new_line();
+        self.push_char(')');
     }
 
     fn write_identifier(&mut self, identifier: &nodes::Identifier) {
