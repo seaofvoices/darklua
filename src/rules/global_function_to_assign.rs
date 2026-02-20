@@ -4,7 +4,7 @@ use crate::nodes::{
 };
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use serde::ser::{Serialize, Serializer};
@@ -68,7 +68,9 @@ pub const CONVERT_FUNCTION_TO_ASSIGNMENT_RULE_NAME: &str = "convert_function_to_
 
 /// Convert function statements into regular assignments.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct ConvertFunctionToAssign {}
+pub struct ConvertFunctionToAssign {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for ConvertFunctionToAssign {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -90,6 +92,14 @@ impl RuleConfiguration for ConvertFunctionToAssign {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

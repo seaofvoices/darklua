@@ -304,10 +304,8 @@ impl PartialEq for FilterPattern {
 impl Eq for FilterPattern {}
 
 impl FilterPattern {
-    fn new(pattern: String) -> Result<Self, wax::GlobError<'static>> {
-        let glob = wax::Glob::new(&pattern)
-            .map_err(|err| err.into_owned())?
-            .into_owned();
+    fn new(pattern: String) -> Result<Self, wax::GlobError> {
+        let glob = wax::Glob::new(&pattern)?.into_owned();
         Ok(Self {
             original: pattern,
             glob,
