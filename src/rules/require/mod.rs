@@ -17,6 +17,14 @@ pub use path_require_mode::PathRequireMode;
 use crate::DarkluaError;
 
 pub(crate) trait PathLocator {
+    fn initialize(
+        &mut self,
+        _path: &Path,
+        _resources: &crate::Resources,
+    ) -> Result<(), DarkluaError> {
+        Ok(())
+    }
+
     fn find_require_path(
         &mut self,
         path: impl Into<PathBuf>,

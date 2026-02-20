@@ -39,18 +39,6 @@ impl Default for LuauRequireMode {
 }
 
 impl LuauRequireMode {
-    /// Set if the require mode should use `.luaurc` configuration to resolve aliases.
-    pub fn with_configuration(mut self, use_luau_configuration: bool) -> Self {
-        self.use_luau_configuration = use_luau_configuration;
-        self
-    }
-
-    /// Add a new Luau alias to the require mode.
-    pub fn with_alias(mut self, name: impl Into<String>, path: impl Into<PathBuf>) -> Self {
-        self.aliases.insert(name.into(), path.into());
-        self
-    }
-
     /// Attempt to load any .luaurc aliases from a source luau path.
     pub fn load_aliases(
         &mut self,
@@ -66,6 +54,18 @@ impl LuauRequireMode {
         Ok(())
     }
 
+    /// Set if the require mode should use `.luaurc` configuration to resolve aliases.
+    pub fn with_configuration(mut self, use_luau_configuration: bool) -> Self {
+        self.use_luau_configuration = use_luau_configuration;
+        self
+    }
+
+    /// Add a new Luau alias to the require mode.
+    pub fn with_alias(mut self, name: impl Into<String>, path: impl Into<PathBuf>) -> Self {
+        self.aliases.insert(name.into(), path.into());
+        self
+    }
+
     pub(crate) fn initialize(&mut self, context: &Context) -> Result<(), DarkluaError> {
         if !self.use_luau_configuration {
             self.luau_rc_aliases.take();
@@ -73,7 +73,7 @@ impl LuauRequireMode {
         }
 
         // Load aliases from .luaurc configuration
-        self.load_aliases(context.current_path(), context.resources())?;
+        self.load_aliases(context.current_path(), context.resources)?;
 
         Ok(())
     }
@@ -90,13 +90,16 @@ impl LuauRequireMode {
     }
 
     pub(crate) fn find_require(
-        &mut self,
+        &self,
         call: &FunctionCall,
         context: &Context,
     ) -> DarkluaResult<Option<PathBuf>> {
         if let Some(literal_path) = match_path_require_call(call) {
-            let mut path_locator =
-                LuauPathLocator::new(self, context.project_location(), context.resources());
+            let mut path_locator = LuauPathLocator::new(
+                self.clone(),
+                context.project_location(),
+                context.resources(),
+            );
 
             let required_path =
                 path_locator.find_require_path(literal_path, context.current_path())?;
@@ -291,7 +294,7 @@ mod test {
 
     #[test]
     fn parses_relative_path() {
-        let mut mode = LuauRequireMode::default();
+        let mode = LuauRequireMode::default();
         let context = make_context_with_files("/project/src/main.luau", &["/project/src/./module"]);
         let call = make_call("./module");
         let result = mode.find_require(&call, &context).unwrap();
@@ -300,7 +303,7 @@ mod test {
 
     #[test]
     fn parses_parent_relative_path() {
-        let mut mode = LuauRequireMode::default();
+        let mode = LuauRequireMode::default();
         let context =
             make_context_with_files("/project/src/main.luau", &["/project/src/../module"]);
         let call = make_call("../module");

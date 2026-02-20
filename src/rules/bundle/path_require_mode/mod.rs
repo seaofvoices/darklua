@@ -32,10 +32,10 @@ pub(crate) enum RequiredResource {
 }
 
 #[derive(Debug)]
-struct RequirePathProcessor<'a, 'b, 'resources, PathLocatorImpl> {
+struct RequirePathProcessor<'a, 'resources, PathLocatorImpl> {
     options: &'a BundleOptions,
     identifier_tracker: IdentifierTracker,
-    path_locator: &'b mut PathLocatorImpl,
+    path_locator: PathLocatorImpl,
     module_definitions: BuildModuleDefinitions,
     source: PathBuf,
     module_cache: HashMap<PathBuf, Expression>,
@@ -45,13 +45,13 @@ struct RequirePathProcessor<'a, 'b, 'resources, PathLocatorImpl> {
     errors: Vec<String>,
 }
 
-impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator>
-    RequirePathProcessor<'a, 'b, 'resources, PathLocatorImpl>
+impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator + Clone>
+    RequirePathProcessor<'a, 'resources, PathLocatorImpl>
 {
     fn new<'context, 'code>(
         context: &'context Context<'b, 'resources, 'code>,
         options: &'a BundleOptions,
-        path_locator: &'b mut PathLocatorImpl,
+        path_locator: PathLocatorImpl,
     ) -> Self
     where
         'context: 'b,
@@ -224,6 +224,10 @@ impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator>
 
                     let current_source = mem::replace(&mut self.source, path.to_path_buf());
 
+                    let mut new_locator = self.path_locator.clone();
+                    new_locator.initialize(path, self.resources)?;
+                    let current_locator = mem::replace(&mut self.path_locator, new_locator);
+
                     let apply_processor_timer = Timer::now();
                     DefaultVisitor::visit_block(&mut block, self);
 
@@ -234,6 +238,7 @@ impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator>
                     );
 
                     self.source = current_source;
+                    self.path_locator = current_locator;
 
                     Ok(RequiredResource::Block(block))
                 }
@@ -257,8 +262,8 @@ impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator>
     }
 }
 
-impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator> Deref
-    for RequirePathProcessor<'a, 'b, 'resources, PathLocatorImpl>
+impl<'a, 'resources, PathLocatorImpl: PathLocator> Deref
+    for RequirePathProcessor<'a, 'resources, PathLocatorImpl>
 {
     type Target = IdentifierTracker;
 
@@ -267,8 +272,8 @@ impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator> Deref
     }
 }
 
-impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator> DerefMut
-    for RequirePathProcessor<'a, 'b, 'resources, PathLocatorImpl>
+impl<'a, 'resources, PathLocatorImpl: PathLocator> DerefMut
+    for RequirePathProcessor<'a, 'resources, PathLocatorImpl>
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.identifier_tracker
@@ -300,8 +305,8 @@ where
     expression
 }
 
-impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator> NodeProcessor
-    for RequirePathProcessor<'a, 'b, 'resources, PathLocatorImpl>
+impl<'a, 'resources, PathLocatorImpl: PathLocator + Clone> NodeProcessor
+    for RequirePathProcessor<'a, 'resources, PathLocatorImpl>
 {
     fn process_expression(&mut self, expression: &mut Expression) {
         if let Expression::Call(call) = expression {
@@ -344,7 +349,7 @@ pub(crate) fn process_block(
     block: &mut Block,
     context: &Context,
     options: &BundleOptions,
-    locator: &mut impl PathLocator,
+    locator: impl PathLocator + Clone,
 ) -> Result<(), String> {
     if options.parser().is_preserving_tokens() {
         log::trace!(
