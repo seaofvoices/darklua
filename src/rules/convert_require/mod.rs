@@ -37,7 +37,7 @@ pub enum RequireMode {
 
 impl RequireMode {
     pub(crate) fn find_require(
-        &mut self,
+        &self,
         call: &FunctionCall,
         context: &Context,
     ) -> DarkluaResult<Option<PathBuf>> {
