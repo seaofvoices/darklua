@@ -37,6 +37,7 @@ pub trait LuaGenerator {
             Repeat(statement) => self.write_repeat_statement(statement),
             While(statement) => self.write_while_statement(statement),
             TypeDeclaration(statement) => self.write_type_declaration_statement(statement),
+            TypeFunction(statement) => self.write_type_function_statement(statement),
         }
     }
 
@@ -53,6 +54,7 @@ pub trait LuaGenerator {
     fn write_repeat_statement(&mut self, repeat: &nodes::RepeatStatement);
     fn write_while_statement(&mut self, while_statement: &nodes::WhileStatement);
     fn write_type_declaration_statement(&mut self, statement: &nodes::TypeDeclarationStatement);
+    fn write_type_function_statement(&mut self, statement: &nodes::TypeFunctionStatement);
 
     fn write_variable(&mut self, variable: &nodes::Variable) {
         use nodes::Variable::*;
@@ -87,6 +89,34 @@ pub trait LuaGenerator {
         }
     }
 
+    fn write_literal_expression(&mut self, expression: &nodes::LiteralExpression) {
+        use nodes::LiteralExpression::*;
+        match expression {
+            Number(number) => self.write_number(number),
+            String(string) => self.write_string(string),
+            False(token) => self.write_false_expression(token),
+            True(token) => self.write_true_expression(token),
+            Nil(token) => self.write_nil_expression(token),
+            Table(table) => self.write_literal_table(table),
+        }
+    }
+
+    fn write_attribute_arguments(&mut self, arguments: &nodes::AttributeArguments) {
+        use nodes::AttributeArguments::*;
+        match arguments {
+            Tuple(tuple) => {
+                self.write_attribute_tuple_arguments(tuple);
+            }
+            String(string) => {
+                self.write_string(string);
+            }
+            Table(table) => {
+                self.write_literal_table(table);
+            }
+        }
+    }
+    fn write_attribute_tuple_arguments(&mut self, tuple: &nodes::AttributeTupleArguments);
+
     fn write_identifier(&mut self, identifier: &nodes::Identifier);
     fn write_binary_expression(&mut self, binary: &nodes::BinaryExpression);
     fn write_if_expression(&mut self, if_expression: &nodes::IfExpression);
@@ -117,6 +147,9 @@ pub trait LuaGenerator {
     fn write_table(&mut self, table: &nodes::TableExpression);
     fn write_table_entry(&mut self, entry: &nodes::TableEntry);
     fn write_number(&mut self, number: &nodes::NumberExpression);
+
+    fn write_literal_table(&mut self, table: &nodes::LiteralTable);
+    fn write_literal_table_entry(&mut self, entry: &nodes::LiteralTableEntry);
 
     fn write_arguments(&mut self, arguments: &nodes::Arguments) {
         use nodes::Arguments::*;
@@ -757,6 +790,20 @@ mod $mod_name {
                 Vec::new(),
                 false
             ),
+            empty_with_attribute => FunctionStatement::from_name("foo", Block::default())
+                .with_attribute(NamedAttribute::new("native")),
+            empty_with_attribute_in_group => FunctionStatement::from_name("foo", Block::default())
+                .with_attribute(AttributeGroupElement::new("native").with_arguments(AttributeTupleArguments::default())),
+            empty_with_2_attributes => FunctionStatement::from_name("foo", Block::default())
+                .with_attribute(NamedAttribute::new("native"))
+                .with_attribute(NamedAttribute::new("deprecated")),
+            empty_with_2_attributes_in_group => FunctionStatement::from_name("foo", Block::default())
+                .with_attribute(
+                    AttributeGroup::new(
+                        AttributeGroupElement::new("native").with_arguments(AttributeTupleArguments::default())
+                    )
+                    .with_attribute(AttributeGroupElement::new("deprecated"))
+                ),
         ));
 
         snapshot_node!($mod_name, $generator, generic_for, write_statement => (
@@ -803,10 +850,25 @@ mod $mod_name {
                 TableType::default()
                     .with_property(TablePropertyType::new("name", TypeName::new("string")))
             ),
+            table_with_one_read_property => TypeDeclarationStatement::new(
+                "Obj",
+                TableType::default()
+                    .with_property(TablePropertyType::new("name", TypeName::new("string")).with_modifier(TablePropertyModifier::Read))
+            ),
+            table_with_one_write_property => TypeDeclarationStatement::new(
+                "Obj",
+                TableType::default()
+                    .with_property(TablePropertyType::new("name", TypeName::new("string")).with_modifier(TablePropertyModifier::Write))
+            ),
             table_with_indexer_type => TypeDeclarationStatement::new(
                 "StringArray",
                 TableType::default()
                     .with_indexer_type(TableIndexerType::new(TypeName::new("number"), TypeName::new("string")))
+            ),
+            table_with_read_indexer_type => TypeDeclarationStatement::new(
+                "StringArray",
+                TableType::default()
+                    .with_indexer_type(TableIndexerType::new(TypeName::new("number"), TypeName::new("string")).with_modifier(TablePropertyModifier::Read))
             ),
             table_with_one_property_and_indexer_type => TypeDeclarationStatement::new(
                 "PackedArray",
@@ -868,6 +930,17 @@ mod $mod_name {
                     ),
         ));
 
+        snapshot_node!($mod_name, $generator, type_function, write_type_function_statement => (
+            empty => TypeFunctionStatement::from_name("nothing", Block::default()),
+            empty_exported => TypeFunctionStatement::from_name("nothing", Block::default())
+                .export(),
+            empty_with_parameter => TypeFunctionStatement::from_name("nothing", Block::default())
+                .with_parameter("param"),
+            empty_with_parameters_and_return_type => TypeFunctionStatement::from_name("nothing", Block::default())
+                .with_parameter("param")
+                .with_return_type(Type::from(true)),
+        ));
+
         snapshot_node!($mod_name, $generator, if_statement, write_statement => (
             empty => IfStatement::create(false, Block::default()),
             empty_with_empty_else => IfStatement::create(false, Block::default())
@@ -923,6 +996,20 @@ mod $mod_name {
                 .variadic(),
             empty_with_generic_pack_return_type => LocalFunctionStatement::from_name("foo", Block::default())
                 .with_return_type(GenericTypePack::new("R")),
+            empty_with_attribute => LocalFunctionStatement::from_name("foo", Block::default())
+                .with_attribute(NamedAttribute::new("native")),
+            empty_with_attribute_in_group => LocalFunctionStatement::from_name("foo", Block::default())
+                .with_attribute(AttributeGroupElement::new("native").with_arguments(AttributeTupleArguments::default())),
+            empty_with_2_attributes => LocalFunctionStatement::from_name("foo", Block::default())
+                .with_attribute(NamedAttribute::new("native"))
+                .with_attribute(NamedAttribute::new("deprecated")),
+            empty_with_2_attributes_in_group => LocalFunctionStatement::from_name("foo", Block::default())
+                .with_attribute(
+                    AttributeGroup::new(
+                        AttributeGroupElement::new("native").with_arguments(AttributeTupleArguments::default())
+                    )
+                    .with_attribute(AttributeGroupElement::new("deprecated"))
+                ),
         ));
 
         snapshot_node!($mod_name, $generator, numeric_for, write_statement => (

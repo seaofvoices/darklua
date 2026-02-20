@@ -13,7 +13,12 @@ struct RemoveTypesProcessor {
 
 impl NodeProcessor for RemoveTypesProcessor {
     fn process_block(&mut self, block: &mut Block) {
-        block.filter_statements(|statement| !matches!(statement, Statement::TypeDeclaration(_)));
+        block.filter_statements(|statement| {
+            !matches!(
+                statement,
+                Statement::TypeDeclaration(_) | Statement::TypeFunction(_)
+            )
+        });
     }
 
     fn process_local_assign_statement(&mut self, local_assign: &mut LocalAssignStatement) {
@@ -111,7 +116,7 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_remove_types", rule);
+        assert_json_snapshot!(rule, @r###""remove_types""###);
     }
 
     #[test]
@@ -122,6 +127,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 }

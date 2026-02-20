@@ -38,7 +38,8 @@ impl Processor {
                 | Statement::NumericFor(_)
                 | Statement::Repeat(_)
                 | Statement::While(_)
-                | Statement::TypeDeclaration(_) => None,
+                | Statement::TypeDeclaration(_)
+                | Statement::TypeFunction(_) => None,
             })
     }
 }
@@ -106,7 +107,7 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_filter_after_early_return", rule);
+        assert_json_snapshot!(rule, @r###""filter_after_early_return""###);
     }
 
     #[test]
@@ -117,6 +118,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 }

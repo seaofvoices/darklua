@@ -167,6 +167,6 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_compute_expression", rule);
+        assert_json_snapshot!(rule, @r###""compute_expression""###);
     }
 }

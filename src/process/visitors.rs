@@ -38,6 +38,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Statement::TypeDeclaration(statement) => {
                 Self::visit_type_declaration(statement, processor)
             }
+            Statement::TypeFunction(statement) => Self::visit_type_function(statement, processor),
         };
     }
 
@@ -137,6 +138,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
     fn visit_function_expression(function: &mut FunctionExpression, processor: &mut T) {
         processor.process_function_expression(function);
+        Self::visit_attributes(function.mutate_attributes(), processor);
 
         processor.process_scope(function.mutate_block(), None);
 
@@ -185,6 +187,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
     fn visit_function_statement(statement: &mut FunctionStatement, processor: &mut T) {
         processor.process_function_statement(statement);
+        Self::visit_attributes(statement.mutate_attributes(), processor);
 
         Self::visit_identifier(
             statement.mutate_function_name().mutate_identifier(),
@@ -260,6 +263,8 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
     fn visit_local_function(statement: &mut LocalFunctionStatement, processor: &mut T) {
         processor.process_local_function_statement(statement);
+        Self::visit_attributes(statement.mutate_attributes(), processor);
+
         processor.process_scope(statement.mutate_block(), None);
         Self::visit_block(statement.mutate_block(), processor);
 
@@ -371,6 +376,27 @@ pub trait NodeVisitor<T: NodeProcessor> {
         Self::visit_type(statement.mutate_type(), processor);
     }
 
+    fn visit_type_function(statement: &mut TypeFunctionStatement, processor: &mut T) {
+        processor.process_type_function(statement);
+        processor.process_scope(statement.mutate_block(), None);
+        Self::visit_block(statement.mutate_block(), processor);
+
+        for r#type in statement
+            .iter_mut_parameters()
+            .filter_map(TypedIdentifier::mutate_type)
+        {
+            Self::visit_type(r#type, processor);
+        }
+
+        if let Some(variadic_type) = statement.mutate_variadic_type() {
+            Self::visit_function_variadic_type(variadic_type, processor);
+        }
+
+        if let Some(return_type) = statement.mutate_return_type() {
+            Self::visit_function_return_type(return_type, processor);
+        }
+    }
+
     fn visit_variable(variable: &mut Variable, processor: &mut T) {
         processor.process_variable(variable);
 
@@ -454,6 +480,84 @@ pub trait NodeVisitor<T: NodeProcessor> {
                 Self::visit_parenthese_expression(expression, processor)
             }
         };
+    }
+
+    fn visit_attributes(attributes: &mut Attributes, processor: &mut T) {
+        processor.process_attributes(attributes);
+        for attribute in attributes.iter_mut_attributes() {
+            match attribute {
+                Attribute::Group(group) => {
+                    for arguments in group
+                        .iter_mut_attributes()
+                        .flat_map(AttributeGroupElement::mutate_arguments)
+                    {
+                        match arguments {
+                            AttributeArguments::Tuple(arguments) => {
+                                for value in arguments.iter_mut_values() {
+                                    match value {
+                                        LiteralExpression::True(_)
+                                        | LiteralExpression::False(_)
+                                        | LiteralExpression::Nil(_) => {}
+                                        LiteralExpression::Number(number) => {
+                                            Self::visit_number_expression(number, processor);
+                                        }
+                                        LiteralExpression::String(string) => {
+                                            Self::visit_string_expression(string, processor);
+                                        }
+                                        LiteralExpression::Table(table) => {
+                                            Self::visit_literal_table(table, processor);
+                                        }
+                                    }
+                                }
+                            }
+                            AttributeArguments::String(string) => {
+                                Self::visit_string_expression(string, processor);
+                            }
+                            AttributeArguments::Table(table) => {
+                                Self::visit_literal_table(table, processor);
+                            }
+                        }
+                    }
+                }
+                Attribute::Name(_) => {
+                    // nothing to do
+                }
+            }
+        }
+    }
+
+    fn visit_literal_table(table: &mut LiteralTable, processor: &mut T) {
+        processor.process_literal_table(table);
+
+        for entry in table.iter_mut_entries() {
+            match entry {
+                LiteralTableEntry::Field(field) => {
+                    Self::visit_literal_expression(field.mutate_value(), processor);
+                }
+                LiteralTableEntry::Value(value) => {
+                    Self::visit_literal_expression(value, processor);
+                }
+            }
+        }
+    }
+
+    fn visit_literal_expression(expression: &mut LiteralExpression, processor: &mut T) {
+        processor.process_literal_expression(expression);
+
+        match expression {
+            LiteralExpression::Number(number) => {
+                Self::visit_number_expression(number, processor);
+            }
+            LiteralExpression::String(string) => {
+                Self::visit_string_expression(string, processor);
+            }
+            LiteralExpression::Table(table) => {
+                Self::visit_literal_table(table, processor);
+            }
+            LiteralExpression::True(_)
+            | LiteralExpression::False(_)
+            | LiteralExpression::Nil(_) => {}
+        }
     }
 
     fn visit_type(r#type: &mut Type, processor: &mut T) {

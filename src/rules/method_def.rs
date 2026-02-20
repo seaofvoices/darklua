@@ -70,7 +70,7 @@ mod test {
 
     #[test]
     fn serialize_default_rule() {
-        assert_json_snapshot!("default_remove_method_definition", wrap(new_rule()));
+        assert_json_snapshot!(wrap(new_rule()), @r###""remove_method_definition""###);
     }
 
     #[test]
@@ -81,6 +81,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 }

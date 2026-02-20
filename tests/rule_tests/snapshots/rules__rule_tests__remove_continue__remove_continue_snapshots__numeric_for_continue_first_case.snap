@@ -2,6 +2,7 @@
 source: tests/rule_tests/remove_continue.rs
 expression: lua_code
 ---
+
     for i = 1, 10 do
 local __DARKLUA_CONTINUE_1=false repeat        if i == 1 then
 __DARKLUA_CONTINUE_1=true            break

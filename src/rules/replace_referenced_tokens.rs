@@ -86,6 +86,33 @@ impl NodeProcessor for Processor<'_> {
         type_declaration.replace_referenced_tokens(self.code);
     }
 
+    fn process_type_function(&mut self, function: &mut TypeFunctionStatement) {
+        function.replace_referenced_tokens(self.code);
+    }
+
+    fn process_attributes(&mut self, attributes: &mut Attributes) {
+        attributes.replace_referenced_tokens(self.code);
+    }
+
+    fn process_literal_expression(&mut self, expression: &mut LiteralExpression) {
+        match expression {
+            LiteralExpression::True(token)
+            | LiteralExpression::False(token)
+            | LiteralExpression::Nil(token) => {
+                if let Some(token) = token {
+                    token.replace_referenced_tokens(self.code)
+                }
+            }
+            LiteralExpression::Number(_)
+            | LiteralExpression::String(_)
+            | LiteralExpression::Table(_) => {}
+        }
+    }
+
+    fn process_literal_table(&mut self, table: &mut LiteralTable) {
+        table.replace_referenced_tokens(self.code);
+    }
+
     fn process_expression(&mut self, expression: &mut Expression) {
         match expression {
             Expression::False(token)
@@ -294,7 +321,7 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_replace_referenced_tokens", rule);
+        assert_json_snapshot!(rule, @r###""replace_referenced_tokens""###);
     }
 
     fn test_code(code: &str) {

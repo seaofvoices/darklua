@@ -13,7 +13,7 @@
     "darklua-wasm": "file:../pkg"
   },
   "devDependencies": {
-    "jest": "^29.7.0"
+    "jest": "^30.2.0"
   },
   "type": "module"
 }

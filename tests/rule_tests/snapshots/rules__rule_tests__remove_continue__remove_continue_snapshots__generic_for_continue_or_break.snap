@@ -2,6 +2,7 @@
 source: tests/rule_tests/remove_continue.rs
 expression: lua_code
 ---
+
     for key, value in array do
 local __DARKLUA_CONTINUE_1=false repeat        if skip(key) then
 __DARKLUA_CONTINUE_1=true            break

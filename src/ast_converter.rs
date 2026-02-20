@@ -506,9 +506,13 @@ impl<'a> AstConverter<'a> {
 
                     self.expressions.push(value.into());
                 }
-                ConvertWork::MakeFunctionExpression { body, token } => {
-                    let builder =
-                        self.convert_function_body_attributes(body, self.convert_token(token)?)?;
+                ConvertWork::MakeFunctionExpression { function } => {
+                    let mut builder = self.convert_function_body_attributes(
+                        function.body(),
+                        self.convert_token(function.function_token())?,
+                    )?;
+
+                    builder.set_attributes(self.convert_attributes(function.attributes())?);
 
                     self.expressions
                         .push(builder.into_function_expression().into());
@@ -598,10 +602,11 @@ impl<'a> AstConverter<'a> {
                     self.statements.push(generic_for.into());
                 }
                 ConvertWork::MakeFunctionDeclaration { statement } => {
-                    let builder = self.convert_function_body_attributes(
+                    let mut builder = self.convert_function_body_attributes(
                         statement.body(),
                         self.convert_token(statement.function_token())?,
                     )?;
+                    builder.set_attributes(self.convert_attributes(statement.attributes())?);
                     let name = self.convert_function_name(statement.name())?;
 
                     self.statements
@@ -834,10 +839,13 @@ impl<'a> AstConverter<'a> {
                     self.expressions.push(call.into());
                 }
                 ConvertWork::MakeLocalFunctionStatement { statement } => {
-                    let builder = self.convert_function_body_attributes(
+                    let mut builder = self.convert_function_body_attributes(
                         statement.body(),
                         self.convert_token(statement.function_token())?,
                     )?;
+
+                    builder.set_attributes(self.convert_attributes(statement.attributes())?);
+
                     let mut name = Identifier::new(statement.name().token().to_string());
                     let mut local_token = None;
 
@@ -851,6 +859,36 @@ impl<'a> AstConverter<'a> {
                             .into_local_function_statement(name, local_token)
                             .into(),
                     );
+                }
+                ConvertWork::MakeTypeFunctionStatement {
+                    statement,
+                    export_token,
+                } => {
+                    let builder = self.convert_function_body_attributes(
+                        statement.function_body(),
+                        self.convert_token(statement.function_token())?,
+                    )?;
+
+                    let mut name = Identifier::new(statement.function_name().token().to_string());
+                    let mut type_token = None;
+                    let mut export = None;
+
+                    if self.hold_token_data {
+                        name.set_token(self.convert_token(statement.function_name())?);
+                        type_token = Some(self.convert_token(statement.type_token())?);
+                        export = export_token
+                            .map(|token| self.convert_token(token))
+                            .transpose()?;
+                    }
+
+                    let mut type_function_statement =
+                        builder.into_type_function_statement(name, type_token, export);
+
+                    if export_token.is_some() {
+                        type_function_statement.set_exported();
+                    }
+
+                    self.statements.push(type_function_statement.into());
                 }
                 ConvertWork::MakeLocalAssignStatement { statement } => {
                     let variables = statement
@@ -1088,6 +1126,22 @@ impl<'a> AstConverter<'a> {
                     for field in fields {
                         use ast::luau::TypeFieldKey;
 
+                        let modifier = field.access().and_then(|token| {
+                            match token.token().to_string().as_str() {
+                                "read" => Some(TablePropertyModifier::Read),
+                                "write" => Some(TablePropertyModifier::Write),
+                                modifier => {
+                                    log::warn!("Unknown access modifier: {}", modifier);
+                                    None
+                                }
+                            }
+                        });
+                        let modifier_token = self
+                            .hold_token_data
+                            .then_some(())
+                            .and_then(|()| field.access().map(|token| self.convert_token(token)))
+                            .transpose()?;
+
                         match field.key() {
                             TypeFieldKey::Name(property_name) => {
                                 let mut property_type = TablePropertyType::new(
@@ -1095,9 +1149,15 @@ impl<'a> AstConverter<'a> {
                                     self.pop_type()?,
                                 );
 
+                                if let Some(modifier) = modifier {
+                                    property_type.set_modifier(modifier);
+                                }
+
                                 if self.hold_token_data {
-                                    property_type
-                                        .set_token(self.convert_token(field.colon_token())?);
+                                    property_type.set_tokens(TablePropertyTypeTokens {
+                                        colon: self.convert_token(field.colon_token())?,
+                                        modifier: modifier_token,
+                                    });
                                 }
 
                                 table_type.push_property(property_type);
@@ -1105,6 +1165,10 @@ impl<'a> AstConverter<'a> {
                             TypeFieldKey::IndexSignature { brackets, .. } => {
                                 let mut indexer_type =
                                     TableIndexerType::new(self.pop_type()?, self.pop_type()?);
+
+                                if let Some(modifier) = modifier {
+                                    indexer_type.set_modifier(modifier);
+                                }
 
                                 if self.hold_token_data {
                                     let (opening_bracket, closing_bracket) =
@@ -1114,6 +1178,7 @@ impl<'a> AstConverter<'a> {
                                         opening_bracket,
                                         closing_bracket,
                                         colon: self.convert_token(field.colon_token())?,
+                                        modifier: modifier_token,
                                     })
                                 }
 
@@ -1520,6 +1585,22 @@ impl<'a> AstConverter<'a> {
                     });
                 self.push_function_body_work(local_function.body());
             }
+            ast::Stmt::TypeFunction(type_function) => {
+                self.work_stack
+                    .push(ConvertWork::MakeTypeFunctionStatement {
+                        statement: type_function,
+                        export_token: None,
+                    });
+                self.push_function_body_work(type_function.function_body());
+            }
+            ast::Stmt::ExportedTypeFunction(type_function) => {
+                self.work_stack
+                    .push(ConvertWork::MakeTypeFunctionStatement {
+                        statement: type_function.type_function(),
+                        export_token: Some(type_function.export_token()),
+                    });
+                self.push_function_body_work(type_function.type_function().function_body());
+            }
             ast::Stmt::NumericFor(numeric_for) => {
                 self.work_stack.push(ConvertWork::MakeNumericForStatement {
                     statement: numeric_for,
@@ -1830,12 +1911,10 @@ impl<'a> AstConverter<'a> {
             }
             ast::Expression::Function(function) => {
                 let func = function.as_ref();
-                let body = func.body();
-                let token = func.function_token();
                 self.work_stack
-                    .push(ConvertWork::MakeFunctionExpression { body, token });
+                    .push(ConvertWork::MakeFunctionExpression { function: func });
 
-                self.push_function_body_work(body);
+                self.push_function_body_work(func.body());
             }
             ast::Expression::FunctionCall(call) => {
                 self.work_stack
@@ -2630,6 +2709,27 @@ impl<'a> AstConverter<'a> {
         })
     }
 
+    fn convert_attributes(
+        &self,
+        attributes: impl Iterator<Item = &'a ast::luau::LuauAttribute> + 'a,
+    ) -> Result<Attributes, ConvertError> {
+        let mut new_attributes = Attributes::new();
+
+        for attribute in attributes {
+            let attribute_name = self.convert_token_to_identifier(attribute.name())?;
+
+            let mut named_attribute = NamedAttribute::new(attribute_name);
+
+            if self.hold_token_data {
+                named_attribute.set_token(self.convert_token(attribute.at_sign())?);
+            }
+
+            new_attributes.append_attribute(named_attribute);
+        }
+
+        Ok(new_attributes)
+    }
+
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn convert_function_name(
         &self,
@@ -2811,8 +2911,7 @@ enum ConvertWork<'a> {
         if_expression: &'a ast::luau::IfExpression,
     },
     MakeFunctionExpression {
-        body: &'a ast::FunctionBody,
-        token: &'a tokenizer::TokenReference,
+        function: &'a ast::AnonymousFunction,
     },
     MakeRepeatStatement {
         statement: &'a ast::Repeat,
@@ -2837,6 +2936,10 @@ enum ConvertWork<'a> {
     },
     MakeTypeDeclarationStatement {
         type_declaration: &'a ast::luau::TypeDeclaration,
+        export_token: Option<&'a tokenizer::TokenReference>,
+    },
+    MakeTypeFunctionStatement {
+        statement: &'a ast::luau::TypeFunction,
         export_token: Option<&'a tokenizer::TokenReference>,
     },
     MakePrefixFromExpression {

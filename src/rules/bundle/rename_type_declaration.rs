@@ -100,6 +100,22 @@ impl RenameTypeDeclarationProcessor {
         declaration.mutate_name().set_name(new_name);
     }
 
+    fn rename_type_function(&mut self, function: &mut TypeFunctionStatement) {
+        let original_name = function.get_identifier().get_name().to_owned();
+
+        let new_name = self.generate_unique_type(&original_name);
+
+        if function.is_exported() {
+            function.remove_exported();
+            self.exported_types
+                .insert(original_name.clone(), new_name.clone());
+        }
+
+        self.renamed_types.insert(original_name, new_name.clone());
+
+        function.mutate_identifier().set_name(new_name);
+    }
+
     pub(crate) fn get_type_lines(&self) -> isize {
         self.type_lines
     }
@@ -140,8 +156,14 @@ impl NodeProcessor for RenameTypeDeclarationProcessor {
         }
 
         for statement in block.iter_mut_statements() {
-            if let Statement::TypeDeclaration(declaration) = statement {
-                self.rename_type_declaration(declaration);
+            match statement {
+                Statement::TypeDeclaration(declaration) => {
+                    self.rename_type_declaration(declaration);
+                }
+                Statement::TypeFunction(function) => {
+                    self.rename_type_function(function);
+                }
+                _ => (),
             }
         }
     }
@@ -188,7 +210,7 @@ impl NodePostProcessor for RenameTypeDeclarationProcessor {
         }
 
         block.filter_mut_statements(|statement| {
-            if let Statement::TypeDeclaration(_declaration) = statement {
+            if let Statement::TypeDeclaration(_) | Statement::TypeFunction(_) = statement {
                 let mut current = mem::replace(statement, DoStatement::default().into());
 
                 let first_line = lines::statement_first(&current);

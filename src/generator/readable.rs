@@ -16,6 +16,7 @@ enum StatementType {
     Repeat,
     While,
     TypeDeclaration,
+    TypeFunction,
     Return,
     Break,
     Continue,
@@ -38,6 +39,7 @@ impl From<&nodes::Statement> for StatementType {
             Repeat(_) => Self::Repeat,
             While(_) => Self::While,
             TypeDeclaration(_) => Self::TypeDeclaration,
+            TypeFunction(_) => Self::TypeFunction,
         }
     }
 }
@@ -269,6 +271,46 @@ impl ReadableLuaGenerator {
             True(_) | False(_) | Nil(_) | Identifier(_) | VariableArguments(_) | Number(_) => true,
             Table(table) => table.is_empty(),
             _ => false,
+        }
+    }
+
+    fn write_attributes(&mut self, attributes: &nodes::Attributes) {
+        use nodes::Attribute;
+
+        for attribute in attributes.iter_attributes() {
+            match attribute {
+                Attribute::Name(named) => {
+                    let name = named.get_identifier().get_name();
+
+                    self.push_space_if_needed('@', 1 + name.len());
+                    self.raw_push_char('@');
+                    self.raw_push_str(name);
+                    self.push_new_line();
+                }
+                Attribute::Group(group) => {
+                    if !group.is_empty() {
+                        self.push_str("@[");
+
+                        let last_index = group.len().saturating_sub(1);
+
+                        for (index, attribute) in group.iter_attributes().enumerate() {
+                            self.push_str(attribute.name().get_name());
+
+                            if let Some(arguments) = attribute.get_arguments() {
+                                self.write_attribute_arguments(arguments);
+                            }
+
+                            if index != last_index {
+                                self.push_char(',');
+                                self.push_char(' ');
+                            }
+                        }
+
+                        self.push_char(']');
+                        self.push_new_line();
+                    }
+                }
+            }
         }
     }
 
@@ -592,6 +634,7 @@ impl LuaGenerator for ReadableLuaGenerator {
     }
 
     fn write_local_function(&mut self, function: &nodes::LocalFunctionStatement) {
+        self.write_attributes(function.attributes());
         self.push_str("local function ");
         self.raw_push_str(function.get_name());
 
@@ -725,6 +768,7 @@ impl LuaGenerator for ReadableLuaGenerator {
     }
 
     fn write_function_statement(&mut self, function: &nodes::FunctionStatement) {
+        self.write_attributes(function.attributes());
         self.push_str("function ");
         let name = function.get_name();
 
@@ -871,6 +915,45 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.write_type(statement.get_type());
     }
 
+    fn write_type_function_statement(&mut self, function: &nodes::TypeFunctionStatement) {
+        self.push_can_add_new_line(false);
+        if function.is_exported() {
+            self.push_str("export");
+        }
+        self.push_str("type function ");
+        self.write_identifier(function.get_identifier());
+
+        if let Some(generics) = function.get_generic_parameters() {
+            self.write_function_generics(generics);
+        }
+
+        self.raw_push_char('(');
+
+        self.pop_can_add_new_line();
+
+        let parameters = function.get_parameters();
+        self.write_function_parameters(
+            parameters,
+            function.is_variadic(),
+            function.get_variadic_type(),
+        );
+        self.raw_push_char(')');
+
+        if let Some(return_type) = function.get_return_type() {
+            self.write_function_return_type_suffix(return_type);
+        }
+
+        let block = function.get_block();
+
+        if block.is_empty() {
+            self.raw_push_str(" end");
+        } else {
+            self.push_new_line();
+            self.indent_and_write_block(block);
+            self.push_str("end");
+        }
+    }
+
     fn write_false_expression(&mut self, _token: &Option<nodes::Token>) {
         self.push_str("false");
     }
@@ -929,6 +1012,9 @@ impl LuaGenerator for ReadableLuaGenerator {
     }
 
     fn write_function(&mut self, function: &nodes::FunctionExpression) {
+        self.push_can_add_new_line(false);
+        self.write_attributes(function.attributes());
+        self.pop_can_add_new_line();
         self.push_str("function");
 
         if let Some(generics) = function.get_generic_parameters() {
@@ -1152,6 +1238,54 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.raw_push_char('`');
     }
 
+    fn write_literal_table(&mut self, table: &nodes::LiteralTable) {
+        self.push_char('{');
+        let last_index = table.len().saturating_sub(1);
+        for (index, entry) in table.iter_entries().enumerate() {
+            self.write_literal_table_entry(entry);
+            if index != last_index {
+                self.push_char(',');
+            }
+        }
+        self.push_char('}');
+    }
+
+    fn write_literal_table_entry(&mut self, entry: &nodes::LiteralTableEntry) {
+        use nodes::LiteralTableEntry::*;
+
+        self.push_can_add_new_line(false);
+
+        match entry {
+            Field(field) => {
+                self.write_identifier(field.get_field());
+                self.push_char('=');
+                self.write_literal_expression(field.get_value());
+            }
+            Value(value) => {
+                self.write_literal_expression(value);
+            }
+        }
+
+        self.pop_can_add_new_line();
+    }
+
+    fn write_attribute_tuple_arguments(&mut self, tuple: &nodes::AttributeTupleArguments) {
+        self.push_char('(');
+        self.push_can_add_new_line(false);
+
+        let last_index = tuple.len().saturating_sub(1);
+        for (index, value) in tuple.iter_values().enumerate() {
+            self.write_literal_expression(value);
+            if index != last_index {
+                self.push_char(',');
+                self.push_char(' ');
+            }
+        }
+
+        self.pop_can_add_new_line();
+        self.push_char(')');
+    }
+
     fn write_identifier(&mut self, identifier: &nodes::Identifier) {
         self.push_str(identifier.get_name());
     }
@@ -1243,6 +1377,14 @@ impl LuaGenerator for ReadableLuaGenerator {
 
         let last_index = table_type.len().saturating_sub(1);
         for (index, property) in table_type.iter_entries().enumerate() {
+            if let Some(modifier) = property.get_modifier() {
+                match modifier {
+                    nodes::TablePropertyModifier::Read => self.push_str("read"),
+                    nodes::TablePropertyModifier::Write => self.push_str("write"),
+                }
+                self.push_char(' ');
+            }
+
             match property {
                 nodes::TableEntryType::Property(property) => {
                     self.write_identifier(property.get_identifier());

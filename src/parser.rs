@@ -403,6 +403,10 @@ mod test {
             => ReturnStatement::one(
                 FunctionExpression::from_block(ReturnStatement::one(Expression::from(true)))
             ),
+        return_function_with_native_attribute("return @native function() return end")
+            => ReturnStatement::one(
+                FunctionExpression::from_block(ReturnStatement::default()).with_attribute(NamedAttribute::new("native"))
+            ),
         empty_if_statement("if true then end") => IfStatement::create(true, Block::default()),
         if_statement_returns("if true then return end") => IfStatement::create(
             Expression::from(true),
@@ -431,6 +435,8 @@ mod test {
                 .variadic(),
         local_function_return("local function name() return end")
             => LocalFunctionStatement::from_name("name", ReturnStatement::default()),
+        local_function_return_with_native_attribute("@native local function name() return end")
+            => LocalFunctionStatement::from_name("name", ReturnStatement::default()).with_attribute(NamedAttribute::new("native")),
 
         empty_function_statement("function name() end")
             => FunctionStatement::from_name("name", Block::default()),
@@ -442,6 +448,8 @@ mod test {
                 .variadic(),
         function_statement_return("function name() return end")
             => FunctionStatement::from_name("name", ReturnStatement::default()),
+        function_statement_return_with_native_attribute("@native function name() return end")
+            => FunctionStatement::from_name("name", ReturnStatement::default()).with_attribute(NamedAttribute::new("native")),
         empty_generic_for("for key in pairs(t) do end") => GenericForStatement::new(
             vec!["key".into()],
             vec![
@@ -512,6 +520,46 @@ mod test {
             Variable::new("var"),
             Expression::identifier("divider"),
         ),
+        type_function("type function foo() end") => TypeFunctionStatement::from_name(
+            "foo",
+            Block::default(),
+        ),
+        type_function_with_2_typed_parameters("type function foo(a: number, b: string) end")
+            => TypeFunctionStatement::from_name(
+                Identifier::new("foo"),
+                Block::default(),
+            )
+            .with_parameter(Identifier::new("a").with_type(TypeName::new("number")))
+            .with_parameter(Identifier::new("b").with_type(TypeName::new("string"))),
+        empty_type_function_variadic("type function foo(...) end")
+            => TypeFunctionStatement::from_name("foo", Block::default()).variadic(),
+        empty_type_function_variadic_with_one_parameter("type function foo(a, ...) end")
+            => TypeFunctionStatement::from_name("foo", Block::default())
+                .with_parameter("a")
+                .variadic(),
+        type_function_with_2_typed_parameters_and_variadic("type function foo(a: number, b: string, ...) end")
+            => TypeFunctionStatement::from_name("foo", Block::default())
+                .with_parameter(Identifier::new("a").with_type(TypeName::new("number")))
+                .with_parameter(Identifier::new("b").with_type(TypeName::new("string")))
+                .variadic(),
+        type_function_variadic_and_return_type("type function foo(...): number end")
+            => TypeFunctionStatement::from_name("foo", Block::default())
+                .variadic()
+                .with_return_type(TypeName::new("number")),
+        exported_type_function_optional("export type function optional(t) return types.unionof(t, types.singleton(nil)) end")
+            => TypeFunctionStatement::from_name(
+                "optional",
+                ReturnStatement::one(
+                    FunctionCall::from_prefix(FieldExpression::new(Prefix::from_name("types"), "unionof"))
+                        .with_argument(Expression::identifier("t"))
+                        .with_argument(
+                            FunctionCall::from_prefix(FieldExpression::new(Prefix::from_name("types"), "singleton"))
+                                .with_argument(Expression::nil())
+                        )
+                )
+            )
+            .with_parameter("t")
+            .export(),
     );
 
     mod parse_with_tokens {
@@ -1412,6 +1460,50 @@ mod test {
                 r#return: spaced_token(0, 6),
                 commas: Vec::new(),
             }),
+            return_function_with_native_attribute("return @native function() end") => ReturnStatement::one(
+                FunctionExpression::from_block(default_block())
+                    .with_attribute(
+                        NamedAttribute::new(create_identifier("native", 8, 1))
+                            .with_token(token_at_first_line(7, 8))
+                    )
+                    .with_tokens(FunctionBodyTokens {
+                        function: token_at_first_line(15, 23),
+                        opening_parenthese: token_at_first_line(23, 24),
+                        closing_parenthese: spaced_token(24, 25),
+                        end: token_at_first_line(26, 29),
+                        parameter_commas: Vec::new(),
+                        variable_arguments: None,
+                        variable_arguments_colon: None,
+                        return_type_colon: None,
+                    }),
+            ).with_tokens(ReturnTokens {
+                r#return: spaced_token(0, 6),
+                commas: Vec::new(),
+            }),
+            return_function_with_native_and_deprecated_attribute("return @native @deprecated function() end") => ReturnStatement::one(
+                FunctionExpression::from_block(default_block())
+                    .with_attribute(
+                        NamedAttribute::new(create_identifier("native", 8, 1))
+                            .with_token(token_at_first_line(7, 8))
+                    )
+                    .with_attribute(
+                        NamedAttribute::new(create_identifier("deprecated", 16, 1))
+                            .with_token(token_at_first_line(15, 16))
+                    )
+                    .with_tokens(FunctionBodyTokens {
+                        function: token_at_first_line(27, 35),
+                        opening_parenthese: token_at_first_line(35, 36),
+                        closing_parenthese: spaced_token(36, 37),
+                        end: token_at_first_line(38, 41),
+                        parameter_commas: Vec::new(),
+                        variable_arguments: None,
+                        variable_arguments_colon: None,
+                        return_type_colon: None,
+                    }),
+            ).with_tokens(ReturnTokens {
+                r#return: spaced_token(0, 6),
+                commas: Vec::new(),
+            }),
             return_two_values("return true ,  true--end") => ReturnStatement::default()
                 .with_expression(create_true(7, 1))
                 .with_expression(Expression::True(Some(
@@ -2218,11 +2310,62 @@ mod test {
                             create_identifier("key", 11, 0),
                             TypeName::new(create_identifier("string", 16, 1)),
                         )
-                        .with_token(spaced_token(14, 15))
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(14, 15),
+                            modifier: None,
+                        })
                     )
                     .with_tokens(TableTypeTokens {
                         opening_brace: spaced_token(9, 10),
                         closing_brace: token_at_first_line(23, 24),
+                        separators: Vec::new(),
+                    })
+            ).with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
+            type_declaration_to_table_with_one_read_prop("type T = { read key: string }") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                TableType::default()
+                    .with_property(
+                        TablePropertyType::new(
+                            create_identifier("key", 16, 0),
+                            TypeName::new(create_identifier("string", 21, 1)),
+                        )
+                        .with_modifier(TablePropertyModifier::Read)
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(19, 20),
+                            modifier: Some(spaced_token(11, 15)),
+                        })
+                    )
+                    .with_tokens(TableTypeTokens {
+                        opening_brace: spaced_token(9, 10),
+                        closing_brace: token_at_first_line(28, 29),
+                        separators: Vec::new(),
+                    })
+            ).with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
+            type_declaration_to_table_with_one_write_prop("type T = { write key: string }") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                TableType::default()
+                    .with_property(
+                        TablePropertyType::new(
+                            create_identifier("key", 17, 0),
+                            TypeName::new(create_identifier("string", 22, 1)),
+                        )
+                        .with_modifier(TablePropertyModifier::Write)
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(20, 21),
+                            modifier: Some(spaced_token(11, 16)),
+                        })
+                    )
+                    .with_tokens(TableTypeTokens {
+                        opening_brace: spaced_token(9, 10),
+                        closing_brace: token_at_first_line(29, 30),
                         separators: Vec::new(),
                     })
             ).with_tokens(TypeDeclarationTokens {
@@ -2238,7 +2381,10 @@ mod test {
                             create_identifier("key", 11, 0),
                             TypeName::new(create_identifier("string", 16, 0)),
                         )
-                        .with_token(spaced_token(14, 15))
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(14, 15),
+                            modifier: None,
+                        })
                     )
                     .with_tokens(TableTypeTokens {
                         opening_brace: spaced_token(9, 10),
@@ -2258,19 +2404,60 @@ mod test {
                             create_identifier("key", 11, 0),
                             TypeName::new(create_identifier("string", 16, 0)),
                         )
-                        .with_token(spaced_token(14, 15))
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(14, 15),
+                            modifier: None,
+                        })
                     )
                     .with_property(
                         TablePropertyType::new(
                             create_identifier("key2", 24, 1),
                             Type::Nil(Some(spaced_token(31, 34)))
                         )
-                        .with_token(spaced_token(29, 30))
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(29, 30),
+                            modifier: None,
+                        })
                     )
                     .with_tokens(TableTypeTokens {
                         opening_brace: spaced_token(9, 10),
                         closing_brace: token_at_first_line(35, 36),
                         separators: vec![spaced_token(22, 23)],
+                    })
+            ).with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
+            type_declaration_to_table_with_two_props_and_modifiers("type T = { read key: string, write key2 : nil }") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                TableType::default()
+                    .with_property(
+                        TablePropertyType::new(
+                            create_identifier("key", 16, 0),
+                            TypeName::new(create_identifier("string", 21, 0)),
+                        )
+                        .with_modifier(TablePropertyModifier::Read)
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(19, 20),
+                            modifier: Some(spaced_token(11, 15)),
+                        })
+                    )
+                    .with_property(
+                        TablePropertyType::new(
+                            create_identifier("key2", 35, 1),
+                            Type::Nil(Some(spaced_token(42, 45)))
+                        )
+                        .with_modifier(TablePropertyModifier::Write)
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(40, 41),
+                            modifier: Some(spaced_token(29, 34)),
+                        })
+                    )
+                    .with_tokens(TableTypeTokens {
+                        opening_brace: spaced_token(9, 10),
+                        closing_brace: token_at_first_line(46, 47),
+                        separators: vec![spaced_token(27, 28)],
                     })
             ).with_tokens(TypeDeclarationTokens {
                 r#type: spaced_token(0, 4),
@@ -2285,14 +2472,20 @@ mod test {
                             create_identifier("key", 11, 0),
                             TypeName::new(create_identifier("string", 16, 0)),
                         )
-                        .with_token(spaced_token(14, 15))
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(14, 15),
+                            modifier: None,
+                        })
                     )
                     .with_property(
                         TablePropertyType::new(
                             create_identifier("key2", 24, 1),
                             Type::Nil(Some(spaced_token(31, 34)))
                         )
-                        .with_token(spaced_token(29, 30))
+                        .with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(29, 30),
+                            modifier: None,
+                        })
                     )
                     .with_tokens(TableTypeTokens {
                         opening_brace: spaced_token(9, 10),
@@ -2316,13 +2509,17 @@ mod test {
                             opening_bracket: token_at_first_line(11, 12),
                             closing_bracket: token_at_first_line(18, 19),
                             colon: spaced_token(19, 20),
+                            modifier: None,
                         })
                     )
                     .with_property(
                         TablePropertyType::new(
                             create_identifier("n", 29, 0),
                             TypeName::new(create_identifier("number", 32, 1))
-                        ).with_token(spaced_token(30, 31))
+                        ).with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(30, 31),
+                            modifier: None,
+                        })
                     )
                     .with_tokens(TableTypeTokens {
                         opening_brace: spaced_token(9, 10),
@@ -2341,7 +2538,10 @@ mod test {
                         TablePropertyType::new(
                             create_identifier("n", 11, 0),
                             TypeName::new(create_identifier("number", 14, 0))
-                        ).with_token(spaced_token(12, 13))
+                        ).with_tokens(TablePropertyTypeTokens {
+                            colon: spaced_token(12, 13),
+                            modifier: None,
+                        })
                     )
                     .with_indexer_type(
                         TableIndexerType::new(
@@ -2352,6 +2552,7 @@ mod test {
                             opening_bracket: token_at_first_line(22, 23),
                             closing_bracket: token_at_first_line(29, 30),
                             colon: spaced_token(30, 31),
+                            modifier: None,
                         })
                     )
                     .with_tokens(TableTypeTokens {
@@ -2377,6 +2578,7 @@ mod test {
                             opening_bracket: token_at_first_line(11, 12),
                             closing_bracket: token_at_first_line(17, 18),
                             colon: spaced_token(18, 19),
+                            modifier: None,
                         })
                     )
                     .with_tokens(TableTypeTokens {
@@ -2401,11 +2603,64 @@ mod test {
                             opening_bracket: token_at_first_line(11, 12),
                             closing_bracket: token_at_first_line(18, 19),
                             colon: spaced_token(19, 20),
+                            modifier: None,
                         })
                     )
                     .with_tokens(TableTypeTokens {
                         opening_brace: spaced_token(9, 10),
                         closing_brace: token_at_first_line(29, 30),
+                        separators: Vec::new(),
+                    })
+            ).with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
+            type_declaration_to_table_with_read_indexer_type("type T = { read [string]: boolean }") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                TableType::default()
+                    .with_indexer_type(
+                        TableIndexerType::new(
+                            TypeName::new(create_identifier("string", 17, 0)),
+                            TypeName::new(create_identifier("boolean", 26, 1)),
+                        )
+                        .with_modifier(TablePropertyModifier::Read)
+                        .with_tokens(TableIndexTypeTokens {
+                            opening_bracket: token_at_first_line(16, 17),
+                            closing_bracket: token_at_first_line(23, 24),
+                            colon: spaced_token(24, 25),
+                            modifier: Some(spaced_token(11, 15)),
+                        })
+                    )
+                    .with_tokens(TableTypeTokens {
+                        opening_brace: spaced_token(9, 10),
+                        closing_brace: token_at_first_line(34, 35),
+                        separators: Vec::new(),
+                    })
+            ).with_tokens(TypeDeclarationTokens {
+                r#type: spaced_token(0, 4),
+                equal: spaced_token(7, 8),
+                export: None,
+            }),
+            type_declaration_to_table_with_write_indexer_type("type T = { write [string]: boolean }") => TypeDeclarationStatement::new(
+                create_identifier("T", 5, 1),
+                TableType::default()
+                    .with_indexer_type(
+                        TableIndexerType::new(
+                            TypeName::new(create_identifier("string", 18, 0)),
+                            TypeName::new(create_identifier("boolean", 27, 1)),
+                        )
+                        .with_modifier(TablePropertyModifier::Write)
+                        .with_tokens(TableIndexTypeTokens {
+                            opening_bracket: token_at_first_line(17, 18),
+                            closing_bracket: token_at_first_line(24, 25),
+                            colon: spaced_token(25, 26),
+                            modifier: Some(spaced_token(11, 16)),
+                        })
+                    )
+                    .with_tokens(TableTypeTokens {
+                        opening_brace: spaced_token(9, 10),
+                        closing_brace: token_at_first_line(35, 36),
                         separators: Vec::new(),
                     })
             ).with_tokens(TypeDeclarationTokens {
@@ -3334,6 +3589,50 @@ mod test {
                 r#type: spaced_token(0, 4),
                 equal: spaced_token(7, 8),
                 export: None,
+            }),
+            type_function_statement_empty("type function nothing() end") => TypeFunctionStatement::from_name(
+                create_identifier("nothing", 14, 0),
+                Block::default().with_tokens(BlockTokens {
+                    semicolons: Vec::new(),
+                    last_semicolon: None,
+                    final_token: None,
+                }),
+            ).with_tokens(TypeFunctionStatementTokens {
+                r#type: spaced_token(0, 4),
+                function_body: FunctionBodyTokens {
+                    function: spaced_token(5, 13),
+                    opening_parenthese: token_at_first_line(21, 22),
+                    closing_parenthese: spaced_token(22, 23),
+                    end: token_at_first_line(24, 27),
+                    parameter_commas: Vec::new(),
+                    variable_arguments: None,
+                    variable_arguments_colon: None,
+                    return_type_colon: None,
+                },
+                export: None,
+            }),
+            exported_type_function_statement_empty("export type function nothing() end") => TypeFunctionStatement::from_name(
+                create_identifier("nothing", 21, 0),
+                Block::default().with_tokens(BlockTokens {
+                    semicolons: Vec::new(),
+                    last_semicolon: None,
+                    final_token: None,
+                }),
+            )
+            .export()
+            .with_tokens(TypeFunctionStatementTokens {
+                r#type: spaced_token(7, 11),
+                function_body: FunctionBodyTokens {
+                    function: spaced_token(12, 20),
+                    opening_parenthese: token_at_first_line(28, 29),
+                    closing_parenthese: spaced_token(29, 30),
+                    end: token_at_first_line(31, 34),
+                    parameter_commas: Vec::new(),
+                    variable_arguments: None,
+                    variable_arguments_colon: None,
+                    return_type_colon: None,
+                },
+                export: Some(spaced_token(0, 6)),
             }),
         );
 

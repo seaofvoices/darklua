@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+* add support for function attributes (like `@native` or `@deprecated`) and a new `remove_attribute` rule to remove specific or all attributes ([#338](https://github.com/seaofvoices/darklua/pull/338))
+* add support for type functions ([#333](https://github.com/seaofvoices/darklua/pull/333))
+* add support for property modifiers in table types (like `read` in a type like `{ read name: string }`) ([#332](https://github.com/seaofvoices/darklua/pull/332))
+
+## 0.17.3
+
+* fix `inject_global_value` rule to not override environment values with the default value when they're defined ([#324](https://github.com/seaofvoices/darklua/pull/324))
+
 ## 0.17.2
 
 * add `convert_function_to_assignment` rule ([#317](https://github.com/seaofvoices/darklua/pull/317))

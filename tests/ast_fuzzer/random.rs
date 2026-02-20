@@ -1,6 +1,8 @@
 use std::iter;
 
-use darklua_core::nodes::{BinaryOperator, CompoundOperator, Identifier, UnaryOperator};
+use darklua_core::nodes::{
+    BinaryOperator, CompoundOperator, Identifier, TablePropertyModifier, UnaryOperator,
+};
 use rand::{rng, Rng};
 
 pub struct RandomAst {
@@ -125,6 +127,11 @@ impl RandomAst {
 
     pub fn function_return_type(&self) -> bool {
         rng().random_bool(self.function_return_type_prob)
+    }
+
+    pub fn function_attributes<'a>(&'a self) -> impl Iterator<Item = Identifier> + 'a {
+        let amount = normal_sample(0.0, 1.0);
+        iter::repeat_with(move || self.identifier()).take(amount)
     }
 
     pub fn function_is_variadic(&self) -> bool {
@@ -299,6 +306,10 @@ impl RandomAst {
         rng().random_bool(0.5)
     }
 
+    pub fn export_type_function(&self) -> bool {
+        rng().random_bool(0.5)
+    }
+
     pub fn table_type_indexer(&self) -> bool {
         rng().random_bool(0.25)
     }
@@ -317,6 +328,16 @@ impl RandomAst {
 
     pub fn leading_intersection_or_union_operator(&self) -> bool {
         rng().random_bool(0.4)
+    }
+
+    pub(crate) fn table_indexer_modifier(&self) -> Option<TablePropertyModifier> {
+        if rng().random_bool(0.7) {
+            None
+        } else if rng().random_bool(0.5) {
+            Some(TablePropertyModifier::Read)
+        } else {
+            Some(TablePropertyModifier::Write)
+        }
     }
 }
 

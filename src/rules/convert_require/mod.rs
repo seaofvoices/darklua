@@ -258,9 +258,9 @@ mod test {
             target: 'rblox',
         }"#,
         );
-        pretty_assertions::assert_eq!(
+        insta::assert_snapshot!(
             result.unwrap_err().to_string(),
-            "unexpected value for field 'target': invalid require mode name `rblox`"
+            @"unexpected value for field 'target': invalid require mode name `rblox` at line 1 column 1"
         );
     }
 
@@ -274,6 +274,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 }

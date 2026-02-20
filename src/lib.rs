@@ -13,7 +13,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! darklua = "0.17.2"
+//! darklua = "0.17.3"
 //! ```
 //!
 //! This library is designed for developers who want to integrate Lua/Luau transformation capabilities

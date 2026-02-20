@@ -86,6 +86,33 @@ impl NodeProcessor for ShiftTokenLineProcessor {
         type_declaration.shift_token_line(self.shift_amount);
     }
 
+    fn process_type_function(&mut self, function: &mut TypeFunctionStatement) {
+        function.shift_token_line(self.shift_amount);
+    }
+
+    fn process_attributes(&mut self, attributes: &mut Attributes) {
+        attributes.shift_token_line(self.shift_amount);
+    }
+
+    fn process_literal_expression(&mut self, expression: &mut LiteralExpression) {
+        match expression {
+            LiteralExpression::True(token)
+            | LiteralExpression::False(token)
+            | LiteralExpression::Nil(token) => {
+                if let Some(token) = token {
+                    token.shift_token_line(self.shift_amount)
+                }
+            }
+            LiteralExpression::Number(_)
+            | LiteralExpression::String(_)
+            | LiteralExpression::Table(_) => {}
+        }
+    }
+
+    fn process_literal_table(&mut self, table: &mut LiteralTable) {
+        table.shift_token_line(self.shift_amount);
+    }
+
     fn process_expression(&mut self, expression: &mut Expression) {
         match expression {
             Expression::False(token)
@@ -302,6 +329,6 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_replace_referenced_tokens", rule);
+        assert_json_snapshot!(rule, @r###""shift_token_line""###);
     }
 }

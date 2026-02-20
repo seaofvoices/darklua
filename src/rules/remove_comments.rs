@@ -78,6 +78,33 @@ impl NodeProcessor for RemoveCommentProcessor {
         type_declaration.clear_comments();
     }
 
+    fn process_type_function(&mut self, function: &mut TypeFunctionStatement) {
+        function.clear_comments();
+    }
+
+    fn process_attributes(&mut self, attributes: &mut Attributes) {
+        attributes.clear_comments();
+    }
+
+    fn process_literal_expression(&mut self, expression: &mut LiteralExpression) {
+        match expression {
+            LiteralExpression::True(token)
+            | LiteralExpression::False(token)
+            | LiteralExpression::Nil(token) => {
+                if let Some(token) = token {
+                    token.clear_comments()
+                }
+            }
+            LiteralExpression::Number(_)
+            | LiteralExpression::String(_)
+            | LiteralExpression::Table(_) => {}
+        }
+    }
+
+    fn process_literal_table(&mut self, table: &mut LiteralTable) {
+        table.clear_comments();
+    }
+
     fn process_expression(&mut self, expression: &mut Expression) {
         match expression {
             Expression::False(token)
@@ -322,6 +349,33 @@ impl NodeProcessor for FilterCommentProcessor<'_> {
         type_declaration.filter_comments(|trivia| self.ignore_trivia(trivia));
     }
 
+    fn process_type_function(&mut self, type_function: &mut TypeFunctionStatement) {
+        type_function.filter_comments(|trivia| self.ignore_trivia(trivia));
+    }
+
+    fn process_attributes(&mut self, attributes: &mut Attributes) {
+        attributes.filter_comments(|trivia| self.ignore_trivia(trivia));
+    }
+
+    fn process_literal_expression(&mut self, expression: &mut LiteralExpression) {
+        match expression {
+            LiteralExpression::True(token)
+            | LiteralExpression::False(token)
+            | LiteralExpression::Nil(token) => {
+                if let Some(token) = token {
+                    token.filter_comments(|trivia| self.ignore_trivia(trivia))
+                }
+            }
+            LiteralExpression::Number(_)
+            | LiteralExpression::String(_)
+            | LiteralExpression::Table(_) => {}
+        }
+    }
+
+    fn process_literal_table(&mut self, table: &mut LiteralTable) {
+        table.filter_comments(|trivia| self.ignore_trivia(trivia));
+    }
+
     fn process_expression(&mut self, expression: &mut Expression) {
         match expression {
             Expression::False(token)
@@ -564,7 +618,7 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_remove_comments", rule);
+        assert_json_snapshot!(rule, @r###""remove_comments""###);
     }
 
     #[test]
@@ -575,7 +629,7 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 
     #[test]
@@ -588,8 +642,14 @@ mod test {
         );
 
         insta::assert_snapshot!(
-            "remove_comments_configure_with_invalid_regex_error",
-            result.unwrap_err().to_string()
+            result.unwrap_err().to_string(),
+            @r###"
+        unexpected value for field 'except': invalid regex provided `^[0-9`
+          regex parse error:
+            ^[0-9
+             ^
+        error: unclosed character class at line 1 column 1
+        "###
         );
     }
 
