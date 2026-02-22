@@ -181,6 +181,15 @@ impl<'a> Worker<'a> {
         let source_display = work_item.data.source().display();
         let normalized_source = normalize_path(work_item.data.source());
 
+        if !self
+            .configuration()
+            .should_apply_rule(work_item.data.source())
+        {
+            log::trace!("[{}] skip all rules", source_display);
+            work_item.status = WorkStatus::done();
+            return Ok(());
+        }
+
         progress.duration().start();
 
         for (index, rule) in self
@@ -196,11 +205,10 @@ impl<'a> Worker<'a> {
 
             if !metadata.should_apply(work_item.data.source()) {
                 log::trace!(
-                    "[{}] skip rule `{}` (#{}) because it does not match the path `{}`",
+                    "[{}] skip rule `{}` (#{})",
                     source_display,
                     rule.get_name(),
-                    index,
-                    work_item.data.source().display()
+                    index
                 );
                 continue;
             }

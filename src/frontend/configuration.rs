@@ -13,6 +13,7 @@ use crate::{
         bundle::{BundleRequireMode, Bundler},
         get_default_rules, Rule,
     },
+    utils::{deserialize_one_or_many, FilterPattern},
     Parser,
 };
 
@@ -34,6 +35,18 @@ pub struct Configuration {
     bundle: Option<BundleConfiguration>,
     #[serde(default, skip)]
     location: Option<PathBuf>,
+    #[serde(
+        default,
+        skip_serializing_if = "Vec::is_empty",
+        deserialize_with = "deserialize_one_or_many"
+    )]
+    apply_to_files: Vec<FilterPattern>,
+    #[serde(
+        default,
+        skip_serializing_if = "Vec::is_empty",
+        deserialize_with = "deserialize_one_or_many"
+    )]
+    skip_files: Vec<FilterPattern>,
 }
 
 impl Configuration {
@@ -44,6 +57,8 @@ impl Configuration {
             generator: GeneratorParameters::default(),
             bundle: None,
             location: None,
+            apply_to_files: Vec::new(),
+            skip_files: Vec::new(),
         }
     }
 
@@ -125,6 +140,22 @@ impl Configuration {
     pub(crate) fn location(&self) -> Option<&Path> {
         self.location.as_deref()
     }
+
+    pub(crate) fn should_apply_rule(&self, path: &Path) -> bool {
+        if !self.apply_to_files.is_empty() {
+            if self.apply_to_files.iter().all(|f| !f.matches(path)) {
+                return false;
+            }
+        }
+
+        if !self.skip_files.is_empty() {
+            if self.skip_files.iter().any(|f| f.matches(path)) {
+                return false;
+            }
+        }
+
+        true
+    }
 }
 
 impl Default for Configuration {
@@ -134,6 +165,8 @@ impl Default for Configuration {
             generator: Default::default(),
             bundle: None,
             location: None,
+            apply_to_files: Vec::new(),
+            skip_files: Vec::new(),
         }
     }
 }

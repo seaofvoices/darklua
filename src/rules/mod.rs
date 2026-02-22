@@ -79,10 +79,10 @@ pub use rule_property::*;
 pub(crate) use shift_token_line::*;
 pub use unused_if_branch::*;
 pub use unused_while::*;
-use wax::Pattern;
 
 use crate::nodes::Block;
-use crate::Resources;
+use crate::utils::FilterPattern;
+use crate::{DarkluaError, Resources};
 
 use serde::de::{self, MapAccess, Visitor};
 use serde::ser::SerializeMap;
@@ -92,8 +92,8 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-const INCLUDE_FILTER_PROPERTY: &str = "only";
-const SKIP_FILTER_PROPERTY: &str = "skip";
+const APPLY_TO_FILTER_PROPERTY: &str = "apply_to_files";
+const SKIP_FILTER_PROPERTY: &str = "skip_files";
 
 /// A builder for creating a [`Context`] with optional configuration.
 ///
@@ -267,14 +267,36 @@ pub trait RuleConfiguration {
 /// rules that are not applicable to the current context.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RuleMetadata {
-    only_filters: Vec<FilterPattern>,
+    apply_to_filters: Vec<FilterPattern>,
     skip_filters: Vec<FilterPattern>,
 }
 
 impl RuleMetadata {
+    pub fn with_apply_to_filter(mut self, filter: String) -> Result<Self, DarkluaError> {
+        self.push_apply_to_filter(filter)?;
+        Ok(self)
+    }
+
+    pub fn push_apply_to_filter(&mut self, filter: String) -> Result<(), DarkluaError> {
+        let pattern = FilterPattern::new(filter)?;
+        self.apply_to_filters.push(pattern);
+        Ok(())
+    }
+
+    pub fn with_skip_filter(mut self, filter: String) -> Result<Self, DarkluaError> {
+        self.push_skip_filter(filter)?;
+        Ok(self)
+    }
+
+    pub fn push_skip_filter(&mut self, filter: String) -> Result<(), DarkluaError> {
+        let pattern = FilterPattern::new(filter)?;
+        self.skip_filters.push(pattern);
+        Ok(())
+    }
+
     pub(crate) fn should_apply(&self, path: &Path) -> bool {
-        if !self.only_filters.is_empty() {
-            if self.only_filters.iter().all(|f| !f.matches(path)) {
+        if !self.apply_to_filters.is_empty() {
+            if self.apply_to_filters.iter().all(|f| !f.matches(path)) {
                 return false;
             }
         }
@@ -286,41 +308,6 @@ impl RuleMetadata {
         }
 
         true
-    }
-}
-
-#[derive(Debug, Clone)]
-struct FilterPattern {
-    original: String,
-    glob: wax::Glob<'static>,
-}
-
-impl PartialEq for FilterPattern {
-    fn eq(&self, other: &Self) -> bool {
-        self.original == other.original
-    }
-}
-
-impl Eq for FilterPattern {}
-
-impl FilterPattern {
-    fn new(pattern: String) -> Result<Self, wax::GlobError> {
-        let glob = wax::Glob::new(&pattern)?.into_owned();
-        Ok(Self {
-            original: pattern,
-            glob,
-        })
-    }
-
-    fn matches(&self, path: &Path) -> bool {
-        self.glob.is_match(path)
-    }
-}
-
-impl<'de> Deserialize<'de> for FilterPattern {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let value = String::deserialize(deserializer)?;
-        Self::new(value).map_err(de::Error::custom)
     }
 }
 
@@ -461,25 +448,25 @@ impl Serialize for dyn Rule {
 
             let metadata = self.metadata();
 
-            if !metadata.only_filters.is_empty() {
+            if !metadata.apply_to_filters.is_empty() {
                 let filters = metadata
-                    .only_filters
+                    .apply_to_filters
                     .iter()
-                    .map(|f| f.original.clone())
+                    .map(|f| f.original())
                     .collect::<Vec<_>>();
 
                 if filters.len() == 1 {
-                    map.serialize_entry(INCLUDE_FILTER_PROPERTY, &filters[0])?;
+                    map.serialize_entry(APPLY_TO_FILTER_PROPERTY, &filters[0])?;
                 } else {
-                    map.serialize_entry(INCLUDE_FILTER_PROPERTY, &filters)?;
+                    map.serialize_entry(APPLY_TO_FILTER_PROPERTY, &filters)?;
                 }
             }
 
-            if !metadata.only_filters.is_empty() {
+            if !metadata.apply_to_filters.is_empty() {
                 let filters = metadata
                     .skip_filters
                     .iter()
-                    .map(|f| f.original.clone())
+                    .map(|f| f.original())
                     .collect::<Vec<_>>();
 
                 if filters.len() == 1 {
@@ -559,14 +546,14 @@ impl<'de> Deserialize<'de> for Box<dyn Rule> {
                                 return Err(de::Error::duplicate_field("rule"));
                             }
                         }
-                        INCLUDE_FILTER_PROPERTY => {
+                        APPLY_TO_FILTER_PROPERTY => {
                             if only_patterns.is_none() {
                                 let value =
                                     map.next_value::<OneOrMany<FilterPattern>>()?.into_vec();
 
                                 only_patterns = Some(value);
                             } else {
-                                return Err(de::Error::duplicate_field(INCLUDE_FILTER_PROPERTY));
+                                return Err(de::Error::duplicate_field(APPLY_TO_FILTER_PROPERTY));
                             }
                         }
                         SKIP_FILTER_PROPERTY => {
@@ -599,7 +586,7 @@ impl<'de> Deserialize<'de> for Box<dyn Rule> {
                     rule.configure(properties).map_err(de::Error::custom)?;
 
                     let metadata = RuleMetadata {
-                        only_filters: only_patterns.unwrap_or_default(),
+                        apply_to_filters: only_patterns.unwrap_or_default(),
                         skip_filters: skip_patterns.unwrap_or_default(),
                     };
                     rule.set_metadata(metadata);
