@@ -14,7 +14,7 @@ use crate::{
         get_default_rules, Rule,
     },
     utils::{deserialize_one_or_many, FilterPattern},
-    Parser,
+    DarkluaError, Parser,
 };
 
 const DEFAULT_COLUMN_SPAN: usize = 80;
@@ -100,6 +100,36 @@ impl Configuration {
     #[inline]
     pub fn push_rule(&mut self, rule: impl Into<Box<dyn Rule>>) {
         self.rules.push(rule.into());
+    }
+
+    /// Adds a glob pattern so that rules will be only applied to files matching it.
+    /// Returns an error if the pattern is invalid.
+    pub fn with_apply_to_filter(mut self, apply_to_files: &str) -> Result<Self, DarkluaError> {
+        self.push_apply_to_filter(apply_to_files)?;
+        Ok(self)
+    }
+
+    /// Adds a glob pattern so that rules will be only applied to files matching it.
+    /// Returns an error if the pattern is invalid.
+    pub fn push_apply_to_filter(&mut self, apply_to_files: &str) -> Result<(), DarkluaError> {
+        let pattern = FilterPattern::new(apply_to_files.to_owned())?;
+        self.apply_to_files.push(pattern);
+        Ok(())
+    }
+
+    /// Adds a glob pattern so that rules will be skipped for files matching it.
+    /// Returns an error if the pattern is invalid.
+    pub fn with_skip_filter(mut self, skip_files: &str) -> Result<Self, DarkluaError> {
+        self.push_skip_filter(skip_files)?;
+        Ok(self)
+    }
+
+    /// Adds a glob pattern so that rules will be skipped for files matching it.
+    /// Returns an error if the pattern is invalid.
+    pub fn push_skip_filter(&mut self, skip_files: &str) -> Result<(), DarkluaError> {
+        let pattern = FilterPattern::new(skip_files.to_owned())?;
+        self.skip_files.push(pattern);
+        Ok(())
     }
 
     #[inline]
