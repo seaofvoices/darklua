@@ -172,16 +172,12 @@ impl Configuration {
     }
 
     pub(crate) fn should_apply_rule(&self, path: &Path) -> bool {
-        if !self.apply_to_files.is_empty() {
-            if self.apply_to_files.iter().all(|f| !f.matches(path)) {
-                return false;
-            }
+        if !self.apply_to_files.is_empty() && self.apply_to_files.iter().all(|f| !f.matches(path)) {
+            return false;
         }
 
-        if !self.skip_files.is_empty() {
-            if self.skip_files.iter().any(|f| f.matches(path)) {
-                return false;
-            }
+        if !self.skip_files.is_empty() && self.skip_files.iter().any(|f| f.matches(path)) {
+            return false;
         }
 
         true
