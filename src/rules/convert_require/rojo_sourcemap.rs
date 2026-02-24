@@ -124,6 +124,7 @@ impl RojoSourcemap {
         &self,
         from_file: impl AsRef<Path>,
         target_file: impl AsRef<Path>,
+        force_relative_path: bool,
     ) -> Option<InstancePath> {
         let from_file = from_file.as_ref();
         let target_file = target_file.as_ref();
@@ -160,7 +161,7 @@ impl RojoSourcemap {
 
         let relative_path_length = parents.len().saturating_add(descendants.len());
 
-        if !self.is_datamodel || relative_path_length <= target_ancestors.len() {
+        if !self.is_datamodel || force_relative_path || relative_path_length <= target_ancestors.len() {
             log::trace!("  ⨽ use Roblox path from script instance");
 
             let mut instance_path = InstancePath::from_script();
@@ -271,7 +272,7 @@ mod test {
             );
             pretty_assertions::assert_eq!(
                 sourcemap
-                    .get_instance_path("src/init.lua", "src/value.lua")
+                    .get_instance_path("src/init.lua", "src/value.lua", false)
                     .unwrap(),
                 script_path(&["value"])
             );
@@ -300,7 +301,7 @@ mod test {
             );
             pretty_assertions::assert_eq!(
                 sourcemap
-                    .get_instance_path("src/main.lua", "src/value.lua")
+                    .get_instance_path("src/main.lua", "src/value.lua", false)
                     .unwrap(),
                 script_path(&["parent", "value"])
             );
@@ -335,7 +336,7 @@ mod test {
             );
             pretty_assertions::assert_eq!(
                 sourcemap
-                    .get_instance_path("src/main.lua", "src/Lib/format.lua")
+                    .get_instance_path("src/main.lua", "src/Lib/format.lua", false)
                     .unwrap(),
                 script_path(&["parent", "Lib", "format"])
             );
@@ -359,7 +360,7 @@ mod test {
             );
             pretty_assertions::assert_eq!(
                 sourcemap
-                    .get_instance_path("src/main.lua", "src/init.lua")
+                    .get_instance_path("src/main.lua", "src/init.lua", false)
                     .unwrap(),
                 script_path(&["parent"])
             );
@@ -390,7 +391,7 @@ mod test {
             );
             pretty_assertions::assert_eq!(
                 sourcemap
-                    .get_instance_path("src/Sub/test.lua", "src/Sub/init.lua")
+                    .get_instance_path("src/Sub/test.lua", "src/Sub/init.lua", false)
                     .unwrap(),
                 script_path(&["parent"])
             );
