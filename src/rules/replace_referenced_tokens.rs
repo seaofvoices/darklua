@@ -1,7 +1,7 @@
 use crate::nodes::*;
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::verify_no_rule_properties;
@@ -268,7 +268,9 @@ impl NodeProcessor for Processor<'_> {
 pub const REPLACE_REFERENCED_TOKENS: &str = "replace_referenced_tokens";
 
 #[derive(Debug, Default, PartialEq, Eq)]
-pub(crate) struct ReplaceReferencedTokens {}
+pub(crate) struct ReplaceReferencedTokens {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for ReplaceReferencedTokens {
     fn flawless_process(&self, block: &mut Block, context: &Context) {
@@ -289,6 +291,14 @@ impl RuleConfiguration for ReplaceReferencedTokens {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

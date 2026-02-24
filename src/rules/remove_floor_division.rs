@@ -7,7 +7,7 @@ use crate::nodes::{
 use crate::process::{IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
     verify_no_rule_properties, Context, FlawlessRule, RemoveCompoundAssignment, RuleConfiguration,
-    RuleConfigurationError, RuleProperties,
+    RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 struct RemoveFloorDivisionProcessor {
@@ -87,7 +87,9 @@ pub const REMOVE_FLOOR_DIVISION_RULE_NAME: &str = "remove_floor_division";
 
 /// A rule that removes interpolated strings.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct RemoveFloorDivision {}
+pub struct RemoveFloorDivision {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for RemoveFloorDivision {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -123,6 +125,14 @@ impl RuleConfiguration for RemoveFloorDivision {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

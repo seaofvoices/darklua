@@ -9,7 +9,7 @@ use crate::nodes::{
 };
 use crate::process::{IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -158,6 +158,7 @@ pub const REMOVE_INTERPOLATED_STRING_RULE_NAME: &str = "remove_interpolated_stri
 /// A rule that removes interpolated strings.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct RemoveInterpolatedString {
+    metadata: RuleMetadata,
     strategy: ReplacementStrategy,
 }
 
@@ -240,6 +241,14 @@ impl RuleConfiguration for RemoveInterpolatedString {
 
         properties
     }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
+    }
 }
 
 #[cfg(test)]
@@ -263,6 +272,7 @@ mod test {
     #[test]
     fn serialize_rule_with_tostring_strategy() {
         let rule: Box<dyn Rule> = Box::new(RemoveInterpolatedString {
+            metadata: RuleMetadata::default(),
             strategy: ReplacementStrategy::ToStringSpecifier,
         });
 

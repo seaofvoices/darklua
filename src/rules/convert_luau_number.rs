@@ -1,7 +1,10 @@
 use crate::{
     nodes::{Block, HexNumber, NumberExpression, Token},
     process::{DefaultVisitor, NodeProcessor, NodeVisitor},
-    rules::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties},
+    rules::{
+        Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata,
+        RuleProperties,
+    },
 };
 
 use super::verify_no_rule_properties;
@@ -52,7 +55,9 @@ pub const CONVERT_LUAU_NUMBER_RULE_NAME: &str = "convert_luau_number";
 
 /// A rule that converts Luau number literals to regular Lua numbers.
 #[derive(Default, Debug, PartialEq, Eq)]
-pub struct ConvertLuauNumber {}
+pub struct ConvertLuauNumber {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for ConvertLuauNumber {
     fn flawless_process(&self, block: &mut Block, context: &Context) {
@@ -74,6 +79,14 @@ impl RuleConfiguration for ConvertLuauNumber {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

@@ -4,7 +4,7 @@ use std::iter::{self, FromIterator};
 use crate::nodes::{Block, Expression, FunctionCall, Prefix, TupleArguments};
 use crate::process::{IdentifierTracker, NodeVisitor, ScopeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::remove_call_match::{CallMatch, RemoveFunctionCallProcessor};
@@ -16,12 +16,14 @@ pub const REMOVE_ASSERTIONS_RULE_NAME: &str = "remove_assertions";
 /// A rule that removes `assert` calls.
 #[derive(Debug, PartialEq, Eq)]
 pub struct RemoveAssertions {
+    metadata: RuleMetadata,
     preserve_args_side_effects: bool,
 }
 
 impl Default for RemoveAssertions {
     fn default() -> Self {
         Self {
+            metadata: RuleMetadata::default(),
             preserve_args_side_effects: true,
         }
     }
@@ -111,6 +113,14 @@ impl RuleConfiguration for RemoveAssertions {
 
         properties
     }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
+    }
 }
 
 #[cfg(test)]
@@ -134,6 +144,7 @@ mod test {
     #[test]
     fn serialize_rule_without_side_effects() {
         let rule: Box<dyn Rule> = Box::new(RemoveAssertions {
+            metadata: RuleMetadata::default(),
             preserve_args_side_effects: false,
         });
 

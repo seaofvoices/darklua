@@ -1,7 +1,7 @@
 use crate::nodes::*;
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::verify_no_rule_properties;
@@ -269,12 +269,16 @@ pub const SHIFT_TOKEN_LINE: &str = "shift_token_line";
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct ShiftTokenLine {
+    metadata: RuleMetadata,
     shift_amount: isize,
 }
 
 impl ShiftTokenLine {
     pub(crate) fn new(shift_amount: isize) -> Self {
-        Self { shift_amount }
+        Self {
+            metadata: RuleMetadata::default(),
+            shift_amount,
+        }
     }
 }
 
@@ -299,6 +303,14 @@ impl RuleConfiguration for ShiftTokenLine {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 
