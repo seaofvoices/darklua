@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.18.0
 
 * add `apply_to_files` and `skip_files` parameters to control for which files rules are applied ([#341](https://github.com/seaofvoices/darklua/pull/341))
 * add support for function attributes (like `@native` or `@deprecated`) and a new `remove_attribute` rule to remove specific or all attributes ([#338](https://github.com/seaofvoices/darklua/pull/338))
