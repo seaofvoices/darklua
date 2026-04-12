@@ -3,7 +3,7 @@ use crate::nodes::{
 };
 use crate::process::{processors::FindVariables, DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use serde::ser::{Serialize, Serializer};
@@ -57,7 +57,9 @@ pub const CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME: &str = "convert_local_func
 
 /// Convert local function statements into local assignements when the function is not recursive.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct ConvertLocalFunctionToAssign {}
+pub struct ConvertLocalFunctionToAssign {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for ConvertLocalFunctionToAssign {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -79,6 +81,14 @@ impl RuleConfiguration for ConvertLocalFunctionToAssign {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

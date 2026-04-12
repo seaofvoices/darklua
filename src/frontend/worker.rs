@@ -181,6 +181,15 @@ impl<'a> Worker<'a> {
         let source_display = work_item.data.source().display();
         let normalized_source = normalize_path(work_item.data.source());
 
+        if !self
+            .configuration()
+            .should_apply_rule(work_item.data.source())
+        {
+            log::trace!("[{}] skip all rules", source_display);
+            work_item.status = WorkStatus::done();
+            return Ok(());
+        }
+
         progress.duration().start();
 
         for (index, rule) in self
@@ -191,6 +200,19 @@ impl<'a> Worker<'a> {
         {
             let mut context_builder =
                 self.create_rule_context(work_item.data.source(), &work_progress.content);
+
+            let metadata = rule.metadata();
+
+            if !metadata.should_apply(work_item.data.source()) {
+                log::trace!(
+                    "[{}] skip rule `{}` (#{})",
+                    source_display,
+                    rule.get_name(),
+                    index
+                );
+                continue;
+            }
+
             log::trace!(
                 "[{}] apply rule `{}`{}",
                 source_display,

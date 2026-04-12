@@ -7,7 +7,9 @@ use crate::nodes::{
     WhileStatement,
 };
 use crate::process::{DefaultPostVisitor, NodePostProcessor, NodePostVisitor, NodeProcessor};
-use crate::rules::{Context, RuleConfiguration, RuleConfigurationError, RuleProperties};
+use crate::rules::{
+    Context, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
+};
 
 use super::{verify_no_rule_properties, FlawlessRule};
 
@@ -166,7 +168,9 @@ pub const REMOVE_CONTINUE_RULE_NAME: &str = "remove_continue";
 
 /// A rule that removes continue statements and converts them into break statements.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct RemoveContinue {}
+pub struct RemoveContinue {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for RemoveContinue {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -188,6 +192,14 @@ impl RuleConfiguration for RemoveContinue {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

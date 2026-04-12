@@ -1,7 +1,7 @@
 use crate::nodes::{Block, Expression, LocalAssignStatement};
 use crate::process::{DefaultVisitor, Evaluator, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::verify_no_rule_properties;
@@ -84,7 +84,9 @@ pub const REMOVE_NIL_DECLARATION_RULE_NAME: &str = "remove_nil_declaration";
 
 /// A rule that removes trailing `nil` in local assignments.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct RemoveNilDeclaration {}
+pub struct RemoveNilDeclaration {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for RemoveNilDeclaration {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -106,6 +108,14 @@ impl RuleConfiguration for RemoveNilDeclaration {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

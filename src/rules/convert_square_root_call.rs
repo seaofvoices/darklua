@@ -3,7 +3,7 @@ use crate::nodes::{
 };
 use crate::process::{Evaluator, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 use crate::utils::{expressions_as_statement, preserve_arguments_side_effects};
 
@@ -99,7 +99,9 @@ impl NodeProcessor for Processor {
 
 /// A rule that converts square root calls (`math.sqrt(x)`) to exponentiation calls (`x ^ 0.5`).
 #[derive(Debug, Default)]
-pub struct ConvertSquareRootCall {}
+pub struct ConvertSquareRootCall {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for ConvertSquareRootCall {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -119,6 +121,14 @@ impl RuleConfiguration for ConvertSquareRootCall {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

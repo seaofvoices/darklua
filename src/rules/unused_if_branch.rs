@@ -1,7 +1,7 @@
 use crate::nodes::{Block, DoStatement, Expression, IfExpression, IfStatement, Statement};
 use crate::process::{DefaultVisitor, Evaluator, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::verify_no_rule_properties;
@@ -204,7 +204,9 @@ pub const REMOVE_UNUSED_IF_BRANCH_RULE_NAME: &str = "remove_unused_if_branch";
 /// A rule that removes unused if branches. It can also turn a if statement into a do block
 /// statement.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct RemoveUnusedIfBranch {}
+pub struct RemoveUnusedIfBranch {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for RemoveUnusedIfBranch {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -226,6 +228,14 @@ impl RuleConfiguration for RemoveUnusedIfBranch {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

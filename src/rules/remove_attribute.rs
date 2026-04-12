@@ -3,7 +3,7 @@ use regex::Regex;
 use crate::nodes::*;
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 pub const REMOVE_ATTRIBUTE_RULE_NAME: &str = "remove_attribute";
@@ -80,6 +80,7 @@ impl<'a> NodeProcessor for FilterAttributeProcessor<'a> {
 /// When `match` is empty (default), all attributes are removed.
 #[derive(Debug, Default)]
 pub struct RemoveAttribute {
+    metadata: RuleMetadata,
     r#match: Vec<Regex>,
 }
 
@@ -133,6 +134,14 @@ impl RuleConfiguration for RemoveAttribute {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 
