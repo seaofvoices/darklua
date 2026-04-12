@@ -1,7 +1,7 @@
 use crate::nodes::{Block, LastStatement, Statement};
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::verify_no_rule_properties;
@@ -58,7 +58,9 @@ pub const FILTER_AFTER_EARLY_RETURN_RULE_NAME: &str = "filter_after_early_return
 /// A rule that removes statements that will never be executed because of an earlier
 /// `return` statement.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct FilterAfterEarlyReturn {}
+pub struct FilterAfterEarlyReturn {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for FilterAfterEarlyReturn {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -71,6 +73,14 @@ impl FlawlessRule for FilterAfterEarlyReturn {
 impl RuleConfiguration for FilterAfterEarlyReturn {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         verify_no_rule_properties(&properties)
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 
     fn get_name(&self) -> &'static str {

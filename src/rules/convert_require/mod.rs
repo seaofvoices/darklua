@@ -9,7 +9,9 @@ use crate::frontend::DarkluaResult;
 use crate::nodes::{Arguments, Block, FunctionCall};
 use crate::process::{DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor};
 use crate::rules::require::is_require_call;
-use crate::rules::{Context, RuleConfiguration, RuleConfigurationError, RuleProperties};
+use crate::rules::{
+    Context, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
+};
 
 use instance_path::InstancePath;
 pub use roblox_index_style::RobloxIndexStyle;
@@ -160,6 +162,7 @@ pub const CONVERT_REQUIRE_RULE_NAME: &str = "convert_require";
 /// A rule that converts require calls between environments
 #[derive(Debug, PartialEq, Eq)]
 pub struct ConvertRequire {
+    metadata: RuleMetadata,
     current: RequireMode,
     target: RequireMode,
 }
@@ -167,6 +170,7 @@ pub struct ConvertRequire {
 impl Default for ConvertRequire {
     fn default() -> Self {
         Self {
+            metadata: RuleMetadata::default(),
             current: RequireMode::Path(Default::default()),
             target: RequireMode::Roblox(Default::default()),
         }
@@ -216,6 +220,14 @@ impl RuleConfiguration for ConvertRequire {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

@@ -63,6 +63,10 @@ enum ErrorKind {
     OsStringConversion {
         os_string: OsString,
     },
+    InvalidGlobPattern {
+        pattern: String,
+        message: String,
+    },
     Custom {
         message: Cow<'static, str>,
     },
@@ -217,6 +221,16 @@ impl DarkluaError {
     pub(crate) fn os_string_conversion(os_string: impl Into<OsString>) -> Self {
         Self::new(ErrorKind::OsStringConversion {
             os_string: os_string.into(),
+        })
+    }
+
+    pub(crate) fn invalid_glob_pattern(
+        pattern: impl Into<String>,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::new(ErrorKind::InvalidGlobPattern {
+            pattern: pattern.into(),
+            message: message.into(),
         })
     }
 
@@ -416,6 +430,9 @@ impl Display for DarkluaError {
                     "unable to convert operating system string (`{}`) into a utf-8 string",
                     os_string.to_string_lossy(),
                 )?;
+            }
+            ErrorKind::InvalidGlobPattern { pattern, message } => {
+                write!(f, "invalid glob pattern `{}`: {}", pattern, message)?;
             }
             ErrorKind::Custom { message } => {
                 write!(f, "{}", message)?;

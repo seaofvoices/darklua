@@ -5,7 +5,7 @@ use std::sync::OnceLock;
 use crate::nodes::{Block, Token, TriviaKind};
 use crate::rules::{
     verify_property_collisions, verify_required_any_properties, Context, Rule, RuleConfiguration,
-    RuleConfigurationError, RuleProcessResult, RuleProperties,
+    RuleConfigurationError, RuleMetadata, RuleProcessResult, RuleProperties,
 };
 
 use super::{FlawlessRule, ShiftTokenLine};
@@ -15,6 +15,7 @@ pub const APPEND_TEXT_COMMENT_RULE_NAME: &str = "append_text_comment";
 /// A rule to append a comment at the beginning or the end of each file.
 #[derive(Debug, Default)]
 pub struct AppendTextComment {
+    metadata: RuleMetadata,
     text_value: OnceLock<Result<String, String>>,
     text_content: TextContent,
     location: AppendLocation,
@@ -23,6 +24,7 @@ pub struct AppendTextComment {
 impl AppendTextComment {
     pub fn new(value: impl Into<String>) -> Self {
         Self {
+            metadata: RuleMetadata::default(),
             text_value: Default::default(),
             text_content: TextContent::Value(value.into()),
             location: Default::default(),
@@ -31,6 +33,7 @@ impl AppendTextComment {
 
     pub fn from_file_content(file_path: impl Into<PathBuf>) -> Self {
         Self {
+            metadata: RuleMetadata::default(),
             text_value: Default::default(),
             text_content: TextContent::FilePath(file_path.into()),
             location: Default::default(),
@@ -173,6 +176,14 @@ impl RuleConfiguration for AppendTextComment {
         }
 
         properties
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 
