@@ -6,8 +6,8 @@ use std::path::Path;
 
 use crate::nodes::Block;
 use crate::rules::{
-    Context, RequireMode, Rule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProcessResult,
-    RuleProperties,
+    Context, RequireMode, Rule, RuleConfiguration, RuleConfigurationError, RuleMetadata,
+    RuleProcessResult, RuleProperties,
 };
 use crate::Parser;
 

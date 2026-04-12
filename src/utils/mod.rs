@@ -4,8 +4,8 @@ pub(crate) mod lines;
 mod luau_config;
 mod preserve_arguments_side_effects;
 mod scoped_hash_map;
-mod serde_string_or_default;
 mod serde_one_or_many;
+mod serde_string_or_default;
 mod serde_string_or_struct;
 mod timer;
 
@@ -14,8 +14,8 @@ pub(crate) use filter_pattern::FilterPattern;
 pub(crate) use luau_config::{clear_luau_configuration_cache, find_luau_configuration};
 pub(crate) use preserve_arguments_side_effects::preserve_arguments_side_effects;
 pub(crate) use scoped_hash_map::ScopedHashMap;
-pub(crate) use serde_string_or_default::string_or_default;
 pub(crate) use serde_one_or_many::deserialize_one_or_many;
+pub(crate) use serde_string_or_default::string_or_default;
 pub(crate) use serde_string_or_struct::string_or_struct;
 use std::{
     ffi::OsStr,

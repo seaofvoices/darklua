@@ -9,10 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     generator::{DenseLuaGenerator, LuaGenerator, ReadableLuaGenerator, TokenBasedLuaGenerator},
     nodes::Block,
-    rules::{
-        bundle::Bundler,
-        get_default_rules, RequireMode, Rule,
-    },
+    rules::{bundle::Bundler, get_default_rules, RequireMode, Rule},
     utils::{deserialize_one_or_many, FilterPattern},
     DarkluaError, Parser,
 };
