@@ -554,7 +554,7 @@ mod test {
 
             insta::assert_snapshot!(
                 result.expect_err("deserialization should fail").to_string(),
-                @"invalid require mode `oops` at line 1 column 26"
+                @"invalid require mode name `oops` at line 1 column 26"
             );
         }
     }
