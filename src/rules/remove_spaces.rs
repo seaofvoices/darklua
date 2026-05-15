@@ -128,7 +128,8 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
             | Expression::InterpolatedString(_)
             | Expression::Table(_)
             | Expression::Unary(_)
-            | Expression::TypeCast(_) => {}
+            | Expression::TypeCast(_)
+            | Expression::TypeInstantiation(_) => {}
         }
     }
 
@@ -185,6 +186,10 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
 
     fn process_type_cast_expression(&mut self, type_cast: &mut TypeCastExpression) {
         type_cast.clear_whitespaces();
+    }
+
+    fn process_type_instantiation(&mut self, type_instantiation: &mut TypeInstantiationExpression) {
+        type_instantiation.clear_whitespaces();
     }
 
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}

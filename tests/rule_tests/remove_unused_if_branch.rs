@@ -18,10 +18,10 @@ test_rule!(
     expression_one_inline_result_branch("return if 1 then 'first' else 'second'") => "return 'first'",
     expression_true_inline_result_branch_with_field_expression(
         "return if true then value.prop else 'second'"
-    ) => "return (value.prop)",
+    ) => "return value.prop",
     expression_true_inline_result_branch_with_index_expression(
         "return if true then value['prop'] else 'second'"
-    ) => "return (value['prop'])",
+    ) => "return value['prop']",
     expression_true_inline_result_branch_with_variadic_expression(
         "return if true then ... else 'second'"
     ) => "return (...)",

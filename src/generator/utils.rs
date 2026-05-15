@@ -118,7 +118,8 @@ pub fn starts_with_table(mut expression: &Expression) -> Option<&TableExpression
             | Expression::InterpolatedString(_)
             | Expression::True(_)
             | Expression::Unary(_)
-            | Expression::VariableArguments(_) => break None,
+            | Expression::VariableArguments(_)
+            | Expression::TypeInstantiation(_) => break None,
             Expression::TypeCast(type_cast) => {
                 expression = type_cast.get_expression();
             }
@@ -156,7 +157,8 @@ fn expression_ends_with_prefix(expression: &Expression) -> bool {
         | Expression::Parenthese(_)
         | Expression::Identifier(_)
         | Expression::Field(_)
-        | Expression::Index(_) => true,
+        | Expression::Index(_)
+        | Expression::TypeInstantiation(_) => true,
         Expression::Unary(unary) => expression_ends_with_prefix(unary.get_expression()),
         Expression::If(if_expression) => {
             expression_ends_with_prefix(if_expression.get_else_result())
@@ -175,12 +177,24 @@ fn expression_ends_with_prefix(expression: &Expression) -> bool {
 }
 
 fn prefix_starts_with_parenthese(prefix: &Prefix) -> bool {
-    match prefix {
-        Prefix::Parenthese(_) => true,
-        Prefix::Call(call) => call_starts_with_parenthese(call),
-        Prefix::Field(field) => field_starts_with_parenthese(field),
-        Prefix::Index(index) => index_starts_with_parenthese(index),
-        Prefix::Identifier(_) => false,
+    let mut current = prefix;
+    loop {
+        match current {
+            Prefix::Parenthese(_) => break true,
+            Prefix::Identifier(_) => break false,
+            Prefix::Call(call) => {
+                current = call.get_prefix();
+            }
+            Prefix::Field(field) => {
+                current = field.get_prefix();
+            }
+            Prefix::Index(index) => {
+                current = index.get_prefix();
+            }
+            Prefix::TypeInstantiation(type_instantiation) => {
+                current = type_instantiation.get_prefix();
+            }
+        }
     }
 }
 

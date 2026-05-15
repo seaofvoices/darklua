@@ -33,7 +33,11 @@ impl Processor {
                     None
                 }
             }
-            Prefix::Identifier(_) | Prefix::Call(_) | Prefix::Field(_) | Prefix::Index(_) => None,
+            Prefix::Identifier(_)
+            | Prefix::Call(_)
+            | Prefix::Field(_)
+            | Prefix::Index(_)
+            | Prefix::TypeInstantiation(_) => None,
         }
     }
 
@@ -68,7 +72,8 @@ impl Processor {
                     Prefix::Call(_)
                     | Prefix::Field(_)
                     | Prefix::Index(_)
-                    | Prefix::Parenthese(_) => Some(self.generate_variable()),
+                    | Prefix::Parenthese(_)
+                    | Prefix::TypeInstantiation(_) => Some(self.generate_variable()),
                 };
                 let index_assignment = match index.get_index() {
                     Expression::False(_)
@@ -102,6 +107,7 @@ impl Processor {
                     | Expression::Parenthese(_)
                     | Expression::Table(_)
                     | Expression::TypeCast(_)
+                    | Expression::TypeInstantiation(_)
                     | Expression::Unary(_) => Some(self.generate_variable()),
                 };
 
@@ -180,7 +186,11 @@ impl Processor {
                         Some(new_variable.into()),
                     ))
                 }
-                Prefix::Call(_) | Prefix::Field(_) | Prefix::Index(_) | Prefix::Parenthese(_) => {
+                Prefix::Call(_)
+                | Prefix::Field(_)
+                | Prefix::Index(_)
+                | Prefix::Parenthese(_)
+                | Prefix::TypeInstantiation(_) => {
                     let identifier = self.generate_variable();
                     let new_variable = FieldExpression::new(
                         Prefix::from_name(&identifier),

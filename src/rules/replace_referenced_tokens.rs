@@ -136,7 +136,8 @@ impl NodeProcessor for Processor<'_> {
             | Expression::InterpolatedString(_)
             | Expression::Table(_)
             | Expression::Unary(_)
-            | Expression::TypeCast(_) => {}
+            | Expression::TypeCast(_)
+            | Expression::TypeInstantiation(_) => {}
         }
     }
 
@@ -193,6 +194,10 @@ impl NodeProcessor for Processor<'_> {
 
     fn process_type_cast_expression(&mut self, type_cast: &mut TypeCastExpression) {
         type_cast.replace_referenced_tokens(self.code);
+    }
+
+    fn process_type_instantiation(&mut self, type_instantiation: &mut TypeInstantiationExpression) {
+        type_instantiation.replace_referenced_tokens(self.code);
     }
 
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}

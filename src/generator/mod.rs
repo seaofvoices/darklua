@@ -86,6 +86,9 @@ pub trait LuaGenerator {
             Unary(unary) => self.write_unary_expression(unary),
             VariableArguments(token) => self.write_variable_arguments_expression(token),
             TypeCast(type_cast) => self.write_type_cast(type_cast),
+            TypeInstantiation(type_instantiation) => {
+                self.write_type_instantiation(type_instantiation)
+            }
         }
     }
 
@@ -127,6 +130,7 @@ pub trait LuaGenerator {
     fn write_index(&mut self, index: &nodes::IndexExpression);
     fn write_parenthese(&mut self, parenthese: &nodes::ParentheseExpression);
     fn write_type_cast(&mut self, type_cast: &nodes::TypeCastExpression);
+    fn write_type_instantiation(&mut self, type_instantiation: &nodes::TypeInstantiationExpression);
 
     fn write_false_expression(&mut self, token: &Option<nodes::Token>);
     fn write_true_expression(&mut self, token: &Option<nodes::Token>);
@@ -141,6 +145,9 @@ pub trait LuaGenerator {
             Identifier(identifier) => self.write_identifier(identifier),
             Index(index) => self.write_index(index),
             Parenthese(parenthese) => self.write_parenthese(parenthese),
+            TypeInstantiation(type_instantiation) => {
+                self.write_type_instantiation(type_instantiation)
+            }
         }
     }
 

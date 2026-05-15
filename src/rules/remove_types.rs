@@ -45,20 +45,39 @@ impl NodeProcessor for RemoveTypesProcessor {
         function.clear_types();
     }
 
+    fn process_function_call(&mut self, call: &mut FunctionCall) {
+        call.remove_type_instantiation_from_method();
+    }
+
     fn process_expression(&mut self, expression: &mut Expression) {
-        match expression {
-            Expression::TypeCast(type_cast) => {
-                let value = type_cast.get_expression();
-                if self.evaluator.can_return_multiple_values(value) {
-                    *expression = value.clone().in_parentheses();
-                } else {
-                    *expression = value.clone();
+        loop {
+            match expression {
+                Expression::TypeCast(type_cast) => {
+                    let value = type_cast.get_expression();
+                    if self.evaluator.can_return_multiple_values(value) {
+                        *expression = value.clone().in_parentheses();
+                    } else {
+                        *expression = value.clone();
+                    }
+                }
+                Expression::TypeInstantiation(type_instantiation) => {
+                    let prefix: Expression = type_instantiation.get_prefix().clone().into();
+                    if self.evaluator.can_return_multiple_values(&prefix) {
+                        *expression = prefix.in_parentheses();
+                    } else {
+                        *expression = prefix;
+                    }
+                }
+                _ => {
+                    break;
                 }
             }
-            Expression::Function(function) => {
-                function.clear_types();
-            }
-            _ => {}
+        }
+    }
+
+    fn process_prefix_expression(&mut self, prefix: &mut Prefix) {
+        while let Prefix::TypeInstantiation(type_instantiation) = prefix {
+            *prefix = type_instantiation.get_prefix().clone();
         }
     }
 }

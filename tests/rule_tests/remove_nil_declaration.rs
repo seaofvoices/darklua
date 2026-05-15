@@ -10,8 +10,8 @@ test_rule!(
     assign_to_nil_and_nil("local a, b = nil, nil") => "local a, b",
     assign_call_and_nil("local a, b = call(), nil") => "local a, b = (call())",
     assign_variadic_args_and_nil("local a, b = ..., nil") => "local a, b = (...)",
-    assign_field_expression_and_nil("local a, b = object.prop, nil") => "local a, b = (object.prop)",
-    assign_index_expression_and_nil("local a, b = object[key], nil") => "local a, b = (object[key])",
+    assign_field_expression_and_nil("local a, b = object.prop, nil") => "local a, b = object.prop",
+    assign_index_expression_and_nil("local a, b = object[key], nil") => "local a, b = object[key]",
     assign_call_and_nil_and_nil("local a, b, c = call(), nil, nil") => "local a, b, c = (call())",
     // we can re-order variables that gets assigned to `nil`
     assign_to_nil_and_true("local a, b = nil, true") => "local b, a = true",

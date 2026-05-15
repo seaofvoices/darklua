@@ -472,7 +472,7 @@ impl AstFuzzer {
                         6
                     };
                     let bound = if self.budget.has_types() && self.budget.has_expressions() {
-                        16
+                        18
                     } else {
                         15
                     };
@@ -592,20 +592,30 @@ impl AstFuzzer {
                             });
                             self.fuzz_multiple_nested_expression(depth, expression_count);
                         }
-                        _ => {
+                        17 => {
                             self.budget.try_take_expressions(1);
 
                             self.push_work(AstFuzzerWork::MakeTypeCastExpression);
                             self.fuzz_nested_expression(depth);
                             self.fuzz_type();
                         }
+                        _ => {
+                            let types_count = self
+                                .budget
+                                .try_take_types(self.random.type_instantiation_types());
+                            self.push_work(AstFuzzerWork::MakeTypeInstantiationExpression {
+                                types: types_count,
+                            });
+                            self.push_work(AstFuzzerWork::FuzzPrefix);
+                            self.fuzz_multiple_type(types_count);
+                        }
                     }
                 }
                 AstFuzzerWork::FuzzPrefix => {
                     let bound = if self.budget.can_have_expression(2) {
-                        4
+                        5
                     } else if self.budget.has_expressions() {
-                        3
+                        4
                     } else {
                         0
                     };
@@ -629,6 +639,17 @@ impl AstFuzzer {
                             self.push_work(AstFuzzerWork::MakeFunctionCall);
                             self.push_work(AstFuzzerWork::FuzzPrefix);
                             self.push_work(AstFuzzerWork::FuzzArguments);
+                        }
+                        4 => {
+                            self.budget.take_expression();
+                            let type_count = self
+                                .budget
+                                .try_take_types(self.random.type_instantiation_types());
+                            self.push_work(AstFuzzerWork::MakeTypeInstantiationPrefix {
+                                types: type_count,
+                            });
+                            self.push_work(AstFuzzerWork::FuzzPrefix);
+                            self.fuzz_multiple_type(type_count);
                         }
                         _ => {
                             self.budget.try_take_expressions(2);
@@ -1390,6 +1411,12 @@ impl AstFuzzer {
                     self.expressions
                         .push(TypeCastExpression::new(expression, r#type).into());
                 }
+                AstFuzzerWork::MakeTypeInstantiationExpression { types } => {
+                    let prefix = self.pop_prefix();
+                    let types = self.pop_types(types);
+                    self.expressions
+                        .push(TypeInstantiationExpression::new(prefix, types).into());
+                }
                 AstFuzzerWork::MakeFieldPrefix => {
                     let prefix = self.pop_prefix();
                     self.prefixes
@@ -1409,6 +1436,12 @@ impl AstFuzzer {
                 AstFuzzerWork::MakeCallPrefix => {
                     let call = self.pop_call();
                     self.prefixes.push(call.into());
+                }
+                AstFuzzerWork::MakeTypeInstantiationPrefix { types } => {
+                    let prefix = self.pop_prefix();
+                    let types = self.pop_types(types);
+                    self.prefixes
+                        .push(TypeInstantiationExpression::new(prefix, types).into());
                 }
                 AstFuzzerWork::MakeIntersectionType {
                     has_leading_token,

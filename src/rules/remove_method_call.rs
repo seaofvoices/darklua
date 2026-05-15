@@ -33,6 +33,7 @@ impl NodeProcessor for Processor {
                 | Expression::Unary(_)
                 | Expression::VariableArguments(_)
                 | Expression::TypeCast(_)
+                | Expression::TypeInstantiation(_)
                 | Expression::InterpolatedString(_)
                 | Expression::Parenthese(_)
                 | Expression::Call(_) => None,

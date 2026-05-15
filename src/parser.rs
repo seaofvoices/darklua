@@ -246,6 +246,30 @@ mod test {
         call_indexed_table("foo.bar()") => FunctionCall::from_prefix(
             FieldExpression::new(Prefix::from_name("foo"), "bar")
         ),
+        call_indexed_with_empty_type_instantiation("foo.bar<<>>()") => FunctionCall::from_prefix(
+            TypeInstantiationExpression::new(
+                FieldExpression::new(Prefix::from_name("foo"), "bar"),
+                Vec::new()
+            )
+        ),
+        call_indexed_with_empty_type_instantiation_with_spaces("foo.bar < <   >  >  ()") => FunctionCall::from_prefix(
+            TypeInstantiationExpression::new(
+                FieldExpression::new(Prefix::from_name("foo"), "bar"),
+                Vec::new()
+            )
+        ),
+        call_indexed_with_type_instantiation_of_one_type("foo.bar<<string>>()") => FunctionCall::from_prefix(
+            TypeInstantiationExpression::new(
+                FieldExpression::new(Prefix::from_name("foo"), "bar"),
+                vec![TypeName::new("string").into()]
+            )
+        ),
+        call_indexed_with_type_instantiation_of_two_types("foo.bar< <string, number> >()") => FunctionCall::from_prefix(
+            TypeInstantiationExpression::new(
+                FieldExpression::new(Prefix::from_name("foo"), "bar"),
+                vec![TypeName::new("string").into(), TypeName::new("number").into()]
+            )
+        ),
         call_method("foo:bar()") => FunctionCall::from_name("foo").with_method("bar"),
         call_method_with_one_argument("foo:bar(true)") => FunctionCall::from_name("foo")
             .with_method("bar")
@@ -332,6 +356,15 @@ mod test {
         ),
         return_field_expression("return math.huge") => ReturnStatement::one(
             FieldExpression::new(Prefix::from_name("math"), "huge")
+        ),
+        return_type_instantiation("return foo << string >>") => ReturnStatement::one(
+            TypeInstantiationExpression::new(Prefix::from_name("foo"), vec![TypeName::new("string").into()])
+        ),
+        return_type_instantiation_indexed("return foo << string >>.bar") => ReturnStatement::one(
+            FieldExpression::new(
+                TypeInstantiationExpression::new(Prefix::from_name("foo"), vec![TypeName::new("string").into()]),
+                "bar"
+            )
         ),
         index_field_function_call("return call().result") => ReturnStatement::one(
             FieldExpression::new(FunctionCall::from_name("call"), "result"),
@@ -1646,6 +1679,7 @@ mod test {
                 commas: Vec::new(),
             })).with_tokens(FunctionCallTokens {
                 colon: None,
+                type_instantiation_tokens: None,
             }),
             call_indexed_table("foo.bar()") => FunctionCall::from_prefix(
                 FieldExpression::new(
@@ -1658,6 +1692,7 @@ mod test {
                 commas: Vec::new(),
             })).with_tokens(FunctionCallTokens {
                 colon: None,
+                type_instantiation_tokens: None,
             }),
             call_method("foo: bar()") => FunctionCall::from_name(create_identifier("foo", 0, 0))
                 .with_method(create_identifier("bar", 5, 0))
@@ -1668,6 +1703,29 @@ mod test {
                 }))
                 .with_tokens(FunctionCallTokens {
                     colon: Some(spaced_token(3, 4)),
+                    type_instantiation_tokens: None,
+                }),
+            call_method_with_type_instantiation_of_one_type("foo: bar< <T>--[[]]>  ()") => FunctionCall::from_name(create_identifier("foo", 0, 0))
+                .with_type_instantiation_method(
+                    create_identifier("bar", 5, 0),
+                    vec![TypeName::new(create_identifier("T", 11, 0)).into()]
+                )
+                .with_arguments(TupleArguments::default().with_tokens(TupleArgumentsTokens {
+                    opening_parenthese: token_at_first_line(22, 23),
+                    closing_parenthese: token_at_first_line(23, 24),
+                    commas: Vec::new(),
+                }))
+                .with_tokens(FunctionCallTokens {
+                    colon: Some(spaced_token(3, 4)),
+                    type_instantiation_tokens: Some(TypeInstantiationTokens {
+                        first_opening_list: spaced_token(8, 9),
+                        second_opening_list: token_at_first_line(10, 11),
+                        first_closing_list: token_at_first_line(12, 13)
+                            .with_trailing_trivia(TriviaKind::Comment.at(13, 19, 1)),
+                        second_closing_list: token_at_first_line(19, 20)
+                            .with_trailing_trivia(TriviaKind::Whitespace.at(20, 22, 1)),
+                        commas: Vec::new(),
+                    }),
                 }),
             call_method_with_one_argument("foo:bar( true )") => FunctionCall::from_name(
                 create_identifier("foo", 0, 0)
@@ -1684,6 +1742,7 @@ mod test {
                 )
             .with_tokens(FunctionCallTokens {
                 colon: Some(token_at_first_line(3, 4)),
+                type_instantiation_tokens: None,
             }),
             call_function_with_one_argument("call ( true ) ") =>  FunctionCall::from_name(
                 create_identifier("call", 0, 1)
@@ -1699,6 +1758,7 @@ mod test {
                 )
             .with_tokens(FunctionCallTokens {
                 colon: None,
+                type_instantiation_tokens: None,
             }),
             call_function_with_two_arguments("call(true, true)") =>  FunctionCall::from_name(
                 create_identifier("call", 0, 0)
@@ -1715,6 +1775,7 @@ mod test {
                 )
             .with_tokens(FunctionCallTokens {
                 colon: None,
+                type_instantiation_tokens: None,
             }),
             call_chain_with_args("call(true)( )") => FunctionCall::from_prefix(
                 FunctionCall::from_name(create_identifier("call", 0, 0))
@@ -1729,6 +1790,7 @@ mod test {
                         )
                     .with_tokens(FunctionCallTokens {
                         colon: None,
+                        type_instantiation_tokens: None,
                     }),
             )
             .with_arguments(TupleArguments::default().with_tokens(TupleArgumentsTokens {
@@ -1738,6 +1800,7 @@ mod test {
             }))
             .with_tokens(FunctionCallTokens {
                 colon: None,
+                type_instantiation_tokens: None,
             }),
             call_with_empty_table_argument("call{ }") => FunctionCall::from_name(
                 create_identifier("call", 0, 0)
@@ -1747,6 +1810,7 @@ mod test {
                 separators: Vec::new(),
             })).with_tokens(FunctionCallTokens {
                 colon: None,
+                type_instantiation_tokens: None,
             }),
             call_with_empty_string_argument("call ''") => FunctionCall::from_name(
                 create_identifier("call", 0, 1)
@@ -1754,6 +1818,7 @@ mod test {
                 StringExpression::empty().with_token(token_at_first_line(5, 7))
             ).with_tokens(FunctionCallTokens {
                 colon: None,
+                type_instantiation_tokens: None,
             }),
             empty_do("do end") => DoStatement::new(default_block())
                 .with_tokens(DoTokens {

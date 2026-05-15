@@ -1,6 +1,6 @@
 use crate::nodes::{
     Expression, FieldExpression, FunctionCall, Identifier, IndexExpression, ParentheseExpression,
-    Token,
+    Token, TypeInstantiationExpression,
 };
 
 /// Represents a prefix expression.
@@ -19,6 +19,8 @@ pub enum Prefix {
     Index(Box<IndexExpression>),
     /// A parenthesized expression (e.g., `(expression)`)
     Parenthese(Box<ParentheseExpression>),
+    /// A type instantiation expression (e.g., `var<<Type1, Type2>>`)
+    TypeInstantiation(Box<TypeInstantiationExpression>),
 }
 
 impl Prefix {
@@ -48,6 +50,9 @@ impl Prefix {
                 Prefix::Parenthese(parenthese_expression) => {
                     break parenthese_expression.mutate_first_token();
                 }
+                Prefix::TypeInstantiation(type_instantiation_expression) => {
+                    current = type_instantiation_expression.mutate_prefix();
+                }
             }
         }
     }
@@ -61,6 +66,9 @@ impl Prefix {
             Prefix::Identifier(identifier) => identifier.mutate_or_insert_token(),
             Prefix::Index(index_expression) => index_expression.mutate_last_token(),
             Prefix::Parenthese(parenthese_expression) => parenthese_expression.mutate_last_token(),
+            Prefix::TypeInstantiation(type_instantiation_expression) => {
+                type_instantiation_expression.mutate_last_token()
+            }
         }
     }
 }
@@ -73,6 +81,9 @@ impl From<Expression> for Prefix {
             Expression::Identifier(identifier) => Prefix::Identifier(identifier),
             Expression::Index(index) => Prefix::Index(index),
             Expression::Parenthese(parenthese) => Prefix::Parenthese(parenthese),
+            Expression::TypeInstantiation(type_instantiation) => {
+                Prefix::TypeInstantiation(type_instantiation)
+            }
             Expression::Binary(_)
             | Expression::False(_)
             | Expression::Function(_)
@@ -131,5 +142,17 @@ impl From<Box<IndexExpression>> for Prefix {
 impl From<ParentheseExpression> for Prefix {
     fn from(expression: ParentheseExpression) -> Self {
         Self::Parenthese(Box::new(expression))
+    }
+}
+
+impl From<TypeInstantiationExpression> for Prefix {
+    fn from(type_instantiation: TypeInstantiationExpression) -> Self {
+        Self::TypeInstantiation(Box::new(type_instantiation))
+    }
+}
+
+impl From<Box<TypeInstantiationExpression>> for Prefix {
+    fn from(type_instantiation: Box<TypeInstantiationExpression>) -> Self {
+        Self::TypeInstantiation(type_instantiation)
     }
 }

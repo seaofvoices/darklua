@@ -220,6 +220,32 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         self.write_type(type_cast.get_type());
     }
 
+    fn write_type_instantiation_with_tokens(
+        &mut self,
+        type_instantiation: &TypeInstantiationExpression,
+        tokens: &TypeInstantiationTokens,
+    ) {
+        self.write_prefix(type_instantiation.get_prefix());
+        self.write_token(&tokens.first_opening_list);
+        self.write_token(&tokens.second_opening_list);
+
+        let last_index = type_instantiation.types_len().saturating_sub(1);
+
+        for (i, r#type) in type_instantiation.iter_types().enumerate() {
+            self.write_type(r#type);
+            if i < last_index {
+                if let Some(comma) = tokens.commas.get(i) {
+                    self.write_token(comma);
+                } else {
+                    self.write_symbol(",");
+                }
+            }
+        }
+
+        self.write_token(&tokens.first_closing_list);
+        self.write_token(&tokens.second_closing_list);
+    }
+
     fn write_tuple_arguments_with_tokens(
         &mut self,
         arguments: &TupleArguments,
@@ -1603,6 +1629,18 @@ impl<'a> TokenBasedLuaGenerator<'a> {
     fn generate_function_call_tokens(&self, call: &FunctionCall) -> FunctionCallTokens {
         FunctionCallTokens {
             colon: call.get_method().map(|_| Token::from_content(":")),
+            type_instantiation_tokens: call.has_method_type_instantiation().then(|| {
+                TypeInstantiationTokens {
+                    first_opening_list: Token::from_content("<"),
+                    second_opening_list: Token::from_content("<"),
+                    first_closing_list: Token::from_content(">"),
+                    second_closing_list: Token::from_content(">"),
+                    commas: call
+                        .get_method_type_instantiation()
+                        .map(|_| Token::from_content(","))
+                        .collect(),
+                }
+            }),
         }
     }
 
@@ -1672,6 +1710,19 @@ impl<'a> TokenBasedLuaGenerator<'a> {
 
     fn generate_type_cast_token(&self, _type_cast: &TypeCastExpression) -> Token {
         Token::from_content("::")
+    }
+
+    fn generate_type_instantiation_tokens(
+        &self,
+        type_instantiation: &TypeInstantiationExpression,
+    ) -> TypeInstantiationTokens {
+        TypeInstantiationTokens {
+            first_opening_list: Token::from_content("<"),
+            second_opening_list: Token::from_content("<"),
+            first_closing_list: Token::from_content(">"),
+            second_closing_list: Token::from_content(">"),
+            commas: intersect_with_token(comma_token(), type_instantiation.types_len()),
+        }
     }
 
     fn generate_type_parameters_tokens(&self, parameters: &TypeParameters) -> TypeParametersTokens {
@@ -2372,6 +2423,17 @@ impl LuaGenerator for TokenBasedLuaGenerator<'_> {
             self.write_type_cast_with_tokens(type_cast, token);
         } else {
             self.write_type_cast_with_tokens(type_cast, &self.generate_type_cast_token(type_cast));
+        }
+    }
+
+    fn write_type_instantiation(&mut self, type_instantiation: &TypeInstantiationExpression) {
+        if let Some(tokens) = type_instantiation.get_tokens() {
+            self.write_type_instantiation_with_tokens(type_instantiation, tokens);
+        } else {
+            self.write_type_instantiation_with_tokens(
+                type_instantiation,
+                &self.generate_type_instantiation_tokens(type_instantiation),
+            );
         }
     }
 
