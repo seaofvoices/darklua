@@ -78,14 +78,14 @@ impl Evaluator {
 
     fn evaluate_type_instantiation(
         &self,
-        type_instantiation: &Box<TypeInstantiationExpression>,
+        type_instantiation: &TypeInstantiationExpression,
     ) -> LuaValue {
         // when the evaluator will be able to manage tuples, keep only the first element
         // of the tuple here (or coerce the tuple to `nil` if it is empty)
         self.evaluate_prefix(type_instantiation.get_prefix())
     }
 
-    fn evaluate_parenthese_expression(&self, parenthese: &Box<ParentheseExpression>) -> LuaValue {
+    fn evaluate_parenthese_expression(&self, parenthese: &ParentheseExpression) -> LuaValue {
         // when the evaluator will be able to manage tuples, keep only the first element
         // of the tuple here (or coerce the tuple to `nil` if it is empty)
         self.evaluate(parenthese.inner_expression())

@@ -1891,7 +1891,7 @@ impl<'a> AstConverter<'a> {
                     );
                     if self.hold_token_data {
                         type_expression.set_tokens(
-                            self.convert_type_instantiation_tokens(&type_instantiation)?,
+                            self.convert_type_instantiation_tokens(type_instantiation)?,
                         );
                     }
                     prefix = type_expression.into();
@@ -2325,8 +2325,7 @@ impl<'a> AstConverter<'a> {
 
                 self.push_work(inner.as_ref());
             }
-            TypeInfo::Tuple { types, parentheses } => {
-                if types.len() == 1 {
+            TypeInfo::Tuple { types, parentheses } if types.len() == 1  => {
                     self.work_stack
                         .push(ConvertWork::MakeParentheseType { parentheses });
                     self.push_work(
@@ -2335,11 +2334,12 @@ impl<'a> AstConverter<'a> {
                             .next()
                             .expect("types should contain exactly one type at this point"),
                     );
-                } else {
-                    return Err(ConvertError::TypeInfo {
-                        type_info: type_info.to_string(),
-                    });
-                }
+            }
+            TypeInfo::Tuple { .. } => {
+                return Err(ConvertError::TypeInfo {
+                    type_info: type_info.to_string(),
+                });
+
             }
             TypeInfo::Variadic { type_info, .. } => {
                 self.push_work(type_info.as_ref());

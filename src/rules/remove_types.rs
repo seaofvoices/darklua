@@ -76,13 +76,8 @@ impl NodeProcessor for RemoveTypesProcessor {
     }
 
     fn process_prefix_expression(&mut self, prefix: &mut Prefix) {
-        loop {
-            match prefix {
-                Prefix::TypeInstantiation(type_instantiation) => {
-                    *prefix = type_instantiation.get_prefix().clone();
-                }
-                _ => break,
-            }
+        while let Prefix::TypeInstantiation(type_instantiation) = prefix {
+            *prefix = type_instantiation.get_prefix().clone();
         }
     }
 }
