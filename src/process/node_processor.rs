@@ -46,6 +46,7 @@ pub trait NodeProcessor {
     fn process_table_expression(&mut self, _: &mut TableExpression) {}
     fn process_unary_expression(&mut self, _: &mut UnaryExpression) {}
     fn process_type_cast_expression(&mut self, _: &mut TypeCastExpression) {}
+    fn process_type_instantiation(&mut self, _: &mut TypeInstantiationExpression) {}
 
     fn process_type(&mut self, _: &mut Type) {}
 
@@ -114,6 +115,7 @@ pub trait NodePostProcessor {
     fn process_after_table_expression(&mut self, _: &mut TableExpression) {}
     fn process_after_unary_expression(&mut self, _: &mut UnaryExpression) {}
     fn process_after_type_cast_expression(&mut self, _: &mut TypeCastExpression) {}
+    fn process_after_type_instantiation(&mut self, _: &mut TypeInstantiationExpression) {}
 
     fn process_after_type(&mut self, _: &mut Type) {}
 

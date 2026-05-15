@@ -62,6 +62,9 @@ pub enum AstFuzzerWork {
     MakeParentheseExpression,
     MakeUnaryExpression,
     MakeTypeCastExpression,
+    MakeTypeInstantiationExpression {
+        types: usize,
+    },
     MakeInterpolatedString {
         segment_is_expression: Vec<bool>,
     },
@@ -91,6 +94,9 @@ pub enum AstFuzzerWork {
     MakeParenthesePrefix,
     MakeIndexPrefix,
     MakeCallPrefix,
+    MakeTypeInstantiationPrefix {
+        types: usize,
+    },
     MakeIntersectionType {
         has_leading_token: bool,
         length: usize,

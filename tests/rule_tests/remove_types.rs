@@ -53,6 +53,12 @@ test_rule!(
         => "return value",
     remove_types_in_type_cast_of_table("return {} :: any")
         => "return {}",
+    remove_type_instantiation_in_method("obj:method<<string>>()")
+        => "obj:method()",
+    remove_type_instantiation_in_field_in_method_call("obj.field<<string>>:method()")
+        => "obj.field:method()",
+    remove_type_instantiation_in_field_call("obj.field<< string >>()")
+        => "obj.field()",
 );
 
 #[test]
@@ -110,6 +116,10 @@ fn fuzz_bundle() {
         let mut processor = HasTypeProcessor::new();
         DefaultVisitor::visit_block(&mut result_block, &mut processor);
 
-        assert!(!processor.found_type);
+        assert!(
+            !processor.found_type,
+            "found type remaining in:\n{}",
+            block_content
+        );
     })
 }

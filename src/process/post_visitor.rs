@@ -89,6 +89,9 @@ pub trait NodePostVisitor<T: NodeProcessor + NodePostProcessor> {
             Expression::TypeCast(type_cast) => {
                 Self::visit_type_cast_expression(type_cast, processor);
             }
+            Expression::TypeInstantiation(type_instantiation) => {
+                Self::visit_type_instantiation(type_instantiation, processor);
+            }
             Expression::False(_)
             | Expression::Nil(_)
             | Expression::True(_)
@@ -149,6 +152,18 @@ pub trait NodePostVisitor<T: NodeProcessor + NodePostProcessor> {
         Self::visit_expression(type_cast.mutate_expression(), processor);
         Self::visit_type(type_cast.mutate_type(), processor);
         processor.process_after_type_cast_expression(type_cast);
+    }
+
+    fn visit_type_instantiation(
+        type_instantiation: &mut TypeInstantiationExpression,
+        processor: &mut T,
+    ) {
+        processor.process_type_instantiation(type_instantiation);
+        Self::visit_prefix_expression(type_instantiation.mutate_prefix(), processor);
+        for r#type in type_instantiation.iter_mut_types() {
+            Self::visit_type(r#type, processor);
+        }
+        processor.process_after_type_instantiation(type_instantiation);
     }
 
     fn visit_function_expression(function: &mut FunctionExpression, processor: &mut T) {
@@ -515,6 +530,9 @@ pub trait NodePostVisitor<T: NodeProcessor + NodePostProcessor> {
             Prefix::Index(index) => Self::visit_index_expression(index, processor),
             Prefix::Parenthese(expression) => {
                 Self::visit_parenthese_expression(expression, processor)
+            }
+            Prefix::TypeInstantiation(type_instantiation) => {
+                Self::visit_type_instantiation(type_instantiation, processor)
             }
         };
         processor.process_after_prefix_expression(prefix);

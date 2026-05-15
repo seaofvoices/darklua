@@ -91,3 +91,9 @@ end
 type   function   example_complex_type_function <  T , U, R...>(first: T & U, opts: { [number  ]: string }? , ...: R...) :  ()
     return first
 end
+
+format << Obj >> ()
+format <   < Obj >   > ()
+Formatter.format <   <  Obj , Item<Obj> >   > ()
+
+local f = format <  < Obj >>.containerFormat["test-fn"] < < string >>

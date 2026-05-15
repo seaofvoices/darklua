@@ -1319,6 +1319,28 @@ impl LuaGenerator for ReadableLuaGenerator {
         self.pop_can_add_new_line();
     }
 
+    fn write_type_instantiation(
+        &mut self,
+        type_instantiation: &nodes::TypeInstantiationExpression,
+    ) {
+        self.write_prefix(type_instantiation.get_prefix());
+        self.push_can_add_new_line(false);
+
+        self.push_str("<<");
+
+        let last_index = type_instantiation.types_len().saturating_sub(1);
+        for (index, r#type) in type_instantiation.iter_types().enumerate() {
+            self.write_type(r#type);
+            if index != last_index {
+                self.push_char(',');
+            }
+        }
+
+        self.push_str(">>");
+
+        self.pop_can_add_new_line();
+    }
+
     fn write_type_name(&mut self, type_name: &nodes::TypeName) {
         self.write_identifier(type_name.get_type_name());
         if let Some(parameters) = type_name.get_type_parameters() {

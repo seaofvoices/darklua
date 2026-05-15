@@ -965,7 +965,7 @@ impl<'a> AstConverter<'a> {
                         Prefix::Identifier(name) => Variable::Identifier(name),
                         Prefix::Field(field) => Variable::Field(field),
                         Prefix::Index(index) => Variable::Index(index),
-                        Prefix::Call(_) | Prefix::Parenthese(_) => {
+                        Prefix::Call(_) | Prefix::Parenthese(_) | Prefix::TypeInstantiation(_) => {
                             return Err(ConvertError::Variable {
                                 variable: variable.to_string(),
                             })
@@ -1812,19 +1812,38 @@ impl<'a> AstConverter<'a> {
                     ast::Call::AnonymousCall(_) => {
                         let mut call = FunctionCall::new(prefix, self.pop_arguments()?, None);
                         if self.hold_token_data {
-                            call.set_tokens(FunctionCallTokens { colon: None })
+                            call.set_tokens(FunctionCallTokens {
+                                colon: None,
+                                type_instantiation_tokens: None,
+                            })
                         }
                         prefix = call.into();
                     }
                     ast::Call::MethodCall(method_call) => {
-                        let mut call = FunctionCall::new(
-                            prefix,
-                            self.pop_arguments()?,
-                            Some(self.convert_token_to_identifier(method_call.name())?),
-                        );
+                        let mut call = FunctionCall::new(prefix, self.pop_arguments()?, None);
+
+                        let method_name = self.convert_token_to_identifier(method_call.name())?;
+
+                        if let Some(type_instantiation) = method_call.type_instantiation() {
+                            call.set_type_instantiation_method(
+                                method_name,
+                                self.pop_types(type_instantiation.types().len())?,
+                            );
+                        } else {
+                            call.set_method(method_name);
+                        }
+
                         if self.hold_token_data {
+                            let type_instantiation_tokens = method_call
+                                .type_instantiation()
+                                .map(|type_instantiation| {
+                                    self.convert_type_instantiation_tokens(type_instantiation)
+                                })
+                                .transpose()?;
+
                             call.set_tokens(FunctionCallTokens {
                                 colon: Some(self.convert_token(method_call.colon_token())?),
+                                type_instantiation_tokens,
                             });
                         }
                         prefix = call.into();
@@ -1865,6 +1884,18 @@ impl<'a> AstConverter<'a> {
                         });
                     }
                 },
+                ast::Suffix::TypeInstantiation(type_instantiation) => {
+                    let mut type_expression = TypeInstantiationExpression::new(
+                        prefix,
+                        self.pop_types(type_instantiation.types().len())?,
+                    );
+                    if self.hold_token_data {
+                        type_expression.set_tokens(
+                            self.convert_type_instantiation_tokens(&type_instantiation)?,
+                        );
+                    }
+                    prefix = type_expression.into();
+                }
                 _ => {
                     return Err(ConvertError::Suffix {
                         suffix: suffix.to_string(),
@@ -1874,6 +1905,23 @@ impl<'a> AstConverter<'a> {
         }
 
         Ok(prefix)
+    }
+
+    fn convert_type_instantiation_tokens(
+        &mut self,
+        type_instantiation: &ast::luau::TypeInstantiation,
+    ) -> Result<TypeInstantiationTokens, ConvertError> {
+        let (first_opening_list, second_closing_list) =
+            self.extract_contained_span_tokens(type_instantiation.outer_arrows())?;
+        let (second_opening_list, first_closing_list) =
+            self.extract_contained_span_tokens(type_instantiation.inner_arrows())?;
+        Ok(TypeInstantiationTokens {
+            first_opening_list,
+            second_opening_list,
+            first_closing_list,
+            second_closing_list,
+            commas: self.extract_tokens_from_punctuation(type_instantiation.types())?,
+        })
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
@@ -2363,6 +2411,11 @@ impl<'a> AstConverter<'a> {
                     }
                     ast::Call::MethodCall(method_call) => {
                         self.push_work(method_call.args());
+                        if let Some(type_instantiation) = method_call.type_instantiation() {
+                            for type_info in type_instantiation.types() {
+                                self.push_work(type_info);
+                            }
+                        }
                     }
                     _ => {
                         return Err(ConvertError::Call {
@@ -2384,6 +2437,11 @@ impl<'a> AstConverter<'a> {
                         });
                     }
                 },
+                ast::Suffix::TypeInstantiation(type_instantiation) => {
+                    for type_info in type_instantiation.types() {
+                        self.push_work(type_info);
+                    }
+                }
                 _ => {
                     return Err(ConvertError::Suffix {
                         suffix: suffix.to_string(),
