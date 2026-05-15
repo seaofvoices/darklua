@@ -2325,21 +2325,20 @@ impl<'a> AstConverter<'a> {
 
                 self.push_work(inner.as_ref());
             }
-            TypeInfo::Tuple { types, parentheses } if types.len() == 1  => {
-                    self.work_stack
-                        .push(ConvertWork::MakeParentheseType { parentheses });
-                    self.push_work(
-                        types
-                            .iter()
-                            .next()
-                            .expect("types should contain exactly one type at this point"),
-                    );
+            TypeInfo::Tuple { types, parentheses } if types.len() == 1 => {
+                self.work_stack
+                    .push(ConvertWork::MakeParentheseType { parentheses });
+                self.push_work(
+                    types
+                        .iter()
+                        .next()
+                        .expect("types should contain exactly one type at this point"),
+                );
             }
             TypeInfo::Tuple { .. } => {
                 return Err(ConvertError::TypeInfo {
                     type_info: type_info.to_string(),
                 });
-
             }
             TypeInfo::Variadic { type_info, .. } => {
                 self.push_work(type_info.as_ref());
