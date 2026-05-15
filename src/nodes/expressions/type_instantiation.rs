@@ -1,6 +1,6 @@
 use crate::nodes::{Prefix, Token, Type};
 
-/// Contains token information for an index expression.
+/// Contains token information for a type instantiation expression.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeInstantiationTokens {
     /// The first opening angle bracket token in the double `<<`.
@@ -22,11 +22,11 @@ impl TypeInstantiationTokens {
     );
 }
 
-/// Represents a table index access expression.
+/// Represents a Luau type instantiation expression.
 ///
-/// An index expression accesses a value in a table using square bracket notation,
-/// such as `table[key]`. It consists of a prefix (the table being accessed)
-/// and an index expression that evaluates to the key.
+/// A type instantiation applies generic type arguments to a prefix using double
+/// angle bracket notation, such as `Foo<<Bar, Baz>>`. It consists of a prefix
+/// (the type or expression being instantiated) and a list of type arguments.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeInstantiationExpression {
     prefix: Prefix,
@@ -35,7 +35,7 @@ pub struct TypeInstantiationExpression {
 }
 
 impl TypeInstantiationExpression {
-    /// Creates a new index expression with the given prefix and index expression.
+    /// Creates a new type instantiation expression with the given prefix and type arguments.
     pub fn new(prefix: impl Into<Prefix>, types: Vec<Type>) -> Self {
         Self {
             prefix: prefix.into(),
@@ -44,53 +44,54 @@ impl TypeInstantiationExpression {
         }
     }
 
-    /// Attaches tokens to this index expression.
+    /// Attaches tokens to this type instantiation expression.
     pub fn with_tokens(mut self, tokens: TypeInstantiationTokens) -> Self {
         self.tokens = Some(tokens);
         self
     }
 
-    /// Attaches tokens to this index expression.
+    /// Attaches tokens to this type instantiation expression.
     pub fn set_tokens(&mut self, tokens: TypeInstantiationTokens) {
         self.tokens = Some(tokens);
     }
 
-    /// Returns a reference to the tokens attached to this index expression, if any.
+    /// Returns a reference to the tokens attached to this type instantiation expression, if any.
     pub fn get_tokens(&self) -> Option<&TypeInstantiationTokens> {
         self.tokens.as_ref()
     }
 
-    /// Returns a reference to the prefix of this index expression.
+    /// Returns a reference to the prefix of this type instantiation expression.
     pub fn get_prefix(&self) -> &Prefix {
         &self.prefix
     }
 
-    /// Returns a reference to the index expression of this index expression.
+    /// Returns an iterator over the type arguments of this type instantiation expression.
     pub fn iter_types(&self) -> impl Iterator<Item = &Type> {
         self.types.iter()
     }
 
+    /// Returns the number of type arguments in this type instantiation expression.
     pub fn types_len(&self) -> usize {
         self.types.len()
     }
 
-    /// Returns a mutable reference to the prefix of this index expression.
+    /// Returns a mutable reference to the prefix of this type instantiation expression.
     pub fn mutate_prefix(&mut self) -> &mut Prefix {
         &mut self.prefix
     }
 
-    /// Returns a mutable reference to the index expression of this index expression.
+    /// Returns an iterator over the mutable type arguments of this type instantiation expression.
     pub fn iter_mut_types(&mut self) -> impl Iterator<Item = &mut Type> {
         self.types.iter_mut()
     }
 
-    /// Returns a mutable reference to the first token of this index expression,
+    /// Returns a mutable reference to the first token of this type instantiation expression,
     /// creating it if missing.
     pub fn mutate_first_token(&mut self) -> &mut crate::nodes::Token {
         self.prefix.mutate_first_token()
     }
 
-    /// Returns a mutable reference to the last token of this index expression,
+    /// Returns a mutable reference to the last token of this type instantiation expression,
     /// creating it if missing.
     pub fn mutate_last_token(&mut self) -> &mut Token {
         if self.tokens.is_none() {
