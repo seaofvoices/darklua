@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* add support for type instantiation prefixes and methods (e.g. `func<<string>>()`) ([#345](https://github.com/seaofvoices/darklua/pull/345))
+
 ## 0.18.0
 
 * add `apply_to_files` and `skip_files` parameters to control for which files rules are applied ([#341](https://github.com/seaofvoices/darklua/pull/341))
