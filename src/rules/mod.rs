@@ -9,6 +9,7 @@ pub mod bundle;
 mod call_parens;
 mod compute_expression;
 mod configuration_error;
+mod convert_const_to_local;
 mod convert_index_to_field;
 mod convert_luau_number;
 mod convert_require;
@@ -47,6 +48,7 @@ pub use append_text_comment::*;
 pub use call_parens::*;
 pub use compute_expression::*;
 pub use configuration_error::RuleConfigurationError;
+pub use convert_const_to_local::*;
 pub use convert_index_to_field::*;
 pub use convert_luau_number::*;
 pub use convert_require::*;
@@ -354,6 +356,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
     vec![
         APPEND_TEXT_COMMENT_RULE_NAME,
         COMPUTE_EXPRESSIONS_RULE_NAME,
+        CONVERT_CONST_TO_LOCAL_RULE_NAME,
         CONVERT_FUNCTION_TO_ASSIGNMENT_RULE_NAME,
         CONVERT_INDEX_TO_FIELD_RULE_NAME,
         CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME,
@@ -393,6 +396,7 @@ impl FromStr for Box<dyn Rule> {
         let rule: Box<dyn Rule> = match string {
             APPEND_TEXT_COMMENT_RULE_NAME => Box::<AppendTextComment>::default(),
             COMPUTE_EXPRESSIONS_RULE_NAME => Box::<ComputeExpression>::default(),
+            CONVERT_CONST_TO_LOCAL_RULE_NAME => Box::<ConvertConstToLocal>::default(),
             CONVERT_FUNCTION_TO_ASSIGNMENT_RULE_NAME => Box::<ConvertFunctionToAssign>::default(),
             CONVERT_INDEX_TO_FIELD_RULE_NAME => Box::<ConvertIndexToField>::default(),
             CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => {

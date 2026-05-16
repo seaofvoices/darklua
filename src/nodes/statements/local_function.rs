@@ -39,6 +39,7 @@ pub struct LocalFunctionStatement {
     return_type: Option<FunctionReturnType>,
     generic_parameters: Option<GenericParameters>,
     attributes: Attributes,
+    is_const: bool,
     tokens: Option<Box<LocalFunctionTokens>>,
 }
 
@@ -59,6 +60,7 @@ impl LocalFunctionStatement {
             return_type: None,
             generic_parameters: None,
             attributes: Attributes::new(),
+            is_const: false,
             tokens: None,
         }
     }
@@ -74,6 +76,7 @@ impl LocalFunctionStatement {
             return_type: None,
             generic_parameters: None,
             attributes: Attributes::new(),
+            is_const: false,
             tokens: None,
         }
     }
@@ -81,6 +84,12 @@ impl LocalFunctionStatement {
     /// Adds an attribute to this function statement. Adds to any existing attributes.
     pub fn with_attribute(mut self, attribute: impl Into<Attribute>) -> Self {
         self.attributes.append_attribute(attribute.into());
+        self
+    }
+
+    /// Marks this local function as a `const function` declaration.
+    pub fn with_const(mut self) -> Self {
+        self.set_const();
         self
     }
 
@@ -311,6 +320,32 @@ impl LocalFunctionStatement {
         }
     }
 
+    /// Returns whether this local function was declared with `const function`.
+    #[inline]
+    pub fn is_const(&self) -> bool {
+        self.is_const
+    }
+
+    /// Marks this function as a `const function` declaration.
+    pub fn set_const(&mut self) {
+        self.mark_const();
+        if let Some(tokens) = &mut self.tokens {
+            tokens.local.replace_with_content("const");
+        }
+    }
+
+    pub(crate) fn mark_const(&mut self) {
+        self.is_const = true;
+    }
+
+    /// Marks this function as a `local function` declaration.
+    pub fn set_local(&mut self) {
+        self.is_const = false;
+        if let Some(tokens) = &mut self.tokens {
+            tokens.local.replace_with_content("local");
+        }
+    }
+
     /// Returns a mutable reference to the first token for this statement, creating it if missing.
     pub fn mutate_first_token(&mut self) -> &mut Token {
         self.set_default_tokens();
@@ -328,7 +363,7 @@ impl LocalFunctionStatement {
         if self.tokens.is_none() {
             self.tokens = Some(
                 LocalFunctionTokens {
-                    local: Token::from_content("local"),
+                    local: Token::from_content(if self.is_const { "const" } else { "local" }),
                     function_body: FunctionBodyTokens {
                         function: Token::from_content("function"),
                         opening_parenthese: Token::from_content("("),

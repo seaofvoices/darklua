@@ -1485,7 +1485,7 @@ impl<'a> TokenBasedLuaGenerator<'a> {
 
     fn generate_local_assign_tokens(&self, assign: &LocalAssignStatement) -> LocalAssignTokens {
         LocalAssignTokens {
-            local: Token::from_content("local"),
+            local: Token::from_content(if assign.is_const() { "const" } else { "local" }),
             equal: if assign.has_values() {
                 Some(Token::from_content("="))
             } else {
@@ -1501,7 +1501,11 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         function: &LocalFunctionStatement,
     ) -> LocalFunctionTokens {
         LocalFunctionTokens {
-            local: Token::from_content("local"),
+            local: Token::from_content(if function.is_const() {
+                "const"
+            } else {
+                "local"
+            }),
             function_body: FunctionBodyTokens {
                 function: Token::from_content("function"),
                 opening_parenthese: Token::from_content("("),

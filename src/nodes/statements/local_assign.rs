@@ -24,6 +24,7 @@ impl LocalAssignTokens {
 pub struct LocalAssignStatement {
     variables: Vec<TypedIdentifier>,
     values: Vec<Expression>,
+    is_const: bool,
     tokens: Option<LocalAssignTokens>,
 }
 
@@ -33,6 +34,7 @@ impl LocalAssignStatement {
         Self {
             variables,
             values,
+            is_const: false,
             tokens: None,
         }
     }
@@ -42,6 +44,7 @@ impl LocalAssignStatement {
         Self {
             variables: vec![variable.into()],
             values: Vec::new(),
+            is_const: false,
             tokens: None,
         }
     }
@@ -79,6 +82,12 @@ impl LocalAssignStatement {
     /// Adds a value to this local assignment statement.
     pub fn with_value<E: Into<Expression>>(mut self, value: E) -> Self {
         self.values.push(value.into());
+        self
+    }
+
+    /// Marks this local assignment as a `const` assignment.
+    pub fn with_const(mut self) -> Self {
+        self.set_const();
         self
     }
 
@@ -255,11 +264,37 @@ impl LocalAssignStatement {
         }
     }
 
+    /// Returns whether this local assignment was declared with `const`.
+    #[inline]
+    pub fn is_const(&self) -> bool {
+        self.is_const
+    }
+
+    /// Marks this assignment as a `const` declaration.
+    pub fn set_const(&mut self) {
+        self.mark_const();
+        if let Some(tokens) = &mut self.tokens {
+            tokens.local.replace_with_content("const");
+        }
+    }
+
+    pub(crate) fn mark_const(&mut self) {
+        self.is_const = true;
+    }
+
+    /// Marks this assignment as a `local` declaration.
+    pub fn set_local(&mut self) {
+        self.is_const = false;
+        if let Some(tokens) = &mut self.tokens {
+            tokens.local.replace_with_content("local");
+        }
+    }
+
     /// Returns a mutable reference to the first token for this statement, creating it if missing.
     pub fn mutate_first_token(&mut self) -> &mut Token {
         if self.tokens.is_none() {
             self.tokens = Some(LocalAssignTokens {
-                local: Token::from_content("local"),
+                local: Token::from_content(if self.is_const { "const" } else { "local" }),
                 equal: (!self.values.is_empty()).then(|| Token::from_content("=")),
                 variable_commas: Vec::new(),
                 value_commas: Vec::new(),

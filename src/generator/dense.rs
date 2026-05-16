@@ -501,7 +501,7 @@ impl LuaGenerator for DenseLuaGenerator {
     }
 
     fn write_local_assign(&mut self, assign: &nodes::LocalAssignStatement) {
-        self.push_str("local");
+        self.push_str(if assign.is_const() { "const" } else { "local" });
 
         let variables = assign.get_variables();
         let last_variable_index = variables.len().saturating_sub(1);
@@ -539,7 +539,11 @@ impl LuaGenerator for DenseLuaGenerator {
 
     fn write_local_function(&mut self, function: &nodes::LocalFunctionStatement) {
         self.write_attributes(function.attributes());
-        self.push_str("local function");
+        self.push_str(if function.is_const() {
+            "const function"
+        } else {
+            "local function"
+        });
         self.push_str(function.get_name());
 
         if let Some(generics) = function.get_generic_parameters() {

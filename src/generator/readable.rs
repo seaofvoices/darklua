@@ -585,7 +585,11 @@ impl LuaGenerator for ReadableLuaGenerator {
     }
 
     fn write_local_assign(&mut self, assign: &nodes::LocalAssignStatement) {
-        self.push_str("local ");
+        self.push_str(if assign.is_const() {
+            "const "
+        } else {
+            "local "
+        });
 
         self.push_can_add_new_line(false);
 
@@ -635,7 +639,11 @@ impl LuaGenerator for ReadableLuaGenerator {
 
     fn write_local_function(&mut self, function: &nodes::LocalFunctionStatement) {
         self.write_attributes(function.attributes());
-        self.push_str("local function ");
+        self.push_str(if function.is_const() {
+            "const function "
+        } else {
+            "local function "
+        });
         self.raw_push_str(function.get_name());
 
         if let Some(generics) = function.get_generic_parameters() {

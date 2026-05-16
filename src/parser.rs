@@ -205,8 +205,23 @@ mod test {
             .with_variable("bar"),
         local_assignment_with_one_value("local var = true") => LocalAssignStatement::from_variable("var")
             .with_value(true),
+        local_assignment_named_const("local const = true") => LocalAssignStatement::from_variable("const")
+            .with_value(true),
         multiple_local_assignment_with_two_values("local foo, bar = true, false") => LocalAssignStatement::from_variable("foo")
             .with_variable("bar")
+            .with_value(true)
+            .with_value(false),
+        const_assignment_with_one_value("const var = true") => LocalAssignStatement::from_variable("var")
+            .with_const()
+            .with_value(true),
+        const_assignment_typed_with_one_value("const var: boolean = true") => LocalAssignStatement::from_variable(
+                TypedIdentifier::new("var").with_type(TypeName::new("boolean"))
+            )
+            .with_const()
+            .with_value(true),
+        multiple_const_assignment_with_two_values("const foo, bar = true, false") => LocalAssignStatement::from_variable("foo")
+            .with_variable("bar")
+            .with_const()
             .with_value(true)
             .with_value(false),
         return_binary_and("return true and false") => ReturnStatement::one(
@@ -460,6 +475,8 @@ mod test {
                 .with_else_block(ReturnStatement::default()),
         empty_local_function("local function name() end")
             => LocalFunctionStatement::from_name("name", Block::default()),
+        empty_const_function("const function name() end")
+            => LocalFunctionStatement::from_name("name", Block::default()).with_const(),
         empty_local_function_variadic("local function name(...) end")
             => LocalFunctionStatement::from_name("name", Block::default()).variadic(),
         empty_local_function_variadic_with_one_parameter("local function name(a, ...) end")
@@ -1583,6 +1600,24 @@ mod test {
                     return_type_colon: None,
                 },
             }),
+            empty_const_function("const function name ()end") => LocalFunctionStatement::from_name(
+                create_identifier("name", 15, 1),
+                default_block()
+            )
+            .with_const()
+            .with_tokens(LocalFunctionTokens {
+                local: spaced_token(0, 5),
+                function_body: FunctionBodyTokens {
+                    function: spaced_token(6, 14),
+                    opening_parenthese: token_at_first_line(20, 21),
+                    closing_parenthese: token_at_first_line(21, 22),
+                    end: token_at_first_line(22, 25),
+                    parameter_commas: Vec::new(),
+                    variable_arguments: None,
+                    variable_arguments_colon: None,
+                    return_type_colon: None,
+                },
+            }),
             empty_local_function_variadic("local function name(...)end") => LocalFunctionStatement::from_name(
                 Identifier::new("name").with_token(token_at_first_line(15, 19)),
                 default_block(),
@@ -2102,6 +2137,17 @@ mod test {
             ).with_tokens(LocalAssignTokens {
                 local: spaced_token(0, 5),
                 equal: None,
+                variable_commas: Vec::new(),
+                value_commas: Vec::new(),
+            }),
+            const_assignment_with_one_value("const var = true") => LocalAssignStatement::from_variable(
+                create_identifier("var", 6, 1),
+            )
+            .with_const()
+            .with_value(create_true(12, 0))
+            .with_tokens(LocalAssignTokens {
+                local: spaced_token(0, 5),
+                equal: Some(spaced_token(10, 11)),
                 variable_commas: Vec::new(),
                 value_commas: Vec::new(),
             }),

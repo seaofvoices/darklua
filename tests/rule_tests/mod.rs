@@ -534,6 +534,7 @@ macro_rules! test_rule_snapshot {
 
 mod append_text_comment;
 mod compute_expression;
+mod convert_const_to_local;
 mod convert_index_to_field;
 mod convert_luau_number;
 mod convert_require;
