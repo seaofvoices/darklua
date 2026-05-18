@@ -26,7 +26,8 @@ impl super::PathLocator for LuaPathLocator<'_, '_> {
     ) -> Result<PathBuf, DarkluaError> {
         let path: String = path
             .into()
-            .to_string_lossy().into_owned()
+            .to_string_lossy()
+            .into_owned()
             .replace(".", std::path::MAIN_SEPARATOR_STR);
         log::trace!(
             "find require path for `{}` from `{}` (lua mode)",
@@ -35,7 +36,7 @@ impl super::PathLocator for LuaPathLocator<'_, '_> {
         );
         for potential_path in self
             .lua_require_mode
-            .lua_path()
+            .path()
             .iter()
             .map(|x| x.replace("?", &path))
         {
@@ -49,7 +50,7 @@ impl super::PathLocator for LuaPathLocator<'_, '_> {
             DarkluaError::resource_not_found(path.clone()).context(format!(
                 "tried `{}`",
                 self.lua_require_mode
-                    .lua_path()
+                    .path()
                     .iter()
                     .map(|x| x.replace("?", &path))
                     .collect::<Vec<_>>()
