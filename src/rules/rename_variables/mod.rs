@@ -118,7 +118,7 @@ impl FlawlessRule for RenameVariables {
             collect_functions.into()
         };
 
-        let mut find_globals = CollectGlobalsProcessor::new();
+        let mut find_globals = CollectGlobalsProcessor::default();
         if self.detect_globals {
             ScopeVisitor::visit_block(block, &mut find_globals);
         };

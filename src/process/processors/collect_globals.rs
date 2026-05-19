@@ -5,20 +5,13 @@ use crate::{
     process::{NodeProcessor, Scope},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct CollectGlobalsProcessor {
     scopes: Vec<HashSet<String>>,
     globals: HashSet<String>,
 }
 
 impl CollectGlobalsProcessor {
-    pub fn new() -> Self {
-        Self {
-            scopes: Default::default(),
-            globals: Default::default(),
-        }
-    }
-
     pub(crate) fn add(&mut self, identifier: &str) {
         if self.scopes.is_empty() {
             self.scopes.push(HashSet::new());
@@ -97,7 +90,7 @@ mod test {
     use super::*;
 
     fn extract_globals(code: &str) -> Vec<String> {
-        let mut processor = CollectGlobalsProcessor::new();
+        let mut processor = CollectGlobalsProcessor::default();
 
         let mut block = Parser::default()
             .parse(code)
