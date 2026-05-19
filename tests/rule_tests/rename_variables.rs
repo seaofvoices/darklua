@@ -50,6 +50,8 @@ test_rule!(
     reexported_type_field("local types = require('./types') export type Oof = types.Oof") => "local a = require('./types') export type Oof = a.Oof",
     type_variable_type_field("local React = require('@pkg/@jsdotlua/react') type Props = { children: React.ReactNode }")
         => "local a = require('@pkg/@jsdotlua/react') type Props = { children: a.ReactNode }",
+    local_function_name_avoid_seen_global("a = true local function foo() end return a, foo") => "a = true local function b() end return a, b",
+    local_function_name_avoid_future_global("local function foo() end return a, foo") => "local function b() end return a, b",
 );
 
 test_rule!(

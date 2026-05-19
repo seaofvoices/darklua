@@ -162,14 +162,17 @@ impl NodeProcessor for RenameProcessor {
     fn process_variable_expression(&mut self, variable: &mut Identifier) {
         if let Some(obfuscated_name) = self.get_obfuscated_name(variable.get_name()) {
             variable.set_name(obfuscated_name);
+        } else {
+            self.avoid_identifier.insert(variable.get_name().clone());
         }
     }
 
     fn process_type_field(&mut self, type_field: &mut TypeField) {
-        if let Some(obfuscated_name) =
-            self.get_obfuscated_name(type_field.get_namespace().get_name())
-        {
+        let namespace = type_field.get_namespace().get_name();
+        if let Some(obfuscated_name) = self.get_obfuscated_name(namespace) {
             type_field.mutate_namespace().set_name(obfuscated_name);
+        } else {
+            self.avoid_identifier.insert(namespace.clone());
         }
     }
 }
