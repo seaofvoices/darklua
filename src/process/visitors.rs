@@ -261,7 +261,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
         }
     }
 
-    fn visit_local_assign(statement: &mut LocalAssignStatement, processor: &mut T) {
+    fn visit_local_assign(statement: &mut VariableAssignment, processor: &mut T) {
         processor.process_local_assign_statement(statement);
 
         statement
@@ -276,7 +276,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
         }
     }
 
-    fn visit_local_function(statement: &mut LocalFunctionStatement, processor: &mut T) {
+    fn visit_local_function(statement: &mut FunctionAssignment, processor: &mut T) {
         processor.process_local_function_statement(statement);
         Self::visit_attributes(statement.mutate_attributes(), processor);
 
@@ -894,7 +894,7 @@ mod test {
     #[test]
     fn visit_interpolated_string() {
         let mut counter = NodeCounter::new();
-        let statement = LocalAssignStatement::from_variable("value")
+        let statement = VariableAssignment::from_variable("value")
             .with_value(InterpolatedStringExpression::empty().with_segment(Expression::from(true)));
 
         let mut block = statement.into();

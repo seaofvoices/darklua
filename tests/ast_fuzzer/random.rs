@@ -1,7 +1,8 @@
 use std::iter;
 
 use darklua_core::nodes::{
-    BinaryOperator, CompoundOperator, Identifier, TablePropertyModifier, UnaryOperator,
+    AssignmentKind, BinaryOperator, CompoundOperator, Identifier, TablePropertyModifier,
+    UnaryOperator,
 };
 use rand::{rng, RngExt};
 
@@ -341,6 +342,14 @@ impl RandomAst {
             Some(TablePropertyModifier::Read)
         } else {
             Some(TablePropertyModifier::Write)
+        }
+    }
+
+    pub(crate) fn assignment_kind(&self) -> AssignmentKind {
+        if rng().random_bool(0.65) {
+            AssignmentKind::Local
+        } else {
+            AssignmentKind::Const
         }
     }
 }

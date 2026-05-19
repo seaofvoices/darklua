@@ -1,6 +1,4 @@
-use crate::nodes::{
-    Block, FunctionExpression, LocalAssignStatement, LocalFunctionStatement, Statement,
-};
+use crate::nodes::{Block, FunctionAssignment, FunctionExpression, Statement, VariableAssignment};
 use crate::process::{processors::FindVariables, DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
@@ -14,7 +12,8 @@ use super::verify_no_rule_properties;
 struct Processor;
 
 impl Processor {
-    fn convert(&self, local_function: &mut LocalFunctionStatement) -> Statement {
+    fn convert(&self, local_function: &mut FunctionAssignment) -> Statement {
+        let kind = local_function.get_assignment_kind();
         let mut function_expression = FunctionExpression::default();
         function_expression.set_variadic(local_function.is_variadic());
         mem::swap(
@@ -26,7 +25,8 @@ impl Processor {
             local_function.mutate_parameters(),
         );
 
-        LocalAssignStatement::from_variable(local_function.get_name())
+        VariableAssignment::from_variable(local_function.get_name())
+            .with_assignment_kind(kind)
             .with_value(function_expression)
             .into()
     }

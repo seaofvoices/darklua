@@ -686,33 +686,52 @@ impl<'a> TokenBasedLuaGenerator<'a> {
 
     fn write_local_assign_with_tokens(
         &mut self,
-        assign: &LocalAssignStatement,
-        tokens: &LocalAssignTokens,
+        assign: &VariableAssignment,
+        tokens: &VariableAssignmentTokens,
     ) {
-        self.write_token(&tokens.local);
-        let last_variable_index = assign.variables_len().saturating_sub(1);
-        assign
-            .iter_variables()
-            .enumerate()
-            .for_each(|(i, identifier)| {
-                self.write_typed_identifier(identifier);
-                if i < last_variable_index {
-                    if let Some(comma) = tokens.variable_commas.get(i) {
-                        self.write_token(comma);
-                    } else {
-                        self.write_symbol(",");
-                    }
-                }
-            });
+        self.write_token(&tokens.keyword);
 
-        if assign.has_values() {
+        let variables_length = assign.variables_len();
+        let last_variable_index = variables_length.saturating_sub(1);
+
+        for (i, identifier) in assign.iter_variables().enumerate() {
+            self.write_typed_identifier(identifier);
+            if i < last_variable_index {
+                if let Some(comma) = tokens.variable_commas.get(i) {
+                    self.write_token(comma);
+                } else {
+                    self.write_symbol(",");
+                }
+            }
+        }
+
+        // const assignments must have at least one variable per value, so it may need
+        // additional variables
+        for i in 0..assign.required_new_variables() {
+            if i != 0 || variables_length > 0 {
+                self.write_symbol(",");
+            }
+            utils::THROWAWAY_IDENTIFIER.with(|identifier| {
+                self.write_typed_identifier(identifier);
+            });
+        }
+
+        // const assignments must have a value for each variable, so it may need additional
+        // nil values
+        let required_nil_values = assign.required_nil_values();
+
+        let has_values = assign.has_values();
+
+        if has_values || required_nil_values > 0 {
             if let Some(token) = &tokens.equal {
                 self.write_token(token);
             } else {
                 self.write_symbol("=");
             }
+
             let last_value_index = assign.values_len().saturating_sub(1);
-            assign.iter_values().enumerate().for_each(|(i, value)| {
+
+            for (i, value) in assign.iter_values().enumerate() {
                 self.write_expression(value);
                 if i < last_value_index {
                     if let Some(comma) = tokens.value_commas.get(i) {
@@ -721,17 +740,26 @@ impl<'a> TokenBasedLuaGenerator<'a> {
                         self.write_symbol(",");
                     }
                 }
-            });
+            }
+
+            for i in 0..required_nil_values {
+                if i != 0 || has_values {
+                    self.write_symbol(",");
+                }
+                utils::NIL_EXPRESSION.with(|nil| {
+                    self.write_expression(nil);
+                })
+            }
         }
     }
 
     fn write_local_function_with_tokens(
         &mut self,
-        function: &LocalFunctionStatement,
-        tokens: &LocalFunctionTokens,
+        function: &FunctionAssignment,
+        tokens: &FunctionAssignmentTokens,
     ) {
         self.write_attributes(function.attributes());
-        self.write_token(&tokens.local);
+        self.write_token(&tokens.keyword);
         self.write_token(&tokens.function);
         self.write_identifier(function.get_identifier());
 
@@ -1483,9 +1511,12 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         }
     }
 
-    fn generate_local_assign_tokens(&self, assign: &LocalAssignStatement) -> LocalAssignTokens {
-        LocalAssignTokens {
-            local: Token::from_content("local"),
+    fn generate_local_assign_tokens(
+        &self,
+        assign: &VariableAssignment,
+    ) -> VariableAssignmentTokens {
+        VariableAssignmentTokens {
+            keyword: Token::from_content(assign.get_assignment_kind().as_keyword()),
             equal: if assign.has_values() {
                 Some(Token::from_content("="))
             } else {
@@ -1498,10 +1529,10 @@ impl<'a> TokenBasedLuaGenerator<'a> {
 
     fn generate_local_function_tokens(
         &self,
-        function: &LocalFunctionStatement,
-    ) -> LocalFunctionTokens {
-        LocalFunctionTokens {
-            local: Token::from_content("local"),
+        function: &FunctionAssignment,
+    ) -> FunctionAssignmentTokens {
+        FunctionAssignmentTokens {
+            keyword: Token::from_content(function.get_assignment_kind().as_keyword()),
             function_body: FunctionBodyTokens {
                 function: Token::from_content("function"),
                 opening_parenthese: Token::from_content("("),
@@ -2089,7 +2120,7 @@ impl LuaGenerator for TokenBasedLuaGenerator<'_> {
         }
     }
 
-    fn write_local_assign(&mut self, assign: &LocalAssignStatement) {
+    fn write_local_assign(&mut self, assign: &VariableAssignment) {
         if let Some(tokens) = assign.get_tokens() {
             self.write_local_assign_with_tokens(assign, tokens);
         } else {
@@ -2097,7 +2128,7 @@ impl LuaGenerator for TokenBasedLuaGenerator<'_> {
         }
     }
 
-    fn write_local_function(&mut self, function: &LocalFunctionStatement) {
+    fn write_local_function(&mut self, function: &FunctionAssignment) {
         if let Some(tokens) = function.get_tokens() {
             self.write_local_function_with_tokens(function, tokens);
         } else {

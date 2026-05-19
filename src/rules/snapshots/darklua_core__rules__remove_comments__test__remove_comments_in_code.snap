@@ -33,6 +33,8 @@ local id2
     = .123, function( arg  , ... ) end
 
 local a ,  b, c = id +  id, nil 
+const  constId = 0
+const  c1, c2 = fn()
 
 local function fn  ( p1, p2 
     , p3, ... ) end

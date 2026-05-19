@@ -1,0 +1,5 @@
+---
+source: src/generator/mod.rs
+expression: generator.into_string()
+---
+const foo,____darklua_throwaway_var=true,false

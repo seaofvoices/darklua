@@ -5,10 +5,10 @@ use indexmap::IndexMap;
 use crate::frontend::DarkluaResult;
 use crate::nodes::{
     Arguments, AssignStatement, Block, DoStatement, Expression, ExpressionType, FieldExpression,
-    FunctionCall, FunctionName, FunctionStatement, Identifier, IfStatement, LastStatement,
-    LocalAssignStatement, LocalFunctionStatement, Prefix, ReturnStatement, TableEntry,
-    TableExpression, Token, TupleArguments, TupleArgumentsTokens, TypeCastExpression, TypeName,
-    UnaryExpression, UnaryOperator,
+    FunctionAssignment, FunctionCall, FunctionName, FunctionStatement, Identifier, IfStatement,
+    LastStatement, Prefix, ReturnStatement, TableEntry, TableExpression, Token, TupleArguments,
+    TupleArgumentsTokens, TypeCastExpression, TypeName, UnaryExpression, UnaryOperator,
+    VariableAssignment,
 };
 use crate::process::utils::{generate_identifier, identifier_permutator, CharPermutator};
 use crate::rules::bundle::RenameTypeDeclarationProcessor;
@@ -207,7 +207,7 @@ impl BuildModuleDefinitions {
 
                 let cached_block = Block::default()
                     .with_statement(
-                        LocalAssignStatement::from_variable(MODULE_CONTENT_VARIABLE)
+                        VariableAssignment::from_variable(MODULE_CONTENT_VARIABLE)
                             .with_value(index_cache.clone()),
                     )
                     .with_statement(IfStatement::create(
@@ -237,8 +237,7 @@ impl BuildModuleDefinitions {
 
                 DoStatement::new(Block::new(
                     vec![
-                        LocalFunctionStatement::from_name(LOCAL_MODULE_IMPL_NAME, module.block)
-                            .into(),
+                        FunctionAssignment::from_name(LOCAL_MODULE_IMPL_NAME, module.block).into(),
                         FunctionStatement::new(function_name, cached_block, Vec::new(), false)
                             .with_return_type(ExpressionType::new(FunctionCall::from_name(
                                 LOCAL_MODULE_IMPL_NAME,
@@ -255,7 +254,7 @@ impl BuildModuleDefinitions {
         let modules_table = self.build_modules_table();
         block.insert_statement(
             0,
-            LocalAssignStatement::from_variable(self.modules_identifier).with_value(modules_table),
+            VariableAssignment::from_variable(self.modules_identifier).with_value(modules_table),
         );
 
         for statement in self

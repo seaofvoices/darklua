@@ -62,11 +62,11 @@ impl NodeProcessor for ShiftTokenLineProcessor {
         }
     }
 
-    fn process_local_assign_statement(&mut self, assign: &mut LocalAssignStatement) {
+    fn process_local_assign_statement(&mut self, assign: &mut VariableAssignment) {
         assign.shift_token_line(self.shift_amount);
     }
 
-    fn process_local_function_statement(&mut self, function: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, function: &mut FunctionAssignment) {
         function.shift_token_line(self.shift_amount);
     }
 

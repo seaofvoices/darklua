@@ -9,8 +9,11 @@ test_rule!(
     }"#,
     ).unwrap(),
     local_function_name("local function foo() end") => "local function a() end",
+    const_function_name("const function foo() end") => "const function a() end",
     local_function_name_parameters("local function foo(bar, baz) end")
         => "local function a(b, c) end",
+    const_function_name_parameters("const function foo(bar, baz) end")
+        => "const function a(b, c) end",
     local_function_name_reference("local function foo() end return foo()")
         => "local function a() end return a()",
     redefine_local_function_name("local var local function a() return var end")

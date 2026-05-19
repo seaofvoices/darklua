@@ -193,10 +193,10 @@ fn first_statement_token(statement: &Statement) -> Option<&Token> {
         Statement::GenericFor(generic_for) => generic_for.get_tokens().map(|tokens| &tokens.r#for),
         Statement::If(if_statement) => if_statement.get_tokens().map(|tokens| &tokens.r#if),
         Statement::LocalAssign(local_assign) => {
-            local_assign.get_tokens().map(|tokens| &tokens.local)
+            local_assign.get_tokens().map(|tokens| &tokens.keyword)
         }
         Statement::LocalFunction(local_function) => {
-            local_function.get_tokens().map(|tokens| &tokens.local)
+            local_function.get_tokens().map(|tokens| &tokens.keyword)
         }
         Statement::NumericFor(numeric_for) => numeric_for.get_tokens().map(|tokens| &tokens.r#for),
         Statement::Repeat(repeat) => repeat.get_tokens().map(|tokens| &tokens.repeat),

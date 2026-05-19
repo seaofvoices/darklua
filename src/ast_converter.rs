@@ -856,7 +856,29 @@ impl<'a> AstConverter<'a> {
 
                     self.statements.push(
                         builder
-                            .into_local_function_statement(name, local_token)
+                            .into_function_assignment(name, AssignmentKind::Local, local_token)
+                            .into(),
+                    );
+                }
+                ConvertWork::MakeConstFunctionStatement { statement } => {
+                    let mut builder = self.convert_function_body_attributes(
+                        statement.body(),
+                        self.convert_token(statement.function_token())?,
+                    )?;
+
+                    builder.set_attributes(self.convert_attributes(statement.attributes())?);
+
+                    let mut name = Identifier::new(statement.name().token().to_string());
+                    let mut const_token = None;
+
+                    if self.hold_token_data {
+                        name.set_token(self.convert_token(statement.name())?);
+                        const_token = Some(self.convert_token(statement.const_token())?);
+                    }
+
+                    self.statements.push(
+                        builder
+                            .into_function_assignment(name, AssignmentKind::Const, const_token)
                             .into(),
                     );
                 }
@@ -900,14 +922,14 @@ impl<'a> AstConverter<'a> {
                         })
                         .collect::<Result<Vec<_>, _>>()?;
 
-                    let mut local_assign = LocalAssignStatement::new(
+                    let mut local_assign = VariableAssignment::new(
                         variables,
                         self.pop_expressions(statement.expressions().len())?,
                     );
 
                     if self.hold_token_data {
-                        local_assign.set_tokens(LocalAssignTokens {
-                            local: self.convert_token(statement.local_token())?,
+                        local_assign.set_tokens(VariableAssignmentTokens {
+                            keyword: self.convert_token(statement.local_token())?,
                             equal: statement
                                 .equal_token()
                                 .map(|token| self.convert_token(token))
@@ -919,6 +941,37 @@ impl<'a> AstConverter<'a> {
                         })
                     }
                     self.statements.push(local_assign.into());
+                }
+                ConvertWork::MakeConstAssignStatement { statement } => {
+                    let variables = statement
+                        .names()
+                        .iter()
+                        .zip(statement.type_specifiers())
+                        .map(|(token_ref, type_specifier)| {
+                            self.convert_typed_identifier(token_ref, type_specifier)
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+
+                    let mut assignment = VariableAssignment::new(
+                        variables,
+                        self.pop_expressions(statement.expressions().len())?,
+                    );
+                    assignment.set_assignment_kind(AssignmentKind::Const);
+
+                    if self.hold_token_data {
+                        assignment.set_tokens(VariableAssignmentTokens {
+                            keyword: self.convert_token(statement.const_token())?,
+                            equal: statement
+                                .equal_token()
+                                .map(|token| self.convert_token(token))
+                                .transpose()?,
+                            variable_commas: self
+                                .extract_tokens_from_punctuation(statement.names())?,
+                            value_commas: self
+                                .extract_tokens_from_punctuation(statement.expressions())?,
+                        })
+                    }
+                    self.statements.push(assignment.into());
                 }
                 ConvertWork::MakeArgumentsFromExpressions {
                     arguments,
@@ -1578,12 +1631,30 @@ impl<'a> AstConverter<'a> {
                     self.push_work(expression);
                 }
             }
+            ast::Stmt::ConstAssignment(const_assignment) => {
+                self.work_stack.push(ConvertWork::MakeConstAssignStatement {
+                    statement: const_assignment,
+                });
+                for type_specifier in const_assignment.type_specifiers().flatten() {
+                    self.push_work(type_specifier.type_info());
+                }
+                for expression in const_assignment.expressions().iter() {
+                    self.push_work(expression);
+                }
+            }
             ast::Stmt::LocalFunction(local_function) => {
                 self.work_stack
                     .push(ConvertWork::MakeLocalFunctionStatement {
                         statement: local_function,
                     });
                 self.push_function_body_work(local_function.body());
+            }
+            ast::Stmt::ConstFunction(const_function) => {
+                self.work_stack
+                    .push(ConvertWork::MakeConstFunctionStatement {
+                        statement: const_function,
+                    });
+                self.push_function_body_work(const_function.body());
             }
             ast::Stmt::TypeFunction(type_function) => {
                 self.work_stack
@@ -3005,8 +3076,14 @@ enum ConvertWork<'a> {
     MakeLocalFunctionStatement {
         statement: &'a ast::LocalFunction,
     },
+    MakeConstFunctionStatement {
+        statement: &'a ast::luau::ConstFunction,
+    },
     MakeLocalAssignStatement {
         statement: &'a ast::LocalAssignment,
+    },
+    MakeConstAssignStatement {
+        statement: &'a ast::luau::ConstAssignment,
     },
     MakeAssignStatement {
         statement: &'a ast::Assignment,

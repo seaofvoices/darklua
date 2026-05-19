@@ -62,11 +62,11 @@ impl NodeProcessor for Processor<'_> {
         }
     }
 
-    fn process_local_assign_statement(&mut self, assign: &mut LocalAssignStatement) {
+    fn process_local_assign_statement(&mut self, assign: &mut VariableAssignment) {
         assign.replace_referenced_tokens(self.code);
     }
 
-    fn process_local_function_statement(&mut self, function: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, function: &mut FunctionAssignment) {
         function.replace_referenced_tokens(self.code);
     }
 

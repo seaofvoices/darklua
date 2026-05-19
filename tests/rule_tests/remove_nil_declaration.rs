@@ -25,6 +25,8 @@ test_rule!(
 test_rule_without_effects!(
     RemoveNilDeclaration::default(),
     assign_to_true("local a = true"),
+    const_assign_to_nil("const a = nil"),
+    const_assign_to_multiple_nil("const a, b = nil, nil"),
     assign_to_nil_and_extra_call("local a = nil, call()"),
     assign_to_nil_and_extract_varargs("local a, b, c = nil, ..."),
 );

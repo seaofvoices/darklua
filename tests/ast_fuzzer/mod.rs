@@ -1171,12 +1171,13 @@ impl AstFuzzer {
                     let block = self.pop_block();
                     let parameters = self.pop_typed_identifiers(parameters);
 
-                    let mut function = LocalFunctionStatement::new(
+                    let mut function = FunctionAssignment::new(
                         self.random.identifier(),
                         block,
                         parameters,
                         has_variadic_type || self.random.function_is_variadic(),
-                    );
+                    )
+                    .with_assignment_kind(self.random.assignment_kind());
 
                     for attribute_name in self.random.function_attributes() {
                         function
@@ -1278,13 +1279,29 @@ impl AstFuzzer {
                     );
                 }
                 AstFuzzerWork::MakeLocalAssignStatement {
-                    variables,
-                    expressions,
+                    variables: variable_count,
+                    expressions: value_count,
                 } => {
-                    let variables = self.pop_typed_identifiers(variables);
-                    let values = self.pop_expressions(expressions);
-                    self.statements
-                        .push(LocalAssignStatement::new(variables, values).into());
+                    let variables = self.pop_typed_identifiers(variable_count);
+                    let values = self.pop_expressions(value_count);
+                    let mut assignment = VariableAssignment::new(variables, values)
+                        .with_assignment_kind(self.random.assignment_kind());
+
+                    let extra_values = value_count.saturating_sub(variable_count);
+                    if extra_values > 0 {
+                        if let AssignmentKind::Const = assignment.get_assignment_kind() {
+                            for _ in 0..extra_values {
+                                assignment.push_variable(self.random.identifier());
+                            }
+                        }
+                    }
+
+                    let required_nil_values = assignment.required_nil_values();
+                    for _ in 0..required_nil_values {
+                        assignment.push_value(Expression::nil());
+                    }
+
+                    self.statements.push(assignment.into());
                 }
                 AstFuzzerWork::MakeGenericForStatement {
                     variables,

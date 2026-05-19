@@ -283,7 +283,7 @@ pub trait NodePostVisitor<T: NodeProcessor + NodePostProcessor> {
         processor.process_after_if_statement(statement);
     }
 
-    fn visit_local_assign(statement: &mut LocalAssignStatement, processor: &mut T) {
+    fn visit_local_assign(statement: &mut VariableAssignment, processor: &mut T) {
         processor.process_local_assign_statement(statement);
 
         statement
@@ -299,7 +299,7 @@ pub trait NodePostVisitor<T: NodeProcessor + NodePostProcessor> {
         processor.process_after_local_assign_statement(statement);
     }
 
-    fn visit_local_function(statement: &mut LocalFunctionStatement, processor: &mut T) {
+    fn visit_local_function(statement: &mut FunctionAssignment, processor: &mut T) {
         processor.process_local_function_statement(statement);
         Self::visit_attributes(statement.mutate_attributes(), processor);
 

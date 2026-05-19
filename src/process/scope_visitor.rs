@@ -24,7 +24,7 @@ pub trait Scope {
     /// Called when a new local variable is initialized.
     fn insert_local(&mut self, identifier: &mut String, value: Option<&mut Expression>);
     /// Called when a new local function is initialized.
-    fn insert_local_function(&mut self, function: &mut LocalFunctionStatement);
+    fn insert_local_function(&mut self, function: &mut FunctionAssignment);
 }
 
 /// A visitor that can be used only with a NodeProcessor that also implements the Scope trait.
@@ -51,7 +51,7 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
         scope.pop();
     }
 
-    fn visit_local_assign(statement: &mut LocalAssignStatement, scope: &mut T) {
+    fn visit_local_assign(statement: &mut VariableAssignment, scope: &mut T) {
         scope.process_local_assign_statement(statement);
 
         statement
@@ -134,7 +134,7 @@ impl<T: NodeProcessor + Scope> NodeVisitor<T> for ScopeVisitor {
         scope.pop();
     }
 
-    fn visit_local_function(statement: &mut LocalFunctionStatement, scope: &mut T) {
+    fn visit_local_function(statement: &mut FunctionAssignment, scope: &mut T) {
         scope.process_local_function_statement(statement);
 
         scope.insert_local_function(statement);
@@ -257,7 +257,7 @@ impl<T: NodeProcessor + NodePostProcessor + Scope> NodePostVisitor<T> for ScopeP
         scope.pop();
     }
 
-    fn visit_local_assign(statement: &mut LocalAssignStatement, scope: &mut T) {
+    fn visit_local_assign(statement: &mut VariableAssignment, scope: &mut T) {
         scope.process_local_assign_statement(statement);
 
         statement
@@ -346,7 +346,7 @@ impl<T: NodeProcessor + NodePostProcessor + Scope> NodePostVisitor<T> for ScopeP
         scope.process_after_function_statement(statement);
     }
 
-    fn visit_local_function(statement: &mut LocalFunctionStatement, scope: &mut T) {
+    fn visit_local_function(statement: &mut FunctionAssignment, scope: &mut T) {
         scope.process_local_function_statement(statement);
 
         scope.insert_local_function(statement);
@@ -526,7 +526,7 @@ impl Scope for IdentifierTracker {
         self.insert_identifier(identifier);
     }
 
-    fn insert_local_function(&mut self, function: &mut LocalFunctionStatement) {
+    fn insert_local_function(&mut self, function: &mut FunctionAssignment) {
         self.insert_identifier(function.mutate_identifier().get_name());
     }
 }
@@ -563,7 +563,7 @@ where
     }
 
     #[inline]
-    fn insert_local_function(&mut self, function: &mut LocalFunctionStatement) {
+    fn insert_local_function(&mut self, function: &mut FunctionAssignment) {
         self.deref_mut().insert_local_function(function)
     }
 }

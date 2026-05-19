@@ -1,8 +1,8 @@
 use std::{mem, ops};
 
 use crate::nodes::{
-    BinaryOperator, Block, CompoundOperator, Expression, FieldExpression, FunctionCall,
-    LocalAssignStatement, Prefix, Statement,
+    BinaryOperator, Block, CompoundOperator, Expression, FieldExpression, FunctionCall, Prefix,
+    Statement, VariableAssignment,
 };
 use crate::process::{IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
@@ -101,7 +101,7 @@ impl FlawlessRule for RemoveFloorDivision {
         if processor.define_math_floor {
             block.insert_statement(
                 0,
-                LocalAssignStatement::from_variable(MATH_FLOOR_IDENTIFIER).with_value(
+                VariableAssignment::from_variable(MATH_FLOOR_IDENTIFIER).with_value(
                     FieldExpression::new(
                         Prefix::from_name(DEFAULT_MATH_LIBRARY),
                         DEFAULT_MATH_FLOOR_NAME,

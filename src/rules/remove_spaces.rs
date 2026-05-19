@@ -54,11 +54,11 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
         }
     }
 
-    fn process_local_assign_statement(&mut self, assign: &mut LocalAssignStatement) {
+    fn process_local_assign_statement(&mut self, assign: &mut VariableAssignment) {
         assign.clear_whitespaces();
     }
 
-    fn process_local_function_statement(&mut self, function: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, function: &mut FunctionAssignment) {
         function.clear_whitespaces();
     }
 
