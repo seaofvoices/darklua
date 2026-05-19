@@ -5,7 +5,6 @@ expression: rule_names
 [
   "append_text_comment",
   "compute_expression",
-  "make_assignment_local",
   "convert_function_to_assignment",
   "convert_index_to_field",
   "convert_local_function_to_assign",
@@ -15,6 +14,7 @@ expression: rule_names
   "filter_after_early_return",
   "group_local_assignment",
   "inject_global_value",
+  "make_assignment_local",
   "remove_assertions",
   "remove_attribute",
   "remove_comments",
