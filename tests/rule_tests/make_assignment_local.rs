@@ -1,8 +1,8 @@
-use darklua_core::rules::{ConvertConstToLocal, Rule};
+use darklua_core::rules::{MakeAssignmentLocal, Rule};
 
 test_rule!(
-    convert_const_to_local,
-    ConvertConstToLocal::default(),
+    make_assignment_local,
+    MakeAssignmentLocal::default(),
     const_assignment("const value = true") => "local value = true",
     typed_const_assignment("const value: boolean = true") => "local value: boolean = true",
     multi_const_assignment("const foo, bar = true, false") => "local foo, bar = true, false",
@@ -12,14 +12,14 @@ test_rule!(
 );
 
 test_rule_with_tokens!(
-    convert_const_to_local_preserve_tokens,
-    ConvertConstToLocal::default(),
+    make_assignment_local_preserve_tokens,
+    MakeAssignmentLocal::default(),
     const_assignment_with_spacing("const  value = true") => "local  value = true",
     const_function_with_spacing("const  function foo() end") => "local  function foo() end"
 );
 
 test_rule_without_effects!(
-    ConvertConstToLocal::default(),
+    MakeAssignmentLocal::default(),
     local_assignment_named_const("local const = true"),
     regular_local_assignment("local value = true"),
     regular_local_function("local function foo() end")
@@ -29,7 +29,7 @@ test_rule_without_effects!(
 fn deserialize_from_object_notation() {
     json5::from_str::<Box<dyn Rule>>(
         r#"{
-        rule: 'convert_const_to_local',
+        rule: 'make_assignment_local',
     }"#,
     )
     .unwrap();
@@ -37,5 +37,5 @@ fn deserialize_from_object_notation() {
 
 #[test]
 fn deserialize_from_string() {
-    json5::from_str::<Box<dyn Rule>>("'convert_const_to_local'").unwrap();
+    json5::from_str::<Box<dyn Rule>>("'make_assignment_local'").unwrap();
 }

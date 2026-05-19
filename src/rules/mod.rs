@@ -9,7 +9,6 @@ pub mod bundle;
 mod call_parens;
 mod compute_expression;
 mod configuration_error;
-mod convert_const_to_local;
 mod convert_index_to_field;
 mod convert_luau_number;
 mod convert_require;
@@ -19,6 +18,7 @@ mod filter_early_return;
 mod global_function_to_assign;
 mod group_local;
 mod inject_value;
+mod make_assignment_local;
 mod method_def;
 mod no_local_function;
 mod remove_assertions;
@@ -48,7 +48,6 @@ pub use append_text_comment::*;
 pub use call_parens::*;
 pub use compute_expression::*;
 pub use configuration_error::RuleConfigurationError;
-pub use convert_const_to_local::*;
 pub use convert_index_to_field::*;
 pub use convert_luau_number::*;
 pub use convert_require::*;
@@ -58,6 +57,7 @@ pub use filter_early_return::*;
 pub use global_function_to_assign::*;
 pub use group_local::*;
 pub use inject_value::*;
+pub use make_assignment_local::*;
 pub use method_def::*;
 pub use no_local_function::*;
 pub use remove_assertions::*;
@@ -356,7 +356,6 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
     vec![
         APPEND_TEXT_COMMENT_RULE_NAME,
         COMPUTE_EXPRESSIONS_RULE_NAME,
-        CONVERT_CONST_TO_LOCAL_RULE_NAME,
         CONVERT_FUNCTION_TO_ASSIGNMENT_RULE_NAME,
         CONVERT_INDEX_TO_FIELD_RULE_NAME,
         CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME,
@@ -366,6 +365,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         FILTER_AFTER_EARLY_RETURN_RULE_NAME,
         GROUP_LOCAL_ASSIGNMENT_RULE_NAME,
         INJECT_GLOBAL_VALUE_RULE_NAME,
+        MAKE_ASSIGNMENT_LOCAL_RULE_NAME,
         REMOVE_ASSERTIONS_RULE_NAME,
         REMOVE_ATTRIBUTE_RULE_NAME,
         REMOVE_COMMENTS_RULE_NAME,
@@ -396,7 +396,6 @@ impl FromStr for Box<dyn Rule> {
         let rule: Box<dyn Rule> = match string {
             APPEND_TEXT_COMMENT_RULE_NAME => Box::<AppendTextComment>::default(),
             COMPUTE_EXPRESSIONS_RULE_NAME => Box::<ComputeExpression>::default(),
-            CONVERT_CONST_TO_LOCAL_RULE_NAME => Box::<ConvertConstToLocal>::default(),
             CONVERT_FUNCTION_TO_ASSIGNMENT_RULE_NAME => Box::<ConvertFunctionToAssign>::default(),
             CONVERT_INDEX_TO_FIELD_RULE_NAME => Box::<ConvertIndexToField>::default(),
             CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => {
@@ -408,6 +407,7 @@ impl FromStr for Box<dyn Rule> {
             FILTER_AFTER_EARLY_RETURN_RULE_NAME => Box::<FilterAfterEarlyReturn>::default(),
             GROUP_LOCAL_ASSIGNMENT_RULE_NAME => Box::<GroupLocalAssignment>::default(),
             INJECT_GLOBAL_VALUE_RULE_NAME => Box::<InjectGlobalValue>::default(),
+            MAKE_ASSIGNMENT_LOCAL_RULE_NAME => Box::<MakeAssignmentLocal>::default(),
             REMOVE_ASSERTIONS_RULE_NAME => Box::<RemoveAssertions>::default(),
             REMOVE_ATTRIBUTE_RULE_NAME => Box::<RemoveAttribute>::default(),
             REMOVE_COMMENTS_RULE_NAME => Box::<RemoveComments>::default(),
