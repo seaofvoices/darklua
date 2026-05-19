@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* add a new parameter for the `rename_variables` rule so that globals can be detected automatically and then avoided in the renaming pass ([#348](https://github.com/seaofvoices/darklua/pull/348))
 * add support for `const` declaration of variables and functions (e.g. `const var = true` or `const function test() end`) and add rule (`make_assignment_local`) to convert those assignments to `local` assignments ([#346](https://github.com/seaofvoices/darklua/pull/346))
 * add support for type instantiation prefixes and methods (e.g. `func<<string>>()`) ([#345](https://github.com/seaofvoices/darklua/pull/345))
 
