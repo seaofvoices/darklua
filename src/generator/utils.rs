@@ -1,18 +1,23 @@
 //! A module that contains the main [LuaGenerator](trait.LuaGenerator.html) trait
 //! and its implementations.
 
-use std::convert::TryInto;
+use std::{cell::LazyCell, convert::TryInto};
 
 use bstr::ByteSlice;
 
 use crate::nodes::{
     Expression, FieldExpression, FunctionCall, IndexExpression, NumberExpression, Prefix,
-    Statement, StringSegment, TableExpression, Variable,
+    Statement, StringSegment, TableExpression, TypedIdentifier, Variable,
 };
 
 const QUOTED_STRING_MAX_LENGTH: usize = 60;
 const LONG_STRING_MIN_LENGTH: usize = 20;
 const FORCE_LONG_STRING_NEW_LINE_THRESHOLD: usize = 6;
+
+thread_local! {
+    pub(crate) static NIL_EXPRESSION: LazyCell<Expression> = LazyCell::new(|| Expression::nil());
+    pub(crate) static THROWAWAY_IDENTIFIER: LazyCell<TypedIdentifier> = LazyCell::new(|| TypedIdentifier::new("____darklua_throwaway_var"));
+}
 
 #[inline]
 pub fn should_break_with_space(ending_character: char, next_character: char) -> bool {

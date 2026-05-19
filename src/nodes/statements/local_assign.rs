@@ -320,6 +320,17 @@ impl VariableAssignment {
         }
     }
 
+    /// For `const` assignments, if there are less variables than values, this function returns the
+    /// amount of new variables that are needed to make the assignment valid.
+    /// For `local` assignments, this function returns 1 if there are no variables.
+    pub fn required_new_variables(&self) -> usize {
+        match self.keyword {
+            AssignmentKind::Local if self.variables.is_empty() => 1,
+            AssignmentKind::Local => 0,
+            AssignmentKind::Const => self.values.len().saturating_sub(self.variables.len()),
+        }
+    }
+
     /// Removes type annotations from all variables.
     pub fn clear_types(&mut self) {
         for variable in &mut self.variables {

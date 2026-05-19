@@ -987,6 +987,23 @@ mod $mod_name {
                     TypeName::new("List").with_type_parameter(TypeName::new("string"))
                 )
             ).with_value(false),
+            // const assignments
+            const_foo_unassigned => VariableAssignment::from_variable("foo")
+                .with_assignment_kind(AssignmentKind::Const),
+            const_foo_typed_unassigned => VariableAssignment::from_variable(
+                Identifier::new("foo").with_type(OptionalType::new(Type::from(true)))
+            ).with_assignment_kind(AssignmentKind::Const),
+            const_foo_and_bar_unassigned => VariableAssignment::from_variable("foo")
+                .with_assignment_kind(AssignmentKind::Const)
+                .with_variable("bar")
+                .with_assignment_kind(AssignmentKind::Const),
+            const_foo_and_bar_typed_unassigned => VariableAssignment::from_variable("foo")
+                .with_assignment_kind(AssignmentKind::Const)
+                .with_variable(Identifier::new("bar").with_type(OptionalType::new(Type::from(false)))),
+            const_assignment_of_one_variable_with_two_values => VariableAssignment::from_variable("foo")
+                .with_assignment_kind(AssignmentKind::Const)
+                .with_value(true)
+                .with_value(false),
         ));
 
         snapshot_node!($mod_name, $generator, local_function, write_statement => (

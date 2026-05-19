@@ -690,49 +690,66 @@ impl<'a> TokenBasedLuaGenerator<'a> {
         tokens: &VariableAssignmentTokens,
     ) {
         self.write_token(&tokens.keyword);
-        let last_variable_index = assign.variables_len().saturating_sub(1);
-        assign
-            .iter_variables()
-            .enumerate()
-            .for_each(|(i, identifier)| {
-                self.write_typed_identifier(identifier);
-                if i < last_variable_index {
-                    if let Some(comma) = tokens.variable_commas.get(i) {
-                        self.write_token(comma);
-                    } else {
-                        self.write_symbol(",");
-                    }
+
+        let variables_length = assign.variables_len();
+        let last_variable_index = variables_length.saturating_sub(1);
+
+        for (i, identifier) in assign.iter_variables().enumerate() {
+            self.write_typed_identifier(identifier);
+            if i < last_variable_index {
+                if let Some(comma) = tokens.variable_commas.get(i) {
+                    self.write_token(comma);
+                } else {
+                    self.write_symbol(",");
                 }
+            }
+        }
+
+        // const assignments must have at least one variable per value, so it may need
+        // additional variables
+        for i in 0..assign.required_new_variables() {
+            if i != 0 || variables_length > 0 {
+                self.write_symbol(",");
+            }
+            utils::THROWAWAY_IDENTIFIER.with(|identifier| {
+                self.write_typed_identifier(identifier);
             });
+        }
 
         // const assignments must have a value for each variable, so it may need additional
         // nil values
         let required_nil_values = assign.required_nil_values();
 
-        if assign.has_values() || required_nil_values > 0 {
+        let has_values = assign.has_values();
+
+        if has_values || required_nil_values > 0 {
             if let Some(token) = &tokens.equal {
                 self.write_token(token);
             } else {
                 self.write_symbol("=");
             }
 
-            let last_value_index = (assign.values_len() + required_nil_values).saturating_sub(1);
-            let nil_value = Expression::nil();
+            let last_value_index = assign.values_len().saturating_sub(1);
 
-            assign
-                .iter_values()
-                .chain(iter::repeat_n(&nil_value, required_nil_values))
-                .enumerate()
-                .for_each(|(i, value)| {
-                    self.write_expression(value);
-                    if i < last_value_index {
-                        if let Some(comma) = tokens.value_commas.get(i) {
-                            self.write_token(comma);
-                        } else {
-                            self.write_symbol(",");
-                        }
+            for (i, value) in assign.iter_values().enumerate() {
+                self.write_expression(value);
+                if i < last_value_index {
+                    if let Some(comma) = tokens.value_commas.get(i) {
+                        self.write_token(comma);
+                    } else {
+                        self.write_symbol(",");
                     }
-                });
+                }
+            }
+
+            for i in 0..required_nil_values {
+                if i != 0 || has_values {
+                    self.write_symbol(",");
+                }
+                utils::NIL_EXPRESSION.with(|nil| {
+                    self.write_expression(nil);
+                })
+            }
         }
     }
 
