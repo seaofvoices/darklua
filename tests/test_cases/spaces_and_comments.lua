@@ -29,6 +29,8 @@ local id2 -- new id
     = .123, function( arg --[[number]] , ... --[[args]]) end
 
 local a --[[a]],  b, c = id + --[[add]] id, nil --[[nothing]]
+const --[[id]] constId = 0
+const --[[id]] c1, c2 = fn()
 
 local function fn --[[function name]] ( p1, p2 -- p2
     , p3, ... ) end

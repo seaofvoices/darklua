@@ -71,11 +71,11 @@ impl NodeProcessor for NodeCounter {
         }
     }
 
-    fn process_local_assign_statement(&mut self, _: &mut LocalAssignStatement) {
+    fn process_local_assign_statement(&mut self, _: &mut VariableAssignment) {
         self.local_assign_count += 1;
     }
 
-    fn process_local_function_statement(&mut self, _: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, _: &mut FunctionAssignment) {
         self.local_function_count += 1;
     }
 

@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::{iter, ops};
 
 use crate::nodes::{
-    DoStatement, Expression, FunctionCall, Identifier, LocalAssignStatement, Prefix, Statement,
-    TypedIdentifier,
+    DoStatement, Expression, FunctionCall, Identifier, Prefix, Statement, TypedIdentifier,
+    VariableAssignment,
 };
 use crate::process::{Evaluator, IdentifierTracker, NodeProcessor};
 use crate::utils::{
@@ -81,7 +81,7 @@ impl<Args, T: CallMatch<Args>> RemoveFunctionCallProcessor<Args, T> {
         if variables.is_empty() {
             None
         } else {
-            Some(LocalAssignStatement::new(variables, values).into())
+            Some(VariableAssignment::new(variables, values).into())
         }
     }
 

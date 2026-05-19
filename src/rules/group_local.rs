@@ -1,4 +1,4 @@
-use crate::nodes::{Block, Expression, LocalAssignStatement, Statement};
+use crate::nodes::{Block, Expression, Statement, VariableAssignment};
 use crate::process::processors::FindVariables;
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
@@ -54,7 +54,7 @@ impl GroupLocalProcessor {
         filter_statements
     }
 
-    fn should_merge(&self, first: &LocalAssignStatement, next: &mut LocalAssignStatement) -> bool {
+    fn should_merge(&self, first: &VariableAssignment, next: &mut VariableAssignment) -> bool {
         let first_value_count = first.values_len();
 
         if first.variables_len() > first_value_count && first_value_count != 0 {
@@ -72,7 +72,7 @@ impl GroupLocalProcessor {
         })
     }
 
-    fn merge(&self, first: &mut LocalAssignStatement, mut other: LocalAssignStatement) {
+    fn merge(&self, first: &mut VariableAssignment, mut other: VariableAssignment) {
         if first.values_len() == 0 && other.values_len() != 0 {
             let variable_count = first.variables_len();
             first.extend_values(iter::repeat_n(Expression::nil(), variable_count));

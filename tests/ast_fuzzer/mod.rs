@@ -1171,7 +1171,7 @@ impl AstFuzzer {
                     let block = self.pop_block();
                     let parameters = self.pop_typed_identifiers(parameters);
 
-                    let mut function = LocalFunctionStatement::new(
+                    let mut function = FunctionAssignment::new(
                         self.random.identifier(),
                         block,
                         parameters,
@@ -1284,7 +1284,7 @@ impl AstFuzzer {
                     let variables = self.pop_typed_identifiers(variables);
                     let values = self.pop_expressions(expressions);
                     self.statements
-                        .push(LocalAssignStatement::new(variables, values).into());
+                        .push(VariableAssignment::new(variables, values).into());
                 }
                 AstFuzzerWork::MakeGenericForStatement {
                     variables,

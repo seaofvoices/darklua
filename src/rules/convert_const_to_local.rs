@@ -1,4 +1,4 @@
-use crate::nodes::{Block, LocalAssignStatement, LocalFunctionStatement};
+use crate::nodes::{AssignmentKind, Block, FunctionAssignment, VariableAssignment};
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
@@ -12,16 +12,12 @@ use super::verify_no_rule_properties;
 struct ConvertConstToLocalProcessor;
 
 impl NodeProcessor for ConvertConstToLocalProcessor {
-    fn process_local_assign_statement(&mut self, assign: &mut LocalAssignStatement) {
-        if assign.is_const() {
-            assign.set_local();
-        }
+    fn process_local_assign_statement(&mut self, assign: &mut VariableAssignment) {
+        assign.set_assignment_kind(AssignmentKind::Local);
     }
 
-    fn process_local_function_statement(&mut self, function: &mut LocalFunctionStatement) {
-        if function.is_const() {
-            function.set_local();
-        }
+    fn process_local_function_statement(&mut self, function: &mut FunctionAssignment) {
+        function.set_assignment_kind(AssignmentKind::Local);
     }
 }
 

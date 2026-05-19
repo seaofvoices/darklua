@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::nodes::{
     AssignStatement, BinaryExpression, Block, CompoundAssignStatement, DoStatement, Expression,
-    FieldExpression, IndexExpression, LocalAssignStatement, Prefix, Statement, Variable,
+    FieldExpression, IndexExpression, Prefix, Statement, Variable, VariableAssignment,
 };
 use crate::process::{DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
@@ -126,7 +126,7 @@ impl Processor {
                         ))
                     }
                     (None, Some(index_variable)) => {
-                        let assign = LocalAssignStatement::from_variable(index_variable.clone())
+                        let assign = VariableAssignment::from_variable(index_variable.clone())
                             .with_value(self.remove_parentheses(index.get_index().clone()));
                         let variable = IndexExpression::new(
                             self.simplify_prefix(index.get_prefix())
@@ -136,7 +136,7 @@ impl Processor {
                         Some(self.create_do_assignment(assignment, assign, variable))
                     }
                     (Some(prefix_variable), None) => {
-                        let assign = LocalAssignStatement::from_variable(prefix_variable.clone())
+                        let assign = VariableAssignment::from_variable(prefix_variable.clone())
                             .with_value(self.remove_parentheses(index.get_prefix().clone()));
                         let variable = IndexExpression::new(
                             Prefix::from_name(prefix_variable),
@@ -146,7 +146,7 @@ impl Processor {
                         Some(self.create_do_assignment(assignment, assign, variable))
                     }
                     (Some(prefix_variable), Some(index_variable)) => {
-                        let assign = LocalAssignStatement::from_variable(prefix_variable.clone())
+                        let assign = VariableAssignment::from_variable(prefix_variable.clone())
                             .with_value(self.remove_parentheses(index.get_prefix().clone()))
                             .with_variable(index_variable.clone())
                             .with_value(self.remove_parentheses(index.get_index().clone()));
@@ -197,7 +197,7 @@ impl Processor {
                         field.get_field().clone(),
                     );
 
-                    let assign = LocalAssignStatement::from_variable(identifier).with_value(
+                    let assign = VariableAssignment::from_variable(identifier).with_value(
                         match field.get_prefix().clone() {
                             Prefix::Parenthese(parenthese) => parenthese.into_inner_expression(),
                             prefix => prefix.into(),

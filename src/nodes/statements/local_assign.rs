@@ -1,9 +1,31 @@
 use crate::nodes::{Expression, Token, TypedIdentifier};
 
+#[deprecated(since = "0.19.0", note = "Renamed to `VariableAssignmentTokens`")]
+pub type LocalAssignTokens = VariableAssignmentTokens;
+
+#[deprecated(since = "0.19.0", note = "Renamed to `VariableAssignment`")]
+pub type LocalAssignStatement = VariableAssignment;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum AssignmentKind {
+    #[default]
+    Local,
+    Const,
+}
+
+impl AssignmentKind {
+    pub fn as_keyword(&self) -> &'static str {
+        match self {
+            AssignmentKind::Local => "local",
+            AssignmentKind::Const => "const",
+        }
+    }
+}
+
 /// Tokens associated with a local variable assignment statement.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LocalAssignTokens {
-    pub local: Token,
+pub struct VariableAssignmentTokens {
+    pub keyword: Token,
     /// The token for the equal sign, if any.
     pub equal: Option<Token>,
     /// The tokens for the commas between variables.
@@ -12,29 +34,29 @@ pub struct LocalAssignTokens {
     pub value_commas: Vec<Token>,
 }
 
-impl LocalAssignTokens {
+impl VariableAssignmentTokens {
     super::impl_token_fns!(
-        target = [local]
+        target = [keyword]
         iter = [variable_commas, value_commas, equal]
     );
 }
 
 /// Represents a local variable assignment statement.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LocalAssignStatement {
+pub struct VariableAssignment {
+    keyword: AssignmentKind,
     variables: Vec<TypedIdentifier>,
     values: Vec<Expression>,
-    is_const: bool,
-    tokens: Option<LocalAssignTokens>,
+    tokens: Option<VariableAssignmentTokens>,
 }
 
-impl LocalAssignStatement {
+impl VariableAssignment {
     /// Creates a new local assignment statement with the given variables and values.
     pub fn new(variables: Vec<TypedIdentifier>, values: Vec<Expression>) -> Self {
         Self {
+            keyword: AssignmentKind::Local,
             variables,
             values,
-            is_const: false,
             tokens: None,
         }
     }
@@ -42,34 +64,34 @@ impl LocalAssignStatement {
     /// Creates a new local assignment statement with a single variable and no values.
     pub fn from_variable<S: Into<TypedIdentifier>>(variable: S) -> Self {
         Self {
+            keyword: AssignmentKind::Local,
             variables: vec![variable.into()],
             values: Vec::new(),
-            is_const: false,
             tokens: None,
         }
     }
 
     /// Sets the tokens for this local assignment statement.
-    pub fn with_tokens(mut self, tokens: LocalAssignTokens) -> Self {
+    pub fn with_tokens(mut self, tokens: VariableAssignmentTokens) -> Self {
         self.tokens = Some(tokens);
         self
     }
 
     /// Sets the tokens for this local assignment statement.
     #[inline]
-    pub fn set_tokens(&mut self, tokens: LocalAssignTokens) {
+    pub fn set_tokens(&mut self, tokens: VariableAssignmentTokens) {
         self.tokens = Some(tokens);
     }
 
     /// Returns the tokens for this local assignment statement, if any.
     #[inline]
-    pub fn get_tokens(&self) -> Option<&LocalAssignTokens> {
+    pub fn get_tokens(&self) -> Option<&VariableAssignmentTokens> {
         self.tokens.as_ref()
     }
 
     /// Returns a mutable reference to the tokens, if any.
     #[inline]
-    pub fn mutate_tokens(&mut self) -> Option<&mut LocalAssignTokens> {
+    pub fn mutate_tokens(&mut self) -> Option<&mut VariableAssignmentTokens> {
         self.tokens.as_mut()
     }
 
@@ -82,12 +104,6 @@ impl LocalAssignStatement {
     /// Adds a value to this local assignment statement.
     pub fn with_value<E: Into<Expression>>(mut self, value: E) -> Self {
         self.values.push(value.into());
-        self
-    }
-
-    /// Marks this local assignment as a `const` assignment.
-    pub fn with_const(mut self) -> Self {
-        self.set_const();
         self
     }
 
@@ -111,6 +127,28 @@ impl LocalAssignStatement {
         self.variables
             .iter_mut()
             .for_each(|variable| callback(variable, values.next()));
+    }
+
+    /// Sets the assignment kind for this assignment.
+    pub fn with_assignment_kind(mut self, kind: AssignmentKind) -> Self {
+        self.set_assignment_kind(kind);
+        self
+    }
+
+    /// Sets the assignment kind for this assignment.
+    pub fn set_assignment_kind(&mut self, kind: AssignmentKind) {
+        if self.keyword == kind {
+            return;
+        }
+        if let Some(tokens) = &mut self.tokens {
+            tokens.keyword.replace_with_content(kind.as_keyword());
+        }
+        self.keyword = kind;
+    }
+
+    /// Returns the assignment kind for this assignment.
+    pub fn get_assignment_kind(&self) -> AssignmentKind {
+        self.keyword
     }
 
     /// Returns the list of variables.
@@ -257,6 +295,31 @@ impl LocalAssignStatement {
         !self.values.is_empty()
     }
 
+    /// In `const` assignments, there may be a need to append `nil` values after the actual
+    /// values to make sure the assignment is valid.
+    pub fn required_nil_values(&self) -> usize {
+        match self.keyword {
+            AssignmentKind::Local => 0,
+            AssignmentKind::Const => {
+                let length = self.variables.len();
+
+                if length <= self.values.len()
+                    || self
+                        .values
+                        .last()
+                        .map(|last| {
+                            matches!(last, Expression::Call(_) | Expression::VariableArguments(_))
+                        })
+                        .unwrap_or_default()
+                {
+                    0
+                } else {
+                    length - self.values.len()
+                }
+            }
+        }
+    }
+
     /// Removes type annotations from all variables.
     pub fn clear_types(&mut self) {
         for variable in &mut self.variables {
@@ -264,43 +327,17 @@ impl LocalAssignStatement {
         }
     }
 
-    /// Returns whether this local assignment was declared with `const`.
-    #[inline]
-    pub fn is_const(&self) -> bool {
-        self.is_const
-    }
-
-    /// Marks this assignment as a `const` declaration.
-    pub fn set_const(&mut self) {
-        self.mark_const();
-        if let Some(tokens) = &mut self.tokens {
-            tokens.local.replace_with_content("const");
-        }
-    }
-
-    pub(crate) fn mark_const(&mut self) {
-        self.is_const = true;
-    }
-
-    /// Marks this assignment as a `local` declaration.
-    pub fn set_local(&mut self) {
-        self.is_const = false;
-        if let Some(tokens) = &mut self.tokens {
-            tokens.local.replace_with_content("local");
-        }
-    }
-
     /// Returns a mutable reference to the first token for this statement, creating it if missing.
     pub fn mutate_first_token(&mut self) -> &mut Token {
         if self.tokens.is_none() {
-            self.tokens = Some(LocalAssignTokens {
-                local: Token::from_content(if self.is_const { "const" } else { "local" }),
+            self.tokens = Some(VariableAssignmentTokens {
+                keyword: Token::from_content(self.keyword.as_keyword()),
                 equal: (!self.values.is_empty()).then(|| Token::from_content("=")),
                 variable_commas: Vec::new(),
                 value_commas: Vec::new(),
             });
         }
-        &mut self.tokens.as_mut().unwrap().local
+        &mut self.tokens.as_mut().unwrap().keyword
     }
 
     /// Returns a mutable reference to the last token for this statement,
@@ -327,10 +364,10 @@ mod test {
 
         #[test]
         fn removes_the_equal_sign() {
-            let mut assign = LocalAssignStatement::from_variable("var")
+            let mut assign = VariableAssignment::from_variable("var")
                 .with_value(true)
-                .with_tokens(LocalAssignTokens {
-                    local: Token::from_content("local"),
+                .with_tokens(VariableAssignmentTokens {
+                    keyword: Token::from_content("local"),
                     equal: Some(Token::from_content("=")),
                     variable_commas: Vec::new(),
                     value_commas: Vec::new(),
@@ -340,8 +377,8 @@ mod test {
 
             pretty_assertions::assert_eq!(
                 assign,
-                LocalAssignStatement::from_variable("var").with_tokens(LocalAssignTokens {
-                    local: Token::from_content("local"),
+                VariableAssignment::from_variable("var").with_tokens(VariableAssignmentTokens {
+                    keyword: Token::from_content("local"),
                     equal: None,
                     variable_commas: Vec::new(),
                     value_commas: Vec::new(),
@@ -351,11 +388,11 @@ mod test {
 
         #[test]
         fn removes_the_last_comma_token() {
-            let mut assign = LocalAssignStatement::from_variable("var")
+            let mut assign = VariableAssignment::from_variable("var")
                 .with_value(true)
                 .with_value(false)
-                .with_tokens(LocalAssignTokens {
-                    local: Token::from_content("local"),
+                .with_tokens(VariableAssignmentTokens {
+                    keyword: Token::from_content("local"),
                     equal: Some(Token::from_content("=")),
                     variable_commas: Vec::new(),
                     value_commas: vec![Token::from_content(",")],
@@ -365,10 +402,10 @@ mod test {
 
             pretty_assertions::assert_eq!(
                 assign,
-                LocalAssignStatement::from_variable("var")
+                VariableAssignment::from_variable("var")
                     .with_value(true)
-                    .with_tokens(LocalAssignTokens {
-                        local: Token::from_content("local"),
+                    .with_tokens(VariableAssignmentTokens {
+                        keyword: Token::from_content("local"),
                         equal: Some(Token::from_content("=")),
                         variable_commas: Vec::new(),
                         value_commas: Vec::new(),
@@ -378,12 +415,12 @@ mod test {
 
         #[test]
         fn removes_one_comma_token() {
-            let mut assign = LocalAssignStatement::from_variable("var")
+            let mut assign = VariableAssignment::from_variable("var")
                 .with_value(true)
                 .with_value(false)
                 .with_value(true)
-                .with_tokens(LocalAssignTokens {
-                    local: Token::from_content("local"),
+                .with_tokens(VariableAssignmentTokens {
+                    keyword: Token::from_content("local"),
                     equal: Some(Token::from_content("=")),
                     variable_commas: Vec::new(),
                     value_commas: vec![Token::from_content(","), Token::from_content(",")],
@@ -393,11 +430,11 @@ mod test {
 
             pretty_assertions::assert_eq!(
                 assign,
-                LocalAssignStatement::from_variable("var")
+                VariableAssignment::from_variable("var")
                     .with_value(true)
                     .with_value(false)
-                    .with_tokens(LocalAssignTokens {
-                        local: Token::from_content("local"),
+                    .with_tokens(VariableAssignmentTokens {
+                        keyword: Token::from_content("local"),
                         equal: Some(Token::from_content("=")),
                         variable_commas: Vec::new(),
                         value_commas: vec![Token::from_content(",")],
@@ -411,7 +448,7 @@ mod test {
 
         #[test]
         fn single_variable_returns_none_without_mutating() {
-            let mut assign = LocalAssignStatement::from_variable("var").with_value(true);
+            let mut assign = VariableAssignment::from_variable("var").with_value(true);
             let copy = assign.clone();
 
             assert_eq!(assign.remove_variable(0), None);
@@ -421,7 +458,7 @@ mod test {
 
         #[test]
         fn single_variable_remove_outside_of_bounds() {
-            let mut assign = LocalAssignStatement::from_variable("var");
+            let mut assign = VariableAssignment::from_variable("var");
             let copy = assign.clone();
 
             assert_eq!(assign.remove_variable(1), None);
@@ -433,7 +470,7 @@ mod test {
 
         #[test]
         fn two_variables_remove_first() {
-            let mut assign = LocalAssignStatement::from_variable("var")
+            let mut assign = VariableAssignment::from_variable("var")
                 .with_variable("var2")
                 .with_value(true)
                 .with_value(false);
@@ -442,7 +479,7 @@ mod test {
 
             pretty_assertions::assert_eq!(
                 assign,
-                LocalAssignStatement::from_variable("var2")
+                VariableAssignment::from_variable("var2")
                     .with_value(true)
                     .with_value(false)
             );
@@ -450,7 +487,7 @@ mod test {
 
         #[test]
         fn two_variables_remove_second() {
-            let mut assign = LocalAssignStatement::from_variable("var")
+            let mut assign = VariableAssignment::from_variable("var")
                 .with_variable("var2")
                 .with_value(true)
                 .with_value(false);
@@ -462,7 +499,7 @@ mod test {
 
             pretty_assertions::assert_eq!(
                 assign,
-                LocalAssignStatement::from_variable("var")
+                VariableAssignment::from_variable("var")
                     .with_value(true)
                     .with_value(false)
             );

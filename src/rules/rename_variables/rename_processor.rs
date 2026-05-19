@@ -1,4 +1,4 @@
-use crate::nodes::{Expression, Identifier, LocalFunctionStatement, TypeField};
+use crate::nodes::{Expression, FunctionAssignment, Identifier, TypeField};
 use crate::process::utils::{identifier_permutator, CharPermutator};
 use crate::process::{utils::KEYWORDS, NodeProcessor, Scope};
 
@@ -148,7 +148,7 @@ impl Scope for RenameProcessor {
         self.replace_identifier(identifier);
     }
 
-    fn insert_local_function(&mut self, function: &mut LocalFunctionStatement) {
+    fn insert_local_function(&mut self, function: &mut FunctionAssignment) {
         if self.include_functions {
             self.replace_identifier(function.mutate_identifier().mutate_name());
         } else {

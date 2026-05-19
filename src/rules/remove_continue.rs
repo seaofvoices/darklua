@@ -3,7 +3,7 @@ use std::mem;
 
 use crate::nodes::{
     AssignStatement, Block, GenericForStatement, Identifier, IfStatement, LastStatement,
-    LocalAssignStatement, NumericForStatement, RepeatStatement, UnaryExpression, UnaryOperator,
+    NumericForStatement, RepeatStatement, UnaryExpression, UnaryOperator, VariableAssignment,
     WhileStatement,
 };
 use crate::process::{DefaultPostVisitor, NodePostProcessor, NodePostVisitor, NodeProcessor};
@@ -64,8 +64,7 @@ impl Processor {
 
             let new_block = Block::default()
                 .with_statement(
-                    LocalAssignStatement::from_variable(loop_data.get_identifier())
-                        .with_value(false),
+                    VariableAssignment::from_variable(loop_data.get_identifier()).with_value(false),
                 )
                 .with_statement(RepeatStatement::new(current_loop_block, true))
                 .with_statement(IfStatement::create(

@@ -54,11 +54,11 @@ impl NodeProcessor for RemoveCommentProcessor {
         }
     }
 
-    fn process_local_assign_statement(&mut self, assign: &mut LocalAssignStatement) {
+    fn process_local_assign_statement(&mut self, assign: &mut VariableAssignment) {
         assign.clear_comments();
     }
 
-    fn process_local_function_statement(&mut self, function: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, function: &mut FunctionAssignment) {
         function.clear_comments();
     }
 
@@ -330,11 +330,11 @@ impl NodeProcessor for FilterCommentProcessor<'_> {
         }
     }
 
-    fn process_local_assign_statement(&mut self, assign: &mut LocalAssignStatement) {
+    fn process_local_assign_statement(&mut self, assign: &mut VariableAssignment) {
         assign.filter_comments(|trivia| self.ignore_trivia(trivia));
     }
 
-    fn process_local_function_statement(&mut self, function: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, function: &mut FunctionAssignment) {
         function.filter_comments(|trivia| self.ignore_trivia(trivia));
     }
 

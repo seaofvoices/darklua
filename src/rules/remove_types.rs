@@ -21,7 +21,7 @@ impl NodeProcessor for RemoveTypesProcessor {
         });
     }
 
-    fn process_local_assign_statement(&mut self, local_assign: &mut LocalAssignStatement) {
+    fn process_local_assign_statement(&mut self, local_assign: &mut VariableAssignment) {
         local_assign.clear_types();
     }
 
@@ -37,7 +37,7 @@ impl NodeProcessor for RemoveTypesProcessor {
         function.clear_types();
     }
 
-    fn process_local_function_statement(&mut self, function: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, function: &mut FunctionAssignment) {
         function.clear_types();
     }
 

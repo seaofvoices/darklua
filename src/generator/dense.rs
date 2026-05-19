@@ -1,3 +1,5 @@
+use std::iter;
+
 use crate::generator::{utils, LuaGenerator};
 use crate::nodes;
 
@@ -500,8 +502,8 @@ impl LuaGenerator for DenseLuaGenerator {
         }
     }
 
-    fn write_local_assign(&mut self, assign: &nodes::LocalAssignStatement) {
-        self.push_str(if assign.is_const() { "const" } else { "local" });
+    fn write_local_assign(&mut self, assign: &nodes::VariableAssignment) {
+        self.push_str(assign.get_assignment_kind().as_keyword());
 
         let variables = assign.get_variables();
         let last_variable_index = variables.len().saturating_sub(1);
@@ -514,18 +516,28 @@ impl LuaGenerator for DenseLuaGenerator {
             }
         });
 
-        if assign.has_values() {
+        // const assignments must have a value for each variable, so it may need additional
+        // nil values
+        let required_nil_values = assign.required_nil_values();
+
+        if assign.has_values() || required_nil_values > 0 {
             self.push_char_and_break_if('=', utils::break_equal);
 
-            let last_value_index = assign.values_len() - 1;
+            let last_value_index = (required_nil_values + assign.values_len()).saturating_sub(1);
 
-            assign.iter_values().enumerate().for_each(|(index, value)| {
-                self.write_expression(value);
+            let nil_value = nodes::Expression::nil();
 
-                if index != last_value_index {
-                    self.push_char(',');
-                }
-            });
+            assign
+                .iter_values()
+                .chain(iter::repeat_n(&nil_value, required_nil_values))
+                .enumerate()
+                .for_each(|(index, value)| {
+                    self.write_expression(value);
+
+                    if index != last_value_index {
+                        self.push_char(',');
+                    }
+                });
         };
     }
 
@@ -537,13 +549,12 @@ impl LuaGenerator for DenseLuaGenerator {
         self.write_expression(assign.get_value());
     }
 
-    fn write_local_function(&mut self, function: &nodes::LocalFunctionStatement) {
+    fn write_local_function(&mut self, function: &nodes::FunctionAssignment) {
         self.write_attributes(function.attributes());
-        self.push_str(if function.is_const() {
-            "const function"
-        } else {
-            "local function"
-        });
+        self.push_str(function.get_assignment_kind().as_keyword());
+        self.push_space();
+        self.push_str("function");
+        self.push_space();
         self.push_str(function.get_name());
 
         if let Some(generics) = function.get_generic_parameters() {
