@@ -15,7 +15,7 @@ const LONG_STRING_MIN_LENGTH: usize = 20;
 const FORCE_LONG_STRING_NEW_LINE_THRESHOLD: usize = 6;
 
 thread_local! {
-    pub(crate) static NIL_EXPRESSION: LazyCell<Expression> = LazyCell::new(|| Expression::nil());
+    pub(crate) static NIL_EXPRESSION: LazyCell<Expression> = LazyCell::new(Expression::nil);
     pub(crate) static THROWAWAY_IDENTIFIER: LazyCell<TypedIdentifier> = LazyCell::new(|| TypedIdentifier::new("____darklua_throwaway_var"));
 }
 
