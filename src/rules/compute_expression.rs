@@ -37,6 +37,25 @@ impl Computer {
 
         self.storage
             .declare_identifier("math", Some(self.storage.create_table(math_table)));
+
+        let mut string_table = TableValue::new().with_pure_metamethods();
+        string_table.insert(LuaValue::from("len"), NativeFunction::string_len().into());
+        string_table.insert(
+            LuaValue::from("lower"),
+            NativeFunction::string_lower().into(),
+        );
+        string_table.insert(LuaValue::from("rep"), NativeFunction::string_rep().into());
+        string_table.insert(
+            LuaValue::from("reverse"),
+            NativeFunction::string_reverse().into(),
+        );
+        string_table.insert(
+            LuaValue::from("upper"),
+            NativeFunction::string_upper().into(),
+        );
+
+        self.storage
+            .declare_identifier("string", Some(self.storage.create_table(string_table)));
     }
 
     fn replace_with(&mut self, expression: &Expression) -> Option<Expression> {

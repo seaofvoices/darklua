@@ -69,6 +69,7 @@ impl NativeFunction {
 }
 
 define_native_functions!(
+    // math functions
     math_abs => native_functions::math::abs,
     math_cos => native_functions::math::cos,
     math_sin => native_functions::math::sin,
@@ -79,6 +80,13 @@ define_native_functions!(
     math_rad => native_functions::math::rad,
     math_deg => native_functions::math::deg,
     math_sign => native_functions::math::sign,
+
+    // string functions
+    string_len => native_functions::string::len,
+    string_lower => native_functions::string::lower,
+    string_rep => native_functions::string::rep,
+    string_reverse => native_functions::string::reverse,
+    string_upper => native_functions::string::upper,
 );
 
 impl PartialEq for NativeFunction {

@@ -85,6 +85,26 @@ test_rule!(
     math_deg_0("return math.deg(0)") => "return 0",
     math_deg_pi("return math.deg(math.pi)") => "return 180",
     math_deg_0_string("return math.deg('0')") => "return 0",
+    // string.len
+    string_len_empty("return string.len('')") => "return 0",
+    string_len_hello("return string.len('hello')") => "return 5",
+    string_len_hello_world("return string.len('hello world')") => "return 11",
+    // string.lower
+    string_lower_hello("return string.lower('HELLO')") => "return 'hello'",
+    // string.rep
+    string_rep_hello_3("return string.rep('hello', 3)") => "return 'hellohellohello'",
+    string_rep_hello_neg_1("return string.rep('hello', -1)") => "return ''",
+    string_rep_hello_neg_inf("return string.rep('hello', -1/0)") => "return ''",
+    string_rep_hello_nan("return string.rep('hello', 0/0)") => "return ''",
+    string_rep_hello_string("return string.rep('hello', '3')") => "return 'hellohellohello'",
+    string_rep_hello_string_neg_1("return string.rep('hello', '-1')") => "return ''",
+    // string.reverse
+    string_reverse_hello("return string.reverse('hello')") => "return 'olleh'",
+    string_reverse_hello_world("return string.reverse('hello world')") => "return 'dlrow olleh'",
+    string_reverse_empty("return string.reverse('')") => "return ''",
+    // string.upper
+    string_upper_hello("return string.upper('hello')") => "return 'HELLO'",
+    string_upper_empty("return string.upper('')") => "return ''",
 );
 
 test_rule_without_effects!(
@@ -98,6 +118,7 @@ test_rule_without_effects!(
     math_pow_no_arguments("return math.pow()"),
     math_exp_no_arguments("return math.exp()"),
     math_deg_no_arguments("return math.deg()"),
+    string_rep_hello_inf("return string.rep('hello', 1/0)"),
 );
 
 #[test]
