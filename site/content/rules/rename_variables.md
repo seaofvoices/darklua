@@ -11,6 +11,11 @@ parameters:
     type: boolean
     default: "false"
     description: Controls if function names get renamed
+  - name: detect_globals
+    added_in: "unreleased"
+    type: boolean
+    default: "true"
+    description: Runs a pre-processor to collect globals used in per file
 ---
 
 To configure this rule to avoid using Roblox globals, add `$roblox` to the
