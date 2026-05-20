@@ -7,6 +7,7 @@ use super::{StringType, Type};
 pub struct TableIndexerType {
     key_type: Box<Type>,
     value_type: Box<Type>,
+    modifier: Option<TablePropertyModifier>,
     tokens: Option<TableIndexTypeTokens>,
 }
 
@@ -16,8 +17,40 @@ impl TableIndexerType {
         Self {
             key_type: Box::new(key_type.into()),
             value_type: Box::new(value_type.into()),
+            modifier: None,
             tokens: None,
         }
+    }
+
+    /// Associates a modifier with this property.
+    pub fn with_modifier(mut self, modifier: TablePropertyModifier) -> Self {
+        self.set_modifier(modifier);
+        self
+    }
+
+    /// Sets the modifier for this property.
+    pub fn set_modifier(&mut self, modifier: TablePropertyModifier) {
+        if self.modifier.as_ref() == Some(&modifier) {
+            return;
+        }
+
+        self.modifier = Some(modifier);
+        if let Some(tokens) = self.tokens.as_mut() {
+            tokens.modifier = None;
+        }
+    }
+
+    /// Removes the modifier for this property.
+    pub fn remove_modifier(&mut self) {
+        self.modifier = None;
+        if let Some(tokens) = self.tokens.as_mut() {
+            tokens.modifier = None;
+        }
+    }
+
+    /// Returns the modifier for this property, if any.
+    pub fn get_modifier(&self) -> Option<&TablePropertyModifier> {
+        self.modifier.as_ref()
     }
 
     /// Returns the key type of this indexer.
@@ -74,10 +107,15 @@ pub struct TableIndexTypeTokens {
     pub closing_bracket: Token,
     /// The colon token.
     pub colon: Token,
+    /// The modifier token.
+    pub modifier: Option<Token>,
 }
 
 impl TableIndexTypeTokens {
-    super::impl_token_fns!(target = [opening_bracket, closing_bracket, colon]);
+    super::impl_token_fns!(
+        target = [opening_bracket, closing_bracket, colon]
+        iter = [modifier]
+    );
 }
 
 /// Represents a named property in a table type annotation (i.e. `name: Type`).
@@ -85,7 +123,24 @@ impl TableIndexTypeTokens {
 pub struct TablePropertyType {
     property: Identifier,
     r#type: Box<Type>,
-    token: Option<Token>,
+    modifier: Option<TablePropertyModifier>,
+    tokens: Option<TablePropertyTypeTokens>,
+}
+
+/// Contains the tokens that define a property's syntax.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TablePropertyTypeTokens {
+    /// The colon token.
+    pub colon: Token,
+    /// The modifier token.
+    pub modifier: Option<Token>,
+}
+
+impl TablePropertyTypeTokens {
+    super::impl_token_fns!(
+        target = [colon]
+        iter = [modifier]
+    );
 }
 
 impl TablePropertyType {
@@ -94,8 +149,40 @@ impl TablePropertyType {
         Self {
             property: property.into(),
             r#type: Box::new(r#type.into()),
-            token: None,
+            modifier: None,
+            tokens: None,
         }
+    }
+
+    /// Associates a modifier with this property.
+    pub fn with_modifier(mut self, modifier: TablePropertyModifier) -> Self {
+        self.set_modifier(modifier);
+        self
+    }
+
+    /// Sets the modifier for this property.
+    pub fn set_modifier(&mut self, modifier: TablePropertyModifier) {
+        if self.modifier.as_ref() == Some(&modifier) {
+            return;
+        }
+
+        self.modifier = Some(modifier);
+        if let Some(tokens) = self.tokens.as_mut() {
+            tokens.modifier = None;
+        }
+    }
+
+    /// Removes the modifier for this property.
+    pub fn remove_modifier(&mut self) {
+        self.modifier = None;
+        if let Some(tokens) = self.tokens.as_mut() {
+            tokens.modifier = None;
+        }
+    }
+
+    /// Returns the modifier for this property, if any.
+    pub fn get_modifier(&self) -> Option<&TablePropertyModifier> {
+        self.modifier.as_ref()
     }
 
     /// Returns the identifier of this property.
@@ -123,24 +210,24 @@ impl TablePropertyType {
     }
 
     /// Associates a token for the colon with this property.
-    pub fn with_token(mut self, token: Token) -> Self {
-        self.token = Some(token);
+    pub fn with_tokens(mut self, tokens: TablePropertyTypeTokens) -> Self {
+        self.tokens = Some(tokens);
         self
     }
 
     /// Sets the token for the colon associated with this property.
     #[inline]
-    pub fn set_token(&mut self, token: Token) {
-        self.token = Some(token);
+    pub fn set_tokens(&mut self, tokens: TablePropertyTypeTokens) {
+        self.tokens = Some(tokens);
     }
 
     /// Returns the token for the colon associated with this property, if any.
     #[inline]
-    pub fn get_token(&self) -> Option<&Token> {
-        self.token.as_ref()
+    pub fn get_tokens(&self) -> Option<&TablePropertyTypeTokens> {
+        self.tokens.as_ref()
     }
 
-    super::impl_token_fns!(target = [property] iter = [token]);
+    super::impl_token_fns!(target = [property] iter = [tokens]);
 }
 
 /// Represents a string literal property in a table type annotation (i.e. `["key"]: Type`).
@@ -148,6 +235,7 @@ impl TablePropertyType {
 pub struct TableLiteralPropertyType {
     string: StringType,
     r#type: Box<Type>,
+    modifier: Option<TablePropertyModifier>,
     tokens: Option<TableIndexTypeTokens>,
 }
 
@@ -157,8 +245,40 @@ impl TableLiteralPropertyType {
         Self {
             string,
             r#type: Box::new(r#type.into()),
+            modifier: None,
             tokens: None,
         }
+    }
+
+    /// Associates a modifier with this property.
+    pub fn with_modifier(mut self, modifier: TablePropertyModifier) -> Self {
+        self.set_modifier(modifier);
+        self
+    }
+
+    /// Sets the modifier for this property.
+    pub fn set_modifier(&mut self, modifier: TablePropertyModifier) {
+        if self.modifier.as_ref() == Some(&modifier) {
+            return;
+        }
+
+        self.modifier = Some(modifier);
+        if let Some(tokens) = self.tokens.as_mut() {
+            tokens.modifier = None;
+        }
+    }
+
+    /// Removes the modifier for this property.
+    pub fn remove_modifier(&mut self) {
+        self.modifier = None;
+        if let Some(tokens) = self.tokens.as_mut() {
+            tokens.modifier = None;
+        }
+    }
+
+    /// Returns the modifier for this property, if any.
+    pub fn get_modifier(&self) -> Option<&TablePropertyModifier> {
+        self.modifier.as_ref()
     }
 
     /// Returns the string key of this property.
@@ -208,6 +328,13 @@ impl TableLiteralPropertyType {
 
 /// Represents an entry in a table type annotation.
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TablePropertyModifier {
+    Read,
+    Write,
+}
+
+/// Represents an entry in a table type annotation.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TableEntryType {
     /// A named property entry.
     Property(TablePropertyType),
@@ -218,6 +345,43 @@ pub enum TableEntryType {
 }
 
 impl TableEntryType {
+    /// Associates a modifier with this property.
+    pub fn with_modifier(mut self, modifier: TablePropertyModifier) -> Self {
+        match &mut self {
+            Self::Property(property) => property.set_modifier(modifier),
+            Self::Literal(literal) => literal.set_modifier(modifier),
+            Self::Indexer(indexer) => indexer.set_modifier(modifier),
+        }
+        self
+    }
+
+    /// Sets the modifier for this property.
+    pub fn set_modifier(&mut self, modifier: TablePropertyModifier) {
+        match self {
+            Self::Property(property) => property.set_modifier(modifier),
+            Self::Literal(literal) => literal.set_modifier(modifier),
+            Self::Indexer(indexer) => indexer.set_modifier(modifier),
+        }
+    }
+
+    /// Removes the modifier for this property.
+    pub fn remove_modifier(&mut self) {
+        match self {
+            Self::Property(property) => property.remove_modifier(),
+            Self::Literal(literal) => literal.remove_modifier(),
+            Self::Indexer(indexer) => indexer.remove_modifier(),
+        }
+    }
+
+    /// Returns the modifier for this property, if any.
+    pub fn get_modifier(&self) -> Option<&TablePropertyModifier> {
+        match self {
+            Self::Property(property) => property.get_modifier(),
+            Self::Literal(literal) => literal.get_modifier(),
+            Self::Indexer(indexer) => indexer.get_modifier(),
+        }
+    }
+
     /// Removes all comments from this table entry.
     pub fn clear_comments(&mut self) {
         match self {
@@ -335,6 +499,7 @@ impl TableType {
                     .push(TableEntryType::Literal(TableLiteralPropertyType {
                         string: string_type,
                         r#type: indexer_type.value_type,
+                        modifier: indexer_type.modifier,
                         tokens: indexer_type.tokens,
                     }));
                 None

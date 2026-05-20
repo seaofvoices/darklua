@@ -1,5 +1,0 @@
----
-source: src/rules/shift_token_line.rs
-expression: rule
----
-"shift_token_line"

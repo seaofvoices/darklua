@@ -4,7 +4,7 @@ use crate::{
 };
 
 /// Represents an evaluated Expression result.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub enum LuaValue {
     False,
     Function(FunctionValue),
@@ -13,6 +13,7 @@ pub enum LuaValue {
     String(Vec<u8>),
     Table(TableRef),
     True,
+    #[default]
     Unknown,
 }
 
@@ -134,12 +135,6 @@ impl LuaValue {
             Self::Function(function) => function.call(args),
             _ => TupleValue::unknown(),
         }
-    }
-}
-
-impl Default for LuaValue {
-    fn default() -> Self {
-        Self::Unknown
     }
 }
 

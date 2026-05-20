@@ -4,24 +4,19 @@ use bstr::ByteSlice;
 
 use crate::nodes::{
     Block, Expression, FieldExpression, FunctionCall, Identifier, InterpolatedStringExpression,
-    InterpolationSegment, LocalAssignStatement, Prefix, StringExpression, TupleArguments,
-    TypedIdentifier,
+    InterpolationSegment, Prefix, StringExpression, TupleArguments, TypedIdentifier,
+    VariableAssignment,
 };
 use crate::process::{IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 enum ReplacementStrategy {
+    #[default]
     StringSpecifier,
     ToStringSpecifier,
-}
-
-impl Default for ReplacementStrategy {
-    fn default() -> Self {
-        Self::StringSpecifier
-    }
 }
 
 struct RemoveInterpolatedStringProcessor {
@@ -163,6 +158,7 @@ pub const REMOVE_INTERPOLATED_STRING_RULE_NAME: &str = "remove_interpolated_stri
 /// A rule that removes interpolated strings.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct RemoveInterpolatedString {
+    metadata: RuleMetadata,
     strategy: ReplacementStrategy,
 }
 
@@ -198,7 +194,7 @@ impl FlawlessRule for RemoveInterpolatedString {
                 values.push(Identifier::new(DEFAULT_TOSTRING_IDENTIFIER).into());
             }
 
-            block.insert_statement(0, LocalAssignStatement::new(variables, values));
+            block.insert_statement(0, VariableAssignment::new(variables, values));
         }
     }
 }
@@ -245,6 +241,14 @@ impl RuleConfiguration for RemoveInterpolatedString {
 
         properties
     }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
+    }
 }
 
 #[cfg(test)]
@@ -262,16 +266,22 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_remove_interpolated_string", rule);
+        assert_json_snapshot!(rule, @r###""remove_interpolated_string""###);
     }
 
     #[test]
     fn serialize_rule_with_tostring_strategy() {
         let rule: Box<dyn Rule> = Box::new(RemoveInterpolatedString {
+            metadata: RuleMetadata::default(),
             strategy: ReplacementStrategy::ToStringSpecifier,
         });
 
-        assert_json_snapshot!("remove_interpolated_string_tostring_strategy", rule);
+        assert_json_snapshot!(rule, @r###"
+        {
+          "rule": "remove_interpolated_string",
+          "strategy": "tostring"
+        }
+        "###);
     }
 
     #[test]
@@ -282,6 +292,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 }

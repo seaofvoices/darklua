@@ -1,7 +1,7 @@
 use crate::nodes::*;
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::verify_no_rule_properties;
@@ -62,11 +62,11 @@ impl NodeProcessor for Processor<'_> {
         }
     }
 
-    fn process_local_assign_statement(&mut self, assign: &mut LocalAssignStatement) {
+    fn process_local_assign_statement(&mut self, assign: &mut VariableAssignment) {
         assign.replace_referenced_tokens(self.code);
     }
 
-    fn process_local_function_statement(&mut self, function: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, function: &mut FunctionAssignment) {
         function.replace_referenced_tokens(self.code);
     }
 
@@ -84,6 +84,33 @@ impl NodeProcessor for Processor<'_> {
 
     fn process_type_declaration(&mut self, type_declaration: &mut TypeDeclarationStatement) {
         type_declaration.replace_referenced_tokens(self.code);
+    }
+
+    fn process_type_function(&mut self, function: &mut TypeFunctionStatement) {
+        function.replace_referenced_tokens(self.code);
+    }
+
+    fn process_attributes(&mut self, attributes: &mut Attributes) {
+        attributes.replace_referenced_tokens(self.code);
+    }
+
+    fn process_literal_expression(&mut self, expression: &mut LiteralExpression) {
+        match expression {
+            LiteralExpression::True(token)
+            | LiteralExpression::False(token)
+            | LiteralExpression::Nil(token) => {
+                if let Some(token) = token {
+                    token.replace_referenced_tokens(self.code)
+                }
+            }
+            LiteralExpression::Number(_)
+            | LiteralExpression::String(_)
+            | LiteralExpression::Table(_) => {}
+        }
+    }
+
+    fn process_literal_table(&mut self, table: &mut LiteralTable) {
+        table.replace_referenced_tokens(self.code);
     }
 
     fn process_expression(&mut self, expression: &mut Expression) {
@@ -109,7 +136,8 @@ impl NodeProcessor for Processor<'_> {
             | Expression::InterpolatedString(_)
             | Expression::Table(_)
             | Expression::Unary(_)
-            | Expression::TypeCast(_) => {}
+            | Expression::TypeCast(_)
+            | Expression::TypeInstantiation(_) => {}
         }
     }
 
@@ -166,6 +194,10 @@ impl NodeProcessor for Processor<'_> {
 
     fn process_type_cast_expression(&mut self, type_cast: &mut TypeCastExpression) {
         type_cast.replace_referenced_tokens(self.code);
+    }
+
+    fn process_type_instantiation(&mut self, type_instantiation: &mut TypeInstantiationExpression) {
+        type_instantiation.replace_referenced_tokens(self.code);
     }
 
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}
@@ -241,7 +273,9 @@ impl NodeProcessor for Processor<'_> {
 pub const REPLACE_REFERENCED_TOKENS: &str = "replace_referenced_tokens";
 
 #[derive(Debug, Default, PartialEq, Eq)]
-pub(crate) struct ReplaceReferencedTokens {}
+pub(crate) struct ReplaceReferencedTokens {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for ReplaceReferencedTokens {
     fn flawless_process(&self, block: &mut Block, context: &Context) {
@@ -262,6 +296,14 @@ impl RuleConfiguration for ReplaceReferencedTokens {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 
@@ -284,7 +326,7 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_replace_referenced_tokens", rule);
+        assert_json_snapshot!(rule, @r###""replace_referenced_tokens""###);
     }
 
     fn test_code(code: &str) {

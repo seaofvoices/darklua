@@ -1,9 +1,7 @@
-use crate::nodes::{
-    Block, FunctionExpression, LocalAssignStatement, LocalFunctionStatement, Statement,
-};
+use crate::nodes::{Block, FunctionAssignment, FunctionExpression, Statement, VariableAssignment};
 use crate::process::{processors::FindVariables, DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use serde::ser::{Serialize, Serializer};
@@ -14,7 +12,8 @@ use super::verify_no_rule_properties;
 struct Processor;
 
 impl Processor {
-    fn convert(&self, local_function: &mut LocalFunctionStatement) -> Statement {
+    fn convert(&self, local_function: &mut FunctionAssignment) -> Statement {
+        let kind = local_function.get_assignment_kind();
         let mut function_expression = FunctionExpression::default();
         function_expression.set_variadic(local_function.is_variadic());
         mem::swap(
@@ -26,7 +25,8 @@ impl Processor {
             local_function.mutate_parameters(),
         );
 
-        LocalAssignStatement::from_variable(local_function.get_name())
+        VariableAssignment::from_variable(local_function.get_name())
+            .with_assignment_kind(kind)
             .with_value(function_expression)
             .into()
     }
@@ -57,7 +57,9 @@ pub const CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME: &str = "convert_local_func
 
 /// Convert local function statements into local assignements when the function is not recursive.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct ConvertLocalFunctionToAssign {}
+pub struct ConvertLocalFunctionToAssign {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for ConvertLocalFunctionToAssign {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -79,6 +81,14 @@ impl RuleConfiguration for ConvertLocalFunctionToAssign {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 
@@ -102,7 +112,7 @@ mod test {
 
     #[test]
     fn serialize_default_rule() {
-        assert_json_snapshot!("default_convert_local_function_to_assign", new_rule());
+        assert_json_snapshot!(new_rule(), @r###""convert_local_function_to_assign""###);
     }
 
     #[test]
@@ -113,6 +123,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1")
     }
 }

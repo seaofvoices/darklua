@@ -2,6 +2,7 @@
 source: tests/rule_tests/remove_continue.rs
 expression: lua_code
 ---
+
     for i = 1, 10 do
         local element = array[i]
         function element.call()

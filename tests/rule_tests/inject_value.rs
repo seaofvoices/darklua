@@ -186,7 +186,7 @@ test_rule!(
         value: 1E19,
     }"#,
     ).unwrap(),
-    inject_negative_integer("return _G.num") => "return 1E19",
+    inject_number("return _G.num") => "return 1E19",
 );
 
 test_rule!(
@@ -198,7 +198,7 @@ test_rule!(
         value: 1e20,
     }"#,
     ).unwrap(),
-    inject_negative_integer("return _G.num") => "return 1E20",
+    inject_number("return _G.num") => "return 1E20",
 );
 
 test_rule!(
@@ -210,7 +210,31 @@ test_rule!(
         value: 1e42,
     }"#,
     ).unwrap(),
-    inject_negative_integer("return _G.num") => "return 1E42",
+    inject_number("return _G.num") => "return 1E42",
+);
+
+test_rule!(
+    inject_global_infinity_value,
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
+        rule: 'inject_global_value',
+        identifier: 'num',
+        value: Infinity,
+    }"#,
+    ).unwrap(),
+    inject_number("return _G.num") => "return 1/0",
+);
+
+test_rule!(
+    inject_global_large_number_rounding_to_infinite_value,
+    json5::from_str::<Box<dyn Rule>>(
+        r#"{
+        rule: 'inject_global_value',
+        identifier: 'num',
+        value: 1e3500,
+    }"#,
+    ).unwrap(),
+    inject_number("return _G.num") => "return 1/0",
 );
 
 test_rule!(
@@ -238,16 +262,27 @@ test_rule!(
     inject_negative_integer("return _G.num") => "return 10",
 );
 
-#[test]
-fn deserialize_number_value_too_large() {
-    let err = json5::from_str::<Box<dyn Rule>>(
-        r#"{
-            rule: 'inject_global_value',
-            identifier: 'num',
-            value: 1e350,
-    }"#,
-    )
-    .unwrap_err();
+test_rule!(
+    inject_global_variable_using_env_variable_with_default_value,
+    {
+        // use a unique variable name to avoid conflicts with other tests running in parallel
+        let unique_var_name = format!("DARKLUA_TEST_VAR_{}", std::process::id());
+        std::env::set_var(&unique_var_name, "from_env");
 
-    pretty_assertions::assert_eq!("error parsing number: too large", err.to_string())
-}
+        let rule = json5::from_str::<Box<dyn Rule>>(&format!(
+        r#"{{
+            rule: 'inject_global_value',
+            identifier: 'CONFIG',
+            env: '{unique_var_name}',
+            default_value: 'from_default',
+        }}"#,
+        ))
+        .unwrap();
+
+        // the rule already captured the value so it can be removed
+        std::env::remove_var("DARKLUA_INTEGRATION_TEST_VAR");
+
+        rule
+    },
+    inject_value("return CONFIG") => "return 'from_env'",
+);

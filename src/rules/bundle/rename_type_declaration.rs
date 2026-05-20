@@ -24,14 +24,13 @@ pub(crate) struct RenameTypeDeclarationProcessor {
     /// permutator to generate unique type identifier suffixes
     permutator: CharPermutator,
     modules_identifier: String,
-    module_load_field: &'static str,
     hoist_types: bool,
     type_lines: isize,
     type_declarations: Vec<Statement>,
 }
 
 impl RenameTypeDeclarationProcessor {
-    pub(crate) fn new(modules_identifier: String, module_load_field: &'static str) -> Self {
+    pub(crate) fn new(modules_identifier: String) -> Self {
         Self {
             suffix: "__DARKLUA_TYPE_".into(),
             renamed_types: Default::default(),
@@ -40,7 +39,6 @@ impl RenameTypeDeclarationProcessor {
             all_types: Default::default(),
             permutator: identifier_permutator(),
             modules_identifier,
-            module_load_field,
             hoist_types: true,
             type_lines: 0,
             type_declarations: Default::default(),
@@ -76,23 +74,9 @@ impl RenameTypeDeclarationProcessor {
     fn get_module_name(&self, value: &Expression) -> Option<Vec<u8>> {
         if let Expression::Call(value) = value {
             if let Prefix::Field(field) = value.get_prefix() {
-                if field.get_field().get_name() == self.module_load_field {
-                    if let Prefix::Identifier(variable) = field.get_prefix() {
-                        if variable.get_name() == &self.modules_identifier {
-                            return value
-                                .get_arguments()
-                                .clone()
-                                .to_expressions()
-                                .into_iter()
-                                .next()
-                                .and_then(|argument| {
-                                    if let Expression::String(string_value) = argument {
-                                        Some(string_value.into_value())
-                                    } else {
-                                        None
-                                    }
-                                });
-                        }
+                if let Prefix::Identifier(variable) = field.get_prefix() {
+                    if variable.get_name() == &self.modules_identifier {
+                        return Some(field.get_field().get_name().as_bytes().to_vec());
                     }
                 }
             }
@@ -114,6 +98,22 @@ impl RenameTypeDeclarationProcessor {
         self.renamed_types.insert(original_name, new_name.clone());
 
         declaration.mutate_name().set_name(new_name);
+    }
+
+    fn rename_type_function(&mut self, function: &mut TypeFunctionStatement) {
+        let original_name = function.get_identifier().get_name().to_owned();
+
+        let new_name = self.generate_unique_type(&original_name);
+
+        if function.is_exported() {
+            function.remove_exported();
+            self.exported_types
+                .insert(original_name.clone(), new_name.clone());
+        }
+
+        self.renamed_types.insert(original_name, new_name.clone());
+
+        function.mutate_identifier().set_name(new_name);
     }
 
     pub(crate) fn get_type_lines(&self) -> isize {
@@ -146,7 +146,7 @@ impl Scope for RenameTypeDeclarationProcessor {
         }
     }
 
-    fn insert_local_function(&mut self, _: &mut LocalFunctionStatement) {}
+    fn insert_local_function(&mut self, _: &mut FunctionAssignment) {}
 }
 
 impl NodeProcessor for RenameTypeDeclarationProcessor {
@@ -156,8 +156,14 @@ impl NodeProcessor for RenameTypeDeclarationProcessor {
         }
 
         for statement in block.iter_mut_statements() {
-            if let Statement::TypeDeclaration(declaration) = statement {
-                self.rename_type_declaration(declaration);
+            match statement {
+                Statement::TypeDeclaration(declaration) => {
+                    self.rename_type_declaration(declaration);
+                }
+                Statement::TypeFunction(function) => {
+                    self.rename_type_function(function);
+                }
+                _ => (),
             }
         }
     }
@@ -204,7 +210,7 @@ impl NodePostProcessor for RenameTypeDeclarationProcessor {
         }
 
         block.filter_mut_statements(|statement| {
-            if let Statement::TypeDeclaration(_declaration) = statement {
+            if let Statement::TypeDeclaration(_) | Statement::TypeFunction(_) = statement {
                 let mut current = mem::replace(statement, DoStatement::default().into());
 
                 let first_line = lines::statement_first(&current);

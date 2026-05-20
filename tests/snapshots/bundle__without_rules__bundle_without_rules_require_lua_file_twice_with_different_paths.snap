@@ -2,45 +2,78 @@
 source: tests/bundle.rs
 expression: main
 ---
-local __DARKLUA_BUNDLE_MODULES
-
-__DARKLUA_BUNDLE_MODULES = {
-    cache = {},
-    load = function(m)
-        if not __DARKLUA_BUNDLE_MODULES.cache[m] then
-            __DARKLUA_BUNDLE_MODULES.cache[m] = {
-                c = __DARKLUA_BUNDLE_MODULES[m](),
-            }
-        end
-
-        return __DARKLUA_BUNDLE_MODULES.cache[m].c
-    end,
+local __DARKLUA_BUNDLE_MODULES = {
+    cache = {}::any,
 }
 
 do
-    function __DARKLUA_BUNDLE_MODULES.a()
-        print('load constant module')
+    do
+        local function __modImpl()
+            print('load constant module')
 
-        return 2
+            return 2
+        end
+
+        function __DARKLUA_BUNDLE_MODULES.a(): typeof(__modImpl())
+            local v = __DARKLUA_BUNDLE_MODULES.cache.a
+
+            if not v then
+                v = {
+                    c = __modImpl(),
+                }
+                __DARKLUA_BUNDLE_MODULES.cache.a = v
+            end
+
+            return v.c
+        end
     end
-    function __DARKLUA_BUNDLE_MODULES.b()
-        print('load value a')
+    do
+        local function __modImpl()
+            print('load value a')
 
-        local constant_a = __DARKLUA_BUNDLE_MODULES.load('a')
+            local constant_a = __DARKLUA_BUNDLE_MODULES.a()
 
-        return constant_a
+            return constant_a
+        end
+
+        function __DARKLUA_BUNDLE_MODULES.b(): typeof(__modImpl())
+            local v = __DARKLUA_BUNDLE_MODULES.cache.b
+
+            if not v then
+                v = {
+                    c = __modImpl(),
+                }
+                __DARKLUA_BUNDLE_MODULES.cache.b = v
+            end
+
+            return v.c
+        end
     end
-    function __DARKLUA_BUNDLE_MODULES.c()
-        print('load value b')
+    do
+        local function __modImpl()
+            print('load value b')
 
-        local constant_b = __DARKLUA_BUNDLE_MODULES.load('a')
+            local constant_b = __DARKLUA_BUNDLE_MODULES.a()
 
-        return constant_b
+            return constant_b
+        end
+
+        function __DARKLUA_BUNDLE_MODULES.c(): typeof(__modImpl())
+            local v = __DARKLUA_BUNDLE_MODULES.cache.c
+
+            if not v then
+                v = {
+                    c = __modImpl(),
+                }
+                __DARKLUA_BUNDLE_MODULES.cache.c = v
+            end
+
+            return v.c
+        end
     end
 end
 
-local value_a = __DARKLUA_BUNDLE_MODULES.load('b')
-local value_b = __DARKLUA_BUNDLE_MODULES.load('c')
+local value_a = __DARKLUA_BUNDLE_MODULES.b()
+local value_b = __DARKLUA_BUNDLE_MODULES.c()
 
 print(value_a + value_b)
-

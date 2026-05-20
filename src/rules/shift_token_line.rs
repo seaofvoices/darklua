@@ -1,7 +1,7 @@
 use crate::nodes::*;
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::verify_no_rule_properties;
@@ -62,11 +62,11 @@ impl NodeProcessor for ShiftTokenLineProcessor {
         }
     }
 
-    fn process_local_assign_statement(&mut self, assign: &mut LocalAssignStatement) {
+    fn process_local_assign_statement(&mut self, assign: &mut VariableAssignment) {
         assign.shift_token_line(self.shift_amount);
     }
 
-    fn process_local_function_statement(&mut self, function: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, function: &mut FunctionAssignment) {
         function.shift_token_line(self.shift_amount);
     }
 
@@ -84,6 +84,33 @@ impl NodeProcessor for ShiftTokenLineProcessor {
 
     fn process_type_declaration(&mut self, type_declaration: &mut TypeDeclarationStatement) {
         type_declaration.shift_token_line(self.shift_amount);
+    }
+
+    fn process_type_function(&mut self, function: &mut TypeFunctionStatement) {
+        function.shift_token_line(self.shift_amount);
+    }
+
+    fn process_attributes(&mut self, attributes: &mut Attributes) {
+        attributes.shift_token_line(self.shift_amount);
+    }
+
+    fn process_literal_expression(&mut self, expression: &mut LiteralExpression) {
+        match expression {
+            LiteralExpression::True(token)
+            | LiteralExpression::False(token)
+            | LiteralExpression::Nil(token) => {
+                if let Some(token) = token {
+                    token.shift_token_line(self.shift_amount)
+                }
+            }
+            LiteralExpression::Number(_)
+            | LiteralExpression::String(_)
+            | LiteralExpression::Table(_) => {}
+        }
+    }
+
+    fn process_literal_table(&mut self, table: &mut LiteralTable) {
+        table.shift_token_line(self.shift_amount);
     }
 
     fn process_expression(&mut self, expression: &mut Expression) {
@@ -109,6 +136,7 @@ impl NodeProcessor for ShiftTokenLineProcessor {
             | Expression::InterpolatedString(_)
             | Expression::Table(_)
             | Expression::Unary(_)
+            | Expression::TypeInstantiation(_)
             | Expression::TypeCast(_) => {}
         }
     }
@@ -166,6 +194,10 @@ impl NodeProcessor for ShiftTokenLineProcessor {
 
     fn process_type_cast_expression(&mut self, type_cast: &mut TypeCastExpression) {
         type_cast.shift_token_line(self.shift_amount);
+    }
+
+    fn process_type_instantiation(&mut self, type_instantiation: &mut TypeInstantiationExpression) {
+        type_instantiation.shift_token_line(self.shift_amount);
     }
 
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}
@@ -242,12 +274,16 @@ pub const SHIFT_TOKEN_LINE: &str = "shift_token_line";
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct ShiftTokenLine {
+    metadata: RuleMetadata,
     shift_amount: isize,
 }
 
 impl ShiftTokenLine {
     pub(crate) fn new(shift_amount: isize) -> Self {
-        Self { shift_amount }
+        Self {
+            metadata: RuleMetadata::default(),
+            shift_amount,
+        }
     }
 }
 
@@ -273,6 +309,14 @@ impl RuleConfiguration for ShiftTokenLine {
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
     }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
+    }
 }
 
 #[cfg(test)]
@@ -290,6 +334,6 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_replace_referenced_tokens", rule);
+        assert_json_snapshot!(rule, @r###""shift_token_line""###);
     }
 }

@@ -1,6 +1,6 @@
 use crate::nodes::{
-    Block, FunctionBodyTokens, FunctionReturnType, FunctionVariadicType, GenericParameters,
-    Identifier, Token, TypedIdentifier,
+    Attribute, Attributes, Block, FunctionBodyTokens, FunctionReturnType, FunctionVariadicType,
+    GenericParameters, Identifier, Token, TypedIdentifier,
 };
 
 /// Tokens associated with a function name.
@@ -145,6 +145,7 @@ pub struct FunctionStatement {
     variadic_type: Option<FunctionVariadicType>,
     return_type: Option<FunctionReturnType>,
     generic_parameters: Option<GenericParameters>,
+    attributes: Attributes,
     tokens: Option<Box<FunctionBodyTokens>>,
 }
 
@@ -164,6 +165,7 @@ impl FunctionStatement {
             variadic_type: None,
             return_type: None,
             generic_parameters: None,
+            attributes: Attributes::new(),
             tokens: None,
         }
     }
@@ -178,8 +180,31 @@ impl FunctionStatement {
             variadic_type: None,
             return_type: None,
             generic_parameters: None,
+            attributes: Attributes::new(),
             tokens: None,
         }
+    }
+
+    /// Returns a reference to the attributes of this function statement.
+    pub fn attributes(&self) -> &Attributes {
+        &self.attributes
+    }
+
+    /// Associates attributes with this function statement. Replaces any existing attributes.
+    pub fn with_attributes(mut self, attributes: Attributes) -> Self {
+        self.attributes = attributes;
+        self
+    }
+
+    /// Returns a mutable reference to the attributes of this function statement.
+    pub fn mutate_attributes(&mut self) -> &mut Attributes {
+        &mut self.attributes
+    }
+
+    /// Adds an attribute to this function statement. Adds to any existing attributes.
+    pub fn with_attribute(mut self, attribute: impl Into<Attribute>) -> Self {
+        self.attributes.append_attribute(attribute.into());
+        self
     }
 
     /// Sets the tokens for this function statement.

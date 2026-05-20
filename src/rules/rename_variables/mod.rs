@@ -5,10 +5,11 @@ mod rename_processor;
 use rename_processor::RenameProcessor;
 
 use crate::nodes::Block;
+use crate::process::processors::CollectGlobalsProcessor;
 use crate::process::utils::is_valid_identifier;
 use crate::process::{DefaultVisitor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
     RulePropertyValue,
 };
 
@@ -20,20 +21,34 @@ pub const RENAME_VARIABLES_RULE_NAME: &str = "rename_variables";
 /// Rename all identifiers to small and meaningless names.
 #[derive(Debug, PartialEq, Eq)]
 pub struct RenameVariables {
+    metadata: RuleMetadata,
     globals: Vec<String>,
     include_functions: bool,
+    detect_globals: bool,
 }
 
 impl RenameVariables {
     pub fn new<I: IntoIterator<Item = String>>(iter: I) -> Self {
         Self {
+            metadata: RuleMetadata::default(),
             globals: Vec::from_iter(iter),
             include_functions: false,
+            detect_globals: true,
         }
     }
 
     pub fn with_function_names(mut self) -> Self {
         self.include_functions = true;
+        self
+    }
+
+    pub fn enable_global_detection(mut self) -> Self {
+        self.detect_globals = true;
+        self
+    }
+
+    pub fn disable_global_detection(mut self) -> Self {
+        self.detect_globals = false;
         self
     }
 
@@ -103,8 +118,17 @@ impl FlawlessRule for RenameVariables {
             collect_functions.into()
         };
 
+        let mut find_globals = CollectGlobalsProcessor::default();
+        if self.detect_globals {
+            ScopeVisitor::visit_block(block, &mut find_globals);
+        };
+
         let mut processor = RenameProcessor::new(
-            self.globals.clone().into_iter().chain(avoid_identifiers),
+            self.globals
+                .clone()
+                .into_iter()
+                .chain(avoid_identifiers)
+                .chain(find_globals.into_globals()),
             self.include_functions,
         );
         ScopeVisitor::visit_block(block, &mut processor);
@@ -120,6 +144,9 @@ impl RuleConfiguration for RenameVariables {
                 }
                 "include_functions" => {
                     self.include_functions = value.expect_bool(&key)?;
+                }
+                "detect_globals" => {
+                    self.detect_globals = value.expect_bool(&key)?;
                 }
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }
@@ -150,7 +177,22 @@ impl RuleConfiguration for RenameVariables {
             );
         }
 
+        if !self.detect_globals {
+            properties.insert(
+                "detect_globals".to_owned(),
+                RulePropertyValue::Boolean(self.detect_globals),
+            );
+        }
+
         properties
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

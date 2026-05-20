@@ -4,15 +4,17 @@ mod require_mode;
 
 use std::path::Path;
 
+use wax::Program;
+
 use crate::nodes::Block;
 use crate::rules::{
-    Context, Rule, RuleConfiguration, RuleConfigurationError, RuleProcessResult, RuleProperties,
+    Context, Rule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProcessResult,
+    RuleProperties,
 };
 use crate::Parser;
 
 pub(crate) use rename_type_declaration::RenameTypeDeclarationProcessor;
 pub use require_mode::BundleRequireMode;
-use wax::Pattern;
 
 pub const BUNDLER_RULE_NAME: &str = "bundler";
 
@@ -74,6 +76,7 @@ impl BundleOptions {
 /// A rule that inlines required modules
 #[derive(Debug)]
 pub(crate) struct Bundler {
+    metadata: RuleMetadata,
     require_mode: BundleRequireMode,
     options: BundleOptions,
 }
@@ -85,6 +88,7 @@ impl Bundler {
         excludes: impl Iterator<Item = &'a str>,
     ) -> Self {
         Self {
+            metadata: RuleMetadata::default(),
             require_mode,
             options: BundleOptions::new(parser, DEFAULT_MODULE_IDENTIFIER, excludes),
         }
@@ -116,6 +120,14 @@ impl RuleConfiguration for Bundler {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 

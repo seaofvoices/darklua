@@ -1,5 +1,0 @@
----
-source: src/rules/remove_interpolated_string.rs
-expression: rule
----
-"remove_interpolated_string"

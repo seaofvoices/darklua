@@ -24,6 +24,15 @@ From the directory where you run `darklua process`, darklua will attempt to read
 
 To provide a different configuration file, this subcommand also accept a specific path to a configuration file with `--config <path>`.
 
+## Filtering
+
+It is possible to limit which files are processed using `apply_to_files` and `skip_files`. Both accept glob patterns [from this implementation](https://github.com/olson-sean-k/wax/blob/master/README.md#patterns) (same syntax as `bundle.excludes`). Each field can be a single pattern string or an array of patterns.
+
+- `apply_to_files`: When set, only files whose path matches at least one pattern are processed. Files that do not match any pattern are skipped entirely.
+- `skip_files`: When set, any file whose path matches any pattern is skipped. This is **applied after** `apply_to_files`, so you can combine both (e.g. process only `src/**/*.lua` but skip `src/**/*.test.lua`).
+
+When both are empty (the default), all files are processed.
+
 ## Quick Reference
 
 Any missing field will be replaced with its default value.
@@ -32,6 +41,11 @@ Any missing field will be replaced with its default value.
 {
   // Output code in different ways depending on the given generator
   generator: "retain_lines", // default value
+
+  // Restrict on which files rules will be applied
+  apply_to_files: ["src/**/*.luau"],
+  // Exclude applying rules to some files
+  skip_files: ["**/*.test.lua"],
 
   bundle: {
     // Identifier used by darklua to store the bundled modules

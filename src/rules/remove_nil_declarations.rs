@@ -1,7 +1,7 @@
-use crate::nodes::{Block, Expression, LocalAssignStatement};
+use crate::nodes::{AssignmentKind, Block, Expression, VariableAssignment};
 use crate::process::{DefaultVisitor, Evaluator, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::verify_no_rule_properties;
@@ -12,7 +12,11 @@ struct Processor {
 }
 
 impl NodeProcessor for Processor {
-    fn process_local_assign_statement(&mut self, assignment: &mut LocalAssignStatement) {
+    fn process_local_assign_statement(&mut self, assignment: &mut VariableAssignment) {
+        if let AssignmentKind::Const = assignment.get_assignment_kind() {
+            return;
+        }
+
         {
             let mut pop_extra_value_at = Vec::new();
             for (index, extra_value) in assignment
@@ -84,7 +88,9 @@ pub const REMOVE_NIL_DECLARATION_RULE_NAME: &str = "remove_nil_declaration";
 
 /// A rule that removes trailing `nil` in local assignments.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct RemoveNilDeclaration {}
+pub struct RemoveNilDeclaration {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for RemoveNilDeclaration {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -107,6 +113,14 @@ impl RuleConfiguration for RemoveNilDeclaration {
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
     }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
+    }
 }
 
 #[cfg(test)]
@@ -124,7 +138,7 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_remove_nil_declaration", rule);
+        assert_json_snapshot!(rule, @r###""remove_nil_declaration""###);
     }
 
     #[test]
@@ -135,6 +149,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 }

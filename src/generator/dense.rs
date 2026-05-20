@@ -216,6 +216,43 @@ impl DenseLuaGenerator {
         };
     }
 
+    fn write_attributes(&mut self, attributes: &nodes::Attributes) {
+        use nodes::Attribute;
+
+        for attribute in attributes.iter_attributes() {
+            match attribute {
+                Attribute::Name(named) => {
+                    let name = named.get_identifier().get_name();
+
+                    self.push_space_if_needed('@', 1 + name.len());
+                    self.raw_push_char('@');
+                    self.raw_push_str(name);
+                }
+                Attribute::Group(group) => {
+                    if !group.is_empty() {
+                        self.push_str("@[");
+
+                        let last_index = group.len().saturating_sub(1);
+
+                        for (index, attribute) in group.iter_attributes().enumerate() {
+                            self.push_str(attribute.name().get_name());
+
+                            if let Some(arguments) = attribute.get_arguments() {
+                                self.write_attribute_arguments(arguments);
+                            }
+
+                            if index != last_index {
+                                self.push_char(',');
+                            }
+                        }
+
+                        self.push_char(']');
+                    }
+                }
+            }
+        }
+    }
+
     fn write_typed_identifier(&mut self, typed_identifier: &nodes::TypedIdentifier) {
         self.push_str(typed_identifier.get_name());
 
@@ -398,6 +435,7 @@ impl LuaGenerator for DenseLuaGenerator {
     }
 
     fn write_function_statement(&mut self, function: &nodes::FunctionStatement) {
+        self.write_attributes(function.attributes());
         self.push_str("function");
         let name = function.get_name();
 
@@ -462,32 +500,58 @@ impl LuaGenerator for DenseLuaGenerator {
         }
     }
 
-    fn write_local_assign(&mut self, assign: &nodes::LocalAssignStatement) {
-        self.push_str("local");
+    fn write_local_assign(&mut self, assign: &nodes::VariableAssignment) {
+        self.push_str(assign.get_assignment_kind().as_keyword());
 
-        let variables = assign.get_variables();
-        let last_variable_index = variables.len().saturating_sub(1);
+        let variables_length = assign.variables_len();
+        let last_variable_index = variables_length.saturating_sub(1);
 
-        variables.iter().enumerate().for_each(|(index, variable)| {
+        for (index, variable) in assign.iter_variables().enumerate() {
             self.write_typed_identifier(variable);
 
             if index != last_variable_index {
                 self.push_char(',');
             }
-        });
+        }
 
-        if assign.has_values() {
+        // const assignments must have at least one variable per value, so it may need
+        // additional variables
+        for i in 0..assign.required_new_variables() {
+            if i != 0 || variables_length > 0 {
+                self.push_char(',');
+            }
+            utils::THROWAWAY_IDENTIFIER.with(|identifier| {
+                self.write_typed_identifier(identifier);
+            });
+        }
+
+        // const assignments must have a value for each variable, so it may need additional
+        // nil values
+        let required_nil_values = assign.required_nil_values();
+
+        let has_values = assign.has_values();
+
+        if has_values || required_nil_values > 0 {
             self.push_char_and_break_if('=', utils::break_equal);
 
-            let last_value_index = assign.values_len() - 1;
+            let last_value_index = assign.values_len().saturating_sub(1);
 
-            assign.iter_values().enumerate().for_each(|(index, value)| {
+            for (index, value) in assign.iter_values().enumerate() {
                 self.write_expression(value);
 
                 if index != last_value_index {
                     self.push_char(',');
                 }
-            });
+            }
+
+            for i in 0..required_nil_values {
+                if i != 0 || has_values {
+                    self.push_char(',');
+                }
+                utils::NIL_EXPRESSION.with(|nil| {
+                    self.write_expression(nil);
+                })
+            }
         };
     }
 
@@ -499,8 +563,12 @@ impl LuaGenerator for DenseLuaGenerator {
         self.write_expression(assign.get_value());
     }
 
-    fn write_local_function(&mut self, function: &nodes::LocalFunctionStatement) {
-        self.push_str("local function");
+    fn write_local_function(&mut self, function: &nodes::FunctionAssignment) {
+        self.write_attributes(function.attributes());
+        self.push_str(function.get_assignment_kind().as_keyword());
+        self.push_space();
+        self.push_str("function");
+        self.push_space();
         self.push_str(function.get_name());
 
         if let Some(generics) = function.get_generic_parameters() {
@@ -637,6 +705,42 @@ impl LuaGenerator for DenseLuaGenerator {
         self.write_type(statement.get_type());
     }
 
+    fn write_type_function_statement(&mut self, function: &nodes::TypeFunctionStatement) {
+        if function.is_exported() {
+            self.push_str("export");
+        }
+        self.push_str("type");
+        self.push_str("function");
+
+        self.write_identifier(function.get_identifier());
+
+        if let Some(generics) = function.get_generic_parameters() {
+            self.write_function_generics(generics);
+        }
+
+        self.push_char('(');
+
+        let parameters = function.get_parameters();
+        self.write_function_parameters(
+            parameters,
+            function.is_variadic(),
+            function.get_variadic_type(),
+        );
+        self.push_char(')');
+
+        if let Some(return_type) = function.get_return_type() {
+            self.push_char(':');
+            self.write_function_return_type(return_type);
+        }
+
+        let block = function.get_block();
+
+        if !block.is_empty() {
+            self.write_block(block);
+        }
+        self.push_str("end");
+    }
+
     fn write_false_expression(&mut self, _token: &Option<nodes::Token>) {
         self.push_str("false");
     }
@@ -698,6 +802,7 @@ impl LuaGenerator for DenseLuaGenerator {
     }
 
     fn write_function(&mut self, function: &nodes::FunctionExpression) {
+        self.write_attributes(function.attributes());
         self.push_str("function");
 
         if let Some(generics) = function.get_generic_parameters() {
@@ -917,6 +1022,46 @@ impl LuaGenerator for DenseLuaGenerator {
         self.raw_push_char('`');
     }
 
+    fn write_attribute_tuple_arguments(&mut self, tuple: &nodes::AttributeTupleArguments) {
+        self.push_char('(');
+
+        let last_index = tuple.len().saturating_sub(1);
+        for (index, value) in tuple.iter_values().enumerate() {
+            self.write_literal_expression(value);
+            if index != last_index {
+                self.push_char(',');
+            }
+        }
+
+        self.push_char(')');
+    }
+
+    fn write_literal_table(&mut self, table: &nodes::LiteralTable) {
+        self.push_char('{');
+        let last_index = table.len().saturating_sub(1);
+        for (index, entry) in table.iter_entries().enumerate() {
+            self.write_literal_table_entry(entry);
+            if index != last_index {
+                self.push_char(',');
+            }
+        }
+        self.push_char('}');
+    }
+
+    fn write_literal_table_entry(&mut self, entry: &nodes::LiteralTableEntry) {
+        use nodes::LiteralTableEntry::*;
+        match entry {
+            Field(field) => {
+                self.write_identifier(field.get_field());
+                self.push_char('=');
+                self.write_literal_expression(field.get_value());
+            }
+            Value(value) => {
+                self.write_literal_expression(value);
+            }
+        }
+    }
+
     fn write_identifier(&mut self, identifier: &nodes::Identifier) {
         self.push_str(identifier.get_name());
     }
@@ -936,6 +1081,29 @@ impl LuaGenerator for DenseLuaGenerator {
 
         self.push_str("::");
         self.write_type(type_cast.get_type());
+    }
+
+    fn write_type_instantiation(
+        &mut self,
+        type_instantiation: &nodes::TypeInstantiationExpression,
+    ) {
+        self.write_prefix(type_instantiation.get_prefix());
+
+        self.push_new_line_if_needed(2);
+        self.raw_push_char('<');
+        self.raw_push_char('<');
+
+        let last_index = type_instantiation.types_len().saturating_sub(1);
+        for (index, r#type) in type_instantiation.iter_types().enumerate() {
+            self.write_type(r#type);
+            if index != last_index {
+                self.push_char(',');
+            }
+        }
+
+        self.push_new_line_if_needed(2);
+        self.raw_push_char('>');
+        self.raw_push_char('>');
     }
 
     fn write_type_name(&mut self, type_name: &nodes::TypeName) {
@@ -993,6 +1161,13 @@ impl LuaGenerator for DenseLuaGenerator {
 
         let last_index = table_type.len().saturating_sub(1);
         for (index, property) in table_type.iter_entries().enumerate() {
+            if let Some(modifier) = property.get_modifier() {
+                match modifier {
+                    nodes::TablePropertyModifier::Read => self.push_str("read"),
+                    nodes::TablePropertyModifier::Write => self.push_str("write"),
+                }
+            }
+
             match property {
                 nodes::TableEntryType::Property(property) => {
                     self.write_identifier(property.get_identifier());

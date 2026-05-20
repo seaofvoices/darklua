@@ -16,4 +16,3 @@ Options:
   -v, --verbose...  Sets verbosity level (can be specified multiple times)
   -h, --help        Print help (see more with '--help')
   -V, --version     Print version
-

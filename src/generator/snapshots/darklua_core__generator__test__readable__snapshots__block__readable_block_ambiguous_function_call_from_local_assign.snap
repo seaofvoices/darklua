@@ -5,4 +5,3 @@ expression: generator.into_string()
 local name = if condition then true else fn();
 
 (fn)()
-

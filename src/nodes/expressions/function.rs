@@ -1,6 +1,6 @@
 use crate::nodes::{
-    Block, FunctionBodyTokens, FunctionReturnType, FunctionVariadicType, GenericParameters, Token,
-    TypedIdentifier,
+    Attribute, Attributes, Block, FunctionBodyTokens, FunctionReturnType, FunctionVariadicType,
+    GenericParameters, Token, TypedIdentifier,
 };
 
 /// Represents a function expression.
@@ -21,6 +21,7 @@ pub struct FunctionExpression {
     variadic_type: Option<FunctionVariadicType>,
     return_type: Option<FunctionReturnType>,
     generic_parameters: Option<GenericParameters>,
+    attributes: Attributes,
     tokens: Option<Box<FunctionBodyTokens>>,
 }
 
@@ -34,6 +35,7 @@ impl FunctionExpression {
             variadic_type: None,
             return_type: None,
             generic_parameters: None,
+            attributes: Attributes::new(),
             tokens: None,
         }
     }
@@ -47,8 +49,31 @@ impl FunctionExpression {
             variadic_type: None,
             return_type: None,
             generic_parameters: None,
+            attributes: Attributes::new(),
             tokens: None,
         }
+    }
+
+    /// Returns a reference to the attributes of this function expression.
+    pub fn attributes(&self) -> &Attributes {
+        &self.attributes
+    }
+
+    /// Returns a mutable reference to the attributes of this function expression.
+    pub fn mutate_attributes(&mut self) -> &mut Attributes {
+        &mut self.attributes
+    }
+
+    /// Associates attributes with this function expression. Replaces any existing attributes.
+    pub fn with_attributes(mut self, attributes: Attributes) -> Self {
+        self.attributes = attributes;
+        self
+    }
+
+    /// Adds an attribute to this function statement. Adds to any existing attributes.
+    pub fn with_attribute(mut self, attribute: impl Into<Attribute>) -> Self {
+        self.attributes.append_attribute(attribute.into());
+        self
     }
 
     /// Sets the parameters of this function expression.

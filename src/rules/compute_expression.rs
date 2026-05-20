@@ -1,13 +1,13 @@
 use crate::nodes::{
-    BinaryOperator, Block, Expression, FunctionExpression, FunctionStatement, GenericForStatement,
-    LocalFunctionStatement, NumericForStatement, Prefix, RepeatStatement, Variable, WhileStatement,
+    BinaryOperator, Block, Expression, FunctionAssignment, FunctionExpression, FunctionStatement,
+    GenericForStatement, NumericForStatement, Prefix, RepeatStatement, Variable, WhileStatement,
 };
 use crate::process::{
     Evaluator, EvaluatorStorage, FunctionValue, LuaValue, NativeFunction, NodeProcessor,
     NodeVisitor, Scope, ScopeVisitor, TableValue,
 };
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::verify_no_rule_properties;
@@ -148,6 +148,9 @@ impl Computer {
                 Prefix::Parenthese(parenthese) => {
                     // todo
                 }
+                Prefix::TypeInstantiation(type_instantiation) => {
+                    current = type_instantiation.get_prefix();
+                }
             }
         }
     }
@@ -165,7 +168,11 @@ impl NodeProcessor for Computer {
             Prefix::Identifier(identifier) => {
                 self.storage.mark_mutated(identifier.get_name());
             }
-            Prefix::Call(_) | Prefix::Field(_) | Prefix::Index(_) | Prefix::Parenthese(_) => {}
+            Prefix::Call(_)
+            | Prefix::Field(_)
+            | Prefix::Index(_)
+            | Prefix::Parenthese(_)
+            | Prefix::TypeInstantiation(_) => {}
         }
     }
 
@@ -203,7 +210,7 @@ impl NodeProcessor for Computer {
         // todo
     }
 
-    fn process_local_function_statement(&mut self, _statement: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, _statement: &mut FunctionAssignment) {
         // todo
     }
 
@@ -239,7 +246,7 @@ impl Scope for Computer {
         );
     }
 
-    fn insert_local_function(&mut self, function: &mut LocalFunctionStatement) {
+    fn insert_local_function(&mut self, function: &mut FunctionAssignment) {
         self.storage.declare_identifier(
             function.get_name(),
             Some(LuaValue::Function(FunctionValue::new_lua())),
@@ -251,7 +258,9 @@ pub const COMPUTE_EXPRESSIONS_RULE_NAME: &str = "compute_expression";
 
 /// A rule that compute expressions that do not have any side-effects.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct ComputeExpression {}
+pub struct ComputeExpression {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for ComputeExpression {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -276,6 +285,14 @@ impl RuleConfiguration for ComputeExpression {
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
     }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
+    }
 }
 
 #[cfg(test)]
@@ -293,6 +310,6 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_compute_expression", rule);
+        assert_json_snapshot!(rule, @r###""compute_expression""###);
     }
 }

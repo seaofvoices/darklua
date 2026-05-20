@@ -5,7 +5,7 @@ use std::sync::OnceLock;
 use crate::nodes::{Block, Token, TriviaKind};
 use crate::rules::{
     verify_property_collisions, verify_required_any_properties, Context, Rule, RuleConfiguration,
-    RuleConfigurationError, RuleProcessResult, RuleProperties,
+    RuleConfigurationError, RuleMetadata, RuleProcessResult, RuleProperties,
 };
 
 use super::{FlawlessRule, ShiftTokenLine};
@@ -15,6 +15,7 @@ pub const APPEND_TEXT_COMMENT_RULE_NAME: &str = "append_text_comment";
 /// A rule to append a comment at the beginning or the end of each file.
 #[derive(Debug, Default)]
 pub struct AppendTextComment {
+    metadata: RuleMetadata,
     text_value: OnceLock<Result<String, String>>,
     text_content: TextContent,
     location: AppendLocation,
@@ -23,6 +24,7 @@ pub struct AppendTextComment {
 impl AppendTextComment {
     pub fn new(value: impl Into<String>) -> Self {
         Self {
+            metadata: RuleMetadata::default(),
             text_value: Default::default(),
             text_content: TextContent::Value(value.into()),
             location: Default::default(),
@@ -31,6 +33,7 @@ impl AppendTextComment {
 
     pub fn from_file_content(file_path: impl Into<PathBuf>) -> Self {
         Self {
+            metadata: RuleMetadata::default(),
             text_value: Default::default(),
             text_content: TextContent::FilePath(file_path.into()),
             location: Default::default(),
@@ -174,23 +177,27 @@ impl RuleConfiguration for AppendTextComment {
 
         properties
     }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
+    }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 enum TextContent {
+    #[default]
     None,
     Value(String),
     FilePath(PathBuf),
 }
 
-impl Default for TextContent {
-    fn default() -> Self {
-        Self::None
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 enum AppendLocation {
+    #[default]
     Start,
     End,
 }
@@ -209,12 +216,6 @@ impl AppendLocation {
     }
 }
 
-impl Default for AppendLocation {
-    fn default() -> Self {
-        Self::Start
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -226,14 +227,25 @@ mod test {
     fn serialize_rule_with_text() {
         let rule: Box<dyn Rule> = Box::new(AppendTextComment::new("content"));
 
-        assert_json_snapshot!("append_text_comment_with_text", rule);
+        assert_json_snapshot!(rule, @r###"
+        {
+          "rule": "append_text_comment",
+          "text": "content"
+        }
+        "###);
     }
 
     #[test]
     fn serialize_rule_with_text_at_end() {
         let rule: Box<dyn Rule> = Box::new(AppendTextComment::new("content").at_end());
 
-        assert_json_snapshot!("append_text_comment_with_text_at_end", rule);
+        assert_json_snapshot!(rule, @r###"
+        {
+          "rule": "append_text_comment",
+          "location": "end",
+          "text": "content"
+        }
+        "###);
     }
 
     #[test]
@@ -245,7 +257,7 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 
     #[test]
@@ -257,6 +269,6 @@ mod test {
             location: 'oops',
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected value for field 'location': invalid value `oops` (must be `start` or `end`)");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected value for field 'location': invalid value `oops` (must be `start` or `end`) at line 1 column 1");
     }
 }

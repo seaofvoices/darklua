@@ -13,7 +13,8 @@ use crate::{
         bundle::{BundleRequireMode, Bundler},
         get_default_rules, Rule,
     },
-    Parser,
+    utils::{deserialize_one_or_many, FilterPattern},
+    DarkluaError, Parser,
 };
 
 const DEFAULT_COLUMN_SPAN: usize = 80;
@@ -34,6 +35,18 @@ pub struct Configuration {
     bundle: Option<BundleConfiguration>,
     #[serde(default, skip)]
     location: Option<PathBuf>,
+    #[serde(
+        default,
+        skip_serializing_if = "Vec::is_empty",
+        deserialize_with = "deserialize_one_or_many"
+    )]
+    apply_to_files: Vec<FilterPattern>,
+    #[serde(
+        default,
+        skip_serializing_if = "Vec::is_empty",
+        deserialize_with = "deserialize_one_or_many"
+    )]
+    skip_files: Vec<FilterPattern>,
 }
 
 impl Configuration {
@@ -44,6 +57,8 @@ impl Configuration {
             generator: GeneratorParameters::default(),
             bundle: None,
             location: None,
+            apply_to_files: Vec::new(),
+            skip_files: Vec::new(),
         }
     }
 
@@ -87,6 +102,36 @@ impl Configuration {
         self.rules.push(rule.into());
     }
 
+    /// Adds a glob pattern so that rules will be only applied to files matching it.
+    /// Returns an error if the pattern is invalid.
+    pub fn with_apply_to_filter(mut self, apply_to_files: &str) -> Result<Self, DarkluaError> {
+        self.push_apply_to_filter(apply_to_files)?;
+        Ok(self)
+    }
+
+    /// Adds a glob pattern so that rules will be only applied to files matching it.
+    /// Returns an error if the pattern is invalid.
+    pub fn push_apply_to_filter(&mut self, apply_to_files: &str) -> Result<(), DarkluaError> {
+        let pattern = FilterPattern::new(apply_to_files.to_owned())?;
+        self.apply_to_files.push(pattern);
+        Ok(())
+    }
+
+    /// Adds a glob pattern so that rules will be skipped for files matching it.
+    /// Returns an error if the pattern is invalid.
+    pub fn with_skip_filter(mut self, skip_files: &str) -> Result<Self, DarkluaError> {
+        self.push_skip_filter(skip_files)?;
+        Ok(self)
+    }
+
+    /// Adds a glob pattern so that rules will be skipped for files matching it.
+    /// Returns an error if the pattern is invalid.
+    pub fn push_skip_filter(&mut self, skip_files: &str) -> Result<(), DarkluaError> {
+        let pattern = FilterPattern::new(skip_files.to_owned())?;
+        self.skip_files.push(pattern);
+        Ok(())
+    }
+
     #[inline]
     pub(crate) fn rules<'a, 'b: 'a>(&'b self) -> impl Iterator<Item = &'a dyn Rule> {
         self.rules.iter().map(AsRef::as_ref)
@@ -125,6 +170,18 @@ impl Configuration {
     pub(crate) fn location(&self) -> Option<&Path> {
         self.location.as_deref()
     }
+
+    pub(crate) fn should_apply_rule(&self, path: &Path) -> bool {
+        if !self.apply_to_files.is_empty() && self.apply_to_files.iter().all(|f| !f.matches(path)) {
+            return false;
+        }
+
+        if !self.skip_files.is_empty() && self.skip_files.iter().any(|f| f.matches(path)) {
+            return false;
+        }
+
+        true
+    }
 }
 
 impl Default for Configuration {
@@ -134,6 +191,8 @@ impl Default for Configuration {
             generator: Default::default(),
             bundle: None,
             location: None,
+            apply_to_files: Vec::new(),
+            skip_files: Vec::new(),
         }
     }
 }
@@ -163,11 +222,12 @@ impl std::fmt::Debug for Configuration {
 ///
 /// This enum defines different modes for generating Lua code, each with its own
 /// formatting characteristics.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "snake_case", tag = "name")]
 pub enum GeneratorParameters {
     /// Retains the original line structure of the input code.
     #[serde(alias = "retain-lines")]
+    #[default]
     RetainLines,
     /// Generates dense, compact code with a specified column span.
     Dense {
@@ -181,12 +241,6 @@ pub enum GeneratorParameters {
         #[serde(default = "get_default_column_span")]
         column_span: usize,
     },
-}
-
-impl Default for GeneratorParameters {
-    fn default() -> Self {
-        Self::RetainLines
-    }
 }
 
 impl GeneratorParameters {
@@ -408,9 +462,9 @@ mod test {
         fn deserialize_unknown_generator_name() {
             let result: Result<Configuration, _> = json5::from_str("{generator: 'oops'}");
 
-            pretty_assertions::assert_eq!(
+            insta::assert_snapshot!(
                 result.expect_err("deserialization should fail").to_string(),
-                "invalid generator name `oops`"
+                @"invalid generator name `oops` at line 1 column 13"
             );
         }
     }
@@ -501,9 +555,9 @@ mod test {
             let result: Result<Configuration, _> =
                 json5::from_str("{bundle: { require_mode: 'oops' } }");
 
-            pretty_assertions::assert_eq!(
+            insta::assert_snapshot!(
                 result.expect_err("deserialization should fail").to_string(),
-                "invalid require mode `oops`"
+                @"invalid require mode `oops` at line 1 column 26"
             );
         }
     }

@@ -1,5 +1,0 @@
----
-source: src/rules/remove_debug_profiling.rs
-expression: rule
----
-"remove_debug_profiling"

@@ -1,4 +1,4 @@
-use crate::nodes::LocalFunctionStatement;
+use crate::nodes::FunctionAssignment;
 use crate::process::NodeProcessor;
 
 #[derive(Debug, Clone, Default)]
@@ -13,7 +13,7 @@ impl From<CollectFunctionNames> for Vec<String> {
 }
 
 impl NodeProcessor for CollectFunctionNames {
-    fn process_local_function_statement(&mut self, function: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, function: &mut FunctionAssignment) {
         self.names
             .push(function.get_identifier().get_name().to_owned());
     }

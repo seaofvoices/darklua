@@ -16,14 +16,19 @@ pub trait NodeProcessor {
     fn process_generic_for_statement(&mut self, _: &mut GenericForStatement) {}
     fn process_if_statement(&mut self, _: &mut IfStatement) {}
     fn process_last_statement(&mut self, _: &mut LastStatement) {}
-    fn process_local_assign_statement(&mut self, _: &mut LocalAssignStatement) {}
-    fn process_local_function_statement(&mut self, _: &mut LocalFunctionStatement) {}
+    fn process_local_assign_statement(&mut self, _: &mut VariableAssignment) {}
+    fn process_local_function_statement(&mut self, _: &mut FunctionAssignment) {}
     fn process_numeric_for_statement(&mut self, _: &mut NumericForStatement) {}
     fn process_repeat_statement(&mut self, _: &mut RepeatStatement) {}
     fn process_while_statement(&mut self, _: &mut WhileStatement) {}
     fn process_type_declaration(&mut self, _: &mut TypeDeclarationStatement) {}
+    fn process_type_function(&mut self, _: &mut TypeFunctionStatement) {}
 
     fn process_variable(&mut self, _: &mut Variable) {}
+
+    fn process_attributes(&mut self, _: &mut Attributes) {}
+    fn process_literal_table(&mut self, _: &mut LiteralTable) {}
+    fn process_literal_expression(&mut self, _: &mut LiteralExpression) {}
 
     fn process_expression(&mut self, _: &mut Expression) {}
 
@@ -41,6 +46,7 @@ pub trait NodeProcessor {
     fn process_table_expression(&mut self, _: &mut TableExpression) {}
     fn process_unary_expression(&mut self, _: &mut UnaryExpression) {}
     fn process_type_cast_expression(&mut self, _: &mut TypeCastExpression) {}
+    fn process_type_instantiation(&mut self, _: &mut TypeInstantiationExpression) {}
 
     fn process_type(&mut self, _: &mut Type) {}
 
@@ -75,14 +81,19 @@ pub trait NodePostProcessor {
     fn process_after_generic_for_statement(&mut self, _: &mut GenericForStatement) {}
     fn process_after_if_statement(&mut self, _: &mut IfStatement) {}
     fn process_after_last_statement(&mut self, _: &mut LastStatement) {}
-    fn process_after_local_assign_statement(&mut self, _: &mut LocalAssignStatement) {}
-    fn process_after_local_function_statement(&mut self, _: &mut LocalFunctionStatement) {}
+    fn process_after_local_assign_statement(&mut self, _: &mut VariableAssignment) {}
+    fn process_after_local_function_statement(&mut self, _: &mut FunctionAssignment) {}
     fn process_after_numeric_for_statement(&mut self, _: &mut NumericForStatement) {}
     fn process_after_repeat_statement(&mut self, _: &mut RepeatStatement) {}
     fn process_after_while_statement(&mut self, _: &mut WhileStatement) {}
     fn process_after_type_declaration(&mut self, _: &mut TypeDeclarationStatement) {}
+    fn process_after_type_function(&mut self, _: &mut TypeFunctionStatement) {}
 
     fn process_after_variable(&mut self, _: &mut Variable) {}
+
+    fn process_after_attributes(&mut self, _: &mut Attributes) {}
+    fn process_after_literal_table(&mut self, _: &mut LiteralTable) {}
+    fn process_after_literal_expression(&mut self, _: &mut LiteralExpression) {}
 
     fn process_after_expression(&mut self, _: &mut Expression) {}
 
@@ -104,6 +115,7 @@ pub trait NodePostProcessor {
     fn process_after_table_expression(&mut self, _: &mut TableExpression) {}
     fn process_after_unary_expression(&mut self, _: &mut UnaryExpression) {}
     fn process_after_type_cast_expression(&mut self, _: &mut TypeCastExpression) {}
+    fn process_after_type_instantiation(&mut self, _: &mut TypeInstantiationExpression) {}
 
     fn process_after_type(&mut self, _: &mut Type) {}
 

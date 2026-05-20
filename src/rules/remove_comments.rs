@@ -3,7 +3,7 @@ use regex::Regex;
 use crate::nodes::*;
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 #[derive(Debug, Default)]
@@ -54,11 +54,11 @@ impl NodeProcessor for RemoveCommentProcessor {
         }
     }
 
-    fn process_local_assign_statement(&mut self, assign: &mut LocalAssignStatement) {
+    fn process_local_assign_statement(&mut self, assign: &mut VariableAssignment) {
         assign.clear_comments();
     }
 
-    fn process_local_function_statement(&mut self, function: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, function: &mut FunctionAssignment) {
         function.clear_comments();
     }
 
@@ -76,6 +76,33 @@ impl NodeProcessor for RemoveCommentProcessor {
 
     fn process_type_declaration(&mut self, type_declaration: &mut TypeDeclarationStatement) {
         type_declaration.clear_comments();
+    }
+
+    fn process_type_function(&mut self, function: &mut TypeFunctionStatement) {
+        function.clear_comments();
+    }
+
+    fn process_attributes(&mut self, attributes: &mut Attributes) {
+        attributes.clear_comments();
+    }
+
+    fn process_literal_expression(&mut self, expression: &mut LiteralExpression) {
+        match expression {
+            LiteralExpression::True(token)
+            | LiteralExpression::False(token)
+            | LiteralExpression::Nil(token) => {
+                if let Some(token) = token {
+                    token.clear_comments()
+                }
+            }
+            LiteralExpression::Number(_)
+            | LiteralExpression::String(_)
+            | LiteralExpression::Table(_) => {}
+        }
+    }
+
+    fn process_literal_table(&mut self, table: &mut LiteralTable) {
+        table.clear_comments();
     }
 
     fn process_expression(&mut self, expression: &mut Expression) {
@@ -101,7 +128,8 @@ impl NodeProcessor for RemoveCommentProcessor {
             | Expression::InterpolatedString(_)
             | Expression::Table(_)
             | Expression::Unary(_)
-            | Expression::TypeCast(_) => {}
+            | Expression::TypeCast(_)
+            | Expression::TypeInstantiation(_) => {}
         }
     }
 
@@ -158,6 +186,10 @@ impl NodeProcessor for RemoveCommentProcessor {
 
     fn process_type_cast_expression(&mut self, type_cast: &mut TypeCastExpression) {
         type_cast.clear_comments();
+    }
+
+    fn process_type_instantiation(&mut self, type_instantiation: &mut TypeInstantiationExpression) {
+        type_instantiation.clear_comments();
     }
 
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}
@@ -298,11 +330,11 @@ impl NodeProcessor for FilterCommentProcessor<'_> {
         }
     }
 
-    fn process_local_assign_statement(&mut self, assign: &mut LocalAssignStatement) {
+    fn process_local_assign_statement(&mut self, assign: &mut VariableAssignment) {
         assign.filter_comments(|trivia| self.ignore_trivia(trivia));
     }
 
-    fn process_local_function_statement(&mut self, function: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, function: &mut FunctionAssignment) {
         function.filter_comments(|trivia| self.ignore_trivia(trivia));
     }
 
@@ -320,6 +352,33 @@ impl NodeProcessor for FilterCommentProcessor<'_> {
 
     fn process_type_declaration(&mut self, type_declaration: &mut TypeDeclarationStatement) {
         type_declaration.filter_comments(|trivia| self.ignore_trivia(trivia));
+    }
+
+    fn process_type_function(&mut self, type_function: &mut TypeFunctionStatement) {
+        type_function.filter_comments(|trivia| self.ignore_trivia(trivia));
+    }
+
+    fn process_attributes(&mut self, attributes: &mut Attributes) {
+        attributes.filter_comments(|trivia| self.ignore_trivia(trivia));
+    }
+
+    fn process_literal_expression(&mut self, expression: &mut LiteralExpression) {
+        match expression {
+            LiteralExpression::True(token)
+            | LiteralExpression::False(token)
+            | LiteralExpression::Nil(token) => {
+                if let Some(token) = token {
+                    token.filter_comments(|trivia| self.ignore_trivia(trivia))
+                }
+            }
+            LiteralExpression::Number(_)
+            | LiteralExpression::String(_)
+            | LiteralExpression::Table(_) => {}
+        }
+    }
+
+    fn process_literal_table(&mut self, table: &mut LiteralTable) {
+        table.filter_comments(|trivia| self.ignore_trivia(trivia));
     }
 
     fn process_expression(&mut self, expression: &mut Expression) {
@@ -345,7 +404,8 @@ impl NodeProcessor for FilterCommentProcessor<'_> {
             | Expression::InterpolatedString(_)
             | Expression::Table(_)
             | Expression::Unary(_)
-            | Expression::TypeCast(_) => {}
+            | Expression::TypeCast(_)
+            | Expression::TypeInstantiation(_) => {}
         }
     }
 
@@ -402,6 +462,10 @@ impl NodeProcessor for FilterCommentProcessor<'_> {
 
     fn process_type_cast_expression(&mut self, type_cast: &mut TypeCastExpression) {
         type_cast.filter_comments(|trivia| self.ignore_trivia(trivia));
+    }
+
+    fn process_type_instantiation(&mut self, type_instantiation: &mut TypeInstantiationExpression) {
+        type_instantiation.filter_comments(|trivia| self.ignore_trivia(trivia));
     }
 
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}
@@ -479,6 +543,7 @@ pub const REMOVE_COMMENTS_RULE_NAME: &str = "remove_comments";
 /// A rule that removes comments associated with AST nodes.
 #[derive(Debug, Default)]
 pub struct RemoveComments {
+    metadata: RuleMetadata,
     except: Vec<Regex>,
 }
 
@@ -534,6 +599,14 @@ impl RuleConfiguration for RemoveComments {
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
     }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
+    }
 }
 
 #[cfg(test)]
@@ -555,7 +628,7 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_remove_comments", rule);
+        assert_json_snapshot!(rule, @r###""remove_comments""###);
     }
 
     #[test]
@@ -566,7 +639,7 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 
     #[test]
@@ -579,8 +652,14 @@ mod test {
         );
 
         insta::assert_snapshot!(
-            "remove_comments_configure_with_invalid_regex_error",
-            result.unwrap_err().to_string()
+            result.unwrap_err().to_string(),
+            @r###"
+        unexpected value for field 'except': invalid regex provided `^[0-9`
+          regex parse error:
+            ^[0-9
+             ^
+        error: unclosed character class at line 1 column 1
+        "###
         );
     }
 

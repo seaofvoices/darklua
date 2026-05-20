@@ -29,6 +29,8 @@ local id2 -- new id
     = .123, function( arg --[[number]] , ... --[[args]]) end
 
 local a --[[a]],  b, c = id + --[[add]] id, nil --[[nothing]]
+const --[[id]] constId = 0
+const --[[id]] c1, c2 = fn()
 
 local function fn --[[function name]] ( p1, p2 -- p2
     , p3, ... ) end
@@ -75,3 +77,21 @@ export --[[ this is exported ]] type PublicMyT = (MyT)
 type Opt<T> = Module . OtherType --[[extract a type from a module]]
 
 type Try = (... 'a' --[[literal type]] ) -> typeof ( fn() --[[get the return type]] )
+
+type function identity_fn(t): () -- end
+    return t
+end
+
+export --[=[ exported! ]=]   type function identity_fn--[[type name]]   ( ... )
+    return (...)
+end
+
+type   function   example_complex_type_function <  T --[[]], U, R... --[[for variadic ]]>(first: T & U, opts: { [number --[[index type]] ]: string }? --[[opts]], ...: R... ) :  ()
+    return first
+end
+
+format << Obj >> ()
+format <   < Obj >  --[[]] > ()
+Formatter.format <   < --[[c]] Obj , Item<Obj> >  --[[c]] > ()
+
+local f = format < --[[c]] < Obj >>.containerFormat["test-fn"] <--[[c]] < string >>

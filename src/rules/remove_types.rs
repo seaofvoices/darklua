@@ -1,7 +1,7 @@
 use crate::nodes::*;
 use crate::process::{DefaultVisitor, Evaluator, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::verify_no_rule_properties;
@@ -13,10 +13,15 @@ struct RemoveTypesProcessor {
 
 impl NodeProcessor for RemoveTypesProcessor {
     fn process_block(&mut self, block: &mut Block) {
-        block.filter_statements(|statement| !matches!(statement, Statement::TypeDeclaration(_)));
+        block.filter_statements(|statement| {
+            !matches!(
+                statement,
+                Statement::TypeDeclaration(_) | Statement::TypeFunction(_)
+            )
+        });
     }
 
-    fn process_local_assign_statement(&mut self, local_assign: &mut LocalAssignStatement) {
+    fn process_local_assign_statement(&mut self, local_assign: &mut VariableAssignment) {
         local_assign.clear_types();
     }
 
@@ -32,7 +37,7 @@ impl NodeProcessor for RemoveTypesProcessor {
         function.clear_types();
     }
 
-    fn process_local_function_statement(&mut self, function: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, function: &mut FunctionAssignment) {
         function.clear_types();
     }
 
@@ -40,20 +45,39 @@ impl NodeProcessor for RemoveTypesProcessor {
         function.clear_types();
     }
 
+    fn process_function_call(&mut self, call: &mut FunctionCall) {
+        call.remove_type_instantiation_from_method();
+    }
+
     fn process_expression(&mut self, expression: &mut Expression) {
-        match expression {
-            Expression::TypeCast(type_cast) => {
-                let value = type_cast.get_expression();
-                if self.evaluator.can_return_multiple_values(value) {
-                    *expression = value.clone().in_parentheses();
-                } else {
-                    *expression = value.clone();
+        loop {
+            match expression {
+                Expression::TypeCast(type_cast) => {
+                    let value = type_cast.get_expression();
+                    if self.evaluator.can_return_multiple_values(value) {
+                        *expression = value.clone().in_parentheses();
+                    } else {
+                        *expression = value.clone();
+                    }
+                }
+                Expression::TypeInstantiation(type_instantiation) => {
+                    let prefix: Expression = type_instantiation.get_prefix().clone().into();
+                    if self.evaluator.can_return_multiple_values(&prefix) {
+                        *expression = prefix.in_parentheses();
+                    } else {
+                        *expression = prefix;
+                    }
+                }
+                _ => {
+                    break;
                 }
             }
-            Expression::Function(function) => {
-                function.clear_types();
-            }
-            _ => {}
+        }
+    }
+
+    fn process_prefix_expression(&mut self, prefix: &mut Prefix) {
+        while let Prefix::TypeInstantiation(type_instantiation) = prefix {
+            *prefix = type_instantiation.get_prefix().clone();
         }
     }
 }
@@ -62,7 +86,9 @@ pub const REMOVE_TYPES_RULE_NAME: &str = "remove_types";
 
 /// A rule that removes Luau types from all AST nodes.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct RemoveTypes {}
+pub struct RemoveTypes {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for RemoveTypes {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -84,6 +110,14 @@ impl RuleConfiguration for RemoveTypes {
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
     }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
+    }
 }
 
 #[cfg(test)]
@@ -101,7 +135,7 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_remove_types", rule);
+        assert_json_snapshot!(rule, @r###""remove_types""###);
     }
 
     #[test]
@@ -112,6 +146,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 }

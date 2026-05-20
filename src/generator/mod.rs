@@ -37,6 +37,7 @@ pub trait LuaGenerator {
             Repeat(statement) => self.write_repeat_statement(statement),
             While(statement) => self.write_while_statement(statement),
             TypeDeclaration(statement) => self.write_type_declaration_statement(statement),
+            TypeFunction(statement) => self.write_type_function_statement(statement),
         }
     }
 
@@ -47,12 +48,13 @@ pub trait LuaGenerator {
     fn write_if_statement(&mut self, if_statement: &nodes::IfStatement);
     fn write_function_statement(&mut self, function: &nodes::FunctionStatement);
     fn write_last_statement(&mut self, statement: &nodes::LastStatement);
-    fn write_local_assign(&mut self, assign: &nodes::LocalAssignStatement);
-    fn write_local_function(&mut self, function: &nodes::LocalFunctionStatement);
+    fn write_local_assign(&mut self, assign: &nodes::VariableAssignment);
+    fn write_local_function(&mut self, function: &nodes::FunctionAssignment);
     fn write_numeric_for(&mut self, numeric_for: &nodes::NumericForStatement);
     fn write_repeat_statement(&mut self, repeat: &nodes::RepeatStatement);
     fn write_while_statement(&mut self, while_statement: &nodes::WhileStatement);
     fn write_type_declaration_statement(&mut self, statement: &nodes::TypeDeclarationStatement);
+    fn write_type_function_statement(&mut self, statement: &nodes::TypeFunctionStatement);
 
     fn write_variable(&mut self, variable: &nodes::Variable) {
         use nodes::Variable::*;
@@ -84,8 +86,39 @@ pub trait LuaGenerator {
             Unary(unary) => self.write_unary_expression(unary),
             VariableArguments(token) => self.write_variable_arguments_expression(token),
             TypeCast(type_cast) => self.write_type_cast(type_cast),
+            TypeInstantiation(type_instantiation) => {
+                self.write_type_instantiation(type_instantiation)
+            }
         }
     }
+
+    fn write_literal_expression(&mut self, expression: &nodes::LiteralExpression) {
+        use nodes::LiteralExpression::*;
+        match expression {
+            Number(number) => self.write_number(number),
+            String(string) => self.write_string(string),
+            False(token) => self.write_false_expression(token),
+            True(token) => self.write_true_expression(token),
+            Nil(token) => self.write_nil_expression(token),
+            Table(table) => self.write_literal_table(table),
+        }
+    }
+
+    fn write_attribute_arguments(&mut self, arguments: &nodes::AttributeArguments) {
+        use nodes::AttributeArguments::*;
+        match arguments {
+            Tuple(tuple) => {
+                self.write_attribute_tuple_arguments(tuple);
+            }
+            String(string) => {
+                self.write_string(string);
+            }
+            Table(table) => {
+                self.write_literal_table(table);
+            }
+        }
+    }
+    fn write_attribute_tuple_arguments(&mut self, tuple: &nodes::AttributeTupleArguments);
 
     fn write_identifier(&mut self, identifier: &nodes::Identifier);
     fn write_binary_expression(&mut self, binary: &nodes::BinaryExpression);
@@ -97,6 +130,7 @@ pub trait LuaGenerator {
     fn write_index(&mut self, index: &nodes::IndexExpression);
     fn write_parenthese(&mut self, parenthese: &nodes::ParentheseExpression);
     fn write_type_cast(&mut self, type_cast: &nodes::TypeCastExpression);
+    fn write_type_instantiation(&mut self, type_instantiation: &nodes::TypeInstantiationExpression);
 
     fn write_false_expression(&mut self, token: &Option<nodes::Token>);
     fn write_true_expression(&mut self, token: &Option<nodes::Token>);
@@ -111,12 +145,18 @@ pub trait LuaGenerator {
             Identifier(identifier) => self.write_identifier(identifier),
             Index(index) => self.write_index(index),
             Parenthese(parenthese) => self.write_parenthese(parenthese),
+            TypeInstantiation(type_instantiation) => {
+                self.write_type_instantiation(type_instantiation)
+            }
         }
     }
 
     fn write_table(&mut self, table: &nodes::TableExpression);
     fn write_table_entry(&mut self, entry: &nodes::TableEntry);
     fn write_number(&mut self, number: &nodes::NumberExpression);
+
+    fn write_literal_table(&mut self, table: &nodes::LiteralTable);
+    fn write_literal_table_entry(&mut self, entry: &nodes::LiteralTableEntry);
 
     fn write_arguments(&mut self, arguments: &nodes::Arguments) {
         use nodes::Arguments::*;
@@ -634,7 +674,7 @@ mod $mod_name {
                 ),
             ambiguous_function_call_from_local_assign => Block::default()
                 .with_statement(
-                    LocalAssignStatement::from_variable("name")
+                    VariableAssignment::from_variable("name")
                         .with_value(
                             IfExpression::new(
                                 Expression::identifier("condition"),
@@ -757,6 +797,20 @@ mod $mod_name {
                 Vec::new(),
                 false
             ),
+            empty_with_attribute => FunctionStatement::from_name("foo", Block::default())
+                .with_attribute(NamedAttribute::new("native")),
+            empty_with_attribute_in_group => FunctionStatement::from_name("foo", Block::default())
+                .with_attribute(AttributeGroupElement::new("native").with_arguments(AttributeTupleArguments::default())),
+            empty_with_2_attributes => FunctionStatement::from_name("foo", Block::default())
+                .with_attribute(NamedAttribute::new("native"))
+                .with_attribute(NamedAttribute::new("deprecated")),
+            empty_with_2_attributes_in_group => FunctionStatement::from_name("foo", Block::default())
+                .with_attribute(
+                    AttributeGroup::new(
+                        AttributeGroupElement::new("native").with_arguments(AttributeTupleArguments::default())
+                    )
+                    .with_attribute(AttributeGroupElement::new("deprecated"))
+                ),
         ));
 
         snapshot_node!($mod_name, $generator, generic_for, write_statement => (
@@ -803,10 +857,25 @@ mod $mod_name {
                 TableType::default()
                     .with_property(TablePropertyType::new("name", TypeName::new("string")))
             ),
+            table_with_one_read_property => TypeDeclarationStatement::new(
+                "Obj",
+                TableType::default()
+                    .with_property(TablePropertyType::new("name", TypeName::new("string")).with_modifier(TablePropertyModifier::Read))
+            ),
+            table_with_one_write_property => TypeDeclarationStatement::new(
+                "Obj",
+                TableType::default()
+                    .with_property(TablePropertyType::new("name", TypeName::new("string")).with_modifier(TablePropertyModifier::Write))
+            ),
             table_with_indexer_type => TypeDeclarationStatement::new(
                 "StringArray",
                 TableType::default()
                     .with_indexer_type(TableIndexerType::new(TypeName::new("number"), TypeName::new("string")))
+            ),
+            table_with_read_indexer_type => TypeDeclarationStatement::new(
+                "StringArray",
+                TableType::default()
+                    .with_indexer_type(TableIndexerType::new(TypeName::new("number"), TypeName::new("string")).with_modifier(TablePropertyModifier::Read))
             ),
             table_with_one_property_and_indexer_type => TypeDeclarationStatement::new(
                 "PackedArray",
@@ -868,6 +937,17 @@ mod $mod_name {
                     ),
         ));
 
+        snapshot_node!($mod_name, $generator, type_function, write_type_function_statement => (
+            empty => TypeFunctionStatement::from_name("nothing", Block::default()),
+            empty_exported => TypeFunctionStatement::from_name("nothing", Block::default())
+                .export(),
+            empty_with_parameter => TypeFunctionStatement::from_name("nothing", Block::default())
+                .with_parameter("param"),
+            empty_with_parameters_and_return_type => TypeFunctionStatement::from_name("nothing", Block::default())
+                .with_parameter("param")
+                .with_return_type(Type::from(true)),
+        ));
+
         snapshot_node!($mod_name, $generator, if_statement, write_statement => (
             empty => IfStatement::create(false, Block::default()),
             empty_with_empty_else => IfStatement::create(false, Block::default())
@@ -892,37 +972,68 @@ mod $mod_name {
         ));
 
         snapshot_node!($mod_name, $generator, local_assign, write_statement => (
-            foo_unassigned => LocalAssignStatement::from_variable("foo"),
-            foo_typed_unassigned => LocalAssignStatement::from_variable(
+            foo_unassigned => VariableAssignment::from_variable("foo"),
+            foo_typed_unassigned => VariableAssignment::from_variable(
                 Identifier::new("foo").with_type(Type::from(true))
             ),
-            foo_and_bar_unassigned => LocalAssignStatement::from_variable("foo")
+            foo_and_bar_unassigned => VariableAssignment::from_variable("foo")
                 .with_variable("bar"),
-            foo_and_bar_typed_unassigned => LocalAssignStatement::from_variable("foo")
+            foo_and_bar_typed_unassigned => VariableAssignment::from_variable("foo")
                 .with_variable(Identifier::new("bar").with_type(Type::from(false))),
-            var_assign_to_false => LocalAssignStatement::from_variable("var")
+            var_assign_to_false => VariableAssignment::from_variable("var")
                 .with_value(false),
-            typed_generic_var_break_equal_sign => LocalAssignStatement::from_variable(
+            typed_generic_var_break_equal_sign => VariableAssignment::from_variable(
                 Identifier::new("var").with_type(
                     TypeName::new("List").with_type_parameter(TypeName::new("string"))
                 )
             ).with_value(false),
+            // const assignments
+            const_foo_unassigned => VariableAssignment::from_variable("foo")
+                .with_assignment_kind(AssignmentKind::Const),
+            const_foo_typed_unassigned => VariableAssignment::from_variable(
+                Identifier::new("foo").with_type(OptionalType::new(Type::from(true)))
+            ).with_assignment_kind(AssignmentKind::Const),
+            const_foo_and_bar_unassigned => VariableAssignment::from_variable("foo")
+                .with_assignment_kind(AssignmentKind::Const)
+                .with_variable("bar")
+                .with_assignment_kind(AssignmentKind::Const),
+            const_foo_and_bar_typed_unassigned => VariableAssignment::from_variable("foo")
+                .with_assignment_kind(AssignmentKind::Const)
+                .with_variable(Identifier::new("bar").with_type(OptionalType::new(Type::from(false)))),
+            const_assignment_of_one_variable_with_two_values => VariableAssignment::from_variable("foo")
+                .with_assignment_kind(AssignmentKind::Const)
+                .with_value(true)
+                .with_value(false),
         ));
 
         snapshot_node!($mod_name, $generator, local_function, write_statement => (
-            empty => LocalFunctionStatement::from_name("foo", Block::default()),
-            empty_variadic => LocalFunctionStatement::from_name("foo", Block::default())
+            empty => FunctionAssignment::from_name("foo", Block::default()),
+            empty_variadic => FunctionAssignment::from_name("foo", Block::default())
                 .variadic(),
-            empty_with_one_parameter => LocalFunctionStatement::from_name("foo", Block::default())
+            empty_with_one_parameter => FunctionAssignment::from_name("foo", Block::default())
                 .with_parameter("bar"),
-            empty_with_two_parameters => LocalFunctionStatement::from_name("foo", Block::default())
+            empty_with_two_parameters => FunctionAssignment::from_name("foo", Block::default())
                 .with_parameter("bar")
                 .with_parameter("baz"),
-            empty_variadic_with_one_parameter => LocalFunctionStatement::from_name("foo", Block::default())
+            empty_variadic_with_one_parameter => FunctionAssignment::from_name("foo", Block::default())
                 .with_parameter("bar")
                 .variadic(),
-            empty_with_generic_pack_return_type => LocalFunctionStatement::from_name("foo", Block::default())
+            empty_with_generic_pack_return_type => FunctionAssignment::from_name("foo", Block::default())
                 .with_return_type(GenericTypePack::new("R")),
+            empty_with_attribute => FunctionAssignment::from_name("foo", Block::default())
+                .with_attribute(NamedAttribute::new("native")),
+            empty_with_attribute_in_group => FunctionAssignment::from_name("foo", Block::default())
+                .with_attribute(AttributeGroupElement::new("native").with_arguments(AttributeTupleArguments::default())),
+            empty_with_2_attributes => FunctionAssignment::from_name("foo", Block::default())
+                .with_attribute(NamedAttribute::new("native"))
+                .with_attribute(NamedAttribute::new("deprecated")),
+            empty_with_2_attributes_in_group => FunctionAssignment::from_name("foo", Block::default())
+                .with_attribute(
+                    AttributeGroup::new(
+                        AttributeGroupElement::new("native").with_arguments(AttributeTupleArguments::default())
+                    )
+                    .with_attribute(AttributeGroupElement::new("deprecated"))
+                ),
         ));
 
         snapshot_node!($mod_name, $generator, numeric_for, write_statement => (

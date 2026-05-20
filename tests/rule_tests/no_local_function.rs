@@ -8,7 +8,13 @@ test_rule!(
     empty_variadic_function("local function foo(...) end") => "local foo = function(...) end",
     empty_variadic_function_with_arguments("local function foo(a, b, c, ...) end") => "local foo = function(a, b, c, ...) end",
     function_with_block("local function foo() return true end") => "local foo = function() return true end",
-    name_in_parameters("local function foo(foo) return foo end") => "local foo = function(foo) return foo end"
+    name_in_parameters("local function foo(foo) return foo end") => "local foo = function(foo) return foo end",
+    empty_const_function("const function foo() end") => "const foo = function() end",
+    empty_const_function_with_arguments("const function foo(a, b) end") => "const foo = function(a, b) end",
+    empty_const_variadic_function("const function foo(...) end") => "const foo = function(...) end",
+    empty_const_variadic_function_with_arguments("const function foo(a, b, c, ...) end") => "const foo = function(a, b, c, ...) end",
+    const_function_with_block("const function foo() return true end") => "const foo = function() return true end",
+    const_name_in_parameters("const function foo(foo) return foo end") => "const foo = function(foo) return foo end",
 );
 
 test_rule_without_effects!(

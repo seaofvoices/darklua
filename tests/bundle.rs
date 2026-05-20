@@ -434,6 +434,18 @@ mod without_rules {
     }
 
     #[test]
+    fn require_lua_file_forward_exported_type_functions() {
+        process_main(
+            &memory_resources!(
+                "src/value.lua" => "export type function Nillable(ty) return types.unionof(ty, types.singleton(nil)) end return true",
+                "src/main.lua" => "local value = require('./value.lua') export type Nillable<T> = value.Nillable<T>",
+                ".darklua.json" => DARKLUA_BUNDLE_ONLY_READABLE_CONFIG,
+            ),
+            "require_lua_file_forward_exported_type_functions",
+        );
+    }
+
+    #[test]
     fn require_lua_file_forward_exported_types_with_generics() {
         process_main(
             &memory_resources!(

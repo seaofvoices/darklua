@@ -6,21 +6,16 @@ use crate::process::utils::is_valid_identifier;
 use std::str::FromStr;
 
 /// Represents the different styles of indexing in Roblox.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case", tag = "name")]
 pub enum RobloxIndexStyle {
     /// Uses `:FindFirstChild(name)` calls to access child Instances.
+    #[default]
     FindFirstChild,
     /// Uses `:WaitForChild(name)` calls to access child Instances.
     WaitForChild,
     /// Uses the property syntax (`parent.ObjectName`) to access child Instances.
     Property,
-}
-
-impl Default for RobloxIndexStyle {
-    fn default() -> Self {
-        Self::FindFirstChild
-    }
 }
 
 impl RobloxIndexStyle {

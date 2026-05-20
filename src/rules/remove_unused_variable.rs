@@ -2,7 +2,7 @@ use crate::nodes::*;
 use crate::process::processors::FindUsage;
 use crate::process::{DefaultVisitor, Evaluator, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 use crate::utils::expressions_as_statement;
 
@@ -184,7 +184,7 @@ impl NodeProcessor for RemoveUnusedVariableProcessor {
                                 }
                             } else {
                                 values.extend(assign.iter_values().skip(length).cloned());
-                                *statement = LocalAssignStatement::new(variables, values).into();
+                                *statement = VariableAssignment::new(variables, values).into();
                                 true
                             }
                         } else {
@@ -218,7 +218,9 @@ pub const REMOVE_UNUSED_VARIABLE_RULE_NAME: &str = "remove_unused_variable";
 
 /// A rule that removes unused variables.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct RemoveUnusedVariable {}
+pub struct RemoveUnusedVariable {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for RemoveUnusedVariable {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -246,6 +248,14 @@ impl RuleConfiguration for RemoveUnusedVariable {
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
     }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
+    }
 }
 
 #[cfg(test)]
@@ -263,7 +273,7 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_remove_unused_variable", rule);
+        assert_json_snapshot!(rule, @r###""remove_unused_variable""###);
     }
 
     #[test]
@@ -274,6 +284,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 }

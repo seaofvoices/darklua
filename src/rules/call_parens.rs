@@ -1,7 +1,7 @@
 use crate::nodes::{Arguments, Block, Expression, FunctionCall, StringExpression, TableExpression};
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use std::mem;
@@ -44,7 +44,9 @@ pub const REMOVE_FUNCTION_CALL_PARENS_RULE_NAME: &str = "remove_function_call_pa
 
 /// A rule that removes parentheses when calling functions with a string or a table.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct RemoveFunctionCallParens {}
+pub struct RemoveFunctionCallParens {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for RemoveFunctionCallParens {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -67,6 +69,14 @@ impl RuleConfiguration for RemoveFunctionCallParens {
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
     }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
+    }
 }
 
 #[cfg(test)]
@@ -84,7 +94,7 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_remove_function_call_parens", rule);
+        assert_json_snapshot!(rule, @r###""remove_function_call_parens""###);
     }
 
     #[test]
@@ -95,6 +105,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 }

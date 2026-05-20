@@ -1,7 +1,7 @@
 use crate::nodes::*;
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::verify_no_rule_properties;
@@ -54,11 +54,11 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
         }
     }
 
-    fn process_local_assign_statement(&mut self, assign: &mut LocalAssignStatement) {
+    fn process_local_assign_statement(&mut self, assign: &mut VariableAssignment) {
         assign.clear_whitespaces();
     }
 
-    fn process_local_function_statement(&mut self, function: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, function: &mut FunctionAssignment) {
         function.clear_whitespaces();
     }
 
@@ -76,6 +76,33 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
 
     fn process_type_declaration(&mut self, type_declaration: &mut TypeDeclarationStatement) {
         type_declaration.clear_whitespaces();
+    }
+
+    fn process_type_function(&mut self, type_function: &mut TypeFunctionStatement) {
+        type_function.clear_whitespaces();
+    }
+
+    fn process_attributes(&mut self, attributes: &mut Attributes) {
+        attributes.clear_whitespaces();
+    }
+
+    fn process_literal_expression(&mut self, expression: &mut LiteralExpression) {
+        match expression {
+            LiteralExpression::True(token)
+            | LiteralExpression::False(token)
+            | LiteralExpression::Nil(token) => {
+                if let Some(token) = token {
+                    token.clear_whitespaces()
+                }
+            }
+            LiteralExpression::Number(_)
+            | LiteralExpression::String(_)
+            | LiteralExpression::Table(_) => {}
+        }
+    }
+
+    fn process_literal_table(&mut self, table: &mut LiteralTable) {
+        table.clear_whitespaces();
     }
 
     fn process_expression(&mut self, expression: &mut Expression) {
@@ -101,7 +128,8 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
             | Expression::InterpolatedString(_)
             | Expression::Table(_)
             | Expression::Unary(_)
-            | Expression::TypeCast(_) => {}
+            | Expression::TypeCast(_)
+            | Expression::TypeInstantiation(_) => {}
         }
     }
 
@@ -158,6 +186,10 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
 
     fn process_type_cast_expression(&mut self, type_cast: &mut TypeCastExpression) {
         type_cast.clear_whitespaces();
+    }
+
+    fn process_type_instantiation(&mut self, type_instantiation: &mut TypeInstantiationExpression) {
+        type_instantiation.clear_whitespaces();
     }
 
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}
@@ -234,7 +266,9 @@ pub const REMOVE_SPACES_RULE_NAME: &str = "remove_spaces";
 
 /// A rule that removes whitespaces associated with AST nodes.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct RemoveSpaces {}
+pub struct RemoveSpaces {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for RemoveSpaces {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -255,6 +289,14 @@ impl RuleConfiguration for RemoveSpaces {
 
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
+    }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
     }
 }
 
@@ -277,7 +319,7 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_remove_spaces", rule);
+        assert_json_snapshot!(rule, @r###""remove_spaces""###);
     }
 
     #[test]
@@ -288,7 +330,7 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 
     #[test]

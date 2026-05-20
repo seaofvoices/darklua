@@ -10,6 +10,7 @@ mod local_function;
 mod numeric_for;
 mod repeat_statement;
 mod type_declaration;
+mod type_function;
 mod while_statement;
 
 pub use assign::*;
@@ -24,6 +25,7 @@ pub use local_function::*;
 pub use numeric_for::*;
 pub use repeat_statement::*;
 pub use type_declaration::*;
+pub use type_function::*;
 pub use while_statement::*;
 
 use crate::nodes::FunctionCall;
@@ -48,9 +50,9 @@ pub enum Statement {
     /// An if statement (e.g., `if condition then ... elseif ... else ... end`)
     If(IfStatement),
     /// A local variable assignment (e.g., `local a, b = 1, 2`)
-    LocalAssign(LocalAssignStatement),
+    LocalAssign(VariableAssignment),
     /// A local function declaration (e.g., `local function name() ... end`)
-    LocalFunction(Box<LocalFunctionStatement>),
+    LocalFunction(Box<FunctionAssignment>),
     /// A numeric for loop (e.g., `for i = 1, 10, 2 do ... end`)
     NumericFor(Box<NumericForStatement>),
     /// A repeat loop (e.g., `repeat ... until condition`)
@@ -59,6 +61,8 @@ pub enum Statement {
     While(WhileStatement),
     /// A type declaration statement (e.g., `type T = string | number`)
     TypeDeclaration(TypeDeclarationStatement),
+    /// A type function declaration (e.g., `type function name() ... end`)
+    TypeFunction(Box<TypeFunctionStatement>),
 }
 
 impl Statement {
@@ -78,6 +82,7 @@ impl Statement {
             Self::Repeat(repeat_stmt) => repeat_stmt.mutate_first_token(),
             Self::While(while_stmt) => while_stmt.mutate_first_token(),
             Self::TypeDeclaration(type_decl) => type_decl.mutate_first_token(),
+            Self::TypeFunction(type_function) => type_function.mutate_first_token(),
         }
     }
 
@@ -98,6 +103,7 @@ impl Statement {
             Self::Repeat(repeat_stmt) => repeat_stmt.mutate_last_token(),
             Self::While(while_stmt) => while_stmt.mutate_last_token(),
             Self::TypeDeclaration(type_decl) => type_decl.mutate_last_token(),
+            Self::TypeFunction(type_function) => type_function.mutate_last_token(),
         }
     }
 }
@@ -144,14 +150,14 @@ impl From<IfStatement> for Statement {
     }
 }
 
-impl From<LocalAssignStatement> for Statement {
-    fn from(assign: LocalAssignStatement) -> Statement {
+impl From<VariableAssignment> for Statement {
+    fn from(assign: VariableAssignment) -> Statement {
         Statement::LocalAssign(assign)
     }
 }
 
-impl From<LocalFunctionStatement> for Statement {
-    fn from(function: LocalFunctionStatement) -> Statement {
+impl From<FunctionAssignment> for Statement {
+    fn from(function: FunctionAssignment) -> Statement {
         Statement::LocalFunction(Box::new(function))
     }
 }
@@ -177,5 +183,11 @@ impl From<WhileStatement> for Statement {
 impl From<TypeDeclarationStatement> for Statement {
     fn from(type_declaration: TypeDeclarationStatement) -> Statement {
         Statement::TypeDeclaration(type_declaration)
+    }
+}
+
+impl From<TypeFunctionStatement> for Statement {
+    fn from(type_function: TypeFunctionStatement) -> Statement {
+        Statement::TypeFunction(Box::new(type_function))
     }
 }

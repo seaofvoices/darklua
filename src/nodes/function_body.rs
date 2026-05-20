@@ -1,7 +1,8 @@
 use super::{
-    Block, FunctionExpression, FunctionName, FunctionReturnType, FunctionStatement,
-    FunctionVariadicType, GenericParameters, Identifier, LocalFunctionStatement,
-    LocalFunctionTokens, Token, TypedIdentifier,
+    AssignmentKind, Attributes, Block, FunctionAssignment, FunctionAssignmentTokens,
+    FunctionExpression, FunctionName, FunctionReturnType, FunctionStatement, FunctionVariadicType,
+    GenericParameters, Identifier, Token, TypeFunctionStatement, TypeFunctionStatementTokens,
+    TypedIdentifier,
 };
 
 pub(crate) struct FunctionBuilder {
@@ -21,6 +22,8 @@ pub(crate) struct FunctionBuilder {
     variable_arguments_colon: Option<Token>,
     return_type_colon: Option<Token>,
     generic_parameters: Option<GenericParameters>,
+
+    attributes: Attributes,
 }
 
 impl FunctionBuilder {
@@ -42,11 +45,14 @@ impl FunctionBuilder {
             variable_arguments_colon: None,
             return_type_colon: None,
             generic_parameters: None,
+
+            attributes: Attributes::new(),
         }
     }
 
     pub(crate) fn into_function_expression(self) -> FunctionExpression {
-        let mut expression = FunctionExpression::new(self.block, self.parameters, self.is_variadic);
+        let mut expression = FunctionExpression::new(self.block, self.parameters, self.is_variadic)
+            .with_attributes(self.attributes);
 
         if let Some(variadic_type) = self.variadic_type {
             expression.set_variadic_type(variadic_type);
@@ -83,7 +89,8 @@ impl FunctionBuilder {
 
     pub(crate) fn into_function_statement(self, name: FunctionName) -> FunctionStatement {
         let mut statement =
-            FunctionStatement::new(name, self.block, self.parameters, self.is_variadic);
+            FunctionStatement::new(name, self.block, self.parameters, self.is_variadic)
+                .with_attributes(self.attributes);
 
         if let Some(variadic_type) = self.variadic_type {
             statement.set_variadic_type(variadic_type);
@@ -118,13 +125,16 @@ impl FunctionBuilder {
         statement
     }
 
-    pub(crate) fn into_local_function_statement(
+    pub(crate) fn into_function_assignment(
         self,
         name: Identifier,
-        local_token: Option<Token>,
-    ) -> LocalFunctionStatement {
+        kind: AssignmentKind,
+        assignment_keyword: Option<Token>,
+    ) -> FunctionAssignment {
         let mut statement =
-            LocalFunctionStatement::new(name, self.block, self.parameters, self.is_variadic);
+            FunctionAssignment::new(name, self.block, self.parameters, self.is_variadic)
+                .with_attributes(self.attributes)
+                .with_assignment_kind(kind);
 
         if let Some(variadic_type) = self.variadic_type {
             statement.set_variadic_type(variadic_type);
@@ -139,20 +149,73 @@ impl FunctionBuilder {
         }
 
         if let (
-            Some(local),
+            Some(keyword),
             Some(function),
             Some(opening_parenthese),
             Some(closing_parenthese),
             Some(end),
         ) = (
-            local_token,
+            assignment_keyword,
             self.function,
             self.opening_parenthese,
             self.closing_parenthese,
             self.end,
         ) {
-            statement.set_tokens(LocalFunctionTokens {
-                local,
+            statement.set_tokens(FunctionAssignmentTokens {
+                keyword,
+                function_body: FunctionBodyTokens {
+                    function,
+                    opening_parenthese,
+                    closing_parenthese,
+                    end,
+                    parameter_commas: self.parameter_commas,
+                    variable_arguments: self.variable_arguments,
+                    variable_arguments_colon: self.variable_arguments_colon,
+                    return_type_colon: self.return_type_colon,
+                },
+            });
+        }
+
+        statement
+    }
+
+    pub(crate) fn into_type_function_statement(
+        self,
+        name: Identifier,
+        type_token: Option<Token>,
+        export_token: Option<Token>,
+    ) -> TypeFunctionStatement {
+        let mut statement =
+            TypeFunctionStatement::new(name, self.block, self.parameters, self.is_variadic);
+
+        if let Some(variadic_type) = self.variadic_type {
+            statement.set_variadic_type(variadic_type);
+        }
+
+        if let Some(return_type) = self.return_type {
+            statement.set_return_type(return_type);
+        }
+
+        if let Some(generic_parameters) = self.generic_parameters {
+            statement.set_generic_parameters(generic_parameters);
+        }
+
+        if let (
+            Some(type_token),
+            Some(function),
+            Some(opening_parenthese),
+            Some(closing_parenthese),
+            Some(end),
+        ) = (
+            type_token,
+            self.function,
+            self.opening_parenthese,
+            self.closing_parenthese,
+            self.end,
+        ) {
+            statement.set_tokens(TypeFunctionStatementTokens {
+                r#type: type_token,
+                export: export_token,
                 function_body: FunctionBodyTokens {
                     function,
                     opening_parenthese,
@@ -221,6 +284,10 @@ impl FunctionBuilder {
 
     pub(crate) fn set_generic_parameters(&mut self, generic_parameters: GenericParameters) {
         self.generic_parameters = Some(generic_parameters);
+    }
+
+    pub(crate) fn set_attributes(&mut self, attributes: Attributes) {
+        self.attributes = attributes;
     }
 }
 

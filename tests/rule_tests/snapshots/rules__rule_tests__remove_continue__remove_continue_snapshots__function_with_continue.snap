@@ -2,6 +2,7 @@
 source: tests/rule_tests/remove_continue.rs
 expression: lua_code
 ---
+
     for i = 1, 10 do
 local __DARKLUA_CONTINUE_1=false repeat        local function shouldSkip(val)
             return val % 2 == 0

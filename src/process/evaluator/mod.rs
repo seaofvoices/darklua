@@ -61,10 +61,7 @@ impl Evaluator {
             Expression::Binary(binary) => self.evaluate_binary(binary, storage),
             Expression::Unary(unary) => self.evaluate_unary(unary, storage),
             Expression::Parenthese(parenthese) => {
-                // when the evaluator will be able to manage tuples, keep only the first element
-                // of the tuple here (or coerce the tuple to `nil` if it is empty)
-                self.evaluate_as_tuple(parenthese.inner_expression(), storage)
-                    .into_one()
+                self.evaluate_parenthese_expression(parenthese, storage)
             }
             Expression::If(if_expression) => self.evaluate_if(if_expression, storage),
             Expression::InterpolatedString(interpolated_string) => {
@@ -104,6 +101,9 @@ impl Evaluator {
             Expression::TypeCast(type_cast) => self
                 .evaluate_as_tuple(type_cast.get_expression(), storage)
                 .into_one(),
+            Expression::TypeInstantiation(type_instantiation) => {
+                self.evaluate_type_instantiation(type_instantiation, storage)
+            }
             Expression::Call(call) => {
                 let prefix = self.evaluate_prefix(call.get_prefix(), storage);
 
@@ -166,6 +166,27 @@ impl Evaluator {
         }
     }
 
+    fn evaluate_type_instantiation(
+        &self,
+        type_instantiation: &TypeInstantiationExpression,
+        storage: &EvaluatorStorage,
+    ) -> LuaValue {
+        // when the evaluator will be able to manage tuples, keep only the first element
+        // of the tuple here (or coerce the tuple to `nil` if it is empty)
+        self.evaluate_prefix(type_instantiation.get_prefix(), storage)
+    }
+
+    fn evaluate_parenthese_expression(
+        &self,
+        parenthese: &ParentheseExpression,
+        storage: &EvaluatorStorage,
+    ) -> LuaValue {
+        // when the evaluator will be able to manage tuples, keep only the first element
+        // of the tuple here (or coerce the tuple to `nil` if it is empty)
+        self.evaluate_as_tuple(parenthese.inner_expression(), storage)
+            .into_one()
+    }
+
     pub(crate) fn evaluate_prefix(&self, prefix: &Prefix, storage: &EvaluatorStorage) -> LuaValue {
         let mut chain = Vec::new();
 
@@ -198,9 +219,12 @@ impl Evaluator {
                     index.get_prefix()
                 }
                 Prefix::Parenthese(parenthese) => {
-                    break self
-                        .evaluate_as_tuple(parenthese.inner_expression(), storage)
-                        .into_one();
+                    break self.evaluate_parenthese_expression(parenthese, storage);
+                }
+                Prefix::TypeInstantiation(type_instantiation) => {
+                    // type instantiation is a type only operation, so no need to push
+                    // any operation to the chain
+                    type_instantiation.get_prefix()
                 }
             };
 
@@ -278,18 +302,15 @@ impl Evaluator {
         storage.create_table(table)
     }
 
-    #[allow(clippy::only_used_in_recursion)]
     pub fn can_return_multiple_values(&self, expression: &Expression) -> bool {
         match expression {
-            Expression::Call(_)
-            | Expression::Field(_)
-            | Expression::Index(_)
-            | Expression::Unary(_)
-            | Expression::VariableArguments(_) => true,
+            Expression::Call(_) | Expression::Unary(_) | Expression::VariableArguments(_) => true,
             Expression::Binary(binary) => {
                 !matches!(binary.operator(), BinaryOperator::And | BinaryOperator::Or)
             }
             Expression::False(_)
+            | Expression::Field(_)
+            | Expression::Index(_)
             | Expression::Function(_)
             | Expression::Identifier(_)
             | Expression::If(_)
@@ -299,10 +320,9 @@ impl Evaluator {
             | Expression::String(_)
             | Expression::InterpolatedString(_)
             | Expression::Table(_)
-            | Expression::True(_) => false,
-            Expression::TypeCast(type_cast) => {
-                self.can_return_multiple_values(type_cast.get_expression())
-            }
+            | Expression::True(_)
+            | Expression::TypeCast(_)
+            | Expression::TypeInstantiation(_) => false,
         }
     }
 
@@ -395,6 +415,9 @@ impl Evaluator {
                 }),
             Expression::TypeCast(type_cast) => {
                 self.has_side_effects_internal(type_cast.get_expression(), storage)
+            }
+            Expression::TypeInstantiation(type_instantiation) => {
+                self.type_instantiation_has_side_effects(type_instantiation, storage)
             }
         }
     }
@@ -523,7 +546,18 @@ impl Evaluator {
             Prefix::Parenthese(sub_expression) => {
                 self.has_side_effects_internal(sub_expression.inner_expression(), storage)
             }
+            Prefix::TypeInstantiation(type_instantiation) => {
+                self.type_instantiation_has_side_effects(type_instantiation, storage)
+            }
         }
+    }
+
+    fn type_instantiation_has_side_effects(
+        &self,
+        type_instantiation: &TypeInstantiationExpression,
+        storage: &EvaluatorStorage,
+    ) -> bool {
+        self.prefix_has_side_effects(type_instantiation.get_prefix(), storage)
     }
 
     #[inline]

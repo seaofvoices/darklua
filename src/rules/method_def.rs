@@ -1,7 +1,7 @@
 use crate::nodes::{Block, FunctionStatement};
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::verify_no_rule_properties;
@@ -18,7 +18,9 @@ pub const REMOVE_METHOD_DEFINITION_RULE_NAME: &str = "remove_method_definition";
 
 /// Change method functions into regular functions.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct RemoveMethodDefinition {}
+pub struct RemoveMethodDefinition {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for RemoveMethodDefinition {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -41,6 +43,14 @@ impl RuleConfiguration for RemoveMethodDefinition {
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
     }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
+    }
 }
 
 #[cfg(test)]
@@ -60,7 +70,7 @@ mod test {
 
     #[test]
     fn serialize_default_rule() {
-        assert_json_snapshot!("default_remove_method_definition", wrap(new_rule()));
+        assert_json_snapshot!(wrap(new_rule()), @r###""remove_method_definition""###);
     }
 
     #[test]
@@ -71,6 +81,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 }

@@ -2,11 +2,11 @@ use std::ops::{Deref, DerefMut};
 
 use crate::nodes::{
     AssignStatement, BinaryExpression, Block, CompoundAssignStatement, DoStatement, Expression,
-    FieldExpression, IndexExpression, LocalAssignStatement, Prefix, Statement, Variable,
+    FieldExpression, IndexExpression, Prefix, Statement, Variable, VariableAssignment,
 };
 use crate::process::{DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use super::{verify_no_rule_properties, RemoveCommentProcessor, RemoveWhitespacesProcessor};
@@ -33,7 +33,11 @@ impl Processor {
                     None
                 }
             }
-            Prefix::Identifier(_) | Prefix::Call(_) | Prefix::Field(_) | Prefix::Index(_) => None,
+            Prefix::Identifier(_)
+            | Prefix::Call(_)
+            | Prefix::Field(_)
+            | Prefix::Index(_)
+            | Prefix::TypeInstantiation(_) => None,
         }
     }
 
@@ -68,7 +72,8 @@ impl Processor {
                     Prefix::Call(_)
                     | Prefix::Field(_)
                     | Prefix::Index(_)
-                    | Prefix::Parenthese(_) => Some(self.generate_variable()),
+                    | Prefix::Parenthese(_)
+                    | Prefix::TypeInstantiation(_) => Some(self.generate_variable()),
                 };
                 let index_assignment = match index.get_index() {
                     Expression::False(_)
@@ -102,6 +107,7 @@ impl Processor {
                     | Expression::Parenthese(_)
                     | Expression::Table(_)
                     | Expression::TypeCast(_)
+                    | Expression::TypeInstantiation(_)
                     | Expression::Unary(_) => Some(self.generate_variable()),
                 };
 
@@ -120,7 +126,7 @@ impl Processor {
                         ))
                     }
                     (None, Some(index_variable)) => {
-                        let assign = LocalAssignStatement::from_variable(index_variable.clone())
+                        let assign = VariableAssignment::from_variable(index_variable.clone())
                             .with_value(self.remove_parentheses(index.get_index().clone()));
                         let variable = IndexExpression::new(
                             self.simplify_prefix(index.get_prefix())
@@ -130,7 +136,7 @@ impl Processor {
                         Some(self.create_do_assignment(assignment, assign, variable))
                     }
                     (Some(prefix_variable), None) => {
-                        let assign = LocalAssignStatement::from_variable(prefix_variable.clone())
+                        let assign = VariableAssignment::from_variable(prefix_variable.clone())
                             .with_value(self.remove_parentheses(index.get_prefix().clone()));
                         let variable = IndexExpression::new(
                             Prefix::from_name(prefix_variable),
@@ -140,7 +146,7 @@ impl Processor {
                         Some(self.create_do_assignment(assignment, assign, variable))
                     }
                     (Some(prefix_variable), Some(index_variable)) => {
-                        let assign = LocalAssignStatement::from_variable(prefix_variable.clone())
+                        let assign = VariableAssignment::from_variable(prefix_variable.clone())
                             .with_value(self.remove_parentheses(index.get_prefix().clone()))
                             .with_variable(index_variable.clone())
                             .with_value(self.remove_parentheses(index.get_index().clone()));
@@ -180,14 +186,18 @@ impl Processor {
                         Some(new_variable.into()),
                     ))
                 }
-                Prefix::Call(_) | Prefix::Field(_) | Prefix::Index(_) | Prefix::Parenthese(_) => {
+                Prefix::Call(_)
+                | Prefix::Field(_)
+                | Prefix::Index(_)
+                | Prefix::Parenthese(_)
+                | Prefix::TypeInstantiation(_) => {
                     let identifier = self.generate_variable();
                     let new_variable = FieldExpression::new(
                         Prefix::from_name(&identifier),
                         field.get_field().clone(),
                     );
 
-                    let assign = LocalAssignStatement::from_variable(identifier).with_value(
+                    let assign = VariableAssignment::from_variable(identifier).with_value(
                         match field.get_prefix().clone() {
                             Prefix::Parenthese(parenthese) => parenthese.into_inner_expression(),
                             prefix => prefix.into(),
@@ -295,7 +305,9 @@ pub const REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME: &str = "remove_compound_assignme
 
 /// A rule that converts compound assignment (like `+=`) into regular assignments.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct RemoveCompoundAssignment {}
+pub struct RemoveCompoundAssignment {
+    metadata: RuleMetadata,
+}
 
 impl RemoveCompoundAssignment {
     pub(crate) fn replace_compound_assignment(&self, statement: &mut Statement) {
@@ -325,6 +337,14 @@ impl RuleConfiguration for RemoveCompoundAssignment {
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
     }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
+    }
 }
 
 #[cfg(test)]
@@ -342,7 +362,7 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_remove_compound_assignment", rule);
+        assert_json_snapshot!(rule, @r###""remove_compound_assignment""###);
     }
 
     #[test]
@@ -353,6 +373,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 }

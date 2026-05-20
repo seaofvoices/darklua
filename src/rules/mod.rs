@@ -15,11 +15,14 @@ mod convert_require;
 mod convert_square_root_call;
 mod empty_do;
 mod filter_early_return;
+mod global_function_to_assign;
 mod group_local;
 mod inject_value;
+mod make_assignment_local;
 mod method_def;
 mod no_local_function;
 mod remove_assertions;
+mod remove_attribute;
 mod remove_call_match;
 mod remove_comments;
 mod remove_compound_assign;
@@ -51,11 +54,14 @@ pub use convert_require::*;
 pub use convert_square_root_call::*;
 pub use empty_do::*;
 pub use filter_early_return::*;
+pub use global_function_to_assign::*;
 pub use group_local::*;
 pub use inject_value::*;
+pub use make_assignment_local::*;
 pub use method_def::*;
 pub use no_local_function::*;
 pub use remove_assertions::*;
+pub use remove_attribute::*;
 pub use remove_comments::*;
 pub use remove_compound_assign::*;
 pub use remove_continue::*;
@@ -77,7 +83,8 @@ pub use unused_if_branch::*;
 pub use unused_while::*;
 
 use crate::nodes::Block;
-use crate::Resources;
+use crate::utils::FilterPattern;
+use crate::{DarkluaError, Resources};
 
 use serde::de::{self, MapAccess, Visitor};
 use serde::ser::SerializeMap;
@@ -86,6 +93,9 @@ use std::collections::HashMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+
+const APPLY_TO_FILTER_PROPERTY: &str = "apply_to_files";
+const SKIP_FILTER_PROPERTY: &str = "skip_files";
 
 /// A builder for creating a [`Context`] with optional configuration.
 ///
@@ -247,6 +257,58 @@ pub trait RuleConfiguration {
     fn has_properties(&self) -> bool {
         !self.serialize_to_properties().is_empty()
     }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata);
+
+    fn metadata(&self) -> &RuleMetadata;
+}
+
+/// Metadata for a rule.
+///
+/// This struct contains information about the rule that is used to filter out
+/// rules that are not applicable to the current context.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct RuleMetadata {
+    apply_to_filters: Vec<FilterPattern>,
+    skip_filters: Vec<FilterPattern>,
+}
+
+impl RuleMetadata {
+    pub fn with_apply_to_filter(mut self, filter: String) -> Result<Self, DarkluaError> {
+        self.push_apply_to_filter(filter)?;
+        Ok(self)
+    }
+
+    pub fn push_apply_to_filter(&mut self, filter: String) -> Result<(), DarkluaError> {
+        let pattern = FilterPattern::new(filter)?;
+        self.apply_to_filters.push(pattern);
+        Ok(())
+    }
+
+    pub fn with_skip_filter(mut self, filter: String) -> Result<Self, DarkluaError> {
+        self.push_skip_filter(filter)?;
+        Ok(self)
+    }
+
+    pub fn push_skip_filter(&mut self, filter: String) -> Result<(), DarkluaError> {
+        let pattern = FilterPattern::new(filter)?;
+        self.skip_filters.push(pattern);
+        Ok(())
+    }
+
+    pub(crate) fn should_apply(&self, path: &Path) -> bool {
+        if !self.apply_to_filters.is_empty()
+            && self.apply_to_filters.iter().all(|f| !f.matches(path))
+        {
+            return false;
+        }
+
+        if !self.skip_filters.is_empty() && self.skip_filters.iter().any(|f| f.matches(path)) {
+            return false;
+        }
+
+        true
+    }
 }
 
 /// A trait for rules that are guaranteed to succeed without errors.
@@ -294,6 +356,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
     vec![
         APPEND_TEXT_COMMENT_RULE_NAME,
         COMPUTE_EXPRESSIONS_RULE_NAME,
+        CONVERT_FUNCTION_TO_ASSIGNMENT_RULE_NAME,
         CONVERT_INDEX_TO_FIELD_RULE_NAME,
         CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME,
         CONVERT_LUAU_NUMBER_RULE_NAME,
@@ -302,7 +365,9 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         FILTER_AFTER_EARLY_RETURN_RULE_NAME,
         GROUP_LOCAL_ASSIGNMENT_RULE_NAME,
         INJECT_GLOBAL_VALUE_RULE_NAME,
+        MAKE_ASSIGNMENT_LOCAL_RULE_NAME,
         REMOVE_ASSERTIONS_RULE_NAME,
+        REMOVE_ATTRIBUTE_RULE_NAME,
         REMOVE_COMMENTS_RULE_NAME,
         REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME,
         REMOVE_DEBUG_PROFILING_RULE_NAME,
@@ -331,6 +396,7 @@ impl FromStr for Box<dyn Rule> {
         let rule: Box<dyn Rule> = match string {
             APPEND_TEXT_COMMENT_RULE_NAME => Box::<AppendTextComment>::default(),
             COMPUTE_EXPRESSIONS_RULE_NAME => Box::<ComputeExpression>::default(),
+            CONVERT_FUNCTION_TO_ASSIGNMENT_RULE_NAME => Box::<ConvertFunctionToAssign>::default(),
             CONVERT_INDEX_TO_FIELD_RULE_NAME => Box::<ConvertIndexToField>::default(),
             CONVERT_LOCAL_FUNCTION_TO_ASSIGN_RULE_NAME => {
                 Box::<ConvertLocalFunctionToAssign>::default()
@@ -341,7 +407,9 @@ impl FromStr for Box<dyn Rule> {
             FILTER_AFTER_EARLY_RETURN_RULE_NAME => Box::<FilterAfterEarlyReturn>::default(),
             GROUP_LOCAL_ASSIGNMENT_RULE_NAME => Box::<GroupLocalAssignment>::default(),
             INJECT_GLOBAL_VALUE_RULE_NAME => Box::<InjectGlobalValue>::default(),
+            MAKE_ASSIGNMENT_LOCAL_RULE_NAME => Box::<MakeAssignmentLocal>::default(),
             REMOVE_ASSERTIONS_RULE_NAME => Box::<RemoveAssertions>::default(),
+            REMOVE_ATTRIBUTE_RULE_NAME => Box::<RemoveAttribute>::default(),
             REMOVE_COMMENTS_RULE_NAME => Box::<RemoveComments>::default(),
             REMOVE_COMPOUND_ASSIGNMENT_RULE_NAME => Box::<RemoveCompoundAssignment>::default(),
             REMOVE_DEBUG_PROFILING_RULE_NAME => Box::<RemoveDebugProfiling>::default(),
@@ -380,6 +448,36 @@ impl Serialize for dyn Rule {
 
             map.serialize_entry("rule", rule_name)?;
 
+            let metadata = self.metadata();
+
+            if !metadata.apply_to_filters.is_empty() {
+                let filters = metadata
+                    .apply_to_filters
+                    .iter()
+                    .map(|f| f.original())
+                    .collect::<Vec<_>>();
+
+                if filters.len() == 1 {
+                    map.serialize_entry(APPLY_TO_FILTER_PROPERTY, &filters[0])?;
+                } else {
+                    map.serialize_entry(APPLY_TO_FILTER_PROPERTY, &filters)?;
+                }
+            }
+
+            if !metadata.apply_to_filters.is_empty() {
+                let filters = metadata
+                    .skip_filters
+                    .iter()
+                    .map(|f| f.original())
+                    .collect::<Vec<_>>();
+
+                if filters.len() == 1 {
+                    map.serialize_entry(SKIP_FILTER_PROPERTY, &filters[0])?;
+                } else {
+                    map.serialize_entry(SKIP_FILTER_PROPERTY, &filters)?;
+                }
+            }
+
             let mut ordered: Vec<(String, RulePropertyValue)> = properties.into_iter().collect();
 
             ordered.sort_by(|a, b| a.0.cmp(&b.0));
@@ -389,6 +487,22 @@ impl Serialize for dyn Rule {
             }
 
             map.end()
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+enum OneOrMany<T> {
+    One(T),
+    Many(Vec<T>),
+}
+
+impl<T> OneOrMany<T> {
+    fn into_vec(self) -> Vec<T> {
+        match self {
+            OneOrMany::One(value) => vec![value],
+            OneOrMany::Many(values) => values,
         }
     }
 }
@@ -420,16 +534,38 @@ impl<'de> Deserialize<'de> for Box<dyn Rule> {
             where
                 M: MapAccess<'de>,
             {
-                let mut rule_name = None;
+                let mut rule_name: Option<String> = None;
                 let mut properties = HashMap::new();
+                let mut only_patterns: Option<Vec<_>> = None;
+                let mut skip_patterns: Option<Vec<_>> = None;
 
                 while let Some(key) = map.next_key::<String>()? {
                     match key.as_str() {
                         "rule" => {
                             if rule_name.is_none() {
-                                rule_name.replace(map.next_value::<String>()?);
+                                rule_name = Some(map.next_value::<String>()?);
                             } else {
                                 return Err(de::Error::duplicate_field("rule"));
+                            }
+                        }
+                        APPLY_TO_FILTER_PROPERTY => {
+                            if only_patterns.is_none() {
+                                let value =
+                                    map.next_value::<OneOrMany<FilterPattern>>()?.into_vec();
+
+                                only_patterns = Some(value);
+                            } else {
+                                return Err(de::Error::duplicate_field(APPLY_TO_FILTER_PROPERTY));
+                            }
+                        }
+                        SKIP_FILTER_PROPERTY => {
+                            if skip_patterns.is_none() {
+                                let value =
+                                    map.next_value::<OneOrMany<FilterPattern>>()?.into_vec();
+
+                                skip_patterns = Some(value);
+                            } else {
+                                return Err(de::Error::duplicate_field(SKIP_FILTER_PROPERTY));
                             }
                         }
                         property => {
@@ -450,6 +586,12 @@ impl<'de> Deserialize<'de> for Box<dyn Rule> {
                         FromStr::from_str(&rule_name).map_err(de::Error::custom)?;
 
                     rule.configure(properties).map_err(de::Error::custom)?;
+
+                    let metadata = RuleMetadata {
+                        apply_to_filters: only_patterns.unwrap_or_default(),
+                        skip_filters: skip_patterns.unwrap_or_default(),
+                    };
+                    rule.set_metadata(metadata);
 
                     Ok(rule)
                 } else {

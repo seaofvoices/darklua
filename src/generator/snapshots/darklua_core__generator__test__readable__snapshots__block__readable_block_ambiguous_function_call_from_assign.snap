@@ -4,4 +4,3 @@ expression: generator.into_string()
 ---
 name = variable;
 (t).field = false
-

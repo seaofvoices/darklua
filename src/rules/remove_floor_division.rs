@@ -1,13 +1,13 @@
 use std::{mem, ops};
 
 use crate::nodes::{
-    BinaryOperator, Block, CompoundOperator, Expression, FieldExpression, FunctionCall,
-    LocalAssignStatement, Prefix, Statement,
+    BinaryOperator, Block, CompoundOperator, Expression, FieldExpression, FunctionCall, Prefix,
+    Statement, VariableAssignment,
 };
 use crate::process::{IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
     verify_no_rule_properties, Context, FlawlessRule, RemoveCompoundAssignment, RuleConfiguration,
-    RuleConfigurationError, RuleProperties,
+    RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 struct RemoveFloorDivisionProcessor {
@@ -87,7 +87,9 @@ pub const REMOVE_FLOOR_DIVISION_RULE_NAME: &str = "remove_floor_division";
 
 /// A rule that removes interpolated strings.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct RemoveFloorDivision {}
+pub struct RemoveFloorDivision {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for RemoveFloorDivision {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -99,7 +101,7 @@ impl FlawlessRule for RemoveFloorDivision {
         if processor.define_math_floor {
             block.insert_statement(
                 0,
-                LocalAssignStatement::from_variable(MATH_FLOOR_IDENTIFIER).with_value(
+                VariableAssignment::from_variable(MATH_FLOOR_IDENTIFIER).with_value(
                     FieldExpression::new(
                         Prefix::from_name(DEFAULT_MATH_LIBRARY),
                         DEFAULT_MATH_FLOOR_NAME,
@@ -124,6 +126,14 @@ impl RuleConfiguration for RemoveFloorDivision {
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
     }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
+    }
 }
 
 #[cfg(test)]
@@ -141,7 +151,7 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_remove_floor_division", rule);
+        assert_json_snapshot!(rule, @r###""remove_floor_division""###);
     }
 
     #[test]
@@ -152,6 +162,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 }

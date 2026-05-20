@@ -19,7 +19,7 @@ impl Default for Context {
         let working_directory =
             tempdir_in(env!("CARGO_TARGET_TMPDIR")).expect("unable to create temporary directory");
 
-        let mut command = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+        let mut command = assert_cmd::cargo::cargo_bin_cmd!(env!("CARGO_PKG_NAME"));
         command.current_dir(working_directory.path());
 
         Self::new(command, working_directory)

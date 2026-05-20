@@ -1,0 +1,6 @@
+---
+source: src/generator/mod.rs
+expression: generator.into_string()
+---
+@[native()]
+local function foo() end

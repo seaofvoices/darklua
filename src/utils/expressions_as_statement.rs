@@ -1,6 +1,5 @@
 use crate::nodes::{
-    BinaryExpression, BinaryOperator, Block, DoStatement, Expression, LocalAssignStatement,
-    Statement,
+    BinaryExpression, BinaryOperator, Block, DoStatement, Expression, Statement, VariableAssignment,
 };
 
 fn get_inner_expression(mut expression: Expression) -> Expression {
@@ -29,7 +28,7 @@ pub(crate) fn expressions_as_statement(expressions: Vec<Expression>) -> Statemen
                     assign.push_value(value);
                 } else {
                     statements.push(
-                        LocalAssignStatement::from_variable("_")
+                        VariableAssignment::from_variable("_")
                             .with_value(value)
                             .into(),
                     );

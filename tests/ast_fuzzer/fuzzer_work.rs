@@ -62,6 +62,9 @@ pub enum AstFuzzerWork {
     MakeParentheseExpression,
     MakeUnaryExpression,
     MakeTypeCastExpression,
+    MakeTypeInstantiationExpression {
+        types: usize,
+    },
     MakeInterpolatedString {
         segment_is_expression: Vec<bool>,
     },
@@ -91,6 +94,9 @@ pub enum AstFuzzerWork {
     MakeParenthesePrefix,
     MakeIndexPrefix,
     MakeCallPrefix,
+    MakeTypeInstantiationPrefix {
+        types: usize,
+    },
     MakeIntersectionType {
         has_leading_token: bool,
         length: usize,
@@ -127,6 +133,11 @@ pub enum AstFuzzerWork {
     },
     MakeTypeDeclaration {
         type_parameter_with_defaults: Vec<TypeParameterWithDefaultKind>,
+    },
+    MakeTypeFunction {
+        parameters: usize,
+        has_return_type: bool,
+        has_variadic_type: bool,
     },
     MakeTableType {
         properties: usize,

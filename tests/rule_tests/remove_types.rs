@@ -20,13 +20,18 @@ test_rule!(
     remove_type_declaration_keep_leading_comment("--!native\ntype T = string | number") => "--!native\n",
     remove_type_declaration_keep_trailing_comment("type T = string | number\n-- end of file") => "\n-- end of file",
     remove_exported_type_declaration("export type T = { Node }") => "",
+    remove_type_function_statement("type function foo(x) return x end") => "",
+    remove_exported_type_function_statement("export type function foo(x) return x end") => "",
     remove_type_in_local_assign("local var: boolean = true") => "local var = true",
+    remove_type_in_const_assign("const var: boolean = true") => "const var = true",
     remove_type_in_numeric_for("for i: number=a, b do end") => "for i=a, b do end",
     remove_types_in_generic_for("for k: string, v: boolean in pairs({}) do end")
         => "for k, v in pairs({}) do end",
     remove_type_cast("return value :: string") => "return value",
     remove_types_in_local_function_param("local function foo(param: T) end")
         => "local function foo(param) end",
+    remove_types_in_const_function_param("const function foo(param: T) end")
+        => "const function foo(param) end",
     remove_types_in_local_function_variadic_param("local function foo(...: string) end")
         => "local function foo(...) end",
     remove_types_in_local_function_return_type("local function foo(): boolean end")
@@ -51,6 +56,12 @@ test_rule!(
         => "return value",
     remove_types_in_type_cast_of_table("return {} :: any")
         => "return {}",
+    remove_type_instantiation_in_method("obj:method<<string>>()")
+        => "obj:method()",
+    remove_type_instantiation_in_field_in_method_call("obj.field<<string>>:method()")
+        => "obj.field:method()",
+    remove_type_instantiation_in_field_call("obj.field<< string >>()")
+        => "obj.field()",
 );
 
 #[test]
@@ -108,6 +119,10 @@ fn fuzz_bundle() {
         let mut processor = HasTypeProcessor::new();
         DefaultVisitor::visit_block(&mut result_block, &mut processor);
 
-        assert!(!processor.found_type);
+        assert!(
+            !processor.found_type,
+            "found type remaining in:\n{}",
+            block_content
+        );
     })
 }

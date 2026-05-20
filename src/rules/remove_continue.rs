@@ -3,11 +3,13 @@ use std::mem;
 
 use crate::nodes::{
     AssignStatement, Block, GenericForStatement, Identifier, IfStatement, LastStatement,
-    LocalAssignStatement, NumericForStatement, RepeatStatement, UnaryExpression, UnaryOperator,
+    NumericForStatement, RepeatStatement, UnaryExpression, UnaryOperator, VariableAssignment,
     WhileStatement,
 };
 use crate::process::{DefaultPostVisitor, NodePostProcessor, NodePostVisitor, NodeProcessor};
-use crate::rules::{Context, RuleConfiguration, RuleConfigurationError, RuleProperties};
+use crate::rules::{
+    Context, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
+};
 
 use super::{verify_no_rule_properties, FlawlessRule};
 
@@ -62,8 +64,7 @@ impl Processor {
 
             let new_block = Block::default()
                 .with_statement(
-                    LocalAssignStatement::from_variable(loop_data.get_identifier())
-                        .with_value(false),
+                    VariableAssignment::from_variable(loop_data.get_identifier()).with_value(false),
                 )
                 .with_statement(RepeatStatement::new(current_loop_block, true))
                 .with_statement(IfStatement::create(
@@ -166,7 +167,9 @@ pub const REMOVE_CONTINUE_RULE_NAME: &str = "remove_continue";
 
 /// A rule that removes continue statements and converts them into break statements.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct RemoveContinue {}
+pub struct RemoveContinue {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for RemoveContinue {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -189,6 +192,14 @@ impl RuleConfiguration for RemoveContinue {
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
     }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
+    }
 }
 
 #[cfg(test)]
@@ -206,7 +217,7 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_remove_continue", rule);
+        assert_json_snapshot!(rule, @r###""remove_continue""###);
     }
 
     #[test]
@@ -217,6 +228,6 @@ mod test {
             prop: "something",
         }"#,
         );
-        pretty_assertions::assert_eq!(result.unwrap_err().to_string(), "unexpected field 'prop'");
+        insta::assert_snapshot!(result.unwrap_err().to_string(), @"unexpected field 'prop' at line 1 column 1");
     }
 }

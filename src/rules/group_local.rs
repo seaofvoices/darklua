@@ -1,8 +1,8 @@
-use crate::nodes::{Block, Expression, LocalAssignStatement, Statement};
+use crate::nodes::{Block, Expression, Statement, VariableAssignment};
 use crate::process::processors::FindVariables;
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
+    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
 };
 
 use std::iter;
@@ -54,7 +54,7 @@ impl GroupLocalProcessor {
         filter_statements
     }
 
-    fn should_merge(&self, first: &LocalAssignStatement, next: &mut LocalAssignStatement) -> bool {
+    fn should_merge(&self, first: &VariableAssignment, next: &mut VariableAssignment) -> bool {
         let first_value_count = first.values_len();
 
         if first.variables_len() > first_value_count && first_value_count != 0 {
@@ -72,7 +72,7 @@ impl GroupLocalProcessor {
         })
     }
 
-    fn merge(&self, first: &mut LocalAssignStatement, mut other: LocalAssignStatement) {
+    fn merge(&self, first: &mut VariableAssignment, mut other: VariableAssignment) {
         if first.values_len() == 0 && other.values_len() != 0 {
             let variable_count = first.variables_len();
             first.extend_values(iter::repeat_n(Expression::nil(), variable_count));
@@ -101,7 +101,9 @@ pub const GROUP_LOCAL_ASSIGNMENT_RULE_NAME: &str = "group_local_assignment";
 
 /// Group local assign statements into one statement.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct GroupLocalAssignment {}
+pub struct GroupLocalAssignment {
+    metadata: RuleMetadata,
+}
 
 impl FlawlessRule for GroupLocalAssignment {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
@@ -124,6 +126,14 @@ impl RuleConfiguration for GroupLocalAssignment {
     fn serialize_to_properties(&self) -> RuleProperties {
         RuleProperties::new()
     }
+
+    fn set_metadata(&mut self, metadata: RuleMetadata) {
+        self.metadata = metadata;
+    }
+
+    fn metadata(&self) -> &RuleMetadata {
+        &self.metadata
+    }
 }
 
 #[cfg(test)]
@@ -141,6 +151,6 @@ mod test {
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_group_local_assignment", rule);
+        assert_json_snapshot!(rule, @r###""group_local_assignment""###);
     }
 }
