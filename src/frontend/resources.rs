@@ -121,6 +121,40 @@ impl Source {
         }
     }
 
+    pub(crate) fn is_empty_directory(&self, location: &Path) -> ResourceResult<bool> {
+        if !self.is_directory(location)? {
+            return Ok(false);
+        }
+
+        match self {
+            Self::FileSystem => match location.read_dir() {
+                Ok(read_dir) => {
+                    for entry in read_dir {
+                        match entry {
+                            Ok(_) => return Ok(false),
+                            Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+                            Err(err) => {
+                                log::warn!(
+                                    "unable to read directory entry `{}`: {}",
+                                    location.display(),
+                                    err
+                                );
+                                return Ok(false);
+                            }
+                        }
+                    }
+
+                    Ok(true)
+                }
+                Err(err) => {
+                    log::warn!("unable to read directory `{}`: {}", location.display(), err);
+                    Ok(false)
+                }
+            },
+            Self::Memory(_data) => Ok(false),
+        }
+    }
+
     fn remove(&self, location: &Path) -> Result<(), ResourceError> {
         match self {
             Self::FileSystem => {
@@ -305,6 +339,10 @@ impl Resources {
         location: impl AsRef<Path>,
     ) -> impl Iterator<Item = ResourceContent> {
         self.source.walk_all(location.as_ref())
+    }
+
+    pub(crate) fn is_empty_directory(&self, location: impl AsRef<Path>) -> ResourceResult<bool> {
+        self.source.is_empty_directory(location.as_ref())
     }
 }
 

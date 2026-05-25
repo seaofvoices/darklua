@@ -245,8 +245,8 @@ impl WorkerTree {
                     if ancestor.components().count() == 0 {
                         break;
                     }
-                    if resources.walk_all(ancestor).skip(1).next().is_none()
-                        && !structure.contains_key(ancestor)
+                    if !structure.contains_key(ancestor)
+                        && resources.is_empty_directory(ancestor).unwrap_or_default()
                     {
                         if let Err(err) = resources.remove(ancestor).map_err(DarkluaError::from) {
                             log::warn!("failed to remove resource: {}", err);
