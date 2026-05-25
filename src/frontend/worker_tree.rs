@@ -13,8 +13,8 @@ use crate::{
 };
 
 use super::{
-    normalize_path, work_item::WorkStatus, Configuration, DarkluaResult, Options, Resources,
-    WorkItem, Worker,
+    normalize_path, resources::ResourceContent, work_item::WorkStatus, Configuration,
+    DarkluaResult, Options, Resources, WorkItem, Worker,
 };
 
 /// A structure that manages the processing of Lua/Luau files and their dependencies.
@@ -30,6 +30,7 @@ pub struct WorkerTree {
     external_dependencies: HashMap<PathBuf, HashSet<NodeIndex>>,
     remove_files: Vec<PathBuf>,
     last_configuration_hash: Option<u64>,
+    output_structure: Option<HashMap<PathBuf, bool>>,
 }
 
 impl WorkerTree {
@@ -103,21 +104,6 @@ impl WorkerTree {
     /// respecting dependencies between files.
     pub fn process(&mut self, resources: &Resources, mut options: Options) -> DarkluaResult<()> {
         clear_luau_configuration_cache();
-
-        if !self.remove_files.is_empty() {
-            let remove_count = self.remove_files.len();
-            log::debug!(
-                "clean {} file{} before beginning process",
-                remove_count,
-                maybe_plural(remove_count)
-            );
-            for path in self.remove_files.drain(..) {
-                log::trace!("remove file {}", path.display());
-                if let Err(err) = resources.remove(path).map_err(DarkluaError::from) {
-                    log::warn!("failed to remove resource: {}", err);
-                }
-            }
-        }
 
         let mut worker = Worker::new(resources);
         worker.setup_worker(&mut options)?;
@@ -237,7 +223,40 @@ impl WorkerTree {
 
         log::info!("executed work in {}", work_timer.duration_label());
 
+        self.clean_files(resources);
+
         Ok(())
+    }
+
+    fn clean_files(&mut self, resources: &Resources) {
+        if self.remove_files.is_empty() {
+            return;
+        }
+
+        let remove_count = self.remove_files.len();
+        log::debug!("clean {} file{}", remove_count, maybe_plural(remove_count));
+
+        for path in self.remove_files.drain(..) {
+            log::trace!("remove file {}", path.display());
+            if let Err(err) = resources.remove(&path).map_err(DarkluaError::from) {
+                log::warn!("failed to remove resource: {}", err);
+            } else if let Some(structure) = self.output_structure.as_ref() {
+                for ancestor in path.ancestors().skip(1) {
+                    if ancestor.components().count() == 0 {
+                        break;
+                    }
+                    if resources.walk_all(ancestor).skip(1).next().is_none()
+                        && !structure.contains_key(ancestor)
+                    {
+                        if let Err(err) = resources.remove(ancestor).map_err(DarkluaError::from) {
+                            log::warn!("failed to remove resource: {}", err);
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     /// Returns the final result of processing all work items.
@@ -437,5 +456,30 @@ impl WorkerTree {
         last_hash
             .map(|last_hash| new_hash != last_hash)
             .unwrap_or_default()
+    }
+
+    pub(crate) fn snapshot_output_structure(
+        &mut self,
+        resources: &Resources,
+        location: &Path,
+    ) -> DarkluaResult<()> {
+        if self.output_structure.is_some()
+            || !resources.exists(location)?
+            || !resources.is_directory(location)?
+        {
+            return Ok(());
+        }
+
+        let structure = resources
+            .walk_all(location)
+            .map(|content| match content {
+                ResourceContent::File(path) => (path, true),
+                ResourceContent::Directory(path) => (path, false),
+            })
+            .collect();
+
+        self.output_structure = Some(structure);
+
+        Ok(())
     }
 }
