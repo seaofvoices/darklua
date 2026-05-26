@@ -42,6 +42,7 @@ petgraph = "0.8.3"
 regex = "1.12.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.149"
+serde_with = "3.18.0"
 serde_yaml = "0.9.33"
 toml = "1.1.2"
 tracing = { version = "0.1", optional = true }
