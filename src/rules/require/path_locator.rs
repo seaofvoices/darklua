@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use super::{path_iterator, PathRequireMode};
 use crate::{rules::require::path_utils::is_require_relative, utils, DarkluaError, Resources};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct RequirePathLocator<'a, 'b, 'resources> {
     path_require_mode: &'a PathRequireMode,
     extra_module_relative_location: &'b Path,

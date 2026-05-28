@@ -6,16 +6,16 @@ use crate::{utils, DarkluaError, Resources};
 
 /// A path locator specifically for Luau require mode that implements
 /// the behavior defined in the Luau RFCs for module path resolution.
-#[derive(Debug)]
-pub(crate) struct LuauPathLocator<'a, 'b, 'resources> {
-    luau_require_mode: &'a LuauRequireMode,
+#[derive(Clone, Debug)]
+pub(crate) struct LuauPathLocator<'b, 'resources> {
+    luau_require_mode: LuauRequireMode,
     extra_module_relative_location: &'b Path,
     resources: &'resources Resources,
 }
 
-impl<'a, 'b, 'c> LuauPathLocator<'a, 'b, 'c> {
+impl<'b, 'c> LuauPathLocator<'b, 'c> {
     pub(crate) fn new(
-        luau_require_mode: &'a LuauRequireMode,
+        luau_require_mode: LuauRequireMode,
         extra_module_relative_location: &'b Path,
         resources: &'c Resources,
     ) -> Self {
@@ -27,7 +27,15 @@ impl<'a, 'b, 'c> LuauPathLocator<'a, 'b, 'c> {
     }
 }
 
-impl super::PathLocator for LuauPathLocator<'_, '_, '_> {
+impl super::PathLocator for LuauPathLocator<'_, '_> {
+    fn initialize(
+        &mut self,
+        path: &Path,
+        resources: &crate::Resources,
+    ) -> Result<(), DarkluaError> {
+        self.luau_require_mode.load_aliases(path, resources)
+    }
+
     fn find_require_path(
         &self,
         path: impl Into<PathBuf>,

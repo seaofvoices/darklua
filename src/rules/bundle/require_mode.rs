@@ -70,7 +70,7 @@ impl BundleRequireMode {
                     .map_err(|err| err.to_string())?;
 
                 let locator = LuauPathLocator::new(
-                    &require_mode,
+                    require_mode,
                     context.project_location(),
                     context.resources(),
                 );
