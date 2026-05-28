@@ -82,6 +82,9 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Expression::TypeCast(type_cast) => {
                 Self::visit_type_cast_expression(type_cast, processor);
             }
+            Expression::TypeInstantiation(type_instantiation) => {
+                Self::visit_type_instantiation(type_instantiation, processor);
+            }
             Expression::False(_)
             | Expression::Nil(_)
             | Expression::True(_)
@@ -134,6 +137,18 @@ pub trait NodeVisitor<T: NodeProcessor> {
 
         Self::visit_expression(type_cast.mutate_expression(), processor);
         Self::visit_type(type_cast.mutate_type(), processor);
+    }
+
+    fn visit_type_instantiation(
+        type_instantiation: &mut TypeInstantiationExpression,
+        processor: &mut T,
+    ) {
+        processor.process_type_instantiation(type_instantiation);
+
+        Self::visit_prefix_expression(type_instantiation.mutate_prefix(), processor);
+        for r#type in type_instantiation.iter_mut_types() {
+            Self::visit_type(r#type, processor);
+        }
     }
 
     fn visit_function_expression(function: &mut FunctionExpression, processor: &mut T) {
@@ -246,7 +261,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
         }
     }
 
-    fn visit_local_assign(statement: &mut LocalAssignStatement, processor: &mut T) {
+    fn visit_local_assign(statement: &mut VariableAssignment, processor: &mut T) {
         processor.process_local_assign_statement(statement);
 
         statement
@@ -261,7 +276,7 @@ pub trait NodeVisitor<T: NodeProcessor> {
         }
     }
 
-    fn visit_local_function(statement: &mut LocalFunctionStatement, processor: &mut T) {
+    fn visit_local_function(statement: &mut FunctionAssignment, processor: &mut T) {
         processor.process_local_function_statement(statement);
         Self::visit_attributes(statement.mutate_attributes(), processor);
 
@@ -478,6 +493,9 @@ pub trait NodeVisitor<T: NodeProcessor> {
             Prefix::Index(index) => Self::visit_index_expression(index, processor),
             Prefix::Parenthese(expression) => {
                 Self::visit_parenthese_expression(expression, processor)
+            }
+            Prefix::TypeInstantiation(type_instantiation) => {
+                Self::visit_type_instantiation(type_instantiation, processor);
             }
         };
     }
@@ -876,7 +894,7 @@ mod test {
     #[test]
     fn visit_interpolated_string() {
         let mut counter = NodeCounter::new();
-        let statement = LocalAssignStatement::from_variable("value")
+        let statement = VariableAssignment::from_variable("value")
             .with_value(InterpolatedStringExpression::empty().with_segment(Expression::from(true)));
 
         let mut block = statement.into();

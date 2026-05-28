@@ -1,18 +1,23 @@
 //! A module that contains the main [LuaGenerator](trait.LuaGenerator.html) trait
 //! and its implementations.
 
-use std::convert::TryInto;
+use std::{cell::LazyCell, convert::TryInto};
 
 use bstr::ByteSlice;
 
 use crate::nodes::{
     Expression, FieldExpression, FunctionCall, IndexExpression, NumberExpression, Prefix,
-    Statement, StringSegment, TableExpression, Variable,
+    Statement, StringSegment, TableExpression, TypedIdentifier, Variable,
 };
 
 const QUOTED_STRING_MAX_LENGTH: usize = 60;
 const LONG_STRING_MIN_LENGTH: usize = 20;
 const FORCE_LONG_STRING_NEW_LINE_THRESHOLD: usize = 6;
+
+thread_local! {
+    pub(crate) static NIL_EXPRESSION: LazyCell<Expression> = LazyCell::new(Expression::nil);
+    pub(crate) static THROWAWAY_IDENTIFIER: LazyCell<TypedIdentifier> = LazyCell::new(|| TypedIdentifier::new("____darklua_throwaway_var"));
+}
 
 #[inline]
 pub fn should_break_with_space(ending_character: char, next_character: char) -> bool {
@@ -118,7 +123,8 @@ pub fn starts_with_table(mut expression: &Expression) -> Option<&TableExpression
             | Expression::InterpolatedString(_)
             | Expression::True(_)
             | Expression::Unary(_)
-            | Expression::VariableArguments(_) => break None,
+            | Expression::VariableArguments(_)
+            | Expression::TypeInstantiation(_) => break None,
             Expression::TypeCast(type_cast) => {
                 expression = type_cast.get_expression();
             }
@@ -156,7 +162,8 @@ fn expression_ends_with_prefix(expression: &Expression) -> bool {
         | Expression::Parenthese(_)
         | Expression::Identifier(_)
         | Expression::Field(_)
-        | Expression::Index(_) => true,
+        | Expression::Index(_)
+        | Expression::TypeInstantiation(_) => true,
         Expression::Unary(unary) => expression_ends_with_prefix(unary.get_expression()),
         Expression::If(if_expression) => {
             expression_ends_with_prefix(if_expression.get_else_result())
@@ -175,12 +182,24 @@ fn expression_ends_with_prefix(expression: &Expression) -> bool {
 }
 
 fn prefix_starts_with_parenthese(prefix: &Prefix) -> bool {
-    match prefix {
-        Prefix::Parenthese(_) => true,
-        Prefix::Call(call) => call_starts_with_parenthese(call),
-        Prefix::Field(field) => field_starts_with_parenthese(field),
-        Prefix::Index(index) => index_starts_with_parenthese(index),
-        Prefix::Identifier(_) => false,
+    let mut current = prefix;
+    loop {
+        match current {
+            Prefix::Parenthese(_) => break true,
+            Prefix::Identifier(_) => break false,
+            Prefix::Call(call) => {
+                current = call.get_prefix();
+            }
+            Prefix::Field(field) => {
+                current = field.get_prefix();
+            }
+            Prefix::Index(index) => {
+                current = index.get_prefix();
+            }
+            Prefix::TypeInstantiation(type_instantiation) => {
+                current = type_instantiation.get_prefix();
+            }
+        }
     }
 }
 

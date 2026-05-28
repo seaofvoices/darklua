@@ -16,7 +16,7 @@ impl NodeProcessor for RemoveAttributeProcessor {
         function.mutate_attributes().clear_attributes();
     }
 
-    fn process_local_function_statement(&mut self, function: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, function: &mut FunctionAssignment) {
         function.mutate_attributes().clear_attributes();
     }
 
@@ -60,7 +60,7 @@ impl<'a> NodeProcessor for FilterAttributeProcessor<'a> {
             .filter_mut_attributes(|attribute| !self.should_remove(attribute));
     }
 
-    fn process_local_function_statement(&mut self, function: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, function: &mut FunctionAssignment) {
         function
             .mutate_attributes()
             .filter_mut_attributes(|attribute| !self.should_remove(attribute));

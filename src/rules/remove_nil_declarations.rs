@@ -1,4 +1,4 @@
-use crate::nodes::{Block, Expression, LocalAssignStatement};
+use crate::nodes::{AssignmentKind, Block, Expression, VariableAssignment};
 use crate::process::{DefaultVisitor, Evaluator, NodeProcessor, NodeVisitor};
 use crate::rules::{
     Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProperties,
@@ -12,7 +12,11 @@ struct Processor {
 }
 
 impl NodeProcessor for Processor {
-    fn process_local_assign_statement(&mut self, assignment: &mut LocalAssignStatement) {
+    fn process_local_assign_statement(&mut self, assignment: &mut VariableAssignment) {
+        if let AssignmentKind::Const = assignment.get_assignment_kind() {
+            return;
+        }
+
         {
             let mut pop_extra_value_at = Vec::new();
             for (index, extra_value) in assignment

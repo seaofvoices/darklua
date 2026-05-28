@@ -50,9 +50,9 @@ pub enum Statement {
     /// An if statement (e.g., `if condition then ... elseif ... else ... end`)
     If(IfStatement),
     /// A local variable assignment (e.g., `local a, b = 1, 2`)
-    LocalAssign(LocalAssignStatement),
+    LocalAssign(VariableAssignment),
     /// A local function declaration (e.g., `local function name() ... end`)
-    LocalFunction(Box<LocalFunctionStatement>),
+    LocalFunction(Box<FunctionAssignment>),
     /// A numeric for loop (e.g., `for i = 1, 10, 2 do ... end`)
     NumericFor(Box<NumericForStatement>),
     /// A repeat loop (e.g., `repeat ... until condition`)
@@ -150,14 +150,14 @@ impl From<IfStatement> for Statement {
     }
 }
 
-impl From<LocalAssignStatement> for Statement {
-    fn from(assign: LocalAssignStatement) -> Statement {
+impl From<VariableAssignment> for Statement {
+    fn from(assign: VariableAssignment) -> Statement {
         Statement::LocalAssign(assign)
     }
 }
 
-impl From<LocalFunctionStatement> for Statement {
-    fn from(function: LocalFunctionStatement) -> Statement {
+impl From<FunctionAssignment> for Statement {
+    fn from(function: FunctionAssignment) -> Statement {
         Statement::LocalFunction(Box::new(function))
     }
 }

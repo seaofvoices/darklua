@@ -31,11 +31,7 @@ impl Evaluator {
             Expression::True(_) => LuaValue::True,
             Expression::Binary(binary) => self.evaluate_binary(binary),
             Expression::Unary(unary) => self.evaluate_unary(unary),
-            Expression::Parenthese(parenthese) => {
-                // when the evaluator will be able to manage tuples, keep only the first element
-                // of the tuple here (or coerce the tuple to `nil` if it is empty)
-                self.evaluate(parenthese.inner_expression())
-            }
+            Expression::Parenthese(parenthese) => self.evaluate_parenthese_expression(parenthese),
             Expression::If(if_expression) => self.evaluate_if(if_expression),
             Expression::InterpolatedString(interpolated_string) => {
                 let mut result = Vec::new();
@@ -69,6 +65,9 @@ impl Evaluator {
                 LuaValue::String(result)
             }
             Expression::TypeCast(type_cast) => self.evaluate(type_cast.get_expression()),
+            Expression::TypeInstantiation(type_instantiation) => {
+                self.evaluate_type_instantiation(type_instantiation)
+            }
             Expression::Call(_)
             | Expression::Field(_)
             | Expression::Identifier(_)
@@ -77,18 +76,42 @@ impl Evaluator {
         }
     }
 
-    #[allow(clippy::only_used_in_recursion)]
+    fn evaluate_type_instantiation(
+        &self,
+        type_instantiation: &TypeInstantiationExpression,
+    ) -> LuaValue {
+        // when the evaluator will be able to manage tuples, keep only the first element
+        // of the tuple here (or coerce the tuple to `nil` if it is empty)
+        self.evaluate_prefix(type_instantiation.get_prefix())
+    }
+
+    fn evaluate_parenthese_expression(&self, parenthese: &ParentheseExpression) -> LuaValue {
+        // when the evaluator will be able to manage tuples, keep only the first element
+        // of the tuple here (or coerce the tuple to `nil` if it is empty)
+        self.evaluate(parenthese.inner_expression())
+    }
+
+    fn evaluate_prefix(&self, prefix: &Prefix) -> LuaValue {
+        match prefix {
+            Prefix::Call(_) | Prefix::Field(_) | Prefix::Identifier(_) | Prefix::Index(_) => {
+                LuaValue::Unknown
+            }
+            Prefix::Parenthese(parenthese) => self.evaluate_parenthese_expression(parenthese),
+            Prefix::TypeInstantiation(type_instantiation) => {
+                self.evaluate_type_instantiation(type_instantiation)
+            }
+        }
+    }
+
     pub fn can_return_multiple_values(&self, expression: &Expression) -> bool {
         match expression {
-            Expression::Call(_)
-            | Expression::Field(_)
-            | Expression::Index(_)
-            | Expression::Unary(_)
-            | Expression::VariableArguments(_) => true,
+            Expression::Call(_) | Expression::Unary(_) | Expression::VariableArguments(_) => true,
             Expression::Binary(binary) => {
                 !matches!(binary.operator(), BinaryOperator::And | BinaryOperator::Or)
             }
             Expression::False(_)
+            | Expression::Field(_)
+            | Expression::Index(_)
             | Expression::Function(_)
             | Expression::Identifier(_)
             | Expression::If(_)
@@ -98,10 +121,9 @@ impl Evaluator {
             | Expression::String(_)
             | Expression::InterpolatedString(_)
             | Expression::Table(_)
-            | Expression::True(_) => false,
-            Expression::TypeCast(type_cast) => {
-                self.can_return_multiple_values(type_cast.get_expression())
-            }
+            | Expression::True(_)
+            | Expression::TypeCast(_)
+            | Expression::TypeInstantiation(_) => false,
         }
     }
 
@@ -179,6 +201,9 @@ impl Evaluator {
                     }
                 }),
             Expression::TypeCast(type_cast) => self.has_side_effects(type_cast.get_expression()),
+            Expression::TypeInstantiation(type_instantiation) => {
+                self.type_instantiation_has_side_effects(type_instantiation)
+            }
         }
     }
 
@@ -265,7 +290,17 @@ impl Evaluator {
             Prefix::Parenthese(sub_expression) => {
                 self.has_side_effects(sub_expression.inner_expression())
             }
+            Prefix::TypeInstantiation(type_instantiation) => {
+                self.type_instantiation_has_side_effects(type_instantiation)
+            }
         }
+    }
+
+    fn type_instantiation_has_side_effects(
+        &self,
+        type_instantiation: &TypeInstantiationExpression,
+    ) -> bool {
+        self.prefix_has_side_effects(type_instantiation.get_prefix())
     }
 
     #[inline]

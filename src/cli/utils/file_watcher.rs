@@ -2,14 +2,14 @@ use std::{
     collections::HashSet,
     env,
     hash::Hash,
-    iter,
+    io, iter,
     path::{Path, PathBuf},
     sync::mpsc::{self, Receiver, Sender},
     time::{Duration, Instant},
 };
 
 use darklua_core::{Options, Resources, WorkerTree};
-use notify::{EventKind, RecursiveMode};
+use notify::{event::ModifyKind, EventKind, RecursiveMode};
 use notify_debouncer_full::{new_debouncer, DebounceEventResult, DebouncedEvent};
 
 use crate::cli::{error::CliError, process::Options as ProcessOptions, CommandResult};
@@ -297,9 +297,16 @@ impl FileWatcher {
                 EventKind::Create(_create_kind) => {
                     has_created = paths_iterator.next().is_some();
                 }
-                EventKind::Modify(_modify_kind) => {
-                    for path in paths_iterator {
-                        worker_tree.source_changed(path);
+                EventKind::Modify(modify_kind) => {
+                    if let ModifyKind::Name(_rename_mode) = modify_kind {
+                        for path in paths_iterator {
+                            worker_tree.remove_source(path);
+                        }
+                        has_created = true;
+                    } else {
+                        for path in paths_iterator {
+                            worker_tree.source_changed(path);
+                        }
                     }
                 }
                 EventKind::Remove(_remove_kind) => {
@@ -401,6 +408,7 @@ fn iter_all_links(location: PathBuf) -> impl Iterator<Item = PathBuf> {
                         dir_entries.push(location.to_path_buf());
                     };
                 }
+                Err(err) if err.kind() == io::ErrorKind::NotFound => {}
                 Err(err) => {
                     log::warn!(
                         "unable to read metadata from file `{}`: {}",

@@ -1,13 +1,16 @@
-use crate::nodes::{Arguments, Expression, Identifier, Prefix, Token};
+use crate::nodes::{
+    Arguments, Expression, Identifier, Prefix, Token, Type, TypeInstantiationTokens,
+};
 
 /// Tokens associated with a function call.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FunctionCallTokens {
     pub colon: Option<Token>,
+    pub type_instantiation_tokens: Option<TypeInstantiationTokens>,
 }
 
 impl FunctionCallTokens {
-    super::impl_token_fns!(iter = [colon]);
+    super::impl_token_fns!(iter = [colon, type_instantiation_tokens]);
 }
 
 /// Represents a function call expression (e.g., `func()`, `obj:method()`, `a.b.c()`).
@@ -15,8 +18,18 @@ impl FunctionCallTokens {
 pub struct FunctionCall {
     prefix: Box<Prefix>,
     arguments: Arguments,
-    method: Option<Identifier>,
+    method: Option<Method>,
     tokens: Option<FunctionCallTokens>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Method {
+    name: Identifier,
+    types: Option<Vec<Type>>,
+}
+
+impl Method {
+    super::impl_token_fns!(target = [name]);
 }
 
 impl FunctionCall {
@@ -25,7 +38,7 @@ impl FunctionCall {
         Self {
             prefix: Box::new(prefix),
             arguments,
-            method,
+            method: method.map(|name| Method { name, types: None }),
             tokens: None,
         }
     }
@@ -81,9 +94,39 @@ impl FunctionCall {
     }
 
     /// Sets the method name for this function call (for method calls like `obj:method()`).
-    pub fn with_method<IntoString: Into<Identifier>>(mut self, method: IntoString) -> Self {
-        self.method.replace(method.into());
+    pub fn with_method(mut self, method: impl Into<Identifier>) -> Self {
+        self.set_method(method.into());
         self
+    }
+
+    /// Sets the method with a specific type instantiation.
+    pub fn with_type_instantiation_method(
+        mut self,
+        method: impl Into<Identifier>,
+        types: Vec<Type>,
+    ) -> Self {
+        self.set_type_instantiation_method(method.into(), types);
+        self
+    }
+
+    /// Sets the method with a specific type instantiation.
+    pub fn set_type_instantiation_method(
+        &mut self,
+        method: impl Into<Identifier>,
+        types: Vec<Type>,
+    ) {
+        self.method = Some(Method {
+            name: method.into(),
+            types: Some(types),
+        });
+    }
+
+    /// Removes the type instantiation from the method, if any, and returns true if it was present.
+    pub fn remove_type_instantiation_from_method(&mut self) -> bool {
+        self.method
+            .as_mut()
+            .and_then(|method| method.types.take())
+            .is_some()
     }
 
     /// Returns the arguments of this function call.
@@ -95,7 +138,22 @@ impl FunctionCall {
     /// Returns the method name, if this is a method call.
     #[inline]
     pub fn get_method(&self) -> Option<&Identifier> {
-        self.method.as_ref()
+        self.method.as_ref().map(|method| &method.name)
+    }
+
+    /// Returns an iterator over the type instantiations of the method.
+    pub fn get_method_type_instantiation(&self) -> impl Iterator<Item = &Type> {
+        self.method
+            .iter()
+            .flat_map(|method| method.types.iter().flatten())
+    }
+
+    /// Returns whether this call has a method with a type instantiation.
+    pub fn has_method_type_instantiation(&self) -> bool {
+        self.method
+            .as_ref()
+            .map(|method| method.types.is_some())
+            .unwrap_or_default()
     }
 
     /// Returns if this call uses a method.
@@ -117,7 +175,7 @@ impl FunctionCall {
         if let Some(tokens) = self.tokens.as_mut() {
             tokens.colon = None;
         }
-        method
+        method.map(|method| method.name)
     }
 
     /// Sets the arguments for this function call.
@@ -129,7 +187,14 @@ impl FunctionCall {
     /// Sets the method name for this function call.
     #[inline]
     pub fn set_method(&mut self, method: Identifier) {
-        self.method.replace(method);
+        if let Some(current_method) = &mut self.method {
+            current_method.name = method;
+        } else {
+            self.method = Some(Method {
+                name: method,
+                types: None,
+            });
+        }
     }
 
     /// Returns a mutable reference to the arguments.

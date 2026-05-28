@@ -500,32 +500,58 @@ impl LuaGenerator for DenseLuaGenerator {
         }
     }
 
-    fn write_local_assign(&mut self, assign: &nodes::LocalAssignStatement) {
-        self.push_str("local");
+    fn write_local_assign(&mut self, assign: &nodes::VariableAssignment) {
+        self.push_str(assign.get_assignment_kind().as_keyword());
 
-        let variables = assign.get_variables();
-        let last_variable_index = variables.len().saturating_sub(1);
+        let variables_length = assign.variables_len();
+        let last_variable_index = variables_length.saturating_sub(1);
 
-        variables.iter().enumerate().for_each(|(index, variable)| {
+        for (index, variable) in assign.iter_variables().enumerate() {
             self.write_typed_identifier(variable);
 
             if index != last_variable_index {
                 self.push_char(',');
             }
-        });
+        }
 
-        if assign.has_values() {
+        // const assignments must have at least one variable per value, so it may need
+        // additional variables
+        for i in 0..assign.required_new_variables() {
+            if i != 0 || variables_length > 0 {
+                self.push_char(',');
+            }
+            utils::THROWAWAY_IDENTIFIER.with(|identifier| {
+                self.write_typed_identifier(identifier);
+            });
+        }
+
+        // const assignments must have a value for each variable, so it may need additional
+        // nil values
+        let required_nil_values = assign.required_nil_values();
+
+        let has_values = assign.has_values();
+
+        if has_values || required_nil_values > 0 {
             self.push_char_and_break_if('=', utils::break_equal);
 
-            let last_value_index = assign.values_len() - 1;
+            let last_value_index = assign.values_len().saturating_sub(1);
 
-            assign.iter_values().enumerate().for_each(|(index, value)| {
+            for (index, value) in assign.iter_values().enumerate() {
                 self.write_expression(value);
 
                 if index != last_value_index {
                     self.push_char(',');
                 }
-            });
+            }
+
+            for i in 0..required_nil_values {
+                if i != 0 || has_values {
+                    self.push_char(',');
+                }
+                utils::NIL_EXPRESSION.with(|nil| {
+                    self.write_expression(nil);
+                })
+            }
         };
     }
 
@@ -537,9 +563,12 @@ impl LuaGenerator for DenseLuaGenerator {
         self.write_expression(assign.get_value());
     }
 
-    fn write_local_function(&mut self, function: &nodes::LocalFunctionStatement) {
+    fn write_local_function(&mut self, function: &nodes::FunctionAssignment) {
         self.write_attributes(function.attributes());
-        self.push_str("local function");
+        self.push_str(function.get_assignment_kind().as_keyword());
+        self.push_space();
+        self.push_str("function");
+        self.push_space();
         self.push_str(function.get_name());
 
         if let Some(generics) = function.get_generic_parameters() {
@@ -1052,6 +1081,29 @@ impl LuaGenerator for DenseLuaGenerator {
 
         self.push_str("::");
         self.write_type(type_cast.get_type());
+    }
+
+    fn write_type_instantiation(
+        &mut self,
+        type_instantiation: &nodes::TypeInstantiationExpression,
+    ) {
+        self.write_prefix(type_instantiation.get_prefix());
+
+        self.push_new_line_if_needed(2);
+        self.raw_push_char('<');
+        self.raw_push_char('<');
+
+        let last_index = type_instantiation.types_len().saturating_sub(1);
+        for (index, r#type) in type_instantiation.iter_types().enumerate() {
+            self.write_type(r#type);
+            if index != last_index {
+                self.push_char(',');
+            }
+        }
+
+        self.push_new_line_if_needed(2);
+        self.raw_push_char('>');
+        self.raw_push_char('>');
     }
 
     fn write_type_name(&mut self, type_name: &nodes::TypeName) {

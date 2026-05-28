@@ -11,6 +11,7 @@ mod string;
 pub(crate) mod string_utils;
 mod table;
 mod type_cast;
+mod type_instantiation;
 mod unary;
 
 pub use binary::*;
@@ -26,6 +27,7 @@ pub use string::*;
 pub use string_utils::StringError;
 pub use table::*;
 pub use type_cast::*;
+pub use type_instantiation::*;
 pub use unary::*;
 
 use crate::nodes::{FunctionCall, Identifier, Token, Variable};
@@ -73,6 +75,8 @@ pub enum Expression {
     VariableArguments(Option<Token>),
     /// A type cast expression (e.g., `value :: Type`)
     TypeCast(TypeCastExpression),
+    /// A type instantiation expression (e.g., `var<<Type1, Type2>>`)
+    TypeInstantiation(Box<TypeInstantiationExpression>),
 }
 
 impl Expression {
@@ -121,6 +125,9 @@ impl Expression {
                 Self::Table(table) => break table.mutate_last_token(),
                 Self::Parenthese(parenthese) => break parenthese.mutate_last_token(),
                 Self::TypeCast(type_cast) => break type_cast.mutate_last_token(),
+                Self::TypeInstantiation(type_instantiation) => {
+                    break type_instantiation.mutate_last_token()
+                }
                 Self::Unary(unary) => {
                     current = unary.mutate_expression();
                 }
@@ -344,6 +351,9 @@ impl From<Prefix> for Expression {
             Prefix::Identifier(name) => Self::Identifier(name),
             Prefix::Index(index) => Self::Index(index),
             Prefix::Parenthese(expression) => (*expression).into(),
+            Prefix::TypeInstantiation(type_instantiation) => {
+                Self::TypeInstantiation(type_instantiation)
+            }
         }
     }
 }
@@ -381,6 +391,12 @@ impl From<UnaryExpression> for Expression {
 impl From<TypeCastExpression> for Expression {
     fn from(type_cast: TypeCastExpression) -> Self {
         Self::TypeCast(type_cast)
+    }
+}
+
+impl From<TypeInstantiationExpression> for Expression {
+    fn from(type_instantiation: TypeInstantiationExpression) -> Self {
+        Self::TypeInstantiation(Box::new(type_instantiation))
     }
 }
 

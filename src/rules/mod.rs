@@ -18,6 +18,7 @@ mod filter_early_return;
 mod global_function_to_assign;
 mod group_local;
 mod inject_value;
+mod make_assignment_local;
 mod method_def;
 mod no_local_function;
 mod remove_assertions;
@@ -56,6 +57,7 @@ pub use filter_early_return::*;
 pub use global_function_to_assign::*;
 pub use group_local::*;
 pub use inject_value::*;
+pub use make_assignment_local::*;
 pub use method_def::*;
 pub use no_local_function::*;
 pub use remove_assertions::*;
@@ -363,6 +365,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         FILTER_AFTER_EARLY_RETURN_RULE_NAME,
         GROUP_LOCAL_ASSIGNMENT_RULE_NAME,
         INJECT_GLOBAL_VALUE_RULE_NAME,
+        MAKE_ASSIGNMENT_LOCAL_RULE_NAME,
         REMOVE_ASSERTIONS_RULE_NAME,
         REMOVE_ATTRIBUTE_RULE_NAME,
         REMOVE_COMMENTS_RULE_NAME,
@@ -404,6 +407,7 @@ impl FromStr for Box<dyn Rule> {
             FILTER_AFTER_EARLY_RETURN_RULE_NAME => Box::<FilterAfterEarlyReturn>::default(),
             GROUP_LOCAL_ASSIGNMENT_RULE_NAME => Box::<GroupLocalAssignment>::default(),
             INJECT_GLOBAL_VALUE_RULE_NAME => Box::<InjectGlobalValue>::default(),
+            MAKE_ASSIGNMENT_LOCAL_RULE_NAME => Box::<MakeAssignmentLocal>::default(),
             REMOVE_ASSERTIONS_RULE_NAME => Box::<RemoveAssertions>::default(),
             REMOVE_ATTRIBUTE_RULE_NAME => Box::<RemoveAttribute>::default(),
             REMOVE_COMMENTS_RULE_NAME => Box::<RemoveComments>::default(),

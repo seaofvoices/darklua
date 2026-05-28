@@ -1,9 +1,10 @@
 use std::iter;
 
 use darklua_core::nodes::{
-    BinaryOperator, CompoundOperator, Identifier, TablePropertyModifier, UnaryOperator,
+    AssignmentKind, BinaryOperator, CompoundOperator, Identifier, TablePropertyModifier,
+    UnaryOperator,
 };
-use rand::{rng, Rng};
+use rand::{rng, RngExt};
 
 pub struct RandomAst {
     block_mean: f64,
@@ -163,6 +164,10 @@ impl RandomAst {
 
     pub fn return_length(&self) -> usize {
         normal_sample(self.return_length_mean, self.return_length_std_dev)
+    }
+
+    pub fn type_instantiation_types(&self) -> usize {
+        normal_sample(1.0, 1.0)
     }
 
     pub fn intersection_type_length(&self) -> usize {
@@ -337,6 +342,14 @@ impl RandomAst {
             Some(TablePropertyModifier::Read)
         } else {
             Some(TablePropertyModifier::Write)
+        }
+    }
+
+    pub(crate) fn assignment_kind(&self) -> AssignmentKind {
+        if rng().random_bool(0.65) {
+            AssignmentKind::Local
+        } else {
+            AssignmentKind::Const
         }
     }
 }

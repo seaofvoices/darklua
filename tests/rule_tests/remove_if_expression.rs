@@ -20,7 +20,7 @@ test_rule!(
     if_expression_with_varargs("local function f(...: string) return if condition(...) then ... else transform(...) end")
         => "local function f(...: string) return (condition(...) and {(...)} or {(transform(...))})[1] end",
     if_expression_with_varargs_elseif("local function f(...: string) return if condition(...) then ... elseif condition2(...) then ... else transform(...) end")
-        => "local function f(...: string) return (condition(...) and {(...)} or { ((condition2(...) and {(...)} or { (transform(...)) })[1]) }) [1] end"
+        => "local function f(...: string) return (condition(...) and {(...)} or { (condition2(...) and {(...)} or { (transform(...)) })[1] }) [1] end"
 );
 
 #[test]

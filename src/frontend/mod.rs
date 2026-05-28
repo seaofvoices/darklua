@@ -68,6 +68,11 @@ pub fn convert_data(value: impl Serialize) -> Result<String, DarkluaError> {
 pub fn process(resources: &Resources, options: Options) -> DarkluaResult<WorkerTree> {
     let mut worker_tree = WorkerTree::default();
 
+    // take a snapshot of the output structure in order to know what folders to preserve when cleaning up
+    if let Some(output) = options.output().filter(|output| *output != options.input()) {
+        worker_tree.snapshot_output_structure(resources, output)?;
+    }
+
     worker_tree.collect_work(resources, &options)?;
     worker_tree.process(resources, options)?;
 

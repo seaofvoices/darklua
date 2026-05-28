@@ -146,7 +146,7 @@ impl Scope for RenameTypeDeclarationProcessor {
         }
     }
 
-    fn insert_local_function(&mut self, _: &mut LocalFunctionStatement) {}
+    fn insert_local_function(&mut self, _: &mut FunctionAssignment) {}
 }
 
 impl NodeProcessor for RenameTypeDeclarationProcessor {
