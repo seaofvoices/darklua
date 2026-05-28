@@ -1,48 +1,91 @@
-use std::str::FromStr;
-
-use serde::{Deserialize, Serialize};
-
 use crate::rules::{
-    require::{LuauPathLocator, LuauRequireMode, PathRequireMode, RequirePathLocator},
-    RuleProcessResult,
+    require::{
+        HybridPathLocator, LuauPathLocator, LuauRequireMode, PathRequireMode, RequirePathLocator,
+        RobloxPathLocator,
+    },
+    RequireMode, RequireModeLike, RobloxRequireMode, RuleProcessResult, SingularRequireMode,
 };
 use crate::{nodes::Block, rules::Context};
 
 use super::{path_require_mode, BundleOptions};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields, rename_all = "snake_case", tag = "name")]
-pub enum BundleRequireMode {
-    Path(PathRequireMode),
-    Luau(LuauRequireMode),
+pub trait BundleRequireMode {
+    fn process_block(
+        &self,
+        block: &mut Block,
+        context: &Context,
+        options: &BundleOptions,
+    ) -> RuleProcessResult;
 }
 
-impl From<PathRequireMode> for BundleRequireMode {
-    fn from(mode: PathRequireMode) -> Self {
-        Self::Path(mode)
+impl BundleRequireMode for PathRequireMode {
+    fn process_block(
+        &self,
+        block: &mut Block,
+        context: &Context,
+        options: &BundleOptions,
+    ) -> RuleProcessResult {
+        let mut require_mode = self.clone();
+        require_mode
+            .initialize(context)
+            .map_err(|err| err.to_string())?;
+
+        let locator = RequirePathLocator::new(
+            &require_mode,
+            context.project_location(),
+            context.resources(),
+        );
+
+        path_require_mode::process_block(block, context, options, locator)
     }
 }
 
-impl FromStr for BundleRequireMode {
-    type Err = String;
+impl BundleRequireMode for LuauRequireMode {
+    fn process_block(
+        &self,
+        block: &mut Block,
+        context: &Context,
+        options: &BundleOptions,
+    ) -> RuleProcessResult {
+        let mut require_mode = self.clone();
+        require_mode
+            .initialize(context)
+            .map_err(|err| err.to_string())?;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "path" => Self::Path(Default::default()),
-            "luau" => Self::Luau(Default::default()),
-            _ => return Err(format!("invalid require mode `{}`", s)),
-        })
+        let locator = LuauPathLocator::new(
+            &require_mode,
+            context.project_location(),
+            context.resources(),
+        );
+
+        path_require_mode::process_block(block, context, options, locator)
     }
 }
 
-impl Default for BundleRequireMode {
-    fn default() -> Self {
-        Self::Path(Default::default())
+impl BundleRequireMode for RobloxRequireMode {
+    fn process_block(
+        &self,
+        block: &mut Block,
+        context: &Context,
+        options: &BundleOptions,
+    ) -> RuleProcessResult {
+        let mut require_mode = self.clone();
+        require_mode
+            .initialize(context)
+            .map_err(|err| err.to_string())?;
+
+        let locator = RobloxPathLocator::new(
+            &require_mode,
+            context.project_location(),
+            context.resources(),
+        );
+
+        path_require_mode::process_block(block, context, options, locator)
     }
 }
 
-impl BundleRequireMode {
-    pub(crate) fn process_block(
+impl BundleRequireMode for SingularRequireMode {
+    fn process_block(
         &self,
         block: &mut Block,
         context: &Context,
@@ -50,30 +93,37 @@ impl BundleRequireMode {
     ) -> RuleProcessResult {
         match self {
             Self::Path(path_require_mode) => {
-                let mut require_mode = path_require_mode.clone();
-                require_mode
-                    .initialize(context)
-                    .map_err(|err| err.to_string())?;
-
-                let locator = RequirePathLocator::new(
-                    &require_mode,
-                    context.project_location(),
-                    context.resources(),
-                );
-
-                path_require_mode::process_block(block, context, options, locator)
+                path_require_mode.process_block(block, context, options)
             }
             Self::Luau(luau_require_mode) => {
-                let mut require_mode = luau_require_mode.clone();
-                require_mode
-                    .initialize(context)
-                    .map_err(|err| err.to_string())?;
+                luau_require_mode.process_block(block, context, options)
+            }
+            Self::Roblox(roblox_require_mode) => {
+                roblox_require_mode.process_block(block, context, options)
+            }
+        }
+    }
+}
 
-                let locator = LuauPathLocator::new(
-                    &require_mode,
-                    context.project_location(),
-                    context.resources(),
-                );
+impl BundleRequireMode for RequireMode {
+    fn process_block(
+        &self,
+        block: &mut Block,
+        context: &Context,
+        options: &BundleOptions,
+    ) -> RuleProcessResult {
+        match self {
+            RequireMode::Single(singular_require_mode) => {
+                singular_require_mode.process_block(block, context, options)
+            }
+            RequireMode::Hybrid(singular_require_modes) => {
+                let mut modes = singular_require_modes.clone();
+                for mode in modes.iter_mut() {
+                    mode.initialize(context).map_err(|err| err.to_string())?;
+                }
+
+                let locator =
+                    HybridPathLocator::new(&modes, context.project_location(), context.resources());
 
                 path_require_mode::process_block(block, context, options, locator)
             }
