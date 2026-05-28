@@ -11,8 +11,8 @@ use serde::Serialize;
 
 use crate::frontend::DarkluaResult;
 use crate::nodes::{
-    Block, DoStatement, Expression, FunctionCall, LocalAssignStatement, Prefix, Statement,
-    StringExpression,
+    Block, DoStatement, Expression, FunctionCall, Prefix, Statement, StringExpression,
+    VariableAssignment,
 };
 use crate::process::{
     to_expression, DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor,
@@ -337,7 +337,7 @@ impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator> NodeProcessor
 fn convert_expression_to_statement(expression: Expression) -> Statement {
     DoStatement::new(
         Block::default()
-            .with_statement(LocalAssignStatement::from_variable("_").with_value(expression)),
+            .with_statement(VariableAssignment::from_variable("_").with_value(expression)),
     )
     .into()
 }

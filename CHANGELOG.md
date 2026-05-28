@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+* improve file watching to handle rename events and remove empty folders after processing if they weren't present before the initial run ([#351](https://github.com/seaofvoices/darklua/pull/351))
+* add a new parameter for the `rename_variables` rule so that globals can be detected automatically and then avoided in the renaming pass ([#348](https://github.com/seaofvoices/darklua/pull/348))
+* add support for `const` declaration of variables and functions (e.g. `const var = true` or `const function test() end`) and add rule (`make_assignment_local`) to convert those assignments to `local` assignments ([#346](https://github.com/seaofvoices/darklua/pull/346))
+* add support for type instantiation prefixes and methods (e.g. `func<<string>>()`) ([#345](https://github.com/seaofvoices/darklua/pull/345))
+
 ## 0.18.0
 
 * add `apply_to_files` and `skip_files` parameters to control for which files rules are applied ([#341](https://github.com/seaofvoices/darklua/pull/341))

@@ -1,4 +1,4 @@
-use crate::nodes::{Expression, Identifier, LocalFunctionStatement, TypeField};
+use crate::nodes::{Expression, FunctionAssignment, Identifier, TypeField};
 use crate::process::utils::{identifier_permutator, CharPermutator};
 use crate::process::{utils::KEYWORDS, NodeProcessor, Scope};
 
@@ -148,7 +148,7 @@ impl Scope for RenameProcessor {
         self.replace_identifier(identifier);
     }
 
-    fn insert_local_function(&mut self, function: &mut LocalFunctionStatement) {
+    fn insert_local_function(&mut self, function: &mut FunctionAssignment) {
         if self.include_functions {
             self.replace_identifier(function.mutate_identifier().mutate_name());
         } else {
@@ -162,14 +162,17 @@ impl NodeProcessor for RenameProcessor {
     fn process_variable_expression(&mut self, variable: &mut Identifier) {
         if let Some(obfuscated_name) = self.get_obfuscated_name(variable.get_name()) {
             variable.set_name(obfuscated_name);
+        } else {
+            self.avoid_identifier.insert(variable.get_name().clone());
         }
     }
 
     fn process_type_field(&mut self, type_field: &mut TypeField) {
-        if let Some(obfuscated_name) =
-            self.get_obfuscated_name(type_field.get_namespace().get_name())
-        {
+        let namespace = type_field.get_namespace().get_name();
+        if let Some(obfuscated_name) = self.get_obfuscated_name(namespace) {
             type_field.mutate_namespace().set_name(obfuscated_name);
+        } else {
+            self.avoid_identifier.insert(namespace.clone());
         }
     }
 }

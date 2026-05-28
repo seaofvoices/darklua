@@ -4,6 +4,8 @@ mod require_mode;
 
 use std::path::Path;
 
+use wax::Program;
+
 use crate::nodes::Block;
 use crate::rules::{
     Context, RequireMode, Rule, RuleConfiguration, RuleConfigurationError, RuleMetadata,
@@ -13,7 +15,6 @@ use crate::Parser;
 
 pub(crate) use rename_type_declaration::RenameTypeDeclarationProcessor;
 pub use require_mode::BundleRequireMode;
-use wax::Pattern;
 
 pub const BUNDLER_RULE_NAME: &str = "bundler";
 

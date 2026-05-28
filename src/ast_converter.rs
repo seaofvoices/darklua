@@ -856,7 +856,29 @@ impl<'a> AstConverter<'a> {
 
                     self.statements.push(
                         builder
-                            .into_local_function_statement(name, local_token)
+                            .into_function_assignment(name, AssignmentKind::Local, local_token)
+                            .into(),
+                    );
+                }
+                ConvertWork::MakeConstFunctionStatement { statement } => {
+                    let mut builder = self.convert_function_body_attributes(
+                        statement.body(),
+                        self.convert_token(statement.function_token())?,
+                    )?;
+
+                    builder.set_attributes(self.convert_attributes(statement.attributes())?);
+
+                    let mut name = Identifier::new(statement.name().token().to_string());
+                    let mut const_token = None;
+
+                    if self.hold_token_data {
+                        name.set_token(self.convert_token(statement.name())?);
+                        const_token = Some(self.convert_token(statement.const_token())?);
+                    }
+
+                    self.statements.push(
+                        builder
+                            .into_function_assignment(name, AssignmentKind::Const, const_token)
                             .into(),
                     );
                 }
@@ -900,14 +922,14 @@ impl<'a> AstConverter<'a> {
                         })
                         .collect::<Result<Vec<_>, _>>()?;
 
-                    let mut local_assign = LocalAssignStatement::new(
+                    let mut local_assign = VariableAssignment::new(
                         variables,
                         self.pop_expressions(statement.expressions().len())?,
                     );
 
                     if self.hold_token_data {
-                        local_assign.set_tokens(LocalAssignTokens {
-                            local: self.convert_token(statement.local_token())?,
+                        local_assign.set_tokens(VariableAssignmentTokens {
+                            keyword: self.convert_token(statement.local_token())?,
                             equal: statement
                                 .equal_token()
                                 .map(|token| self.convert_token(token))
@@ -919,6 +941,37 @@ impl<'a> AstConverter<'a> {
                         })
                     }
                     self.statements.push(local_assign.into());
+                }
+                ConvertWork::MakeConstAssignStatement { statement } => {
+                    let variables = statement
+                        .names()
+                        .iter()
+                        .zip(statement.type_specifiers())
+                        .map(|(token_ref, type_specifier)| {
+                            self.convert_typed_identifier(token_ref, type_specifier)
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+
+                    let mut assignment = VariableAssignment::new(
+                        variables,
+                        self.pop_expressions(statement.expressions().len())?,
+                    );
+                    assignment.set_assignment_kind(AssignmentKind::Const);
+
+                    if self.hold_token_data {
+                        assignment.set_tokens(VariableAssignmentTokens {
+                            keyword: self.convert_token(statement.const_token())?,
+                            equal: statement
+                                .equal_token()
+                                .map(|token| self.convert_token(token))
+                                .transpose()?,
+                            variable_commas: self
+                                .extract_tokens_from_punctuation(statement.names())?,
+                            value_commas: self
+                                .extract_tokens_from_punctuation(statement.expressions())?,
+                        })
+                    }
+                    self.statements.push(assignment.into());
                 }
                 ConvertWork::MakeArgumentsFromExpressions {
                     arguments,
@@ -965,7 +1018,7 @@ impl<'a> AstConverter<'a> {
                         Prefix::Identifier(name) => Variable::Identifier(name),
                         Prefix::Field(field) => Variable::Field(field),
                         Prefix::Index(index) => Variable::Index(index),
-                        Prefix::Call(_) | Prefix::Parenthese(_) => {
+                        Prefix::Call(_) | Prefix::Parenthese(_) | Prefix::TypeInstantiation(_) => {
                             return Err(ConvertError::Variable {
                                 variable: variable.to_string(),
                             })
@@ -1578,12 +1631,30 @@ impl<'a> AstConverter<'a> {
                     self.push_work(expression);
                 }
             }
+            ast::Stmt::ConstAssignment(const_assignment) => {
+                self.work_stack.push(ConvertWork::MakeConstAssignStatement {
+                    statement: const_assignment,
+                });
+                for type_specifier in const_assignment.type_specifiers().flatten() {
+                    self.push_work(type_specifier.type_info());
+                }
+                for expression in const_assignment.expressions().iter() {
+                    self.push_work(expression);
+                }
+            }
             ast::Stmt::LocalFunction(local_function) => {
                 self.work_stack
                     .push(ConvertWork::MakeLocalFunctionStatement {
                         statement: local_function,
                     });
                 self.push_function_body_work(local_function.body());
+            }
+            ast::Stmt::ConstFunction(const_function) => {
+                self.work_stack
+                    .push(ConvertWork::MakeConstFunctionStatement {
+                        statement: const_function,
+                    });
+                self.push_function_body_work(const_function.body());
             }
             ast::Stmt::TypeFunction(type_function) => {
                 self.work_stack
@@ -1812,19 +1883,38 @@ impl<'a> AstConverter<'a> {
                     ast::Call::AnonymousCall(_) => {
                         let mut call = FunctionCall::new(prefix, self.pop_arguments()?, None);
                         if self.hold_token_data {
-                            call.set_tokens(FunctionCallTokens { colon: None })
+                            call.set_tokens(FunctionCallTokens {
+                                colon: None,
+                                type_instantiation_tokens: None,
+                            })
                         }
                         prefix = call.into();
                     }
                     ast::Call::MethodCall(method_call) => {
-                        let mut call = FunctionCall::new(
-                            prefix,
-                            self.pop_arguments()?,
-                            Some(self.convert_token_to_identifier(method_call.name())?),
-                        );
+                        let mut call = FunctionCall::new(prefix, self.pop_arguments()?, None);
+
+                        let method_name = self.convert_token_to_identifier(method_call.name())?;
+
+                        if let Some(type_instantiation) = method_call.type_instantiation() {
+                            call.set_type_instantiation_method(
+                                method_name,
+                                self.pop_types(type_instantiation.types().len())?,
+                            );
+                        } else {
+                            call.set_method(method_name);
+                        }
+
                         if self.hold_token_data {
+                            let type_instantiation_tokens = method_call
+                                .type_instantiation()
+                                .map(|type_instantiation| {
+                                    self.convert_type_instantiation_tokens(type_instantiation)
+                                })
+                                .transpose()?;
+
                             call.set_tokens(FunctionCallTokens {
                                 colon: Some(self.convert_token(method_call.colon_token())?),
+                                type_instantiation_tokens,
                             });
                         }
                         prefix = call.into();
@@ -1865,6 +1955,18 @@ impl<'a> AstConverter<'a> {
                         });
                     }
                 },
+                ast::Suffix::TypeInstantiation(type_instantiation) => {
+                    let mut type_expression = TypeInstantiationExpression::new(
+                        prefix,
+                        self.pop_types(type_instantiation.types().len())?,
+                    );
+                    if self.hold_token_data {
+                        type_expression.set_tokens(
+                            self.convert_type_instantiation_tokens(type_instantiation)?,
+                        );
+                    }
+                    prefix = type_expression.into();
+                }
                 _ => {
                     return Err(ConvertError::Suffix {
                         suffix: suffix.to_string(),
@@ -1874,6 +1976,23 @@ impl<'a> AstConverter<'a> {
         }
 
         Ok(prefix)
+    }
+
+    fn convert_type_instantiation_tokens(
+        &mut self,
+        type_instantiation: &ast::luau::TypeInstantiation,
+    ) -> Result<TypeInstantiationTokens, ConvertError> {
+        let (first_opening_list, second_closing_list) =
+            self.extract_contained_span_tokens(type_instantiation.outer_arrows())?;
+        let (second_opening_list, first_closing_list) =
+            self.extract_contained_span_tokens(type_instantiation.inner_arrows())?;
+        Ok(TypeInstantiationTokens {
+            first_opening_list,
+            second_opening_list,
+            first_closing_list,
+            second_closing_list,
+            commas: self.extract_tokens_from_punctuation(type_instantiation.types())?,
+        })
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
@@ -2277,21 +2396,20 @@ impl<'a> AstConverter<'a> {
 
                 self.push_work(inner.as_ref());
             }
-            TypeInfo::Tuple { types, parentheses } => {
-                if types.len() == 1 {
-                    self.work_stack
-                        .push(ConvertWork::MakeParentheseType { parentheses });
-                    self.push_work(
-                        types
-                            .iter()
-                            .next()
-                            .expect("types should contain exactly one type at this point"),
-                    );
-                } else {
-                    return Err(ConvertError::TypeInfo {
-                        type_info: type_info.to_string(),
-                    });
-                }
+            TypeInfo::Tuple { types, parentheses } if types.len() == 1 => {
+                self.work_stack
+                    .push(ConvertWork::MakeParentheseType { parentheses });
+                self.push_work(
+                    types
+                        .iter()
+                        .next()
+                        .expect("types should contain exactly one type at this point"),
+                );
+            }
+            TypeInfo::Tuple { .. } => {
+                return Err(ConvertError::TypeInfo {
+                    type_info: type_info.to_string(),
+                });
             }
             TypeInfo::Variadic { type_info, .. } => {
                 self.push_work(type_info.as_ref());
@@ -2363,6 +2481,11 @@ impl<'a> AstConverter<'a> {
                     }
                     ast::Call::MethodCall(method_call) => {
                         self.push_work(method_call.args());
+                        if let Some(type_instantiation) = method_call.type_instantiation() {
+                            for type_info in type_instantiation.types() {
+                                self.push_work(type_info);
+                            }
+                        }
                     }
                     _ => {
                         return Err(ConvertError::Call {
@@ -2384,6 +2507,11 @@ impl<'a> AstConverter<'a> {
                         });
                     }
                 },
+                ast::Suffix::TypeInstantiation(type_instantiation) => {
+                    for type_info in type_instantiation.types() {
+                        self.push_work(type_info);
+                    }
+                }
                 _ => {
                     return Err(ConvertError::Suffix {
                         suffix: suffix.to_string(),
@@ -2948,8 +3076,14 @@ enum ConvertWork<'a> {
     MakeLocalFunctionStatement {
         statement: &'a ast::LocalFunction,
     },
+    MakeConstFunctionStatement {
+        statement: &'a ast::luau::ConstFunction,
+    },
     MakeLocalAssignStatement {
         statement: &'a ast::LocalAssignment,
+    },
+    MakeConstAssignStatement {
+        statement: &'a ast::luau::ConstAssignment,
     },
     MakeAssignStatement {
         statement: &'a ast::Assignment,

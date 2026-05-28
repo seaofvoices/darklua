@@ -54,11 +54,11 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
         }
     }
 
-    fn process_local_assign_statement(&mut self, assign: &mut LocalAssignStatement) {
+    fn process_local_assign_statement(&mut self, assign: &mut VariableAssignment) {
         assign.clear_whitespaces();
     }
 
-    fn process_local_function_statement(&mut self, function: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, function: &mut FunctionAssignment) {
         function.clear_whitespaces();
     }
 
@@ -128,7 +128,8 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
             | Expression::InterpolatedString(_)
             | Expression::Table(_)
             | Expression::Unary(_)
-            | Expression::TypeCast(_) => {}
+            | Expression::TypeCast(_)
+            | Expression::TypeInstantiation(_) => {}
         }
     }
 
@@ -185,6 +186,10 @@ impl NodeProcessor for RemoveWhitespacesProcessor {
 
     fn process_type_cast_expression(&mut self, type_cast: &mut TypeCastExpression) {
         type_cast.clear_whitespaces();
+    }
+
+    fn process_type_instantiation(&mut self, type_instantiation: &mut TypeInstantiationExpression) {
+        type_instantiation.clear_whitespaces();
     }
 
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}

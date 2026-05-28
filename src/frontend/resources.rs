@@ -106,6 +106,55 @@ impl Source {
         }
     }
 
+    pub(crate) fn walk_all(&self, location: &Path) -> impl Iterator<Item = ResourceContent> {
+        match self {
+            Self::FileSystem => Box::new(walk_all_file_system(location.to_path_buf()))
+                as Box<dyn Iterator<Item = ResourceContent>>,
+            Self::Memory(data) => {
+                let data = data.lock().unwrap();
+                let location = normalize_path(location);
+                let mut paths: Vec<_> = data.keys().map(normalize_path).collect();
+                paths.retain(|path| path.starts_with(&location));
+
+                Box::new(paths.into_iter().map(ResourceContent::File))
+            }
+        }
+    }
+
+    pub(crate) fn is_empty_directory(&self, location: &Path) -> ResourceResult<bool> {
+        if !self.is_directory(location)? {
+            return Ok(false);
+        }
+
+        match self {
+            Self::FileSystem => match location.read_dir() {
+                Ok(read_dir) => {
+                    for entry in read_dir {
+                        match entry {
+                            Ok(_) => return Ok(false),
+                            Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+                            Err(err) => {
+                                log::warn!(
+                                    "unable to read directory entry `{}`: {}",
+                                    location.display(),
+                                    err
+                                );
+                                return Ok(false);
+                            }
+                        }
+                    }
+
+                    Ok(true)
+                }
+                Err(err) => {
+                    log::warn!("unable to read directory `{}`: {}", location.display(), err);
+                    Ok(false)
+                }
+            },
+            Self::Memory(_data) => Ok(false),
+        }
+    }
+
     fn remove(&self, location: &Path) -> Result<(), ResourceError> {
         match self {
             Self::FileSystem => {
@@ -136,9 +185,9 @@ impl Source {
     }
 }
 
-fn walk_file_system(location: PathBuf) -> impl Iterator<Item = PathBuf> {
+fn walk_all_file_system(location: PathBuf) -> impl Iterator<Item = ResourceContent> {
     let mut unknown_paths = vec![location];
-    let mut file_paths = Vec::new();
+    let mut entries = Vec::new();
     let mut dir_entries = Vec::new();
 
     iter::from_fn(move || loop {
@@ -146,8 +195,9 @@ fn walk_file_system(location: PathBuf) -> impl Iterator<Item = PathBuf> {
             match location.metadata() {
                 Ok(metadata) => {
                     if metadata.is_file() {
-                        file_paths.push(location.to_path_buf());
+                        entries.push(ResourceContent::File(location.to_path_buf()));
                     } else if metadata.is_dir() {
+                        entries.push(ResourceContent::Directory(location.to_path_buf()));
                         dir_entries.push(location.to_path_buf());
                     } else if metadata.is_symlink() {
                         log::warn!("unexpected symlink `{}` not followed", location.display());
@@ -195,11 +245,18 @@ fn walk_file_system(location: PathBuf) -> impl Iterator<Item = PathBuf> {
                     );
                 }
             }
-        } else if let Some(path) = file_paths.pop() {
+        } else if let Some(path) = entries.pop() {
             break Some(path);
         } else {
             break None;
         }
+    })
+}
+
+fn walk_file_system(location: PathBuf) -> impl Iterator<Item = PathBuf> {
+    walk_all_file_system(location).filter_map(|content| match content {
+        ResourceContent::File(path) => Some(path),
+        ResourceContent::Directory(_) => None,
     })
 }
 
@@ -275,6 +332,23 @@ impl Resources {
     pub fn walk(&self, location: impl AsRef<Path>) -> impl Iterator<Item = PathBuf> {
         self.source.walk(location.as_ref())
     }
+
+    /// Walks through all files and directories in a directory.
+    pub(crate) fn walk_all(
+        &self,
+        location: impl AsRef<Path>,
+    ) -> impl Iterator<Item = ResourceContent> {
+        self.source.walk_all(location.as_ref())
+    }
+
+    pub(crate) fn is_empty_directory(&self, location: impl AsRef<Path>) -> ResourceResult<bool> {
+        self.source.is_empty_directory(location.as_ref())
+    }
+}
+
+pub(crate) enum ResourceContent {
+    File(PathBuf),
+    Directory(PathBuf),
 }
 
 /// An error that can occur during operations on [`Resource`].

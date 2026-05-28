@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use serde::{de, Deserialize, Deserializer, Serialize};
-use wax::{Glob, Pattern};
+use wax::{Glob, Program};
 
 use crate::DarkluaError;
 

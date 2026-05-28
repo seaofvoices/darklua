@@ -124,6 +124,9 @@ fn last_expression_token(expression: &Expression) -> Option<&Token> {
         | Expression::VariableArguments(token) => token.as_ref(),
         Expression::Unary(unary) => last_expression_token(unary.get_expression()),
         Expression::TypeCast(type_cast) => last_type_token(type_cast.get_type()),
+        Expression::TypeInstantiation(type_instantiation) => type_instantiation
+            .get_tokens()
+            .map(|tokens| &tokens.second_closing_list),
     }
 }
 
@@ -190,10 +193,10 @@ fn first_statement_token(statement: &Statement) -> Option<&Token> {
         Statement::GenericFor(generic_for) => generic_for.get_tokens().map(|tokens| &tokens.r#for),
         Statement::If(if_statement) => if_statement.get_tokens().map(|tokens| &tokens.r#if),
         Statement::LocalAssign(local_assign) => {
-            local_assign.get_tokens().map(|tokens| &tokens.local)
+            local_assign.get_tokens().map(|tokens| &tokens.keyword)
         }
         Statement::LocalFunction(local_function) => {
-            local_function.get_tokens().map(|tokens| &tokens.local)
+            local_function.get_tokens().map(|tokens| &tokens.keyword)
         }
         Statement::NumericFor(numeric_for) => numeric_for.get_tokens().map(|tokens| &tokens.r#for),
         Statement::Repeat(repeat) => repeat.get_tokens().map(|tokens| &tokens.repeat),
@@ -228,14 +231,28 @@ fn first_variable_token(variable: &Variable) -> Option<&Token> {
 }
 
 fn first_prefix_token(prefix: &Prefix) -> Option<&Token> {
-    match prefix {
-        Prefix::Call(function_call) => first_prefix_token(function_call.get_prefix()),
-        Prefix::Field(field_expression) => first_prefix_token(field_expression.get_prefix()),
-        Prefix::Identifier(identifier) => identifier.get_token(),
-        Prefix::Index(index_expression) => first_prefix_token(index_expression.get_prefix()),
-        Prefix::Parenthese(parenthese_expression) => parenthese_expression
-            .get_tokens()
-            .map(|tokens| &tokens.left_parenthese),
+    let mut current = prefix;
+    loop {
+        match current {
+            Prefix::Call(function_call) => {
+                current = function_call.get_prefix();
+            }
+            Prefix::Field(field_expression) => {
+                current = field_expression.get_prefix();
+            }
+            Prefix::Identifier(identifier) => break identifier.get_token(),
+            Prefix::Index(index_expression) => {
+                current = index_expression.get_prefix();
+            }
+            Prefix::Parenthese(parenthese_expression) => {
+                break parenthese_expression
+                    .get_tokens()
+                    .map(|tokens| &tokens.left_parenthese)
+            }
+            Prefix::TypeInstantiation(type_instantiation) => {
+                current = type_instantiation.get_prefix();
+            }
+        }
     }
 }
 

@@ -472,7 +472,7 @@ impl AstFuzzer {
                         6
                     };
                     let bound = if self.budget.has_types() && self.budget.has_expressions() {
-                        16
+                        18
                     } else {
                         15
                     };
@@ -592,20 +592,30 @@ impl AstFuzzer {
                             });
                             self.fuzz_multiple_nested_expression(depth, expression_count);
                         }
-                        _ => {
+                        17 => {
                             self.budget.try_take_expressions(1);
 
                             self.push_work(AstFuzzerWork::MakeTypeCastExpression);
                             self.fuzz_nested_expression(depth);
                             self.fuzz_type();
                         }
+                        _ => {
+                            let types_count = self
+                                .budget
+                                .try_take_types(self.random.type_instantiation_types());
+                            self.push_work(AstFuzzerWork::MakeTypeInstantiationExpression {
+                                types: types_count,
+                            });
+                            self.push_work(AstFuzzerWork::FuzzPrefix);
+                            self.fuzz_multiple_type(types_count);
+                        }
                     }
                 }
                 AstFuzzerWork::FuzzPrefix => {
                     let bound = if self.budget.can_have_expression(2) {
-                        4
+                        5
                     } else if self.budget.has_expressions() {
-                        3
+                        4
                     } else {
                         0
                     };
@@ -629,6 +639,17 @@ impl AstFuzzer {
                             self.push_work(AstFuzzerWork::MakeFunctionCall);
                             self.push_work(AstFuzzerWork::FuzzPrefix);
                             self.push_work(AstFuzzerWork::FuzzArguments);
+                        }
+                        4 => {
+                            self.budget.take_expression();
+                            let type_count = self
+                                .budget
+                                .try_take_types(self.random.type_instantiation_types());
+                            self.push_work(AstFuzzerWork::MakeTypeInstantiationPrefix {
+                                types: type_count,
+                            });
+                            self.push_work(AstFuzzerWork::FuzzPrefix);
+                            self.fuzz_multiple_type(type_count);
                         }
                         _ => {
                             self.budget.try_take_expressions(2);
@@ -1150,12 +1171,13 @@ impl AstFuzzer {
                     let block = self.pop_block();
                     let parameters = self.pop_typed_identifiers(parameters);
 
-                    let mut function = LocalFunctionStatement::new(
+                    let mut function = FunctionAssignment::new(
                         self.random.identifier(),
                         block,
                         parameters,
                         has_variadic_type || self.random.function_is_variadic(),
-                    );
+                    )
+                    .with_assignment_kind(self.random.assignment_kind());
 
                     for attribute_name in self.random.function_attributes() {
                         function
@@ -1257,13 +1279,29 @@ impl AstFuzzer {
                     );
                 }
                 AstFuzzerWork::MakeLocalAssignStatement {
-                    variables,
-                    expressions,
+                    variables: variable_count,
+                    expressions: value_count,
                 } => {
-                    let variables = self.pop_typed_identifiers(variables);
-                    let values = self.pop_expressions(expressions);
-                    self.statements
-                        .push(LocalAssignStatement::new(variables, values).into());
+                    let variables = self.pop_typed_identifiers(variable_count);
+                    let values = self.pop_expressions(value_count);
+                    let mut assignment = VariableAssignment::new(variables, values)
+                        .with_assignment_kind(self.random.assignment_kind());
+
+                    let extra_values = value_count.saturating_sub(variable_count);
+                    if extra_values > 0 {
+                        if let AssignmentKind::Const = assignment.get_assignment_kind() {
+                            for _ in 0..extra_values {
+                                assignment.push_variable(self.random.identifier());
+                            }
+                        }
+                    }
+
+                    let required_nil_values = assignment.required_nil_values();
+                    for _ in 0..required_nil_values {
+                        assignment.push_value(Expression::nil());
+                    }
+
+                    self.statements.push(assignment.into());
                 }
                 AstFuzzerWork::MakeGenericForStatement {
                     variables,
@@ -1390,6 +1428,12 @@ impl AstFuzzer {
                     self.expressions
                         .push(TypeCastExpression::new(expression, r#type).into());
                 }
+                AstFuzzerWork::MakeTypeInstantiationExpression { types } => {
+                    let prefix = self.pop_prefix();
+                    let types = self.pop_types(types);
+                    self.expressions
+                        .push(TypeInstantiationExpression::new(prefix, types).into());
+                }
                 AstFuzzerWork::MakeFieldPrefix => {
                     let prefix = self.pop_prefix();
                     self.prefixes
@@ -1409,6 +1453,12 @@ impl AstFuzzer {
                 AstFuzzerWork::MakeCallPrefix => {
                     let call = self.pop_call();
                     self.prefixes.push(call.into());
+                }
+                AstFuzzerWork::MakeTypeInstantiationPrefix { types } => {
+                    let prefix = self.pop_prefix();
+                    let types = self.pop_types(types);
+                    self.prefixes
+                        .push(TypeInstantiationExpression::new(prefix, types).into());
                 }
                 AstFuzzerWork::MakeIntersectionType {
                     has_leading_token,

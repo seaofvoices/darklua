@@ -1,9 +1,7 @@
-use crate::nodes::Attributes;
-
 use super::{
-    Block, FunctionExpression, FunctionName, FunctionReturnType, FunctionStatement,
-    FunctionVariadicType, GenericParameters, Identifier, LocalFunctionStatement,
-    LocalFunctionTokens, Token, TypeFunctionStatement, TypeFunctionStatementTokens,
+    AssignmentKind, Attributes, Block, FunctionAssignment, FunctionAssignmentTokens,
+    FunctionExpression, FunctionName, FunctionReturnType, FunctionStatement, FunctionVariadicType,
+    GenericParameters, Identifier, Token, TypeFunctionStatement, TypeFunctionStatementTokens,
     TypedIdentifier,
 };
 
@@ -127,14 +125,16 @@ impl FunctionBuilder {
         statement
     }
 
-    pub(crate) fn into_local_function_statement(
+    pub(crate) fn into_function_assignment(
         self,
         name: Identifier,
-        local_token: Option<Token>,
-    ) -> LocalFunctionStatement {
+        kind: AssignmentKind,
+        assignment_keyword: Option<Token>,
+    ) -> FunctionAssignment {
         let mut statement =
-            LocalFunctionStatement::new(name, self.block, self.parameters, self.is_variadic)
-                .with_attributes(self.attributes);
+            FunctionAssignment::new(name, self.block, self.parameters, self.is_variadic)
+                .with_attributes(self.attributes)
+                .with_assignment_kind(kind);
 
         if let Some(variadic_type) = self.variadic_type {
             statement.set_variadic_type(variadic_type);
@@ -149,20 +149,20 @@ impl FunctionBuilder {
         }
 
         if let (
-            Some(local),
+            Some(keyword),
             Some(function),
             Some(opening_parenthese),
             Some(closing_parenthese),
             Some(end),
         ) = (
-            local_token,
+            assignment_keyword,
             self.function,
             self.opening_parenthese,
             self.closing_parenthese,
             self.end,
         ) {
-            statement.set_tokens(LocalFunctionTokens {
-                local,
+            statement.set_tokens(FunctionAssignmentTokens {
+                keyword,
                 function_body: FunctionBodyTokens {
                     function,
                     opening_parenthese,

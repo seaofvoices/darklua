@@ -62,11 +62,11 @@ impl NodeProcessor for ShiftTokenLineProcessor {
         }
     }
 
-    fn process_local_assign_statement(&mut self, assign: &mut LocalAssignStatement) {
+    fn process_local_assign_statement(&mut self, assign: &mut VariableAssignment) {
         assign.shift_token_line(self.shift_amount);
     }
 
-    fn process_local_function_statement(&mut self, function: &mut LocalFunctionStatement) {
+    fn process_local_function_statement(&mut self, function: &mut FunctionAssignment) {
         function.shift_token_line(self.shift_amount);
     }
 
@@ -136,6 +136,7 @@ impl NodeProcessor for ShiftTokenLineProcessor {
             | Expression::InterpolatedString(_)
             | Expression::Table(_)
             | Expression::Unary(_)
+            | Expression::TypeInstantiation(_)
             | Expression::TypeCast(_) => {}
         }
     }
@@ -193,6 +194,10 @@ impl NodeProcessor for ShiftTokenLineProcessor {
 
     fn process_type_cast_expression(&mut self, type_cast: &mut TypeCastExpression) {
         type_cast.shift_token_line(self.shift_amount);
+    }
+
+    fn process_type_instantiation(&mut self, type_instantiation: &mut TypeInstantiationExpression) {
+        type_instantiation.shift_token_line(self.shift_amount);
     }
 
     fn process_prefix_expression(&mut self, _: &mut Prefix) {}

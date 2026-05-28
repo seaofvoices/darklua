@@ -4,8 +4,8 @@ use bstr::ByteSlice;
 
 use crate::nodes::{
     Block, Expression, FieldExpression, FunctionCall, Identifier, InterpolatedStringExpression,
-    InterpolationSegment, LocalAssignStatement, Prefix, StringExpression, TupleArguments,
-    TypedIdentifier,
+    InterpolationSegment, Prefix, StringExpression, TupleArguments, TypedIdentifier,
+    VariableAssignment,
 };
 use crate::process::{IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::{
@@ -194,7 +194,7 @@ impl FlawlessRule for RemoveInterpolatedString {
                 values.push(Identifier::new(DEFAULT_TOSTRING_IDENTIFIER).into());
             }
 
-            block.insert_statement(0, LocalAssignStatement::new(variables, values));
+            block.insert_statement(0, VariableAssignment::new(variables, values));
         }
     }
 }

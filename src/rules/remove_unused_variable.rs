@@ -184,7 +184,7 @@ impl NodeProcessor for RemoveUnusedVariableProcessor {
                                 }
                             } else {
                                 values.extend(assign.iter_values().skip(length).cloned());
-                                *statement = LocalAssignStatement::new(variables, values).into();
+                                *statement = VariableAssignment::new(variables, values).into();
                                 true
                             }
                         } else {
