@@ -82,6 +82,7 @@ pub(crate) use shift_token_line::*;
 pub use unused_if_branch::*;
 pub use unused_while::*;
 
+use crate::frontend::LoaderConfiguration;
 use crate::nodes::Block;
 use crate::utils::FilterPattern;
 use crate::{DarkluaError, Resources};
@@ -108,6 +109,8 @@ pub struct ContextBuilder<'a, 'resources, 'code> {
     original_code: &'code str,
     blocks: HashMap<PathBuf, &'a Block>,
     project_location: Option<PathBuf>,
+    loaders: Option<LoaderConfiguration>,
+    preferred_lua_extension: String,
 }
 
 impl<'a, 'resources, 'code> ContextBuilder<'a, 'resources, 'code> {
@@ -123,12 +126,25 @@ impl<'a, 'resources, 'code> ContextBuilder<'a, 'resources, 'code> {
             original_code,
             blocks: Default::default(),
             project_location: None,
+            loaders: None,
+            preferred_lua_extension: "lua".to_owned(),
         }
+    }
+
+    pub(crate) fn with_loaders(mut self, loaders: LoaderConfiguration) -> Self {
+        self.loaders = Some(loaders);
+        self
     }
 
     /// Sets the project location for this context.
     pub fn with_project_location(mut self, path: impl Into<PathBuf>) -> Self {
         self.project_location = Some(path.into());
+        self
+    }
+
+    /// Sets the preferred Lua extension. (should be `lua` or `luau`).
+    pub fn with_preferred_lua_extension(mut self, extension: impl Into<String>) -> Self {
+        self.preferred_lua_extension = extension.into();
         self
     }
 
@@ -141,6 +157,8 @@ impl<'a, 'resources, 'code> ContextBuilder<'a, 'resources, 'code> {
             blocks: self.blocks,
             project_location: self.project_location,
             dependencies: Default::default(),
+            loaders: self.loaders.unwrap_or_default(),
+            preferred_lua_extension: self.preferred_lua_extension,
         }
     }
 
@@ -162,6 +180,8 @@ pub struct Context<'a, 'resources, 'code> {
     blocks: HashMap<PathBuf, &'a Block>,
     project_location: Option<PathBuf>,
     dependencies: std::cell::RefCell<Vec<PathBuf>>,
+    loaders: LoaderConfiguration,
+    preferred_lua_extension: String,
 }
 
 impl Context<'_, '_, '_> {
@@ -190,6 +210,14 @@ impl Context<'_, '_, '_> {
     /// Consumes the context and returns an iterator over all file dependencies.
     pub fn into_dependencies(self) -> impl Iterator<Item = PathBuf> {
         self.dependencies.into_inner().into_iter()
+    }
+
+    pub(crate) fn loaders(&self) -> &LoaderConfiguration {
+        &self.loaders
+    }
+
+    pub(crate) fn preferred_lua_extension(&self) -> &str {
+        &self.preferred_lua_extension
     }
 
     fn resources(&self) -> &Resources {

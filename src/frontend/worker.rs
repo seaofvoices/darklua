@@ -1,7 +1,8 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::{
     configuration::Configuration,
+    content_loader::ContentType,
     resources::Resources,
     utils::maybe_plural,
     work_cache::WorkCache,
@@ -10,7 +11,7 @@ use super::{
 };
 
 use crate::{
-    nodes::Block,
+    nodes::{Block, ReturnStatement},
     rules::{bundle::Bundler, ContextBuilder, Rule, RuleConfiguration},
     utils::{normalize_path, Timer},
     GeneratorParameters,
@@ -123,28 +124,58 @@ impl<'a> Worker<'a> {
     pub(crate) fn advance_work(&mut self, work_item: &mut WorkItem) -> DarkluaResult<()> {
         match &work_item.status {
             WorkStatus::NotStarted => {
-                let source_display = work_item.source().display();
+                let loader = self
+                    .configuration()
+                    .loaders()
+                    .get_loader(work_item.source())
+                    .to_internal_loader();
 
-                let content = self.resources.get(work_item.source())?;
+                log::debug!(
+                    "beginning work with loader {:?} on `{}`",
+                    loader,
+                    work_item.source().display(),
+                );
+
+                if loader.outputs_lua() {
+                    work_item.adjust_output_extension(
+                        self.configuration().preferred_lua_extension(),
+                        &["lua", "luau"],
+                    );
+                }
 
                 let parser = self.configuration.build_parser();
 
-                log::debug!("beginning work on `{}`", source_display);
+                match loader.load(work_item.source(), self.resources, &parser)? {
+                    ContentType::None => {
+                        work_item.status = WorkStatus::done();
+                        Ok(())
+                    }
+                    ContentType::Copied(data) => {
+                        self.finalize_work_item(work_item, &data, None)?;
+                        Ok(())
+                    }
+                    ContentType::Expression(expression) => {
+                        let block =
+                            Block::default().with_last_statement(ReturnStatement::one(expression));
+                        let lua_code = self.generate_code(&block, "", work_item.source());
 
-                let parser_timer = Timer::now();
+                        self.finalize_work_item(work_item, lua_code.as_bytes(), None)?;
+                        Ok(())
+                    }
+                    ContentType::Block(block) => {
+                        let lua_code = self.generate_code(&block, "", work_item.source());
 
-                let mut block = parser.parse(&content).map_err(|parser_error| {
-                    DarkluaError::parser_error(work_item.source(), parser_error)
-                })?;
+                        self.finalize_work_item(work_item, lua_code.as_bytes(), None)?;
+                        Ok(())
+                    }
+                    ContentType::Parsed { mut block, source } => {
+                        self.bundle(work_item, &mut block, &source)?;
 
-                let parser_time = parser_timer.duration_label();
-                log::debug!("parsed `{}` in {}", source_display, parser_time);
+                        work_item.status = WorkProgress::new(source, block).into();
 
-                self.bundle(work_item, &mut block, &content)?;
-
-                work_item.status = WorkProgress::new(content, block).into();
-
-                self.apply_rules(work_item)
+                        self.apply_rules(work_item)
+                    }
+                }
             }
             WorkStatus::InProgress(_work_progress) => self.apply_rules(work_item),
             WorkStatus::Done(_) => Ok(()),
@@ -331,25 +362,45 @@ impl<'a> Worker<'a> {
                 .write(work_item.data.output(), &format!("{:#?}", progress.block()))?;
         }
 
+        let lua_code =
+            self.generate_code(progress.block(), &work_progress.content, &normalized_source);
+
+        self.finalize_work_item(work_item, lua_code.as_bytes(), Some(normalized_source))?;
+
+        Ok(())
+    }
+
+    fn generate_code(&self, block: &Block, source_content: &str, source: &Path) -> String {
         let generator_timer = Timer::now();
 
-        let lua_code = self
-            .configuration
-            .generate_lua(progress.block(), &work_progress.content);
+        let lua_code = self.configuration.generate_lua(block, source_content);
 
         let generator_time = generator_timer.duration_label();
         log::debug!(
             "generated code for `{}` in {}",
-            source_display,
+            source.display(),
             generator_time,
         );
 
-        self.resources.write(work_item.data.output(), &lua_code)?;
+        lua_code
+    }
 
-        self.cache
-            .link_source_to_output(normalized_source, work_item.data.output());
+    fn finalize_work_item(
+        &mut self,
+        work_item: &mut WorkItem,
+        content: &[u8],
+        source: Option<PathBuf>,
+    ) -> DarkluaResult<()> {
+        self.resources
+            .write_bytes(work_item.data.output(), content)?;
+
+        self.cache.link_source_to_output(
+            source.unwrap_or_else(|| normalize_path(work_item.data.source())),
+            work_item.data.output(),
+        );
 
         work_item.status = WorkStatus::done();
+
         Ok(())
     }
 
@@ -358,7 +409,9 @@ impl<'a> Worker<'a> {
         source: &Path,
         original_code: &'src str,
     ) -> ContextBuilder<'block, 'a, 'src> {
-        let builder = ContextBuilder::new(normalize_path(source), self.resources, original_code);
+        let builder = ContextBuilder::new(normalize_path(source), self.resources, original_code)
+            .with_preferred_lua_extension(self.configuration.preferred_lua_extension())
+            .with_loaders(self.configuration.loaders().clone());
         if let Some(project_location) = self.configuration.location() {
             builder.with_project_location(project_location)
         } else {

@@ -5,11 +5,19 @@ use wax::{Glob, Program};
 
 use crate::DarkluaError;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Clone, Serialize)]
 #[serde(into = "String")]
 pub(crate) struct FilterPattern {
     original: String,
     glob: Glob<'static>,
+}
+
+impl std::fmt::Debug for FilterPattern {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FilterPattern")
+            .field("pattern", &self.original)
+            .finish()
+    }
 }
 
 impl PartialEq for FilterPattern {

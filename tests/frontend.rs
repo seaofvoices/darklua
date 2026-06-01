@@ -274,6 +274,189 @@ fn use_default_json5_config_in_place() {
     assert_eq!(resources.get("src/test.lua").unwrap(), "return 'Hello'");
 }
 
+mod loaders {
+
+    use super::*;
+
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn use_custom_loader_to_load_txt_extension_as_luau() {
+        let resources = memory_resources!(
+            "src/test.txt" => "return _G.VALUE",
+            "src/example.luau" => "return _G.VALUE",
+            ".darklua.json" => r#"{
+                "rules": [ { "rule": "inject_global_value", "identifier": "VALUE", "value": 1 } ],
+                "loaders": { "**/*.txt": "luau" },
+                "lua_extension": "luau",
+            }"#,
+        );
+
+        process(&resources, Options::new("src"))
+            .unwrap()
+            .result()
+            .unwrap();
+
+        assert_eq!(resources.get("src/test.luau").unwrap(), "return 1");
+        assert_eq!(resources.get("src/example.luau").unwrap(), "return 1");
+    }
+
+    #[test]
+    fn use_loader_for_json_files() {
+        let resources = memory_resources!(
+            "src/test.json" => r#"{ "value": 1 }"#,
+            ".darklua.json" => r#"{ "rules": [] }"#,
+        );
+
+        process(&resources, Options::new("src"))
+            .unwrap()
+            .result()
+            .unwrap();
+
+        insta::assert_snapshot!(resources.get("src/test.lua").unwrap(), @"return {value=1}");
+    }
+
+    #[test]
+    fn use_loader_for_yaml_file() {
+        let resources = memory_resources!(
+            "src/test.yaml" => r#"value: 1"#,
+            "src/test2.yml" => r#"value: 2"#,
+            ".darklua.json" => r#"{ "rules": [] }"#,
+        );
+
+        process(&resources, Options::new("src"))
+            .unwrap()
+            .result()
+            .unwrap();
+
+        insta::assert_snapshot!(resources.get("src/test.lua").unwrap(), @"return {value=1}");
+        insta::assert_snapshot!(resources.get("src/test2.lua").unwrap(), @"return {value=2}");
+    }
+
+    #[test]
+    fn use_loader_for_toml_file() {
+        let resources = memory_resources!(
+            "src/test.toml" => r#"value = 1"#,
+            ".darklua.json" => r#"{ "rules": [] }"#,
+        );
+
+        process(&resources, Options::new("src"))
+            .unwrap()
+            .result()
+            .unwrap();
+
+        insta::assert_snapshot!(resources.get("src/test.lua").unwrap(), @"return {value=1}");
+    }
+
+    #[test]
+    fn use_loader_for_txt_file() {
+        let resources = memory_resources!(
+            "src/test.txt" => r#"Hello"#,
+            ".darklua.json" => r#"{ "rules": [] }"#,
+        );
+
+        process(&resources, Options::new("src"))
+            .unwrap()
+            .result()
+            .unwrap();
+
+        insta::assert_snapshot!(resources.get("src/test.lua").unwrap(), @"return 'Hello'");
+    }
+
+    #[test]
+    fn use_custom_string_base64_loader_for_txt_file() {
+        let resources = memory_resources!(
+            "src/test.txt" => r#"Hello"#,
+            ".darklua.json" => r#"{
+                "rules": [],
+                "loaders": { "**/*.txt": "string/base64" },
+            }"#,
+        );
+
+        process(&resources, Options::new("src"))
+            .unwrap()
+            .result()
+            .unwrap();
+
+        insta::assert_snapshot!(resources.get("src/test.lua").unwrap(),@ "return 'SGVsbG8='");
+    }
+
+    #[test]
+    fn use_custom_buffer_base64_loader_for_txt_file() {
+        let resources = memory_resources!(
+            "src/test.txt" => r#"Hello"#,
+            ".darklua.json" => r#"{
+                "rules": [],
+                "loaders": { "**/*.txt": "buffer/base64" },
+            }"#,
+        );
+
+        process(&resources, Options::new("src"))
+            .unwrap()
+            .result()
+            .unwrap();
+
+        insta::assert_snapshot!(
+            resources.get("src/test.lua").unwrap(),
+            @"return buffer.fromstring'SGVsbG8='"
+        );
+    }
+
+    #[test]
+    fn use_custom_bytes_loader_for_txt_file() {
+        let resources = memory_resources!(
+            "src/test.txt" => r#"Hello"#,
+            ".darklua.json" => r#"{
+                "rules": [],
+                "loaders": { "**/*.txt": "bytes" },
+            }"#,
+        );
+
+        process(&resources, Options::new("src"))
+            .unwrap()
+            .result()
+            .unwrap();
+
+        insta::assert_snapshot!(resources.get("src/test.lua").unwrap(), @"return {72, 101, 108, 108, 111}");
+    }
+
+    #[test]
+    fn use_custom_bytes_base64_loader_for_txt_file() {
+        let resources = memory_resources!(
+            "src/test.txt" => r#"Hello"#,
+            ".darklua.json" => r#"{
+                "rules": [],
+                "loaders": { "**/*.txt": "bytes/base64" },
+            }"#,
+        );
+
+        process(&resources, Options::new("src"))
+            .unwrap()
+            .result()
+            .unwrap();
+
+        insta::assert_snapshot!(resources.get("src/test.lua").unwrap(), @"return {83, 71, 86, 115, 98, 71, 56, 61}");
+    }
+
+    #[test]
+    fn use_custom_copy_loader_for_txt_file() {
+        let resources = memory_resources!(
+            "src/test.txt" => r#"Hello"#,
+            ".darklua.json" => r#"{
+                "rules": [],
+                "loaders": { "**/*.txt": "copy" },
+            }"#,
+        );
+
+        process(&resources, Options::new("src"))
+            .unwrap()
+            .result()
+            .unwrap();
+
+        insta::assert_snapshot!(resources.get("src/test.txt").unwrap(), @"Hello");
+    }
+}
+
 mod errors {
     use std::path::{Path, PathBuf};
 

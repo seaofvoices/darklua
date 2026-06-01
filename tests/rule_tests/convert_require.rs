@@ -21,6 +21,13 @@ test_rule!(
         "src/test/folder/lib.lua" => "return nil",
         "src/sub/lib.lua" => "return nil",
         "src/format.lua" => "return nil",
+        // data files
+        "src/data-json.json" => "[1, 2, 3]",
+        "src/data-json5.json5" => "{ hello: 1 }",
+        "src/data-yml.yml" => "value: 1",
+        "src/data-toml.toml" => "value = 1",
+        "src/data-text.txt" => "some text",
+
         "project.lua" => "return nil",
     ),
     test_file_name = "src/test/runner.lua",
@@ -44,6 +51,17 @@ test_rule!(
         => "local module = require(script.Parent.Parent.Parent:FindFirstChild('project'))",
     module_in_parent_with_current_dir("local module = require('.././format.lua')")
         => "local module = require(script.Parent.Parent:FindFirstChild('format'))",
+    // data file requires
+    json_data_module_in_parent("local module = require('../data-json.json')")
+        => "local module = require(script.Parent.Parent:FindFirstChild('data-json'))",
+    json5_data_module_in_parent("local module = require('../data-json5.json5')")
+        => "local module = require(script.Parent.Parent:FindFirstChild('data-json5'))",
+    yml_data_module_in_parent("local module = require('../data-yml.yml')")
+        => "local module = require(script.Parent.Parent:FindFirstChild('data-yml'))",
+    toml_data_module_in_parent("local module = require('../data-toml.toml')")
+        => "local module = require(script.Parent.Parent:FindFirstChild('data-toml'))",
+    text_data_module_in_parent("local module = require('../data-text.txt')")
+        => "local module = require(script.Parent.Parent:FindFirstChild('data-text'))",
 );
 
 test_rule!(
@@ -63,6 +81,13 @@ test_rule!(
         "src/test/folder/lib.lua" => "return nil",
         "src/sub/lib.lua" => "return nil",
         "src/format.lua" => "return nil",
+        // data files
+        "src/data-json.json" => "[1, 2, 3]",
+        "src/data-json5.json5" => "{ hello: 1 }",
+        "src/data-yml.yml" => "value: 1",
+        "src/data-toml.toml" => "value = 1",
+        "src/data-text.txt" => "some text",
+
         "project.lua" => "return nil",
     ),
     test_file_name = "src/test/runner.lua",
@@ -86,6 +111,17 @@ test_rule!(
         => "local module = require(script.Parent.Parent.Parent:WaitForChild('project'))",
     module_in_parent_with_current_dir("local module = require('.././format.lua')")
         => "local module = require(script.Parent.Parent:WaitForChild('format'))",
+    // data file requires
+    json_data_module_in_parent("local module = require('../data-json.json')")
+        => "local module = require(script.Parent.Parent:WaitForChild('data-json'))",
+    json5_data_module_in_parent("local module = require('../data-json5.json5')")
+        => "local module = require(script.Parent.Parent:WaitForChild('data-json5'))",
+    yml_data_module_in_parent("local module = require('../data-yml.yml')")
+        => "local module = require(script.Parent.Parent:WaitForChild('data-yml'))",
+    toml_data_module_in_parent("local module = require('../data-toml.toml')")
+        => "local module = require(script.Parent.Parent:WaitForChild('data-toml'))",
+    text_data_module_in_parent("local module = require('../data-text.txt')")
+        => "local module = require(script.Parent.Parent:WaitForChild('data-text'))",
 );
 
 test_rule!(
@@ -106,6 +142,12 @@ test_rule!(
         "src/sub/lib.lua" => "return nil",
         "src/format.lua" => "return nil",
         "project.lua" => "return nil",
+        // data files
+        "src/data-json.json" => "[1, 2, 3]",
+        "src/data-json5.json5" => "{ hello: 1 }",
+        "src/data-yml.yml" => "value: 1",
+        "src/data-toml.toml" => "value = 1",
+        "src/data-text.txt" => "some text",
         // specific to property index style tests
         "src/test/while.lua" => "return nil",
         "src/test/a module.lua" => "return nil",
@@ -131,6 +173,17 @@ test_rule!(
         => "local module = require(script.Parent.Parent.Parent.project)",
     module_in_parent_with_current_dir("local module = require('.././format.lua')")
         => "local module = require(script.Parent.Parent.format)",
+    // data file requires
+    json_data_module_in_parent("local module = require('../data-json.json')")
+        => "local module = require(script.Parent.Parent['data-json'])",
+    json5_data_module_in_parent("local module = require('../data-json5.json5')")
+        => "local module = require(script.Parent.Parent['data-json5'])",
+    yml_data_module_in_parent("local module = require('../data-yml.yml')")
+        => "local module = require(script.Parent.Parent['data-yml'])",
+    toml_data_module_in_parent("local module = require('../data-toml.toml')")
+        => "local module = require(script.Parent.Parent['data-toml'])",
+    text_data_module_in_parent("local module = require('../data-text.txt')")
+        => "local module = require(script.Parent.Parent['data-text'])",
     // specific to property index style
     sibling_module_with_keyword_name("local module = require('./while.lua')")
         => "local module = require(script.Parent['while'])",
@@ -162,6 +215,12 @@ test_rule!(
         "src/sub/lib.luau" => "return nil",
         "src/format.luau" => "return nil",
         "project.luau" => "return nil",
+        // data files
+        "src/data-json.json" => "[1, 2, 3]",
+        "src/data-json5.json5" => "{ hello: 1 }",
+        "src/data-yml.yml" => "value: 1",
+        "src/data-toml.toml" => "value = 1",
+        "src/data-text.txt" => "some text",
         // specific to alias tests
         "src/test/while.luau" => "return nil",
         "src/test/a module.luau" => "return nil",
@@ -188,6 +247,17 @@ test_rule!(
     // Init file conversions
     init_file_conversion("local module = require('./init')")
         => "local module = require('.')",
+    // data file requires
+    json_data_module_in_parent("local module = require('../data-json.json')")
+        => "local module = require('../data-json')",
+    json5_data_module_in_parent("local module = require('../data-json5.json5')")
+        => "local module = require('../data-json5')",
+    yml_data_module_in_parent("local module = require('../data-yml.yml')")
+        => "local module = require('../data-yml')",
+    toml_data_module_in_parent("local module = require('../data-toml.toml')")
+        => "local module = require('../data-toml')",
+    text_data_module_in_parent("local module = require('../data-text.txt')")
+        => "local module = require('../data-text')",
 );
 
 test_rule!(

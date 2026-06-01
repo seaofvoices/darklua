@@ -130,8 +130,23 @@ impl<'a> RequireConverter<'a> {
     }
 
     fn try_require_conversion(&mut self, call: &mut FunctionCall) -> DarkluaResult<()> {
-        if let Some(require_path) = self.current.find_require(call, self.context)? {
+        if let Some(mut require_path) = self.current.find_require(call, self.context)? {
             log::trace!("found require path `{}`", require_path.display());
+
+            let file_loader = self
+                .context
+                .loaders()
+                .get_loader(&require_path)
+                .to_internal_loader();
+
+            if file_loader.outputs_lua()
+                && !matches!(
+                    require_path.extension().and_then(OsStr::to_str),
+                    Some("lua") | Some("luau")
+                )
+            {
+                require_path.set_extension(self.context.preferred_lua_extension());
+            }
 
             if let Some(new_arguments) =
                 self.target

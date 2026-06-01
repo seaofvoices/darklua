@@ -2,4 +2,4 @@
 source: tests/bundle.rs
 expression: "error_display.join(\"\\n\")"
 ---
-error processing `src/main.lua` (bundler): unable to require resource with extension `error` at `src/value.error`
+error processing `src/main.lua` (bundler): unable to require unknown resource at `src/value.error` (configure content loaders to load this file)

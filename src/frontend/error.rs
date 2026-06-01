@@ -2,9 +2,10 @@ use std::{
     borrow::Cow,
     cmp::Ordering,
     collections::HashSet,
-    ffi::{OsStr, OsString},
+    ffi::OsString,
     fmt::{self, Display},
     path::PathBuf,
+    str::Utf8Error,
 };
 
 use crate::{process::LuaSerializerError, rules::Rule, ParserError};
@@ -22,6 +23,10 @@ enum ErrorKind {
     },
     ResourceNotFound {
         path: PathBuf,
+    },
+    ExpectedUtf8 {
+        path: PathBuf,
+        utf8_error: Utf8Error,
     },
     InvalidConfiguration {
         path: PathBuf,
@@ -57,8 +62,11 @@ enum ErrorKind {
         location: String,
         message: String,
     },
-    InvalidResourceExtension {
-        location: PathBuf,
+    RequireUnknownResource {
+        path: PathBuf,
+    },
+    RequireCopiedResource {
+        path: PathBuf,
     },
     OsStringConversion {
         os_string: OsString,
@@ -123,6 +131,13 @@ impl DarkluaError {
 
     pub(crate) fn resource_not_found(path: impl Into<PathBuf>) -> Self {
         Self::new(ErrorKind::ResourceNotFound { path: path.into() })
+    }
+
+    pub(crate) fn expected_utf8(path: impl Into<PathBuf>, utf8_error: Utf8Error) -> Self {
+        Self::new(ErrorKind::ExpectedUtf8 {
+            path: path.into(),
+            utf8_error,
+        })
     }
 
     pub(crate) fn invalid_configuration_file(path: impl Into<PathBuf>) -> Self {
@@ -212,10 +227,12 @@ impl DarkluaError {
         })
     }
 
-    pub(crate) fn invalid_resource_extension(path: impl Into<PathBuf>) -> Self {
-        Self::new(ErrorKind::InvalidResourceExtension {
-            location: path.into(),
-        })
+    pub(crate) fn require_unknown_resource(path: impl Into<PathBuf>) -> Self {
+        Self::new(ErrorKind::RequireUnknownResource { path: path.into() })
+    }
+
+    pub(crate) fn require_copied_resource(path: impl Into<PathBuf>) -> Self {
+        Self::new(ErrorKind::RequireCopiedResource { path: path.into() })
     }
 
     pub(crate) fn os_string_conversion(os_string: impl Into<OsString>) -> Self {
@@ -246,6 +263,9 @@ impl From<ResourceError> for DarkluaError {
     fn from(err: ResourceError) -> Self {
         match err {
             ResourceError::NotFound(path) => DarkluaError::resource_not_found(path),
+            ResourceError::ExpectedUtf8 { path, utf8_error } => {
+                DarkluaError::expected_utf8(path, utf8_error)
+            }
             ResourceError::IO { path, error } => DarkluaError::io_error(path, error),
         }
     }
@@ -313,6 +333,14 @@ impl Display for DarkluaError {
             }
             ErrorKind::ResourceNotFound { path } => {
                 write!(f, "unable to find `{}`", path.display())?;
+            }
+            ErrorKind::ExpectedUtf8 { path, utf8_error } => {
+                write!(
+                    f,
+                    "unable to read `{}` as valid UTF-8: {}",
+                    path.display(),
+                    utf8_error
+                )?;
             }
             ErrorKind::InvalidConfiguration { path } => {
                 write!(f, "invalid configuration file at `{}`", path.display())?;
@@ -408,21 +436,11 @@ impl Display for DarkluaError {
                     location, message
                 )?;
             }
-            ErrorKind::InvalidResourceExtension { location } => {
-                if let Some(extension) = location.extension().map(OsStr::to_string_lossy) {
-                    write!(
-                        f,
-                        "unable to require resource with extension `{}` at `{}`",
-                        extension,
-                        location.display()
-                    )?;
-                } else {
-                    write!(
-                        f,
-                        "unable to require resource without an extension at `{}`",
-                        location.display()
-                    )?;
-                }
+            ErrorKind::RequireUnknownResource { path } => {
+                write!(f, "unable to require unknown resource at `{}` (configure content loaders to load this file)", path.display())?;
+            }
+            ErrorKind::RequireCopiedResource { path } => {
+                write!(f, "unable to require copied resource at `{}` (configure content loaders to copy this file)", path.display())?;
             }
             ErrorKind::OsStringConversion { os_string } => {
                 write!(

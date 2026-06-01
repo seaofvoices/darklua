@@ -156,4 +156,27 @@ impl WorkItem {
         self.status = WorkStatus::NotStarted;
         self.external_file_dependencies.clear();
     }
+
+    pub(crate) fn adjust_output_extension(
+        &mut self,
+        new_extension: &str,
+        valid_extensions: &[&str],
+    ) {
+        if valid_extensions.is_empty() {
+            return;
+        }
+        let should_change = self
+            .data
+            .output
+            .extension()
+            .and_then(|extension| extension.to_ascii_lowercase().into_string().ok())
+            .map(|extension| !valid_extensions.contains(&extension.as_str()));
+
+        match should_change {
+            None | Some(true) => {
+                self.data.output.set_extension(new_extension);
+            }
+            Some(false) => {}
+        }
+    }
 }

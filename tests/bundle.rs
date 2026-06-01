@@ -83,7 +83,19 @@ mod without_rules {
         .result()
         .unwrap();
 
-        let main = resources.get("out.lua").unwrap();
+        let out_file = resources.get("out.lua");
+
+        assert!(
+            out_file.is_ok(),
+            "failed to locate out.lua file. Resources found: {:#?}",
+            {
+                let mut files = resources.walk("").collect::<Vec<_>>();
+                files.sort();
+                files
+            }
+        );
+
+        let main = out_file.unwrap();
 
         insta::assert_snapshot!(format!("bundle_without_rules_{}", snapshot_name), main);
     }

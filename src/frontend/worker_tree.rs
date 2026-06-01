@@ -69,7 +69,7 @@ impl WorkerTree {
             } else {
                 let input = normalize_path(options.input());
 
-                for source in resources.collect_work(&input) {
+                for source in resources.walk(&input) {
                     let source = normalize_path(source);
 
                     let relative_path = source.strip_prefix(&input).map_err(|err| {
@@ -88,7 +88,7 @@ impl WorkerTree {
         } else {
             let input = normalize_path(options.input());
 
-            for source in resources.collect_work(input) {
+            for source in resources.walk(input) {
                 self.add_source_if_missing(source, None);
             }
         }

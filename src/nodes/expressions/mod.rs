@@ -217,65 +217,30 @@ impl From<f64> for Expression {
     }
 }
 
-impl From<f32> for Expression {
-    fn from(value: f32) -> Self {
-        (value as f64).into()
+impl From<&f64> for Expression {
+    fn from(value: &f64) -> Self {
+        (*value).into()
     }
 }
 
-impl From<usize> for Expression {
-    fn from(value: usize) -> Self {
-        (value as f64).into()
-    }
+macro_rules! impl_from_primitive_number {
+    ($($type:ty),+ $(,)?) => {
+        $(
+        impl From<$type> for Expression {
+            fn from(value: $type) -> Self {
+                (value as f64).into()
+            }
+        }
+        impl From<&$type> for Expression {
+            fn from(value: &$type) -> Self {
+                (*value as f64).into()
+            }
+        }
+        )+
+    };
 }
 
-impl From<u64> for Expression {
-    fn from(value: u64) -> Self {
-        (value as f64).into()
-    }
-}
-
-impl From<u32> for Expression {
-    fn from(value: u32) -> Self {
-        (value as f64).into()
-    }
-}
-
-impl From<u16> for Expression {
-    fn from(value: u16) -> Self {
-        (value as f64).into()
-    }
-}
-
-impl From<u8> for Expression {
-    fn from(value: u8) -> Self {
-        (value as f64).into()
-    }
-}
-
-impl From<i64> for Expression {
-    fn from(value: i64) -> Self {
-        (value as f64).into()
-    }
-}
-
-impl From<i32> for Expression {
-    fn from(value: i32) -> Self {
-        (value as f64).into()
-    }
-}
-
-impl From<i16> for Expression {
-    fn from(value: i16) -> Self {
-        (value as f64).into()
-    }
-}
-
-impl From<i8> for Expression {
-    fn from(value: i8) -> Self {
-        (value as f64).into()
-    }
-}
+impl_from_primitive_number!(f32, usize, u64, u32, u16, u8, i64, i32, i16, i8,);
 
 impl From<BinaryExpression> for Expression {
     fn from(binary: BinaryExpression) -> Expression {

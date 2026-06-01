@@ -1,4 +1,5 @@
 mod configuration;
+mod content_loader;
 mod error;
 mod options;
 mod resources;
@@ -8,14 +9,18 @@ mod work_item;
 mod worker;
 mod worker_tree;
 
+pub(crate) use configuration::LoaderConfiguration;
 pub use configuration::{BundleConfiguration, Configuration, GeneratorParameters};
+pub(crate) use content_loader::ContentType;
+pub use content_loader::Loader;
 pub use error::{DarkluaError, DarkluaResult};
 pub use options::Options;
 pub use resources::Resources;
-use serde::Serialize;
 use work_item::WorkItem;
 use worker::Worker;
 pub use worker_tree::WorkerTree;
+
+use serde::Serialize;
 
 use crate::{
     generator::{DenseLuaGenerator, LuaGenerator},

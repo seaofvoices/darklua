@@ -1,10 +1,10 @@
 use std::{
     collections::HashMap,
-    ffi::OsStr,
     fs::{self, File},
     io::{self, BufWriter, ErrorKind as IOErrorKind, Write},
     iter,
     path::{Path, PathBuf},
+    str::Utf8Error,
     sync::{Arc, Mutex},
 };
 
@@ -13,7 +13,7 @@ use crate::utils::normalize_path;
 #[derive(Debug, Clone)]
 enum Source {
     FileSystem,
-    Memory(Arc<Mutex<HashMap<PathBuf, String>>>),
+    Memory(Arc<Mutex<HashMap<PathBuf, Vec<u8>>>>),
 }
 
 impl Source {
@@ -52,8 +52,15 @@ impl Source {
     }
 
     pub fn get(&self, location: &Path) -> ResourceResult<String> {
+        self.get_bytes(location).and_then(|bytes| {
+            String::from_utf8(bytes)
+                .map_err(|err| ResourceError::expected_utf8(location, err.utf8_error()))
+        })
+    }
+
+    fn get_bytes(&self, location: &Path) -> ResourceResult<Vec<u8>> {
         match self {
-            Self::FileSystem => fs::read_to_string(location).map_err(|err| match err.kind() {
+            Self::FileSystem => fs::read(location).map_err(|err| match err.kind() {
                 IOErrorKind::NotFound => ResourceError::not_found(location),
                 _ => ResourceError::io_error(location, err),
             }),
@@ -62,13 +69,17 @@ impl Source {
                 let location = normalize_path(location);
 
                 data.get(&location)
-                    .map(String::from)
+                    .cloned()
                     .ok_or_else(|| ResourceError::not_found(location))
             }
         }
     }
 
     pub fn write(&self, location: &Path, content: &str) -> ResourceResult<()> {
+        self.write_bytes(location, content.as_bytes())
+    }
+
+    fn write_bytes(&self, location: &Path, content: &[u8]) -> ResourceResult<()> {
         match self {
             Self::FileSystem => {
                 if let Some(parent) = location.parent() {
@@ -80,12 +91,12 @@ impl Source {
                     File::create(location).map_err(|err| ResourceError::io_error(location, err))?;
 
                 let mut file = BufWriter::new(file);
-                file.write_all(content.as_bytes())
+                file.write_all(content)
                     .map_err(|err| ResourceError::io_error(location, err))
             }
             Self::Memory(data) => {
                 let mut data = data.lock().unwrap();
-                data.insert(normalize_path(location), content.to_string());
+                data.insert(normalize_path(location), content.to_vec());
                 Ok(())
             }
         }
@@ -106,7 +117,7 @@ impl Source {
         }
     }
 
-    pub(crate) fn walk_all(&self, location: &Path) -> impl Iterator<Item = ResourceContent> {
+    fn walk_all(&self, location: &Path) -> impl Iterator<Item = ResourceContent> {
         match self {
             Self::FileSystem => Box::new(walk_all_file_system(location.to_path_buf()))
                 as Box<dyn Iterator<Item = ResourceContent>>,
@@ -121,7 +132,7 @@ impl Source {
         }
     }
 
-    pub(crate) fn is_empty_directory(&self, location: &Path) -> ResourceResult<bool> {
+    fn is_empty_directory(&self, location: &Path) -> ResourceResult<bool> {
         if !self.is_directory(location)? {
             return Ok(false);
         }
@@ -288,14 +299,10 @@ impl Resources {
         }
     }
 
-    /// Collects all Lua and Luau files in the specified location.
+    /// Collects all files in the specified location. Deprecated in favor of [Self::walk].
+    #[deprecated(since = "0.19.0", note = "use `Resources::walk(location)` instead")]
     pub fn collect_work(&self, location: impl AsRef<Path>) -> impl Iterator<Item = PathBuf> {
-        self.source.walk(location.as_ref()).filter(|path| {
-            matches!(
-                path.extension().and_then(OsStr::to_str),
-                Some("lua") | Some("luau")
-            )
-        })
+        self.source.walk(location.as_ref())
     }
 
     /// Checks if a path exists.
@@ -318,9 +325,19 @@ impl Resources {
         self.source.get(location.as_ref())
     }
 
+    /// Reads the contents of a file as bytes.
+    pub fn get_bytes(&self, location: impl AsRef<Path>) -> ResourceResult<Vec<u8>> {
+        self.source.get_bytes(location.as_ref())
+    }
+
     /// Writes content to a file.
     pub fn write(&self, location: impl AsRef<Path>, content: &str) -> ResourceResult<()> {
         self.source.write(location.as_ref(), content)
+    }
+
+    /// Writes content to a file as bytes.
+    pub fn write_bytes(&self, location: impl AsRef<Path>, content: &[u8]) -> ResourceResult<()> {
+        self.source.write_bytes(location.as_ref(), content)
     }
 
     /// Removes a file or directory.
@@ -356,6 +373,11 @@ pub(crate) enum ResourceContent {
 pub enum ResourceError {
     /// The requested resource was not found.
     NotFound(PathBuf),
+    /// The requested resource is expected to be valid UTF-8, but is not.
+    ExpectedUtf8 {
+        path: PathBuf,
+        utf8_error: Utf8Error,
+    },
     /// An I/O error occurred while accessing the resource.
     IO { path: PathBuf, error: String },
 }
@@ -363,6 +385,13 @@ pub enum ResourceError {
 impl ResourceError {
     pub(crate) fn not_found(path: impl Into<PathBuf>) -> Self {
         Self::NotFound(path.into())
+    }
+
+    pub(crate) fn expected_utf8(path: impl Into<PathBuf>, utf8_error: Utf8Error) -> Self {
+        Self::ExpectedUtf8 {
+            path: path.into(),
+            utf8_error,
+        }
     }
 
     pub(crate) fn io_error(path: impl Into<PathBuf>, error: io::Error) -> Self {
@@ -448,7 +477,7 @@ mod test {
             resources.write("src/test.lua", ANY_CONTENT).unwrap();
 
             assert_eq!(
-                Vec::from_iter(resources.collect_work("src")),
+                Vec::from_iter(resources.walk("src")),
                 vec![PathBuf::from("src/test.lua")]
             );
         }

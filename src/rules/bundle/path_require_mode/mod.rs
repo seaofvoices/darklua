@@ -7,16 +7,11 @@ use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::{iter, mem};
 
-use serde::Serialize;
-
-use crate::frontend::DarkluaResult;
+use crate::frontend::{ContentType, DarkluaResult};
 use crate::nodes::{
-    Block, DoStatement, Expression, FunctionCall, Prefix, Statement, StringExpression,
-    VariableAssignment,
+    Block, DoStatement, Expression, FunctionCall, Prefix, Statement, VariableAssignment,
 };
-use crate::process::{
-    to_expression, DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor,
-};
+use crate::process::{DefaultVisitor, IdentifierTracker, NodeProcessor, NodeVisitor, ScopeVisitor};
 use crate::rules::require::{is_require_call, match_path_require_call, PathLocator};
 use crate::rules::{
     Context, ContextBuilder, FlawlessRule, ReplaceReferencedTokens, RuleProcessResult,
@@ -185,74 +180,51 @@ impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator>
     fn require_resource(&mut self, path: impl AsRef<Path>) -> DarkluaResult<RequiredResource> {
         let path = path.as_ref();
         log::trace!("look for resource `{}`", path.display());
-        let content = self.resources.get(path).map_err(DarkluaError::from)?;
+        if !self.resources.exists(path).map_err(DarkluaError::from)? {
+            return Err(DarkluaError::resource_not_found(path));
+        }
 
-        match path.extension() {
-            Some(extension) => match extension.to_string_lossy().as_ref() {
-                "lua" | "luau" => {
-                    let parser_timer = Timer::now();
-                    let mut block =
-                        self.options
-                            .parser()
-                            .parse(&content)
-                            .map_err(|parser_error| {
-                                DarkluaError::parser_error(path.to_path_buf(), parser_error)
-                            })?;
-                    log::debug!(
-                        "parsed `{}` in {}",
+        let loader = self.options.loaders().get_loader(path).to_internal_loader();
+
+        match loader.load(path, self.resources, self.options.parser())? {
+            ContentType::None => Err(DarkluaError::require_unknown_resource(path)),
+            ContentType::Copied(_data) => Err(DarkluaError::require_copied_resource(path)),
+            ContentType::Block(block) => Ok(RequiredResource::Block(block)),
+            ContentType::Expression(expression) => Ok(RequiredResource::Expression(expression)),
+            ContentType::Parsed { mut block, source } => {
+                if self.options.parser().is_preserving_tokens() {
+                    log::trace!("replacing token references of {}", path.display());
+                    let context = ContextBuilder::new(path, self.resources, &source).build();
+                    // run `replace_referenced_tokens` rule to avoid generating invalid code
+                    // when using the token-based generator
+                    let replace_tokens = ReplaceReferencedTokens::default();
+
+                    let apply_replace_tokens_timer = Timer::now();
+
+                    replace_tokens.flawless_process(&mut block, &context);
+
+                    log::trace!(
+                        "replaced token references for `{}` in {}",
                         path.display(),
-                        parser_timer.duration_label()
+                        apply_replace_tokens_timer.duration_label()
                     );
-
-                    if self.options.parser().is_preserving_tokens() {
-                        log::trace!("replacing token references of {}", path.display());
-                        let context = ContextBuilder::new(path, self.resources, &content).build();
-                        // run `replace_referenced_tokens` rule to avoid generating invalid code
-                        // when using the token-based generator
-                        let replace_tokens = ReplaceReferencedTokens::default();
-
-                        let apply_replace_tokens_timer = Timer::now();
-
-                        replace_tokens.flawless_process(&mut block, &context);
-
-                        log::trace!(
-                            "replaced token references for `{}` in {}",
-                            path.display(),
-                            apply_replace_tokens_timer.duration_label()
-                        );
-                    }
-
-                    let current_source = mem::replace(&mut self.source, path.to_path_buf());
-
-                    let apply_processor_timer = Timer::now();
-                    DefaultVisitor::visit_block(&mut block, self);
-
-                    log::debug!(
-                        "processed `{}` into bundle in {}",
-                        path.display(),
-                        apply_processor_timer.duration_label()
-                    );
-
-                    self.source = current_source;
-
-                    Ok(RequiredResource::Block(block))
                 }
-                "json" | "json5" => {
-                    transcode("json", path, json5::from_str::<serde_json::Value>, &content)
-                }
-                "yml" | "yaml" => transcode(
-                    "yaml",
-                    path,
-                    serde_yaml::from_str::<serde_yaml::Value>,
-                    &content,
-                ),
-                "toml" => transcode("toml", path, toml::from_str::<toml::Value>, &content),
-                "txt" => Ok(RequiredResource::Expression(
-                    StringExpression::from_value(content).into(),
-                )),
-                _ => Err(DarkluaError::invalid_resource_extension(path)),
-            },
-            None => unreachable!("extension should be defined"),
+
+                let current_source = mem::replace(&mut self.source, path.to_path_buf());
+
+                let apply_processor_timer = Timer::now();
+                DefaultVisitor::visit_block(&mut block, self);
+
+                log::debug!(
+                    "processed `{}` into bundle in {}",
+                    path.display(),
+                    apply_processor_timer.duration_label()
+                );
+
+                self.source = current_source;
+
+                Ok(RequiredResource::Block(block))
+            }
         }
     }
 }
@@ -273,31 +245,6 @@ impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator> DerefMut
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.identifier_tracker
     }
-}
-
-fn transcode<'a, T, E>(
-    label: &'static str,
-    path: &Path,
-    deserialize_value: impl Fn(&'a str) -> Result<T, E>,
-    content: &'a str,
-) -> Result<RequiredResource, DarkluaError>
-where
-    T: Serialize,
-    E: Into<DarkluaError>,
-{
-    log::trace!("transcode {} data to Lua from `{}`", label, path.display());
-    let transcode_duration = Timer::now();
-    let value = deserialize_value(content).map_err(E::into)?;
-    let expression = to_expression(&value)
-        .map(RequiredResource::Expression)
-        .map_err(DarkluaError::from);
-    log::debug!(
-        "transcoded {} data to Lua from `{}` in {}",
-        label,
-        path.display(),
-        transcode_duration.duration_label()
-    );
-    expression
 }
 
 impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator> NodeProcessor
