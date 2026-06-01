@@ -107,27 +107,27 @@ Files matched by `skip` or `copy` cannot be `require`d. Requiring a skipped file
 
 Loaders available for use in the `loaders` field:
 
-| Loader | What it does |
-| --- | --- |
-| `luau` | Parses and processes the file as Lua/Luau code. |
-| `copy` | Copies the file to the output unchanged. |
-| `skip` | Ignores the file. |
-| `string` | Returns the content as a string. |
-| `string/base64` | Returns the content as a base64-encoded string. |
-| `buffer` | Returns the content as a buffer. |
-| `buffer/base64` | Returns the content as a base64-encoded buffer. |
-| `bytes` | Returns the content as an array of bytes. |
-| `bytes/base64` | Returns the content, base64-encoded, as an array of bytes. |
-| `json` | Converts JSON data to a Lua module. |
-| `toml` | Converts TOML data to a Lua module. |
-| `yaml` | Converts YAML data to a Lua module. |
+| Loader          | What it does                                               |
+| --------------- | ---------------------------------------------------------- |
+| `luau`          | Parses and processes the file as Lua/Luau code.            |
+| `copy`          | Copies the file to the output unchanged.                   |
+| `skip`          | Ignores the file.                                          |
+| `string`        | Returns the content as a string.                           |
+| `string/base64` | Returns the content as a base64-encoded string.            |
+| `buffer`        | Returns the content as a buffer.                           |
+| `buffer/base64` | Returns the content as a base64-encoded buffer.            |
+| `bytes`         | Returns the content as an array of bytes.                  |
+| `bytes/base64`  | Returns the content, base64-encoded, as an array of bytes. |
+| `json`          | Converts JSON data to a Lua module.                        |
+| `toml`          | Converts TOML data to a Lua module.                        |
+| `yaml`          | Converts YAML data to a Lua module.                        |
 
 Default loaders assigned by file extension when no pattern matches. Anything not listed here is skipped unless you assign a loader to it.
 
-| Extension | Loader |
-| --- | --- |
-| `.lua`, `.luau` | `luau` |
-| `.json`, `.json5` | `json` |
-| `.toml` | `toml` |
-| `.yaml`, `.yml` | `yaml` |
-| `.txt` | `string` |
+| Extension         | Loader   |
+| ----------------- | -------- |
+| `.lua`, `.luau`   | `luau`   |
+| `.json`, `.json5` | `json`   |
+| `.toml`           | `toml`   |
+| `.yaml`, `.yml`   | `yaml`   |
+| `.txt`            | `string` |
