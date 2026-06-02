@@ -316,13 +316,19 @@ pub enum GeneratorParameters {
     /// Generates dense, compact code with a specified column span.
     Dense {
         /// The maximum number of characters per line.
-        #[serde(default = "get_default_column_span")]
+        #[serde(
+            default = "get_default_column_span",
+            deserialize_with = "crate::utils::deserialize_usize_from_float"
+        )]
         column_span: usize,
     },
     /// Attempts to generate readable code, with a specified column span.
     Readable {
         /// The maximum number of characters per line.
-        #[serde(default = "get_default_column_span")]
+        #[serde(
+            default = "get_default_column_span",
+            deserialize_with = "crate::utils::deserialize_usize_from_float"
+        )]
         column_span: usize,
     },
 }
@@ -488,6 +494,30 @@ mod test {
         }
 
         #[test]
+        fn deserialize_dense_params_with_float_column_span() {
+            let config: Configuration =
+                json5::from_str("{ generator: { name: 'dense', column_span: 120.0 } }").unwrap();
+
+            pretty_assertions::assert_eq!(
+                config.generator,
+                GeneratorParameters::Dense { column_span: 120 }
+            );
+        }
+
+        #[test]
+        fn deserialize_dense_params_with_infinite_column_span() {
+            let config: Configuration =
+                json5::from_str("{ generator: { name: 'dense', column_span: Infinity } }").unwrap();
+
+            pretty_assertions::assert_eq!(
+                config.generator,
+                GeneratorParameters::Dense {
+                    column_span: usize::MAX
+                }
+            );
+        }
+
+        #[test]
         fn deserialize_readable_params() {
             let config: Configuration =
                 json5::from_str("{ generator: { name: 'readable' } }").unwrap();
@@ -511,6 +541,30 @@ mod test {
             );
         }
 
+        #[test]
+        fn deserialize_readable_params_with_float_column_span() {
+            let config: Configuration =
+                json5::from_str("{ generator: { name: 'readable', column_span: 120.6 } }").unwrap();
+
+            pretty_assertions::assert_eq!(
+                config.generator,
+                GeneratorParameters::Readable { column_span: 120 }
+            );
+        }
+
+        #[test]
+        fn deserialize_readable_params_with_infinite_column_span() {
+            let config: Configuration =
+                json5::from_str("{ generator: { name: 'readable', column_span: Infinity } }")
+                    .unwrap();
+
+            pretty_assertions::assert_eq!(
+                config.generator,
+                GeneratorParameters::Readable {
+                    column_span: usize::MAX
+                }
+            );
+        }
         #[test]
         fn deserialize_retain_lines_params_as_string() {
             let config: Configuration = json5::from_str("{generator: 'retain_lines'}").unwrap();

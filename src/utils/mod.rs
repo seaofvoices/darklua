@@ -6,6 +6,7 @@ mod preserve_arguments_side_effects;
 mod scoped_hash_map;
 mod serde_one_or_many;
 mod serde_string_or_struct;
+mod serde_usize_from_float;
 mod serde_vec_of_pairs;
 mod timer;
 
@@ -16,6 +17,7 @@ pub(crate) use preserve_arguments_side_effects::preserve_arguments_side_effects;
 pub(crate) use scoped_hash_map::ScopedHashMap;
 pub(crate) use serde_one_or_many::deserialize_one_or_many;
 pub(crate) use serde_string_or_struct::string_or_struct;
+pub(crate) use serde_usize_from_float::deserialize_usize_from_float;
 pub(crate) use serde_vec_of_pairs::deserialize_vec_of_pairs;
 
 use std::{
