@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* support infinite column span parameter on the `readable` and `dense` generators ([#355](https://github.com/seaofvoices/darklua/pull/355))
 * add content loaders to the configuration file to process more than Lua or Luau files with darklua ([#354](https://github.com/seaofvoices/darklua/pull/354))
 * improve file watching to handle rename events and remove empty folders after processing if they weren't present before the initial run ([#351](https://github.com/seaofvoices/darklua/pull/351))
 * add a new parameter for the `rename_variables` rule so that globals can be detected automatically and then avoided in the renaming pass ([#348](https://github.com/seaofvoices/darklua/pull/348))
