@@ -12,7 +12,7 @@ parameters:
     default: "false"
     description: Controls if function names get renamed
   - name: detect_globals
-    added_in: "unreleased"
+    added_in: "0.19.0"
     type: boolean
     default: "true"
     description: Runs a pre-processor to collect globals used in per file

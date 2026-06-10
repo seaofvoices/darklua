@@ -1,6 +1,6 @@
 ---
 description: Convert Luau `const` assignments to `local` assignments
-added_in: "unreleased"
+added_in: "0.19.0"
 parameters: []
 examples:
   - content: "const PI = math.pi"

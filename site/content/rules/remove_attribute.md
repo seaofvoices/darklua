@@ -1,6 +1,6 @@
 ---
 description: "Remove function attributes"
-added_in: "unreleased"
+added_in: "0.18.0"
 parameters:
   - name: match
     type: string array

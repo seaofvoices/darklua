@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.19.0
 
 * add `json_lines` content loader and `/zstd`, `/gzip`, `/zlib` encoding variants for `string`, `buffer`, and `bytes` loaders ([#356](https://github.com/seaofvoices/darklua/pull/356))
 * support infinite column span parameter on the `readable` and `dense` generators ([#355](https://github.com/seaofvoices/darklua/pull/355))
