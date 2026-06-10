@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* add `json_lines` content loader and `/zstd`, `/gzip`, `/zlib` encoding variants for `string`, `buffer`, and `bytes` loaders ([#356](https://github.com/seaofvoices/darklua/pull/356))
 * support infinite column span parameter on the `readable` and `dense` generators ([#355](https://github.com/seaofvoices/darklua/pull/355))
 * add content loaders to the configuration file to process more than Lua or Luau files with darklua ([#354](https://github.com/seaofvoices/darklua/pull/354))
 * improve file watching to handle rename events and remove empty folders after processing if they weren't present before the initial run ([#351](https://github.com/seaofvoices/darklua/pull/351))
