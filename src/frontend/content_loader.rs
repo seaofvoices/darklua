@@ -1,4 +1,4 @@
-use std::{ffi::OsStr, path::Path};
+use std::{ffi::OsStr, io::Write, path::Path};
 
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde::{Deserialize, Serialize};
@@ -31,6 +31,15 @@ pub enum Loader {
     /// string (`return "..."`).
     #[serde(rename = "string/base64")]
     StringBase64,
+    /// Converts the file into a Lua module that returns the content as a zstd-encoded
+    #[serde(rename = "string/zstd")]
+    StringZstd,
+    /// Converts the file into a Lua module that returns the content as a gzip-encoded
+    #[serde(rename = "string/gzip")]
+    StringGzip,
+    /// Converts the file into a Lua module that returns the content as a zlib-encoded
+    #[serde(rename = "string/zlib")]
+    StringZlib,
     /// Converts the file into a Lua module that returns the content as a buffer
     /// (`return buffer.fromstring("...")`).
     Buffer,
@@ -38,6 +47,15 @@ pub enum Loader {
     /// buffer (`return buffer.fromstring("...")`).
     #[serde(rename = "buffer/base64")]
     BufferBase64,
+    /// Converts the file into a Lua module that returns the content as a zstd-encoded
+    #[serde(rename = "buffer/zstd")]
+    BufferZstd,
+    /// Converts the file into a Lua module that returns the content as a gzip-encoded
+    #[serde(rename = "buffer/gzip")]
+    BufferGzip,
+    /// Converts the file into a Lua module that returns the content as a zlib-encoded
+    #[serde(rename = "buffer/zlib")]
+    BufferZlib,
     /// Converts the file into a Lua module that returns the content as a byte array
     /// (`return { ... }`).
     Bytes,
@@ -45,8 +63,19 @@ pub enum Loader {
     /// byte array (`return { ... }`).
     #[serde(rename = "bytes/base64")]
     BytesBase64,
+    /// Converts the file into a Lua module that returns the content as a zstd-encoded
+    #[serde(rename = "bytes/zstd")]
+    BytesZstd,
+    /// Converts the file into a Lua module that returns the content as a gzip-encoded
+    #[serde(rename = "bytes/gzip")]
+    BytesGzip,
+    /// Converts the file into a Lua module that returns the content as a zlib-encoded
+    #[serde(rename = "bytes/zlib")]
+    BytesZlib,
     /// Converts the file into a Lua module that returns the JSON data.
     Json,
+    /// Converts the file into a Lua module that returns the JSON-lines data.
+    JsonLines,
     /// Converts the file into a Lua module that returns the TOML data.
     Toml,
     /// Converts the file into a Lua module that returns the YAML data.
@@ -63,6 +92,7 @@ impl Loader {
         match extension {
             "luau" | "lua" => Some(Self::Luau),
             "json" | "json5" => Some(Self::Json),
+            "jsonl" | "ndjson" => Some(Self::JsonLines),
             "toml" => Some(Self::Toml),
             "yaml" | "yml" => Some(Self::Yaml),
             "txt" => Some(Self::String),
@@ -80,11 +110,21 @@ impl Loader {
             Self::Luau => InternalLoader::Luau,
             Self::String => InternalLoader::String(LoaderEncoding::None),
             Self::StringBase64 => InternalLoader::String(LoaderEncoding::Base64),
+            Self::StringZstd => InternalLoader::String(LoaderEncoding::Zstd),
+            Self::StringGzip => InternalLoader::String(LoaderEncoding::Gzip),
+            Self::StringZlib => InternalLoader::String(LoaderEncoding::Zlib),
             Self::Buffer => InternalLoader::Buffer(LoaderEncoding::None),
             Self::BufferBase64 => InternalLoader::Buffer(LoaderEncoding::Base64),
+            Self::BufferZstd => InternalLoader::Buffer(LoaderEncoding::Zstd),
+            Self::BufferGzip => InternalLoader::Buffer(LoaderEncoding::Gzip),
+            Self::BufferZlib => InternalLoader::Buffer(LoaderEncoding::Zlib),
             Self::Bytes => InternalLoader::Bytes(LoaderEncoding::None),
             Self::BytesBase64 => InternalLoader::Bytes(LoaderEncoding::Base64),
+            Self::BytesZstd => InternalLoader::Bytes(LoaderEncoding::Zstd),
+            Self::BytesGzip => InternalLoader::Bytes(LoaderEncoding::Gzip),
+            Self::BytesZlib => InternalLoader::Bytes(LoaderEncoding::Zlib),
             Self::Json => InternalLoader::Json,
+            Self::JsonLines => InternalLoader::JsonLines,
             Self::Toml => InternalLoader::Toml,
             Self::Yaml => InternalLoader::Yaml,
             Self::Skip => InternalLoader::Skip,
@@ -100,6 +140,7 @@ pub(crate) enum InternalLoader {
     Buffer(LoaderEncoding),
     Bytes(LoaderEncoding),
     Json,
+    JsonLines,
     Toml,
     Yaml,
     Skip,
@@ -113,6 +154,7 @@ impl InternalLoader {
             | Self::Buffer(_)
             | Self::Bytes(_)
             | Self::Json
+            | Self::JsonLines
             | Self::Toml
             | Self::Yaml => true,
             Self::Copy | Self::Skip => false,
@@ -194,6 +236,20 @@ impl InternalLoader {
 
                 ContentType::from_data("json", data, source)
             }
+            Self::JsonLines => {
+                let content = resources.get(source)?;
+
+                let mut data = Vec::new();
+                for (index, line) in content.trim_end().lines().enumerate() {
+                    let element = json5::from_str::<serde_json::Value>(line).map_err(|err| {
+                        DarkluaError::from(err)
+                            .context(format!("failed to parse JSON entry at line {}", index + 1))
+                    })?;
+                    data.push(element);
+                }
+
+                ContentType::from_data("json", serde_json::Value::Array(data), source)
+            }
             Self::Toml => {
                 let content = resources.get(source)?;
                 let data = toml::from_str::<toml::Value>(&content).map_err(DarkluaError::from)?;
@@ -246,6 +302,9 @@ impl ContentType {
 pub(crate) enum LoaderEncoding {
     None,
     Base64,
+    Zstd,
+    Gzip,
+    Zlib,
 }
 
 impl LoaderEncoding {
@@ -253,6 +312,9 @@ impl LoaderEncoding {
         match self {
             Self::None => Ok(None),
             Self::Base64 => encode_base64(content).map(Some),
+            Self::Zstd => encode_zstd(content).map(Some),
+            Self::Gzip => encode_gzip(content).map(Some),
+            Self::Zlib => encode_zlib(content).map(Some),
         }
     }
 }
@@ -267,4 +329,37 @@ fn encode_base64(content: &[u8]) -> Result<Vec<u8>, DarkluaError> {
     encoded_content.truncate(bytes_written);
 
     Ok(encoded_content)
+}
+
+fn encode_zstd(content: &[u8]) -> Result<Vec<u8>, DarkluaError> {
+    let compression_level = 7;
+
+    zstd::stream::encode_all(content, compression_level)
+        .map_err(|err| DarkluaError::custom(format!("failed to encode with zstd: {}", err)))
+}
+
+fn encode_gzip(content: &[u8]) -> Result<Vec<u8>, DarkluaError> {
+    use flate2::write::GzEncoder;
+
+    let mut encoder = GzEncoder::new(Vec::new(), flate2::Compression::best());
+    encoder.write_all(content).map_err(|err| {
+        DarkluaError::custom(format!("failed to write content to gzip encoder: {}", err))
+    })?;
+
+    encoder
+        .finish()
+        .map_err(|err| DarkluaError::custom(format!("failed to encode with gzip: {}", err)))
+}
+
+fn encode_zlib(content: &[u8]) -> Result<Vec<u8>, DarkluaError> {
+    use flate2::write::ZlibEncoder;
+
+    let mut encoder = ZlibEncoder::new(Vec::new(), flate2::Compression::best());
+    encoder.write_all(content).map_err(|err| {
+        DarkluaError::custom(format!("failed to write content to zlib encoder: {}", err))
+    })?;
+
+    encoder
+        .finish()
+        .map_err(|err| DarkluaError::custom(format!("failed to encode with zlib: {}", err)))
 }

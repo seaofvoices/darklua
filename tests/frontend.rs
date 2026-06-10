@@ -317,6 +317,23 @@ mod loaders {
     }
 
     #[test]
+    fn use_loader_for_json_lines_files() {
+        let resources = memory_resources!(
+            "src/test.jsonl" => r#"{ "value": 1 }
+[1, 2, 3]
+true"#,
+            ".darklua.json" => r#"{ "rules": [] }"#,
+        );
+
+        process(&resources, Options::new("src"))
+            .unwrap()
+            .result()
+            .unwrap();
+
+        insta::assert_snapshot!(resources.get("src/test.lua").unwrap(), @"return {{value=1}, {1, 2, 3}, true}");
+    }
+
+    #[test]
     fn use_loader_for_yaml_file() {
         let resources = memory_resources!(
             "src/test.yaml" => r#"value: 1"#,
