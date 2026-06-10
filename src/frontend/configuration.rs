@@ -706,22 +706,28 @@ mod test {
         #[test]
         fn deserialize_custom_loaders() {
             let config: Configuration =
-                json5::from_str("{ loaders: { '*.luau': 'luau', '*.json': 'json' } }").unwrap();
+                json5::from_str("{ loaders: { '**/*.luau': 'luau', '**/*.json': 'json', '**/*.jsonl': 'json_lines' } }").unwrap();
 
             insta::assert_debug_snapshot!(config.loaders, @r###"
             LoaderConfiguration {
                 loaders: [
                     (
                         FilterPattern {
-                            pattern: "*.luau",
+                            pattern: "**/*.luau",
                         },
                         Luau,
                     ),
                     (
                         FilterPattern {
-                            pattern: "*.json",
+                            pattern: "**/*.json",
                         },
                         Json,
+                    ),
+                    (
+                        FilterPattern {
+                            pattern: "**/*.jsonl",
+                        },
+                        JsonLines,
                     ),
                 ],
             }
