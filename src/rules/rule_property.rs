@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     nodes::{DecimalNumber, Expression, StringExpression, TableEntry, TableExpression},
     process::to_expression,
+    rules::SingularRequireMode,
 };
 
 use super::{
@@ -83,14 +84,12 @@ impl RulePropertyValue {
     ) -> Result<RequireMode, RuleConfigurationError> {
         match self {
             Self::RequireMode(require_mode) => Ok(require_mode),
-            Self::String(value) => {
-                value
-                    .parse()
-                    .map_err(|err: String| RuleConfigurationError::UnexpectedValue {
-                        property: key.to_owned(),
-                        message: err,
-                    })
-            }
+            Self::String(value) => SingularRequireMode::from_str(&value)
+                .map(RequireMode::Single)
+                .map_err(|err: String| RuleConfigurationError::UnexpectedValue {
+                    property: key.to_owned(),
+                    message: err,
+                }),
             _ => Err(RuleConfigurationError::RequireModeExpected(key.to_owned())),
         }
     }
@@ -156,27 +155,27 @@ impl From<f64> for RulePropertyValue {
     }
 }
 
-impl From<&RequireMode> for RulePropertyValue {
-    fn from(value: &RequireMode) -> Self {
+impl From<&SingularRequireMode> for RulePropertyValue {
+    fn from(value: &SingularRequireMode) -> Self {
         match value {
-            RequireMode::Path(mode) => {
+            SingularRequireMode::Path(mode) => {
                 if mode == &PathRequireMode::default() {
                     return Self::from("path");
                 }
             }
-            RequireMode::Luau(mode) => {
+            SingularRequireMode::Luau(mode) => {
                 if mode == &LuauRequireMode::default() {
                     return Self::from("luau");
                 }
             }
-            RequireMode::Roblox(mode) => {
+            SingularRequireMode::Roblox(mode) => {
                 if mode == &RobloxRequireMode::default() {
                     return Self::from("roblox");
                 }
             }
         }
 
-        Self::RequireMode(value.clone())
+        Self::RequireMode(RequireMode::Single(value.clone()))
     }
 }
 
@@ -387,7 +386,9 @@ mod test {
         fn parse_require_mode_path_object() {
             parse_rule_property(
                 r#"{"name": "path"}"#,
-                RulePropertyValue::RequireMode(RequireMode::Path(PathRequireMode::default())),
+                RulePropertyValue::RequireMode(RequireMode::Single(SingularRequireMode::Path(
+                    PathRequireMode::default(),
+                ))),
             );
         }
 
@@ -395,7 +396,9 @@ mod test {
         fn parse_require_mode_path_object_with_options() {
             parse_rule_property(
                 r#"{"name": "path", "module_folder_name": "index"}"#,
-                RulePropertyValue::RequireMode(RequireMode::Path(PathRequireMode::new("index"))),
+                RulePropertyValue::RequireMode(RequireMode::Single(SingularRequireMode::Path(
+                    PathRequireMode::new("index"),
+                ))),
             );
         }
 
@@ -403,7 +406,9 @@ mod test {
         fn parse_require_mode_roblox_object() {
             parse_rule_property(
                 r#"{"name": "roblox"}"#,
-                RulePropertyValue::RequireMode(RequireMode::Roblox(RobloxRequireMode::default())),
+                RulePropertyValue::RequireMode(RequireMode::Single(SingularRequireMode::Roblox(
+                    RobloxRequireMode::default(),
+                ))),
             );
         }
 
@@ -411,12 +416,12 @@ mod test {
         fn parse_require_mode_roblox_object_with_options() {
             parse_rule_property(
                 r#"{"name": "roblox", "rojo_sourcemap": "./sourcemap.json"}"#,
-                RulePropertyValue::RequireMode(RequireMode::Roblox(
+                RulePropertyValue::RequireMode(RequireMode::Single(SingularRequireMode::Roblox(
                     serde_json::from_str::<RobloxRequireMode>(
                         r#"{"rojo_sourcemap": "./sourcemap.json"}"#,
                     )
                     .unwrap(),
-                )),
+                ))),
             );
         }
 
@@ -424,7 +429,20 @@ mod test {
         fn parse_require_mode_luau_object() {
             parse_rule_property(
                 r#"{ "name": "luau" }"#,
-                RulePropertyValue::RequireMode(RequireMode::Luau(LuauRequireMode::default())),
+                RulePropertyValue::RequireMode(RequireMode::Single(SingularRequireMode::Luau(
+                    LuauRequireMode::default(),
+                ))),
+            );
+        }
+
+        #[test]
+        fn parse_require_mode_hybrid() {
+            parse_rule_property(
+                r#"[{ "name": "luau" }, { "name": "roblox" }]"#,
+                RulePropertyValue::RequireMode(RequireMode::Hybrid(vec![
+                    SingularRequireMode::Luau(Default::default()),
+                    SingularRequireMode::Roblox(Default::default()),
+                ])),
             );
         }
 

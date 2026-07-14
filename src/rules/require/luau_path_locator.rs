@@ -4,7 +4,10 @@ use std::{
 };
 
 use super::{path_iterator, LuauRequireMode};
+use crate::rules::require::hybrid_path_locator::SingularPathLocator;
+use crate::rules::require::match_path_require_call;
 use crate::rules::require::path_utils::{get_relative_parent_path, is_require_relative};
+use crate::rules::RequireModeLike;
 use crate::{utils, DarkluaError, Resources};
 
 /// A path locator specifically for Luau require mode that implements
@@ -37,6 +40,14 @@ impl<'b, 'c> LuauPathLocator<'b, 'c> {
 }
 
 impl super::PathLocator for LuauPathLocator<'_, '_> {
+    fn match_path_require_call(
+        &self,
+        call: &crate::nodes::FunctionCall,
+        _source: &Path,
+    ) -> Option<(PathBuf, SingularPathLocator<'_, '_>)> {
+        match_path_require_call(call).map(|x| (x, SingularPathLocator::Luau(self.clone())))
+    }
+
     fn find_require_path(
         &self,
         path: impl Into<PathBuf>,
@@ -53,7 +64,7 @@ impl super::PathLocator for LuauPathLocator<'_, '_> {
         let require_mode = self.luau_require_mode.borrow();
 
         if is_require_relative(&path) {
-            if require_mode.is_module_folder_name(source) {
+            if require_mode.is_module_folder_name(source)? {
                 path = get_relative_parent_path(get_relative_parent_path(source)).join(path);
             } else {
                 path = get_relative_parent_path(source).join(path);

@@ -9,8 +9,8 @@ use wax::Program;
 use crate::frontend::LoaderConfiguration;
 use crate::nodes::Block;
 use crate::rules::{
-    Context, Rule, RuleConfiguration, RuleConfigurationError, RuleMetadata, RuleProcessResult,
-    RuleProperties,
+    Context, RequireMode, Rule, RuleConfiguration, RuleConfigurationError, RuleMetadata,
+    RuleProcessResult, RuleProperties,
 };
 use crate::Parser;
 
@@ -20,7 +20,7 @@ pub use require_mode::BundleRequireMode;
 pub const BUNDLER_RULE_NAME: &str = "bundler";
 
 #[derive(Debug)]
-pub(crate) struct BundleOptions {
+pub struct BundleOptions {
     parser: Parser,
     modules_identifier: String,
     excludes: Option<wax::Any<'static>>,
@@ -85,14 +85,14 @@ impl BundleOptions {
 #[derive(Debug)]
 pub(crate) struct Bundler {
     metadata: RuleMetadata,
-    require_mode: BundleRequireMode,
+    require_mode: RequireMode,
     options: BundleOptions,
 }
 
 impl Bundler {
     pub(crate) fn new<'a>(
         parser: Parser,
-        require_mode: BundleRequireMode,
+        require_mode: RequireMode,
         excludes: impl Iterator<Item = &'a str>,
         loaders: LoaderConfiguration,
     ) -> Self {
@@ -145,20 +145,20 @@ const DEFAULT_MODULE_IDENTIFIER: &str = "__DARKLUA_BUNDLE_MODULES";
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::rules::{require::PathRequireMode, Rule};
+    use crate::rules::{require::PathRequireMode, RequireMode, Rule};
 
     use insta::assert_json_snapshot;
 
     fn new_rule() -> Bundler {
         Bundler::new(
             Parser::default(),
-            BundleRequireMode::default(),
+            RequireMode::default(),
             std::iter::empty(),
             LoaderConfiguration::default(),
         )
     }
 
-    fn new_rule_with_require_mode(mode: impl Into<BundleRequireMode>) -> Bundler {
+    fn new_rule_with_require_mode(mode: impl Into<RequireMode>) -> Bundler {
         Bundler::new(
             Parser::default(),
             mode.into(),
