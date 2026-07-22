@@ -1,7 +1,8 @@
-use std::path::{Path, PathBuf};
+use std::path::{self, Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+use crate::utils::normalize_path;
 use crate::{utils, DarkluaError};
 
 use super::InstancePath;
@@ -31,7 +32,11 @@ impl RojoSourcemapNode {
         while let Some(node) = queue.pop() {
             node.id = index;
             for file_path in &mut node.file_paths {
-                *file_path = utils::normalize_path(relative_to.join(&file_path));
+                if file_path.is_relative() {
+                    *file_path =
+                        path::absolute(utils::normalize_path(relative_to.join(&file_path)))
+                            .expect("failed to convert to absolute path");
+                }
             }
             for child in &mut node.children {
                 child.parent_id = index;
@@ -128,8 +133,19 @@ impl RojoSourcemap {
         let from_file = from_file.as_ref();
         let target_file = target_file.as_ref();
 
+        let normalized = normalize_path(from_file.join(target_file));
+
         let from_node = self.find_node(from_file)?;
-        let target_node = self.find_node(target_file)?;
+        let target_node = self.find_node(if from_file.has_root() {
+            log::trace!(
+                "in absolute require mode, normalized: {} -> {}",
+                from_file.display(),
+                normalized.display()
+            );
+            normalized.as_path()
+        } else {
+            target_file
+        })?;
 
         let from_ancestors = self.hierarchy(from_node);
         let target_ancestors = self.hierarchy(target_node);
@@ -219,10 +235,20 @@ impl RojoSourcemap {
         ids
     }
 
-    fn find_node(&self, path: &Path) -> Option<&RojoSourcemapNode> {
-        self.root_node
-            .iter()
-            .find(|node| node.file_paths.iter().any(|file_path| file_path == path))
+    fn find_node(&self, target_path: &Path) -> Option<&RojoSourcemapNode> {
+        let needle_path_buf = if !target_path.has_root() {
+            path::absolute(target_path).expect("failed")
+        } else {
+            target_path.to_path_buf()
+        };
+
+        let needle_path = needle_path_buf.as_path();
+
+        self.root_node.iter().find(|node| {
+            node.file_paths
+                .iter()
+                .any(|file_path| file_path.as_path() == needle_path)
+        })
     }
 }
 
@@ -276,6 +302,8 @@ mod test {
                 script_path(&["value"])
             );
         }
+
+        // Relative
 
         #[test]
         fn from_sibling_to_sibling_module() {
@@ -391,6 +419,201 @@ mod test {
             pretty_assertions::assert_eq!(
                 sourcemap
                     .get_instance_path("src/Sub/test.lua", "src/Sub/init.lua")
+                    .unwrap(),
+                script_path(&["parent"])
+            );
+        }
+
+        // Absolute
+
+        #[test]
+        fn abs_from_sibling_to_sibling_module() {
+            let sourcemap = new_sourcemap(
+                r#"{
+                "name": "Project",
+                "className": "ModuleScript",
+                "filePaths": ["C:/projects/thing/src/init.lua", "C:/projects/thing/default.project.json"],
+                "children": [
+                    {
+                        "name": "main",
+                        "className": "ModuleScript",
+                        "filePaths": ["C:/projects/thing/src/main.lua"]
+                    },
+                    {
+                        "name": "value",
+                        "className": "ModuleScript",
+                        "filePaths": ["C:/projects/thing/src/value.lua"]
+                    }
+                ]
+            }"#,
+            );
+            pretty_assertions::assert_eq!(
+                sourcemap
+                    .get_instance_path(
+                        "C:/projects/thing/src/main.lua",
+                        "C:/projects/thing/src/value.lua"
+                    )
+                    .unwrap(),
+                script_path(&["parent", "value"])
+            );
+        }
+
+        #[test]
+        fn abs_from_sibling_to_nested_sibling_module() {
+            let sourcemap = new_sourcemap(
+                r#"{
+                "name": "Project",
+                "className": "ModuleScript",
+                "filePaths": ["C:/projects/thing/src/init.lua", "C:/projects/thing/default.project.json"],
+                "children": [
+                    {
+                        "name": "main",
+                        "className": "ModuleScript",
+                        "filePaths": ["C:/projects/thing/src/main.lua"]
+                    },
+                    {
+                        "name": "Lib",
+                        "className": "Folder",
+                        "children": [
+                            {
+                                "name": "format",
+                                "className": "ModuleScript",
+                                "filePaths": ["C:/projects/thing/src/Lib/format.lua"]
+                            }
+                        ]
+                    }
+                ]
+            }"#,
+            );
+            pretty_assertions::assert_eq!(
+                sourcemap
+                    .get_instance_path(
+                        "C:/projects/thing/src/main.lua",
+                        "C:/projects/thing/src/Lib/format.lua"
+                    )
+                    .unwrap(),
+                script_path(&["parent", "Lib", "format"])
+            );
+        }
+
+        #[test]
+        fn abs_from_child_require_parent() {
+            let sourcemap = new_sourcemap(
+                r#"{
+                "name": "Project",
+                "className": "ModuleScript",
+                "filePaths": ["C:/projects/thing/src/init.lua", "C:/projects/thing/default.project.json"],
+                "children": [
+                    {
+                        "name": "main",
+                        "className": "ModuleScript",
+                        "filePaths": ["C:/projects/thing/src/main.lua"]
+                    }
+                ]
+            }"#,
+            );
+            pretty_assertions::assert_eq!(
+                sourcemap
+                    .get_instance_path(
+                        "C:/projects/thing/src/main.lua",
+                        "C:/projects/thing/src/init.lua"
+                    )
+                    .unwrap(),
+                script_path(&["parent"])
+            );
+        }
+
+        #[test]
+        fn abs_from_child_require_parent_nested() {
+            let sourcemap = new_sourcemap(
+                r#"{
+                "name": "Project",
+                "className": "ModuleScript",
+                "filePaths": ["C:/projects/thing/src/init.lua", "C:/projects/thing/default.project.json"],
+                "children": [
+                    {
+                        "name": "Sub",
+                        "className": "ModuleScript",
+                        "filePaths": ["C:/projects/thing/src/Sub/init.lua"],
+                        "children": [
+                            {
+                                "name": "test",
+                                "className": "ModuleScript",
+                                "filePaths": ["C:/projects/thing/src/Sub/test.lua"]
+                            }
+                        ]
+                    }
+                ]
+            }"#,
+            );
+            pretty_assertions::assert_eq!(
+                sourcemap
+                    .get_instance_path(
+                        "C:/projects/thing/src/Sub/test.lua",
+                        "C:/projects/thing/src/Sub/init.lua"
+                    )
+                    .unwrap(),
+                script_path(&["parent"])
+            );
+        }
+
+        #[test]
+        fn rel_from_absolute() {
+            let sourcemap = new_sourcemap(
+                r#"{
+                "name": "Project",
+                "className": "ModuleScript",
+                "filePaths": ["C:/projects/thing/src/init.luau", "C:/projects/thing/default.project.json"],
+                "children": [
+                    {
+                        "name": "Sub",
+                        "className": "ModuleScript",
+                        "filePaths": ["C:/projects/thing/src/Sub/init.luau"],
+                        "children": [
+                            {
+                                "name": "test",
+                                "className": "ModuleScript",
+                                "filePaths": ["C:/projects/thing/src/Sub/test.luau"]
+                            }
+                        ]
+                    }
+                ]
+            }"#,
+            );
+            pretty_assertions::assert_eq!(
+                sourcemap
+                    .get_instance_path("C:/projects/thing/src/Sub/test.luau", "../init.luau")
+                    .unwrap(),
+                script_path(&["parent"])
+            );
+        }
+
+        #[test]
+        fn nested_rel_from_absolute() {
+            let sourcemap = new_sourcemap(
+                r#"{
+                "name": "Project",
+                "className": "ModuleScript",
+                "filePaths": ["C:/projects/thing/src/init.luau", "C:/projects/thing/default.project.json"],
+                "children": [
+                    {
+                        "name": "Sub",
+                        "className": "ModuleScript",
+                        "filePaths": ["C:/projects/thing/src/Sub/init.luau"],
+                        "children": [
+                            {
+                                "name": "test",
+                                "className": "ModuleScript",
+                                "filePaths": ["C:/projects/thing/src/Sub/test.luau"]
+                            }
+                        ]
+                    }
+                ]
+            }"#,
+            );
+            pretty_assertions::assert_eq!(
+                sourcemap
+                    .get_instance_path("C:/projects/thing/src/Sub/test.luau", "../init.luau")
                     .unwrap(),
                 script_path(&["parent"])
             );
