@@ -85,7 +85,6 @@ Any missing field will be replaced with its default value.
 
     // Configure how requires are interpreted
     require_mode: {
-      // Currently, the only supported require mode is `path`
       name: "path",
 
       // When requiring folders, require the file named like this value inside of it

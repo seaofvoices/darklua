@@ -3,7 +3,10 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 
 use crate::rules::{
-    require::{LuauPathLocator, LuauRequireMode, PathRequireMode, RequirePathLocator},
+    require::{
+        LuaPathLocator, LuaRequireMode, LuauPathLocator, LuauRequireMode, PathRequireMode,
+        RequirePathLocator,
+    },
     RuleProcessResult,
 };
 use crate::{nodes::Block, rules::Context};
@@ -14,6 +17,7 @@ use super::{path_require_mode, BundleOptions};
 #[serde(deny_unknown_fields, rename_all = "snake_case", tag = "name")]
 pub enum BundleRequireMode {
     Path(PathRequireMode),
+    Lua(LuaRequireMode),
     Luau(LuauRequireMode),
 }
 
@@ -29,6 +33,7 @@ impl FromStr for BundleRequireMode {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s {
             "path" => Self::Path(Default::default()),
+            "lua" => Self::Lua(Default::default()),
             "luau" => Self::Luau(Default::default()),
             _ => return Err(format!("invalid require mode `{}`", s)),
         })
@@ -60,6 +65,12 @@ impl BundleRequireMode {
                     context.project_location(),
                     context.resources(),
                 );
+
+                path_require_mode::process_block(block, context, options, locator)
+            }
+            Self::Lua(lua_require_mode) => {
+                let require_mode = lua_require_mode.clone();
+                let locator = LuaPathLocator::new(&require_mode, context.resources());
 
                 path_require_mode::process_block(block, context, options, locator)
             }
