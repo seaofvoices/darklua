@@ -244,7 +244,8 @@ impl FileWatcher {
         if events.is_empty() {
             return;
         }
-        let current_path = self.current_working_path.as_ref();
+        let current_path = self.current_working_path.as_deref();
+        let input_is_relative = self.input_path.is_relative();
 
         let worker_tree = if let Some(worker_tree) = self.worker_tree.as_mut() {
             worker_tree
@@ -259,18 +260,11 @@ impl FileWatcher {
         for event in events {
             let links = &self.links_file_watch;
 
-            let mut paths_iterator = event.event.paths.iter().map(|path| {
-                links
-                    .iter()
-                    .find_map(|(link_location, link_path)| {
-                        path.starts_with(link_location)
-                            .then_some(link_path.as_path())
-                    })
-                    .or_else(|| {
-                        current_path.and_then(|current_path| path.strip_prefix(current_path).ok())
-                    })
-                    .unwrap_or(path)
-            });
+            let mut paths_iterator = event
+                .event
+                .paths
+                .iter()
+                .map(|path| map_event_path(path, links, current_path, input_is_relative));
 
             if log::log_enabled!(log::Level::Trace) {
                 let event_display = match event.kind {
@@ -378,6 +372,28 @@ impl FileWatcher {
     }
 }
 
+fn map_event_path<'a>(
+    path: &'a Path,
+    links: &'a HashSet<(PathBuf, PathBuf)>,
+    current_path: Option<&Path>,
+    input_is_relative: bool,
+) -> &'a Path {
+    links
+        .iter()
+        .find_map(|(link_location, link_path)| {
+            path.starts_with(link_location)
+                .then_some(link_path.as_path())
+        })
+        .or_else(|| {
+            if input_is_relative {
+                current_path.and_then(|current_path| path.strip_prefix(current_path).ok())
+            } else {
+                None
+            }
+        })
+        .unwrap_or(path)
+}
+
 fn diff_sets<T: Eq + Hash>(
     new_set: &HashSet<T>,
     previous_set: &HashSet<T>,
@@ -460,4 +476,105 @@ fn log_darklua_error<T>(
             log::error!("{}", err);
         })
         .unwrap_or_else(|_| else_result())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    const RELATIVE_INPUT: bool = true;
+    const ABSOLUTE_INPUT: bool = false;
+
+    // builds an absolute path without assuming a platform specific separator
+    fn absolute(components: &[&str]) -> PathBuf {
+        let mut path = PathBuf::from(if cfg!(windows) { "C:\\" } else { "/" });
+        path.extend(components.iter().copied());
+        path
+    }
+
+    fn relative(components: &[&str]) -> PathBuf {
+        let mut path = PathBuf::new();
+        path.extend(components.iter().copied());
+        path
+    }
+
+    fn no_links() -> HashSet<(PathBuf, PathBuf)> {
+        HashSet::new()
+    }
+
+    #[test]
+    fn relative_input_maps_event_inside_current_directory_to_relative_path() {
+        let current = absolute(&["home", "project"]);
+        let event = current.join("src").join("main.lua");
+
+        assert_eq!(
+            map_event_path(&event, &no_links(), Some(&current), RELATIVE_INPUT),
+            relative(&["src", "main.lua"]).as_path()
+        );
+    }
+
+    #[test]
+    fn absolute_input_keeps_event_inside_current_directory_absolute() {
+        let current = absolute(&["home", "project"]);
+        let event = current.join("src").join("main.lua");
+
+        assert_eq!(
+            map_event_path(&event, &no_links(), Some(&current), ABSOLUTE_INPUT),
+            event.as_path()
+        );
+    }
+
+    #[test]
+    fn event_outside_current_directory_stays_unchanged() {
+        let current = absolute(&["home", "project"]);
+        let event = absolute(&["elsewhere", "src", "main.lua"]);
+
+        assert_eq!(
+            map_event_path(&event, &no_links(), Some(&current), RELATIVE_INPUT),
+            event.as_path()
+        );
+    }
+
+    #[test]
+    fn event_stays_unchanged_without_a_known_current_directory() {
+        let event = absolute(&["home", "project", "src", "main.lua"]);
+
+        assert_eq!(
+            map_event_path(&event, &no_links(), None, RELATIVE_INPUT),
+            event.as_path()
+        );
+    }
+
+    #[test]
+    fn symlink_mapping_takes_precedence_over_relativizing() {
+        // the link location is inside the current directory, so without the symlink
+        // entry this event would have been made relative for a relative input
+        let current = absolute(&["home", "project"]);
+        let link_location = current.join("vendor-source");
+        let event = link_location.join("mod.lua");
+
+        for (input_is_relative, link_path) in [
+            (RELATIVE_INPUT, relative(&["src", "vendor"])),
+            (ABSOLUTE_INPUT, current.join("src").join("vendor")),
+        ] {
+            let links = HashSet::from([(link_location.clone(), link_path.clone())]);
+
+            assert_eq!(
+                map_event_path(&event, &links, Some(&current), input_is_relative),
+                link_path.as_path()
+            );
+        }
+    }
+
+    #[test]
+    fn mapping_is_lexical_for_removed_paths() {
+        let current = absolute(&["home", "project"]);
+        let event = current.join("src").join("deleted.lua");
+
+        assert!(!event.exists());
+        assert_eq!(
+            map_event_path(&event, &no_links(), Some(&current), RELATIVE_INPUT),
+            relative(&["src", "deleted.lua"]).as_path()
+        );
+    }
 }

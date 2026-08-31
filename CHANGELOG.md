@@ -1,5 +1,6 @@
 # Changelog
 
+* fix file watching to detect changes when the input path is absolute ([#309](https://github.com/seaofvoices/darklua/issues/309))
 * use the closest `.luaurc` configuration to each file when bundling code ([#339](https://github.com/seaofvoices/darklua/pull/339))
 
 ## 0.19.0
